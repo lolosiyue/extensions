@@ -1,4 +1,4 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/hunliesp-ai.lua.
 
 
 local tiangong_frequent_timings,tiangong_frequent_targets,tiangong_negative_effects,tiangong_gainskill_effects,tiangong_basic_effects
@@ -45,18 +45,20 @@ local function response(self,skill,class,names,request)
  return use:toAnswer()
 end
 --妖智
-sgs.ai_skill_invoke.sgkgodyaozhi = true
+ai_skill_invoke.sgkgodyaozhi = true
 
 
 --杀绝
-sgs.ai_fill_skill.sgkgodshajue = function(self,inclusive,request)
+ai_fill_skill.sgkgodshajue = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#sgkgodshajueCard") or self.player:isKongcheng() then return end
 	if #self.enemies == 0 then return end
 	if self.player:hasSkills("wushen|sgkgodwushen") or ((not self.player:hasSkill("sgkgodguiqu")) and self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < 1) then return end
 	return self:legacySkillSeed("sgkgodshajue", "#sgkgodshajueCard", request)
 end
 
-sgs.ai_skill_use_func["#sgkgodshajueCard"] = function(card, use, self, request)
+ai_card_use["#sgkgodshajueCard"] = function(self, card, use, request)
 	self:sort(self.enemies, "hp")
 	local inicards = AIList.new({})
 	for _, c in sgs.qlist(self.player:getCards("h")) do
@@ -96,7 +98,10 @@ sgs.ai_cardsview["sgkgodguiqu"] = function(self, class_name, player)
 	end
 end
 
-sgs.ai_skill_choice["sgkgodguiqu"] = function(self, choices, data)
+ai_skill_choice["sgkgodguiqu"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local room = self.room
 	local skills = choices:split("+")
 	local bad_skills = {"shiyong", "sk_shiyong", "longnu", "jinjiu", "sgkgodwushen", "wushen", "tongji"}  --几个与【杀】有关的负面技
@@ -119,15 +124,15 @@ sgs.ai_skill_choice["sgkgodguiqu"] = function(self, choices, data)
 	end
 	if not to_lose then
 		if #skills <= 3 then
-			if table.contains(skills, lvbu_initial[1]) then return lvbu_initial[1] end  --如果额外技能全丢了，优先舍弃【杀绝】
-			if table.contains(skills, lvbu_initial[2]) then return lvbu_initial[2] end  --再其次，为了保命，舍弃【罗刹】
-			if table.contains(skills, lvbu_initial[3]) then return lvbu_initial[3] end  --最后变成白板，舍弃【鬼驱】
+			if table.contains(skills, lvbu_initial[1]) then return ai_choice_result((lvbu_initial[1]), options) end  --如果额外技能全丢了，优先舍弃【杀绝】
+			if table.contains(skills, lvbu_initial[2]) then return ai_choice_result((lvbu_initial[2]), options) end  --再其次，为了保命，舍弃【罗刹】
+			if table.contains(skills, lvbu_initial[3]) then return ai_choice_result((lvbu_initial[3]), options) end  --最后变成白板，舍弃【鬼驱】
 		end
 	end
 	if to_lose then
-		return to_lose
+		return ai_choice_result((to_lose), options)
 	end
-	return skills[math.random(1, #skills)]
+	return ai_choice_result((skills[math.random(1, #skills)]), options)
 end
 
 
@@ -203,51 +208,54 @@ end
 
 
 --定命
-sgs.ai_skill_invoke.sgkgoddingming = function(self, data)
+ai_skill_invoke.sgkgoddingming = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
 	local x = math.abs(to:getHp() - to:getLostHp())
-	if self.player:getMaxHp() == 1 then return false end
+	if self.player:getMaxHp() == 1 then return (false) or false end
 	--情形1：自己的准备阶段
 	if self.player:getSeat() == to:getSeat() and self.player:getPhase() == sgs.Player_Start then
 		--有【桃】或【酒】，想炸血卖
 		if getYinyangState(self.player) == "hp_Yang" and self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 then
-			if x >= 2 then return true end
+			if x >= 2 then return (true) or false end
 			--有界黄盖的【诈降】，哪怕差值只有1也卖
-			if self:hasZhaxiangEffect(self.player) then return true end
+			if self:hasZhaxiangEffect(self.player) then return (true) or false end
 			--能触发夏侯霸的【豹变】也卖了
-			if self.player:hasSkill("baobian") and self.player:getHp() - x <= 3 then return true end
+			if self.player:hasSkill("baobian") and self.player:getHp() - x <= 3 then return (true) or false end
 			--如果有【英魂】/【再起】也卖
-			if self.player:hasSkills("yinghun|zaiqi") and self.player:getLostHp() + x >= 2 and self.player:getHp() - x >= 0 then return true end
+			if self.player:hasSkills("yinghun|zaiqi") and self.player:getLostHp() + x >= 2 and self.player:getHp() - x >= 0 then return (true) or false end
 			--有神孙策的【冯河】，必须得卖，否则保不住手牌上限
-			if self.player:hasSkill("f_pinghe") and self.player:getHp() - x >= 0 then return true end
+			if self.player:hasSkill("f_pinghe") and self.player:getHp() - x >= 0 then return (true) or false end
 		end
 		--自己刚好状态很残
-		if getYinyangState(self.player) == "hp_Yin" and x >= 2 then return true end
+		if getYinyangState(self.player) == "hp_Yin" and x >= 2 then return (true) or false end
 	end
 	--情形2：伤害类
 	local damage = data:toDamage()
 	--分支2-1：自己受到伤害时
 	if self.player:getSeat() == to:getSeat() then
-		if getYinyangState(self.player) == "hp_Yin" and x >= 1 then return true end
+		if getYinyangState(self.player) == "hp_Yin" and x >= 1 then return (true) or false end
 		--特殊：自己有孙策的【魂姿】且没觉醒的时候，即使自己处在“阳”也要炸血，并且压得越多越好，先保证能觉醒
 		if getYinyangState(self.player) == "hp_Yang" and self.player:getStrategyMark("@waked") == 0 and self.player:hasSkill("hunzi") then
-			if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 and self.player:getHp() - x <= 1 then return true end
+			if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 and self.player:getHp() - x <= 1 then return (true) or false end
 		end
 	else
 	--分支2-2：对其他角色造成伤害时
 		if self:isEnemy(to) then
 			if getYinyangState(to) == "hp_Yang" and not (to:hasSkill("hunzi") and to:getStrategyMark("@waked") == 0) then
-				if (x >= 2 or to:getHp() - x <= 1) and self.player:getMaxHp() > 1 and canChangeYinyangState(self.player, "lose") then return true end
+				if (x >= 2 or to:getHp() - x <= 1) and self.player:getMaxHp() > 1 and canChangeYinyangState(self.player, "lose") then return (true) or false end
 			end
 		elseif self:isFriend(to) then
 			--特例：如果这个人是没觉醒且有【魂姿】的孙策
 			if getYinyangState(to) == "hp_Yang" and not (to:hasSkill("hunzi") and to:getStrategyMark("@waked") == 0) then
-				if self.player:getMaxHp() > 1 and to:getLostHp() == 1 then return true end
+				if self.player:getMaxHp() > 1 and to:getLostHp() == 1 then return (true) or false end
 			else
-				if getYinyangState(to) == "hp_Yin" then return true end
+				if getYinyangState(to) == "hp_Yin" then return (true) or false end
 			end
 		end
 	end
+	return false
+
 end
 
 
@@ -273,9 +281,10 @@ end
 
 
 --止啼
-sgs.ai_skill_invoke.sgkgodzhiti = function(self, data)
+ai_skill_invoke.sgkgodzhiti = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return self:isEnemy(to)
+	return (self:isEnemy(to)) or false
 end
 
 
@@ -286,7 +295,10 @@ local function evil()
 	"chouce", "yiji", "sgkgodzhiti", "sgkgodyinyang", "fangzhu", "yuqi", "sgkgodxiejia", "gdlonghun", "f_huishi", "longhun", "sgkgodleihun", "sgkgodyingshi", 
 	"sgkgodmeixin", "sr_zhaoxiang", "jiaozi", "shanjia", "wushuang", "tenyearyiji", "sgkgodjilue", "lingce", "tieji", "jianying", "moutieqii"}
 end
-sgs.ai_skill_choice["sgkgodzhiti"] = function(self, choices, data)
+ai_skill_choice["sgkgodzhiti"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local imba = evil()
 	local steal = false
 	local target = data:toPlayer()
@@ -314,45 +326,48 @@ sgs.ai_skill_choice["sgkgodzhiti"] = function(self, choices, data)
 				end
 			end
 		end
-		if steal then return "spgodzl_stealOneSkill" end
+		if steal then return ai_choice_result(("spgodzl_stealOneSkill"), options) end
 	end
 	local zhiti = choices:split("+")
 	for i = 1, #zhiti, 1 do
 		if self:isWeak() and string.find(zhiti[i], "_stealOneHpAndMaxhp") then
-			return zhiti[i]
+			return ai_choice_result((zhiti[i]), options)
 		end
 		if self:isEnemy(target) and target:hasSkills(sgs.need_equip_skill .. "|" .. sgs.lose_equip_skill) and string.find(zhiti[i], "_banEquip") then
-			return zhiti[i]
+			return ai_choice_result((zhiti[i]), options)
 		end
 		if self:isEnemy(target) and self:hasSkills(sgs.priority_skill, target) and string.find(zhiti[i], "_turnOver") then
-			return zhiti[i]
+			return ai_choice_result((zhiti[i]), options)
 		end
 	end
-	return zhiti[math.random(1, #zhiti)]
+	return ai_choice_result((zhiti[math.random(1, #zhiti)]), options)
 end
 
-sgs.ai_skill_choice["zhiti_stealWhat"] = function(self, choices, data)
+ai_skill_choice["zhiti_stealWhat"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local target = data:toPlayer()
 	local skills = choices:split("+")
 	local imba = evil()
 	for _, sk in ipairs(skills) do
 		if table.contains(imba, sk) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 	for _, sk in ipairs(skills) do
 		if self:isValueSkill(sk, target, true) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 	for _, sk in ipairs(skills) do
 		if self:isValueSkill(sk, target) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 	for _, sk in ipairs(skills) do
 		if string.find(sgs.masochism_skill, sk) or string.find(sgs.recover_skill, sk) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 	local not_bad_skills = {}
@@ -360,16 +375,17 @@ sgs.ai_skill_choice["zhiti_stealWhat"] = function(self, choices, data)
 		if not string.find(sgs.bad_skills, sk) then table.insert(not_bad_skills, sk) end
 	end
 	if #not_bad_skills > 0 then
-		return not_bad_skills[math.random(1, #not_bad_skills)]
+		return ai_choice_result((not_bad_skills[math.random(1, #not_bad_skills)]), options)
 	end
-	return skills[math.random(1, #skills)]
+	return ai_choice_result((skills[math.random(1, #skills)]), options)
 end
 
 
 --劫营
-sgs.ai_skill_invoke.sgkgodjieying = function(self, data)
-	if #self.enemies == 0 then return nil end
-	return true
+ai_skill_invoke.sgkgodjieying = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (nil) or false end
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen.sgkgodjieying = function(self, targets)
@@ -440,13 +456,14 @@ sgs.ai_skill_askforag.sgkgodlangxi = function(self, card_ids)
 	if result_id ~= -1 then return result_id end
 end
 
-sgs.ai_skill_invoke.sgkgodlangxi = function(self, data)
+ai_skill_invoke.sgkgodlangxi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use.card:isKindOf("ExNihilo") or use.card:isKindOf("GodSalvation") or use.card:isKindOf("IronChain") or use.card:isKindOf("AmazingGrace") or use.card:isKindOf("Collateral") then
-		return false
+		return (false) or false
 	end
-	if use.card:isKindOf("Dongzhuxianji") or use.card:isKindOf("Chuqibuyi") then return false end
-	return true
+	if use.card:isKindOf("Dongzhuxianji") or use.card:isKindOf("Chuqibuyi") then return (false) or false end
+	return (true) or false
 end
 
 sgs.sgkgodlangxi_keep_value = {
@@ -460,34 +477,42 @@ sgs.sgkgodlangxi_keep_value = {
 }
 
 --神隐
-sgs.ai_skill_invoke.sgkgodshenyin = function(self, data)
-	if self.player:getPhase() == sgs.Player_Start and self.player:getStrategyMark("&sgkgodshenyin") > 0 then return true end
+ai_skill_invoke.sgkgodshenyin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:getPhase() == sgs.Player_Start and self.player:getStrategyMark("&sgkgodshenyin") > 0 then return (true) or false end
 	local dying = data:toDying()
 	if dying.who:objectName() == self.player:objectName() then
 		local peaches = 1 - self.player:getHp()
-		return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
+		return (self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke["#sgkgodshenyinLose"] = true
+ai_skill_invoke["#sgkgodshenyinLose"] = true
 
 
 --潜渊
-sgs.ai_skill_invoke.sgkgodqianyuan = function(self, data)
-	if data:toString() and data:toString():startsWith("sgkgodjiguan_") then return false end
-	if self.player:getStrategyMark("sgkgodhualong") < 8 then return true end
+ai_skill_invoke.sgkgodqianyuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if data:toString() and data:toString():startsWith("sgkgodjiguan_") then return (false) or false end
+	if self.player:getStrategyMark("sgkgodhualong") < 8 then return (true) or false end
+	return false
+
 end
 
-sgs.ai_skill_invoke["#sgkgodqianyuanLose"] = function(self, data)
-	if data:toString():startsWith("sgkgodjiguan_") then return false end
-	return true
+ai_skill_invoke["#sgkgodqianyuanLose"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if data:toString():startsWith("sgkgodjiguan_") then return (false) or false end
+	return (true) or false
 end
 
 
 --化龙
-sgs.ai_skill_invoke.sgkgodhualong = function(self, data)
-	if #self.enemies == 0 then return false end
-	return true
+ai_skill_invoke.sgkgodhualong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen.sgkgodhualong = function(self, targets)
@@ -500,15 +525,18 @@ sgs.ai_skill_playerchosen.sgkgodhualong = function(self, targets)
 end
 
 --天工
-sgs.ai_skill_invoke.sgkgodtiangong = true  --组装机关是一定要组装的，OL南华老仙是一定要跪下唱征服的
+ai_skill_invoke.sgkgodtiangong = true  --组装机关是一定要组装的，OL南华老仙是一定要跪下唱征服的
 
-sgs.ai_skill_choice["tiangong_targets"] = function(self, choices, data)
+ai_skill_choice["tiangong_targets"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local targets = choices:split("+")
-	if table.contains(targets, "niziji") then return "niziji" end
+	if table.contains(targets, "niziji") then return ai_choice_result(("niziji"), options) end
 	for _, frequent_target in ipairs(tiangong_frequent_targets) do
-		if table.contains(targets, frequent_target) then return frequent_target end
+		if table.contains(targets, frequent_target) then return ai_choice_result((frequent_target), options) end
 	end
-	return targets[math.random(1, #targets)]
+	return ai_choice_result((targets[math.random(1, #targets)]), options)
 end
 
 tiangong_frequent_timings = {  --天工机关常用时机
@@ -520,12 +548,15 @@ tiangong_frequent_timings = {  --天工机关常用时机
 	"afteruseblack1", "afteruseblack2", "afteruseblack3", 
 }
 
-sgs.ai_skill_choice["tiangong_timings"] = function(self, choices, data)
+ai_skill_choice["tiangong_timings"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local timings = choices:split("+")
 	for _, frequent_timing in ipairs(tiangong_frequent_timings) do
-		if table.contains(timings, frequent_timing) then return frequent_timing end
+		if table.contains(timings, frequent_timing) then return ai_choice_result((frequent_timing), options) end
 	end
-	return timings[math.random(1, #timings)]
+	return ai_choice_result((timings[math.random(1, #timings)]), options)
 end
 
 tiangong_frequent_targets = {  --天工机关常用目标
@@ -547,36 +578,39 @@ tiangong_basic_effects = {  --天工机关基础增益（视为使用【桃】/�
 	"mopaishumore", "mopaitwo", "mopaithree", "mopaifour", "suijiguixin", "giantzhiheng", "exchangewithmore"
 }
 
-sgs.ai_skill_choice["tiangong_effects"] = function(self, choices, data)
+ai_skill_choice["tiangong_effects"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local effects = choices:split("+")
 	local to = owner_fact(self,"tiangong_targets_AI")
 	if to == "niziji" then
 		for _, _gainskill in ipairs(tiangong_gainskill_effects) do  --能设法获得技能肯定优先选这个，一个是膨胀自身强度，二来能给“玲珑”提供更多的减伤防扣上限的护盾
 			if table.contains(effects, _gainskill) then
-				if _gainskill == "suijimojineng" then return _gainskill end  --优先考虑《极略三国》的魔将技能
-				if _gainskill == "suijijlgodjineng" then return _gainskill end  --然后考虑《极略三国》的神将技能
-				if _gainskill == "suijigodjineng" then return _gainskill end  --再考虑普通（苟咔官方）神将的技能
-				if _gainskill == "suijiqunjineng" then return _gainskill end  --再次一级考虑群雄技能
-				if _gainskill == "suijiwujineng" then return _gainskill end  --再再次一级考虑吴国技能（毕竟界孙权吹那么多，敢让界孙权挑战“人机牌序单挑武诸葛亮都能随便爆杀的SP神司马懿”都不眨眼）
-				if _gainskill == "suijishujineng" then return _gainskill end  --再再再次一级考虑蜀国技能（毕竟蜀汉盛产菜刀但过牌相对吴国没那么多）
-				return _gainskill
+				if _gainskill == "suijimojineng" then return ai_choice_result((_gainskill), options) end  --优先考虑《极略三国》的魔将技能
+				if _gainskill == "suijijlgodjineng" then return ai_choice_result((_gainskill), options) end  --然后考虑《极略三国》的神将技能
+				if _gainskill == "suijigodjineng" then return ai_choice_result((_gainskill), options) end  --再考虑普通（苟咔官方）神将的技能
+				if _gainskill == "suijiqunjineng" then return ai_choice_result((_gainskill), options) end  --再次一级考虑群雄技能
+				if _gainskill == "suijiwujineng" then return ai_choice_result((_gainskill), options) end  --再再次一级考虑吴国技能（毕竟界孙权吹那么多，敢让界孙权挑战“人机牌序单挑武诸葛亮都能随便爆杀的SP神司马懿”都不眨眼）
+				if _gainskill == "suijishujineng" then return ai_choice_result((_gainskill), options) end  --再再再次一级考虑蜀国技能（毕竟蜀汉盛产菜刀但过牌相对吴国没那么多）
+				return ai_choice_result((_gainskill), options)
 			end
 		end
 		for _, _basiceffects in ipairs(tiangong_basic_effects) do
 			if table.contains(effects, _basiceffects) then
-				if _basiceffects:startsWith("mopait") or _basiceffects:startsWith("mopaif") then return _basiceffects end  --首选能即时摸牌的效果
-				if _basiceffects:startsWith("suijitwo") then return _basiceffects end  --次选随机两张定向牌
-				if _basiceffects == "addonemaxhp" or _basiceffects == "recoveronehp" or _basiceffects == "recovertwohp" then return _basiceffects end  --然后考虑续航效果
-				return _basiceffects
+				if _basiceffects:startsWith("mopait") or _basiceffects:startsWith("mopaif") then return ai_choice_result((_basiceffects), options) end  --首选能即时摸牌的效果
+				if _basiceffects:startsWith("suijitwo") then return ai_choice_result((_basiceffects), options) end  --次选随机两张定向牌
+				if _basiceffects == "addonemaxhp" or _basiceffects == "recoveronehp" or _basiceffects == "recovertwohp" then return ai_choice_result((_basiceffects), options) end  --然后考虑续航效果
+				return ai_choice_result((_basiceffects), options)
 			end
 		end
 		for _, _negativeeffects in ipairs(tiangong_negative_effects) do
 			if table.contains(effects, _negativeeffects) then
-				if _negativeeffects == "suijishiquyigejineng" then return _negativeeffects end  --首选随机失去一个技能
-				if _negativeeffects:startsWith("lose") then return _negativeeffects end  --次选失去1点体力/2点体力/1点体力上限
-				if _negativeeffects:startsWith("one") then return _negativeeffects end  --再次选受到1点普通/雷电/火焰/冰冻伤害
-				if _negativeeffects:startsWith("suijiqizhi") then return _negativeeffects end  --再次一级选择随机弃置2/3/4张牌
-				return _negativeeffects
+				if _negativeeffects == "suijishiquyigejineng" then return ai_choice_result((_negativeeffects), options) end  --首选随机失去一个技能
+				if _negativeeffects:startsWith("lose") then return ai_choice_result((_negativeeffects), options) end  --次选失去1点体力/2点体力/1点体力上限
+				if _negativeeffects:startsWith("one") then return ai_choice_result((_negativeeffects), options) end  --再次选受到1点普通/雷电/火焰/冰冻伤害
+				if _negativeeffects:startsWith("suijiqizhi") then return ai_choice_result((_negativeeffects), options) end  --再次一级选择随机弃置2/3/4张牌
+				return ai_choice_result((_negativeeffects), options)
 			end
 		end
 	else
@@ -590,16 +624,16 @@ sgs.ai_skill_choice["tiangong_effects"] = function(self, choices, data)
 		if not buff then
 			for _, _negativeeffects in ipairs(tiangong_negative_effects) do
 				if table.contains(effects, _negativeeffects) then
-					if _negativeeffects == "suijishiquyigejineng" then return _negativeeffects end  --首选随机失去一个技能
-					if _negativeeffects:startsWith("lose") then return _negativeeffects end  --次选失去1点体力/2点体力/1点体力上限
-					if _negativeeffects:startsWith("one") then return _negativeeffects end  --再次选受到1点普通/雷电/火焰/冰冻伤害
-					if _negativeeffects:startsWith("suijiqizhi") then return _negativeeffects end  --再次一级选择随机弃置2/3/4张牌
-					return _negativeeffects
+					if _negativeeffects == "suijishiquyigejineng" then return ai_choice_result((_negativeeffects), options) end  --首选随机失去一个技能
+					if _negativeeffects:startsWith("lose") then return ai_choice_result((_negativeeffects), options) end  --次选失去1点体力/2点体力/1点体力上限
+					if _negativeeffects:startsWith("one") then return ai_choice_result((_negativeeffects), options) end  --再次选受到1点普通/雷电/火焰/冰冻伤害
+					if _negativeeffects:startsWith("suijiqizhi") then return ai_choice_result((_negativeeffects), options) end  --再次一级选择随机弃置2/3/4张牌
+					return ai_choice_result((_negativeeffects), options)
 				end
 			end
 		end
 	end
-	return effects[math.random(1, #effects)]
+	return ai_choice_result((effects[math.random(1, #effects)]), options)
 end
 
 local function youAreVictim(targets, kingdom)
@@ -713,11 +747,14 @@ end
 
 
 --玲珑
-sgs.ai_skill_invoke.sgkgodlinglong = function(self, data)
-	if incoming(self,"maxhp").change < 0 then return true end
-	if incoming(self,"hp_lost").lose > 0 then return true end
-	if undefined_player(self) and #self.enemies > 0 then return true end
-	if data:toDamage().damage > 0 and (not self:needToLoseHp(self.player)) then return true end
+ai_skill_invoke.sgkgodlinglong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if incoming(self,"maxhp").change < 0 then return (true) or false end
+	if incoming(self,"hp_lost").lose > 0 then return (true) or false end
+	if undefined_player(self) and #self.enemies > 0 then return (true) or false end
+	if data:toDamage().damage > 0 and (not self:needToLoseHp(self.player)) then return (true) or false end
+	return false
+
 end
 
 local function hasSchemeSkill(target)
@@ -807,23 +844,29 @@ local value_skills = {
 	"sgkgodleihun", "sgkgodmeixin", "sgkgodtianzi", "sgkgodlangxi", "sgkgodshenyin", "sgkgodyingshi"
 }
 
-sgs.ai_skill_choice.sgkgodlinglong = function(self, choices, data)
+ai_skill_choice.sgkgodlinglong = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local to = data:toPlayer()
 	local skills = choices:split("+")
 	if self.player:objectName() == to:objectName() then
 		for _, skill in ipairs(skills) do
-			if string.find(sgs.bad_skills, skill) then return skill end
-			if not table.contains(value_skills, skill) then return skill end
+			if string.find(sgs.bad_skills, skill) then return ai_choice_result((skill), options) end
+			if not table.contains(value_skills, skill) then return ai_choice_result((skill), options) end
 		end
-		return skills[#skills]
+		return ai_choice_result((skills[#skills]), options)
 	else
-		return skills[math.random(1, #skills)]
+		return ai_choice_result((skills[math.random(1, #skills)]), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_invoke.sgkgodzhanyue = function(self, data)
+ai_skill_invoke.sgkgodzhanyue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return self:isEnemy(to)
+	return (self:isEnemy(to)) or false
 end
 
 sgs.ai_skill_playerchosen.sgkgodzhanyue = function(self, targets)
@@ -840,9 +883,10 @@ sgs.ai_skill_playerchosen.sgkgodzhanyue = function(self, targets)
 	return nil
 end
 
-sgs.ai_skill_invoke.sgkgodfengtian = function(self, data)
+ai_skill_invoke.sgkgodfengtian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return self:isEnemy(to)
+	return (self:isEnemy(to)) or false
 end
 
 sgs.ai_skill_discard.sgkgodfengtian = function(self, discard_num, min_num, optional, include_equip)

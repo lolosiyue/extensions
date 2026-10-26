@@ -1,4 +1,4 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/sihaigaizao-ai.lua.
 
 
 local function paid(self,skill,selector,request,old)
@@ -6,7 +6,9 @@ local function paid(self,skill,selector,request,old)
     if old then card=self:inheritLegacyCardIdentity(card, old) end
     return card
 end
-sgs.ai_fill_skill.kehuisuan = function(self, inclusive, request)
+ai_fill_skill.kehuisuan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getStrategyHasUsed("#kehuisuanCard") then return end
     if #self.enemies < 1 then return end
     self:updatePlayers()
@@ -21,7 +23,7 @@ sgs.ai_fill_skill.kehuisuan = function(self, inclusive, request)
     return
 end
 
-sgs.ai_skill_use_func["#kehuisuanCard"] = function(card, use, self, request)
+ai_card_use["#kehuisuanCard"] = function(self, card, use, request)
     self:updatePlayers()
     self:sort(self.enemies, "hp")
     for _, enemy in ipairs(self.enemies) do
@@ -54,10 +56,13 @@ sgs.ai_skill_use_func["#kehuisuanCard"] = function(card, use, self, request)
 end
 sgs.ai_card_intention["kehuisuanCard"] = 60
 
-sgs.ai_skill_choice["caochong_guess"] = function(self, choices, data)
+ai_skill_choice["caochong_guess"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local target = data:toPlayer()
     local items = choices:split("+")
-    return items[math.random(1, #items)]
+    return ai_choice_result((items[math.random(1, #items)]), options)
 end
 
 function sgs.ai_cardsview_valuable.kerenxin(self, class_name, player)
@@ -74,35 +79,39 @@ end
 
 sgs.ai_card_intention.kerenxinCard = sgs.ai_card_intention.Peach
 
-sgs.ai_skill_invoke.kemiji = function(self, data)
-    return true
+ai_skill_invoke.kemiji = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 -- Exact donor assignment captures the currently loaded callback; loader order is significant.
-sgs.ai_skill_invoke.kezhenlie = sgs.ai_skill_invoke.zhenlie
+ai_skill_invoke.kezhenlie = ai_skill_invoke.zhenlie
 
-sgs.ai_skill_invoke["kezhenliexiangying"] = function(self, data)
+ai_skill_invoke["kezhenliexiangying"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
     for _, p in sgs.qlist(use.to) do
         if self:isFriend(p) then
-            return false
+            return (false) or false
         end
         if not self:doDisCard(p, "he") then
-            return false
+            return (false) or false
         end
     end
     if self.player:getHp() + self:getAllPeachNum() >= 2 and self:isWeak() then
-        return false
+        return (false) or false
     end
-    return true
+    return (true) or false
 end
 sgs.need_maxhp_skill = sgs.need_maxhp_skill .. "|kemiji"
 
 
-sgs.ai_fill_skill.keshilun = function(self,inclusive,request)
+ai_fill_skill.keshilun = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:legacySkillSeed("keshilun", "#keshilun", request)
 end
 
-sgs.ai_skill_use_func["#keshilun"] = function(card, use, self, request)
+ai_card_use["#keshilun"] = function(self, card, use, request)
     self:sort(self.friends, "hp")
     for _, ep in sgs.list(self.friends) do
         if self:isWeak(ep) and self.player:getMaxHp() > 2
@@ -131,13 +140,14 @@ end
 sgs.ai_playerchosen_intention.keyijideath = -50
 
 
-sgs.ai_skill_invoke.kenvzhuang                  = function(self, data)
+ai_skill_invoke.kenvzhuang                  = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     if self.player:getPhase() == sgs.Player_Start and self.player:isMale() then
-        return true
+        return (true) or false
     elseif self.player:getPhase() == sgs.Player_NotActive and self.player:isFemale() then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 
 sgs.ai_skill_playerchosen.kenvzhuang            = function(self, targets)
@@ -150,10 +160,11 @@ sgs.ai_skill_playerchosen.kenvzhuang            = function(self, targets)
     return nil
 end
 
-sgs.ai_skill_invoke.kezhangchunhuaxiangying     = function(self, data)
+ai_skill_invoke.kezhangchunhuaxiangying     = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return true end
-    return false
+    if not self:isFriend(target) then return (true) or false end
+    return (false) or false
 end
 
 sgs.ai_skill_discard["kezhangchunhuaxiangying"] = function(self, discard_num, min_num, optional, include_equip)
@@ -192,19 +203,20 @@ sgs.ai_cardneed.kejiang                         = function(to, card, self)
     return isCard("Duel", card, to) or (card:isDamageCard() and card:isRed())
 end
 
-sgs.ai_skill_invoke.kejiang                     = function(self, data)
+ai_skill_invoke.kejiang                     = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
     if use.card:isRed() or use.card:isKindOf("Duel") then
-        return true
+        return (true) or false
     end
     if self.player:getPhase() == sgs.Player_Play then
         local cards = self.player:getHandcards()
         for _, c in sgs.qlist(cards) do
             local dummy_use = self:aiUseCard(c)
-            if dummy_use.card and c:isRed() and c:isDamageCard() then return false end
+            if dummy_use.card and c:isRed() and c:isDamageCard() then return (false) or false end
         end
     end
-    if not self:isWeak() then return true end
-    if self:isWeak(self.player) and math.random(1, 2) == 1 then return true end
-    return false
+    if not self:isWeak() then return (true) or false end
+    if self:isWeak(self.player) and math.random(1, 2) == 1 then return (true) or false end
+    return (false) or false
 end

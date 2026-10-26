@@ -1,4 +1,4 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/kearwangushengxiang-ai.lua.
 
 
 local dummy = AIUsePlan.dummy
@@ -21,7 +21,9 @@ local function role(self,p)
 end
 --花木兰
 
-sgs.ai_fill_skill.kenewgirlshixie = function(self,inclusive,request)
+ai_fill_skill.kenewgirlshixie = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local alls = self.room:getAllPlayers()
 	local needrec = 0
 	local needhelp = 0
@@ -111,7 +113,7 @@ sgs.ai_fill_skill.kenewgirlshixie = function(self,inclusive,request)
 end
 
 
-sgs.ai_skill_use_func["#kenewgirlshixieCard"] = function(card,use,self,request)
+ai_card_use["#kenewgirlshixieCard"] = function(self, card, use, request)
 	local idd =  card:getKnownEffectiveId()
 	if self:getKnownCardById(idd):isRed() then
 		self:sort(self.friends, "hp")
@@ -138,44 +140,47 @@ sgs.ai_use_value.kenewgirlshixieCard = 8.5
 sgs.ai_use_priority.kenewgirlshixieCard = 9.5
 sgs.ai_card_intention.kenewgirlshixieCard = 80
 
---[[function sgs.ai_cardneed.kenewgirlshixieCard(to, card)
-	return q(card,"isRed")
-end]]
 
-sgs.ai_skill_invoke.kenewgirlcongrong = function(self, data)
+ai_skill_invoke.kenewgirlcongrong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local room = self.player:getRoom()
 	for _,p in sgs.qlist(room:getAllPlayers()) do
 		if p:getStrategyFlag("ifwantkenewgirlcongrong") and self:isFriend(p) then
-	        return true
+	        return (true) or false
 		end
 	end
+	return false
+
 end
 
 --娘张飞
-sgs.ai_skill_choice.kenewgirlfuyi = function(self,choices, data)
+ai_skill_choice.kenewgirlfuyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local use = data:toCardUse()
 	local items = choices:split("+")
 	if use.from:objectName() == self.player:objectName() then
 		local dummy_use = self:aiUseCard(use.card, dummy(true,2,use.to))
 		if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:length() > use.to:length() and table.contains(items, "add") then
-			return "add"
+			return ai_choice_result(("add"), options)
 		end
 		self:sort(self.friends_noself, "chaofeng")
 		for _, friend in ipairs(self.friends_noself) do
 			if self:isWeak(friend) and self:isWeak() then
-				return "beishui"
+				return ai_choice_result(("beishui"), options)
 			end
 		end
 		if use.card:isDamageCard() then
-			return "eff"
+			return ai_choice_result(("eff"), options)
 		end
 		if use.card:isKindOf("Peach") then
 			if self.player:getLostHp() > 1 then
-				return "eff"
+				return ai_choice_result(("eff"), options)
 			elseif table.contains(items, "add")  then
 				for _, friend in ipairs(self.friends_noself) do
 					if friend:getHp()<getBestHp(friend) then
-						return "add"
+						return ai_choice_result(("add"), options)
 					end
 				end
 			end
@@ -184,11 +189,11 @@ sgs.ai_skill_choice.kenewgirlfuyi = function(self,choices, data)
 		if self:isFriend(use.from) then
 			if use.card:isKindOf("Peach") then
 				if self.player:getLostHp() > 1 then
-					return "eff"
+					return ai_choice_result(("eff"), options)
 				elseif table.contains(items, "add")  then
 					for _, friend in ipairs(self.friends_noself) do
 						if friend:getHp()<getBestHp(friend) then
-							return "add"
+							return ai_choice_result(("add"), options)
 						end
 					end
 				end
@@ -197,12 +202,12 @@ sgs.ai_skill_choice.kenewgirlfuyi = function(self,choices, data)
 		if self:isFriend(use.from) and self:isWeak(use.from) and self:isWeak() then
 			for _, friend in ipairs(self.friends_noself) do
 				if self:isWeak(friend) then
-					return "beishui"
+					return ai_choice_result(("beishui"), options)
 				end
 			end
 		end
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.ai_skill_playerschosen.kenewgirlfuyi = function(self, targets, max, min)
@@ -231,11 +236,14 @@ sgs.ai_skill_playerschosen.kenewgirlfuyi = function(self, targets, max, min)
     return selected
 end
 
-sgs.ai_skill_invoke.kenewgirlzhenyi = function(self, data)
+ai_skill_invoke.kenewgirlzhenyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:findPlayerByObjectName(data:toString():split(":")[2])
 	if target and self:isFriend(target) then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 sgs.ai_choicemade_filter.skillInvoke["kenewgirlzhenyi"] = function(self, player, promptlist)
 	if promptlist[#promptlist] == "yes" then
@@ -268,19 +276,21 @@ sgs.ai_skill_playerschosen.kenewgirljizhi = function(self, targets, max, min)
 	end
     return selected
 end
-sgs.ai_skill_invoke["kenewgirljizhi"] = true
+ai_skill_invoke["kenewgirljizhi"] = true
 
 sgs.ai_canNiepan_skill.kenewgirljizhi = function(player)
 	return player:getStrategyMark("@kenewgirljizhi") > 0
 end
 
-sgs.ai_fill_skill.kenewgirljingmu = function(self,inclusive,request)
+ai_fill_skill.kenewgirljingmu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	
 	return self:legacySkillSeed("kenewgirljingmu", "#kenewgirljingmuCard", request)
 end
 
 
-sgs.ai_skill_use_func["#kenewgirljingmuCard"] = function(card,use,self,request)
+ai_card_use["#kenewgirljingmuCard"] = function(self, card, use, request)
 	self:sort(self.enemies, "hp")
 	local unpreferedCards = {}
 	local cards = sgs.QList2Table(self.player:getHandcards())
@@ -405,18 +415,22 @@ sgs.ai_skill_playerchosen.kenewgirlduoshuai = function(self, targets)
 	return target
 end
 
-sgs.ai_skill_choice.kenewgirlduoshuai = function(self,choices, data)
-	return "two"
+ai_skill_choice.kenewgirlduoshuai = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	return ai_choice_result(("two"), options)
 end
 
-sgs.ai_skill_invoke["kenewgirlshibing"] = true
+ai_skill_invoke["kenewgirlshibing"] = true
 
-sgs.ai_skill_invoke.kenewgirlshibingdiscardask      = function(self, data)
+ai_skill_invoke.kenewgirlshibingdiscardask      = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:doDisCard(target, "he") then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_choicemade_filter.cardChosen.kenewgirlshibing = sgs.ai_choicemade_filter.cardChosen.snatch
 
@@ -468,17 +482,20 @@ sgs.ai_playerchosen_intention.kenewgirlshibing = function(self, from, to)
 end
 
 
-sgs.ai_skill_choice["kenewgirlshibing"] = function(self, choices, data)
+ai_skill_choice["kenewgirlshibing"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local damage = data:toDamage()
 	if self:isFriend(damage.to) then
-		if not self:needToLoseHp(damage.to, damage.from, damage.card) then return "dis" end
+		if not self:needToLoseHp(damage.to, damage.from, damage.card) then return ai_choice_result(("dis"), options) end
 	end
 	if self:isFriend(damage.from) then
 		if not self:cantDamageMore(damage.to, damage.from) then
-			return "add"
+			return ai_choice_result(("add"), options)
 		end
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.ai_skill_playerschosen.kenewgirltanyan = function(self, targets, max, min)
@@ -494,7 +511,7 @@ sgs.ai_skill_playerschosen.kenewgirltanyan = function(self, targets, max, min)
     return selected
 end
 
-sgs.ai_skill_invoke.kenewgirlganglv = true
+ai_skill_invoke.kenewgirlganglv = true
 
 ai_skill_use["@@kenewgirlganglv"]=function(self,prompt,request)
  for _,original in ipairs(self.player:getNotifiedPileCards("kenewgirlganglv"))do
@@ -513,12 +530,14 @@ ai_skill_use["@@kenewgirlganglv"]=function(self,prompt,request)
  return "."
 end
 
-sgs.ai_fill_skill.kenewgirlbuguan = function(self,inclusive,request)
+ai_fill_skill.kenewgirlbuguan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#kenewgirlbuguanCard") then return end
 	return self:legacySkillSeed("kenewgirlbuguan", "#kenewgirlbuguanCard", request)
 end
 
-sgs.ai_skill_use_func["#kenewgirlbuguanCard"] = function(card,use,self,request)
+ai_card_use["#kenewgirlbuguanCard"] = function(self, card, use, request)
 	local buguanslash = self:evaluateSkillCard("kenewgirlbuguan", "slash", {})
 	local ppp = AIList.new({})
 	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
@@ -558,11 +577,14 @@ sgs.ai_skill_playerchosen.kenewgirlbuguan = function(self, targets)
 end
 
 
-sgs.ai_skill_choice["kenewgirlbuguan"] = function(self, choices, data)
+ai_skill_choice["kenewgirlbuguan"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local buguanslash = self:evaluateSkillCard("kenewgirlbuguan", "slash", {})
 	if self:getOverflow() > 0 and table.contains(items, "discard") then
-		return "discard"
+		return ai_choice_result(("discard"), options)
 	end
 	if table.contains(items, "throw") then
 		local ppp = AIList.new({})
@@ -574,61 +596,63 @@ sgs.ai_skill_choice["kenewgirlbuguan"] = function(self, choices, data)
 		local target = sgs.ai_skill_playerchosen.zero_card_as_slash(self, ppp)
 		if target and self:isEnemy(target) and target:hasEquipArea() then
 			if  getCardsNum("Jink", target, self.player) < 1 or self:canLiegong(target, self.player) then
-				return "throw"
+				return ai_choice_result(("throw"), options)
 			end
 		end
 	end
 	if self.player:getHp() + self:getAllPeachNum() > 0  and table.contains(items, "losehp") then
-		return "losehp"
+		return ai_choice_result(("losehp"), options)
 	end
 	if table.contains(items, "hlose") then
 		local damage = data:toDamage()
 		if damage.to then
 			if self:isFriend(damage.to) and self:hasZhaxiangEffect(damage.to) or (self:isEnemy(damage.to) and not self:hasZhaxiangEffect(damage.to)) then
-				return "hlose"
+				return ai_choice_result(("hlose"), options)
 			end
 		end
 	end
 	if table.contains(items, "hdraw") then
-		return "hdraw"
+		return ai_choice_result(("hdraw"), options)
 	end
 	if table.contains(items, "hdis") then
 		local damage = data:toDamage()
 		if damage.to then
 			if self:doDisCard(damage.to, "he", false, 2) then
-				return "hdis"
+				return ai_choice_result(("hdis"), options)
 			end
 		end
 	end
 	if table.contains(items, "hrec") then
 		for _, p in ipairs(sgs.QList2Table(self.room:getAlivePlayers())) do
 			if self:isFriend(p) and p:getHp() < getBestHp(p) then
-				return "hrec"
+				return ai_choice_result(("hrec"), options)
 			end
 		end
 	end
 	if table.contains(items, "hpanding") then
 		for _, p in ipairs(sgs.QList2Table(self.room:getAlivePlayers())) do
 			if self:isFriend(p) and p:getJudgingArea():length() > 0 then
-				return "hpanding"
+				return ai_choice_result(("hpanding"), options)
 			end
 		end
 	end
 	if table.contains(items, "hthrow") then
-		return "hthrow"
+		return ai_choice_result(("hthrow"), options)
 	end
 
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 
 
-sgs.ai_fill_skill.kenewgirljuzhong = function(self,inclusive,request)
+ai_fill_skill.kenewgirljuzhong = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#kenewgirljuzhongCard") then return end
 	return self:legacySkillSeed("kenewgirljuzhong", "#kenewgirljuzhongCard", request)
 end
 
-sgs.ai_skill_use_func["#kenewgirljuzhongCard"] = function(card,use,self,request)
+ai_card_use["#kenewgirljuzhongCard"] = function(self, card, use, request)
 	local target = nil
 	local max = 0
 	local min = 999
@@ -659,28 +683,34 @@ end
 sgs.ai_use_value["kenewgirljuzhongCard"] = 5
 sgs.ai_use_priority["kenewgirljuzhongCard"]  = 5
 
-sgs.ai_skill_choice["kenewgirljuzhong"] = function(self, choices, data)
+ai_skill_choice["kenewgirljuzhong"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local target = data:toPlayer()
 	local items = choices:split("+")
 	if table.contains(items, "maxqi") and target and self:doDisCard(target, "he") then
-		return "maxqi"
+		return ai_choice_result(("maxqi"), options)
 	end
-	return "minmo"
+	return ai_choice_result(("minmo"), options)
 end
 
-sgs.ai_skill_choice["kenewgirlshiqian"] = function(self, choices, data)
+ai_skill_choice["kenewgirlshiqian"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local player = data:toPlayer()
 	local skills = choices:split("+")
 	
 	for _,sk in sgs.list(skills)do
 		if self:isValueSkill(sk, player, true) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 	
 	for _,sk in sgs.list(skills)do
 		if self:isValueSkill(sk, player) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 	
@@ -689,13 +719,13 @@ sgs.ai_skill_choice["kenewgirlshiqian"] = function(self, choices, data)
 		if not string.find(sgs.bad_skills,sk) then table.insert(not_bad_skills,sk) end
 	end
 	if #not_bad_skills>0 then
-		return not_bad_skills[math.random(1,#not_bad_skills)]
+		return ai_choice_result((not_bad_skills[math.random(1,#not_bad_skills)]), options)
 	end
 	
-	return skills[math.random(1,#skills)]
+	return ai_choice_result((skills[math.random(1,#skills)]), options)
 	
 end
-sgs.ai_skill_invoke.kenewgirlshiqian = true
+ai_skill_invoke.kenewgirlshiqian = true
 
 sgs.ai_can_damagehp.kenewgirlshiqian = function(self,from,card,to)
 	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from, to, 1, card)>0
@@ -703,12 +733,14 @@ sgs.ai_can_damagehp.kenewgirlshiqian = function(self,from,card,to)
 end
 
 
-sgs.ai_fill_skill.kenewgirlchenji = function(self,inclusive,request)
+ai_fill_skill.kenewgirlchenji = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#kenewgirlchenjiCard") then return end
 	return self:legacySkillSeed("kenewgirlchenji", "#kenewgirlchenjiCard", request)
 end
 
-sgs.ai_skill_use_func["#kenewgirlchenjiCard"] = function(card,use,self,request)
+ai_card_use["#kenewgirlchenjiCard"] = function(self, card, use, request)
 	local target = nil
 	for _, friend in ipairs(self.friends) do
 		if self:canDraw(friend, self.player) and self:needToLoseHp(friend, self.player) then
@@ -736,33 +768,38 @@ sgs.ai_use_priority["kenewgirlchenjiCard"]  = 5
 
 sgs.ai_cardneed.kenewgirlchandou = sgs.ai_cardneed.slash
 
-sgs.ai_skill_choice["kenewgirlchandou"] = function(self, choices, data)
+ai_skill_choice["kenewgirlchandou"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local effect = data:toCardEffect()
 	local juedou = self:evaluateSkillCard("kenewgirlchandou", "duel", {})
 	if self.player:objectName() ==  effect.to:objectName() then
 		if effect.from and self:isEnemy(effect.from) and self:isWeak(effect.from) then
 			local dummy_use = self:aiUseCard(juedou, dummy(true, 0, self.room:getOtherPlayers(effect.from)))
 			if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:contains(effect.from) then
-				return "juedou"
+				return ai_choice_result(("juedou"), options)
 			end
 		end
-		return "dis"
+		return ai_choice_result(("dis"), options)
 	elseif self.player:objectName() ==  effect.from:objectName() then
 		if self:getOverflow() > 0 or self:hasHeavyDamage(self.player, effect.card, effect.to) then
-			return "beishui"
+			return ai_choice_result(("beishui"), options)
 		end
 		local dummy_use = self:aiUseCard(juedou, dummy(true, 0, self.room:getOtherPlayers(effect.to)))
 		if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:contains(effect.to) then
-			return "juedou"
+			return ai_choice_result(("juedou"), options)
 		end
 	end
-	return "dis"
+	return ai_choice_result(("dis"), options)
 end
 
 sgs.ai_cardneed.kenewgirljiang = sgs.ai_cardneed.jiang
 sgs.ai_card_priority.kenewgirljiang = sgs.ai_card_priority.jiang
 
-sgs.ai_fill_skill.kenewgirlscshixie = function(self,inclusive,request)
+ai_fill_skill.kenewgirlscshixie = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 or self.player:getStrategyMark("@kenewgirlscshixie") < 1 then return end
 	local too_weak = true
 	for _, player in ipairs(self.enemies) do
@@ -783,7 +820,7 @@ sgs.ai_fill_skill.kenewgirlscshixie = function(self,inclusive,request)
 end
 
 
-sgs.ai_skill_use_func["#kenewgirlscshixieCard"] = function(card,use,self,request)
+ai_card_use["#kenewgirlscshixieCard"] = function(self, card, use, request)
 	local target
 	self:sort(self.enemies, "defense")
 	local lord = self.room:getLord()

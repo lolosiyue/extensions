@@ -14,7 +14,8 @@ local function source_global_slash(self)
     -- globals are not projected.
     ai_unsupported("Typemoon source global slash is not projected","global slash")
 end
-sgs.ai_skill_invoke["yinyang"] = function(self, data)
+ai_skill_invoke["yinyang"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local counter
 	if self.player:isFemale() then
 		counter = self.player:getPile("maleshiki"):length()
@@ -22,19 +23,21 @@ sgs.ai_skill_invoke["yinyang"] = function(self, data)
 		counter = self.player:getPile("femaleshiki"):length()
 	end
 	if has_skill(self,self.player,"lianying|noslianying|sijian",true) or (has_skill(self,self.player,"shangshi|nosshangshi",true) and self.player:isWounded()) then
-		return true
+		return (true) or false
 	end
 	if self.player:containsTrick("indulgence") then
-		if counter <= self.player:getHandcardNum() then return true else return false end
+		if counter <= self.player:getHandcardNum() then return (true) or false else return (false) or false end
 	end
 	if self.player:isFemale() then
 		if self.player:getHandcardNum() > math.max(counter, 4) then
-			return true
+			return (true) or false
 		end
 	elseif counter > math.max(self.player:getHandcardNum(), 4) then
-		return false
+		return (false) or false
 	end
-	if counter >= self.player:getHandcardNum() then return true else return false end
+	if counter >= self.player:getHandcardNum() then return (true) or false else return (false) or false end
+	return false
+
 end
 
 sgs.ai_need_damaged["jialan"] = function(self, attacker, player)
@@ -56,28 +59,31 @@ function sgs.ai_cardneed.sinzhisi(to, card, self)
 	end
 end
 
-sgs.ai_skill_invoke["Tohnozhisi"] = function(self, data)
+ai_skill_invoke["Tohnozhisi"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	self:sortInPlace(self.enemies, "defense")
 	local slash = self:getEvaluationCard("slash")
 	if self:getCardsNum("Slash") > 0 then
 		for _, enemy in ipairs(self.enemies) do
 			if not self:slashProhibit(slash, enemy) and self.player:canSlash(enemy, slash, false) and self:isGoodTarget(enemy, self.enemies, nil)
 				and self.player:distanceTo(enemy) <= self.player:getAttackRange() and not self:isWeak(self.player) then
-				return true
+				return (true) or false
 			end
 		end
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_fill_skill.jisha = function(self,inclusive,request)
+ai_fill_skill.jisha = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:getStrategyHasUsed("#jishaCard") then
 		return self:legacySkillSeed("jisha", "#jishaCard", request)
 	end
 	return nil
 end
 
-sgs.ai_skill_use_func["#jishaCard"] = function(card, use, self,request)
+ai_card_use["#jishaCard"] = function(self, card, use, request)
 	self:sortInPlace(self.enemies, "defense")
 	local slash = self:getEvaluationCard("slash")
 	if self:getCardsNum("Slash") ~= 0 then
@@ -124,8 +130,9 @@ sgs.ai_card_intention.jishaCard = 100
 sgs.ai_use_value.jishaCard = 10
 sgs.ai_use_priority.jishaCard = 10
 
-sgs.ai_skill_invoke["#jishamod"] = function(self, data)
-	return true
+ai_skill_invoke["#jishamod"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 -- Jiuzi has two distinct live bodies under the fixed package load order.
@@ -142,7 +149,9 @@ local function jiuzi_select(self,use,enemy,request)
     use.card=self:bindSkillCard("Jiuzi", {}, request, nil, "#JiuziCard")
     if use.to then use.to:append(enemy) end
 end
-sgs.ai_fill_skill.Jiuzi = function(self,inclusive,request)
+ai_fill_skill.Jiuzi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local variant = jiuzi_variant(self,"ai_fill_skill","Jiuzi")
     if not variant then return nil end
     local player=self.player
@@ -173,7 +182,7 @@ sgs.ai_fill_skill.Jiuzi = function(self,inclusive,request)
     end
     return nil
 end
-sgs.ai_skill_use_func["#JiuziCard"] = function(card,use,self,request)
+ai_card_use["#JiuziCard"] = function(self, card, use, request)
     local variant=jiuzi_variant(self,"ai_skill_use_func","#JiuziCard")
     if not variant then return end
     self:sortInPlace(self.enemies, "defense")
@@ -207,4 +216,32 @@ sgs.ai_skill_use_func["#JiuziCard"] = function(card,use,self,request)
             jiuzi_select(self,use,enemy,request);return
         end
     end
+end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["sinzhisi"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(from,"hasSkill","sinzhisi") and card and damage_call(card,"isKindOf","Slash") and damage_call(to,"getMark","@sharengui") > 0 then
+        		return nil, true
+        	end
+        return value
+    end
+    sgs.ai_need_damaged["sinzhisi"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_before_damage" and context.rule == "sinzhisi" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "sinzhisi", {
+        {phase="need_hp_before_damage", order=8, rule="sinzhisi"},
+    })
+end)()
 end

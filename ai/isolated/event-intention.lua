@@ -8,8 +8,7 @@ local max_deltas = 64
 local active_sink
 local active_refresh
 local memory_key = "filter_event"
--- Capture before packages register callbacks; the final commit cannot be replaced
--- by a callback that mutates ai_memory methods during an event.
+-- Capture commit functions before package callbacks can replace them.
 local memory_prepare, memory_commit, memory_recall = ai_memory.prepare, ai_memory.commit, ai_memory.recall
 local sync_flag_clears = ai_sync_strategy_flag_clears
 local sgs = assert(rawget(_G, "sgs"))
@@ -36,8 +35,7 @@ local function finite(value)
         and value ~= math.huge and value ~= -math.huge
 end
 
--- SmartAI sets these at GameReady. The host does not deliver GameReady to this VM,
--- so a key nobody has written yet reads as its initial value.
+-- Unwritten keys use GameReady defaults because this VM receives no GameReady event.
 local initial_event_memory = {judge_good = {}, judge_patterns = {}, need_peach = {},
     damage_data = {}, draw_data = {}, convert_data = {}, throw_data = {},
     card_damage_nature = {}, aoe_lord = {}, estimation_branches = {},
@@ -602,13 +600,13 @@ local function initialize_event_memory(self)
     end
 end
 
-local function query(object, method, ...)
-    local fn = object and object[method]
-    if type(fn) ~= "function" then ai_unsupported("event helper is unavailable: " .. method, "event.policy") end
-    local value = fn(object, ...)
-    if value == nil then ai_unsupported("event fact is unknown: " .. method, "event.policy") end
-    return value
-end
+local query = AIValue.bindQuery {
+    missing = function(method) ai_unsupported("event helper is unavailable: " .. method, "event.policy") end,
+    known = function(value, method)
+        if value == nil then ai_unsupported("event fact is unknown: " .. method, "event.policy") end
+        return value
+    end,
+}
 
 local function slash_intention(self, card, from, targets)
     for _, key in ipairs({"ai_liuli_user", "ai_mobiletongji_user"}) do
@@ -2000,9 +1998,7 @@ function ai_event(world, event)
     if #deltas>0 and world.mode_policy and world.mode_policy.standard_identity then
         estimate_branch(self,"donor_error_repair.updateIntention_fractional_random")
     end
-    -- Pure helpers (including the event-only objective snapshot estimate) log
-    -- request-local knowledge at the common gate. Preserve those dependencies
-    -- in this event's native trace too, never replaying the whole event history.
+    -- Record event-local knowledge dependencies without replaying event history.
     for _,entry in ipairs(self.request and self.request.scratch and self.request.scratch.knowledge_estimates or {}) do
         if type(entry.basis)=="string" then estimate_branch(self,entry.basis) end
     end
@@ -2023,9 +2019,7 @@ ai_coverage.declare("event_intention", function()
     return {"TargetSpecified", "DamageInflicted", "HpRecover", "Death", "ChoiceMade",
         "StartJudge", "AskForRetrial", "PreCardUsed", "CardEffect", "CardsMoveOneTime", "RoundStart", "GameReady", "BeforeGameOverJudge", "Revived", "registered_callback"}
 end)
--- Audited effective donor aliases: late canonical policies are resolved only
--- when the native immutable registry snapshot confirms this exact binding.
--- This is not a repair for a missing/different donor function or a new skill policy.
+-- Resolve effective aliases only when the native load-order snapshot confirms their binding.
 if ai_audited_aliases then
     sgs.ai_choicemade_filter.skillInvoke = sgs.ai_choicemade_filter.skillInvoke or {}
     ai_audited_aliases.register{id="ai_choicemade_filter.cardChosen.PlusLangmou",registry="ai_choicemade_filter",path={"cardChosen","PlusLangmou"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","fankui"},self_index=1,defer_canonical=true}

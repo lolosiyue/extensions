@@ -1,5 +1,4 @@
--- Fixed emjr-ai.lua b6025acc983331337614289d8cac79b078c003af.
--- Decisions preserve donor loop/short-circuit order; native scopes own authority.
+-- Source: b6025acc ai/emjr-ai.lua.
 local package_skills={}
 local known = AIValue.requireKnown
 local function action_request(self,request)
@@ -21,19 +20,20 @@ end
 local efusha_skill = {}
 efusha_skill.name = "efusha"
 table.insert(package_skills, efusha_skill)
-efusha_skill.getTurnUseCard = function(self,inclusive,request)
+efusha_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self.player:isKongcheng()) then return nil end
 	if (self.player:getStrategyHasUsed("#efusha")) then return nil end
 	return seed(self,"efusha","#efusha",request)
 end
 
-sgs.ai_skill_use_func["#efusha"] = function(card,use,self,request)
+ai_card_use["#efusha"] = function(self, card, use, request)
 	local cards = AIList.new((self.player:getHandcards()))
 	self:sortByUseValueInPlace(cards, true)
 
 	self:sortInPlace(self.enemies, "hp")
 
-	--if (self:getOverflow()) <= 0 then return end
 	self:setPriorityValue("#efusha",0.2,"emjr.efusha")
 
 
@@ -65,10 +65,11 @@ sgs.ai_card_intention["#efusha"] = 70
 
 
 
-sgs.ai_skill_invoke.eweicheng = function(self, data)
+ai_skill_invoke.eweicheng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	
-	return (self:doDisCard(target,"he",false))
+	return ((self:doDisCard(target,"he",false))) or false
 end
 
 -- Audited eweicheng -> snatch alias is registered by event-intention.
@@ -145,38 +146,43 @@ function sgs.ai_cardneed.eqiehu(to, card)
 	return (to:getHandcardNum()) <= 2
 end
 
-sgs.ai_skill_invoke.ehuwu = function(self, data)
+ai_skill_invoke.ehuwu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = (data:toCardUse())
 	if (self:isFriend(use.from)) then
-		return true
+		return (true) or false
 	end
-	return (self.room:getCardPlace((use.card:getKnownEffectiveId()))) == sgs.Player_DiscardPile
+	return ((self.room:getCardPlace((use.card:getKnownEffectiveId()))) == sgs.Player_DiscardPile) or false
 end
 
 
-sgs.ai_skill_choice.ehuwu = function(self, choices, data)
+ai_skill_choice.ehuwu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local use = (data:toCardUse())
 	local obtain = getChoice(choices, "ehuwu1")
 	local draw = getChoice(choices, "ehuwu2")
-	if not use.card and (self:isFriend(use.from)) then return draw end
-	if not (self:isFriend(use.from)) then return obtain end
+	if not use.card and (self:isFriend(use.from)) then return ai_choice_result((draw), options) end
+	if not (self:isFriend(use.from)) then return ai_choice_result((obtain), options) end
 	if (use.card:isKindOf("Slash")) and not (self:hasCrossbowEffect(use.from)) and getCardsNum("Slash", use.from, self.player) == 0 then
-		return draw
+		return ai_choice_result((draw), options)
 	end
 	if (self:isWeak(use.from)) and (getCardsNum("Slash", use.from, self.player) or not (use.card:isKindOf("Slash")) or (use.from:getHandcardNum()) <= (use.from:getHp())) then
-		return draw
+		return ai_choice_result((draw), options)
 	end
 	if (self:willSkipPlayPhase(self.player)) or (self:getOverflow()) > 0 or (self:getOverflow(use.from)) == 0 then
 		return
-			obtain
+			ai_choice_result((obtain), options)
 	end
 	local items = (choices:split("+"))
-	if obtain then return obtain end
-	return items[1]
+	if obtain then return ai_choice_result((obtain), options) end
+	return ai_choice_result((items[1]), options)
 end
 
-sgs.ai_skill_invoke.echinei = function(self, data)
-	return #self.friends_noself > 0
+ai_skill_invoke.echinei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.friends_noself > 0) or false
 end
 
 
@@ -187,7 +193,8 @@ end
 sgs.ai_playerchosen_intention.echinei = -50
 
 
-sgs.ai_skill_use["@@erangwai"] = function(self, prompt, method)
+ai_skill_use["@@erangwai"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local use_card = (self:evaluateSkillCard("erangwai","slash",{}))
 	local card
 	local hcards = (self.player:getCards("h"))
@@ -217,12 +224,14 @@ end
 local eyanshou_skill = {}
 eyanshou_skill.name = "eyanshou"
 table.insert(package_skills, eyanshou_skill)
-eyanshou_skill.getTurnUseCard = function(self,inclusive,request)
+eyanshou_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self.player:getStrategyHasUsed("#eyanshouCard")) then return nil end
 	return seed(self,"eyanshou","#eyanshouCard",request)
 end
 
-sgs.ai_skill_use_func["#eyanshouCard"] = function(card,use,self,request)
+ai_card_use["#eyanshouCard"] = function(self, card, use, request)
 	for _, enemy in ipairs(self.enemies) do
 		if (enemy:hasEquip()) and (self:doDisCard(enemy,"e")) and (self:willSkipPlayPhase(enemy)) then
 			use.card = bind(self,"eyanshou","#eyanshouCard",{},request)
@@ -268,35 +277,39 @@ sgs.ai_cardsview_valuable.ejisi = function(self, class_name, player)
 	end
 end
 
-sgs.ai_skill_invoke.eqiangbian = function(self, data)
+ai_skill_invoke.eqiangbian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target and (self:isFriend(target)) then return false end
-	return true
+	if target and (self:isFriend(target)) then return (false) or false end
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.eaocai = function(self, data)
-	return (self.player:getHandcardNum()) < 3 or (self:isWeak())
+ai_skill_invoke.eaocai = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return ((self.player:getHandcardNum()) < 3 or (self:isWeak())) or false
 end
 
 
-sgs.ai_skill_invoke.ezhuanquan = function(self, data)
+ai_skill_invoke.ezhuanquan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:getCurrent()
 	if (self:isEnemy(target)) then
 		if (self:doDisCard(target,"h")) then
-			return false
+			return (false) or false
 		end
 	end
 	if (self:isFriend(target)) then
-		return (self:doDisCard(target,"h"))
+		return ((self:doDisCard(target,"h"))) or false
 	end
-	return not (self:isFriend(target))
+	return (not (self:isFriend(target))) or false
 end
 
 -- Audited ezhuanquan -> snatch alias is registered by event-intention.
 
 
-sgs.ai_skill_invoke.etushou = function(self, data)
-	return true
+ai_skill_invoke.etushou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen.etushou = function(self, targets)
@@ -320,10 +333,13 @@ sgs.ai_skill_playerchosen.etushou = function(self, targets)
 	return targetlist[1]
 end
 
-sgs.ai_skill_choice.etushou = function(self, choices, data)
+ai_skill_choice.etushou = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = (choices:split("+"))
 
-	if table.contains(items, "etushou2") and (self:isWeak()) then return "etushou2" end
+	if table.contains(items, "etushou2") and (self:isWeak()) then return ai_choice_result(("etushou2"), options) end
 	if table.contains(items, "etushou1") and (self.player:getMaxHp()) - (self.player:getHandcardNum()) > 2 then
 		local maxHp = 0
 		for _, p in sgs.qlist((self.room:getOtherPlayers(self.player))) do
@@ -333,11 +349,11 @@ sgs.ai_skill_choice.etushou = function(self, choices, data)
 		end
 		for _, p in sgs.qlist((self.room:getOtherPlayers(self.player))) do
 			if (p:getHp()) == maxHp and not (self:isEnemy(p)) then
-				return "etushou1"
+				return ai_choice_result(("etushou1"), options)
 			end
 		end
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.ai_ajustdamage_to.etushou = function(self, from, to, card, nature)
@@ -354,7 +370,9 @@ end
 
 local etiaobo_skill = {
 	name = "etiaobo",
-	getTurnUseCard = function(self,inclusive,request)
+	getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 		if (self.player:getStrategyHasUsed("#etiaoboCard")) then return end
 		if (self.player:isNude()) then return end
 		local can_use = false
@@ -372,7 +390,7 @@ local etiaobo_skill = {
 	end,
 }
 table.insert(package_skills, etiaobo_skill) --加入AI可用技能表
-sgs.ai_skill_use_func["#etiaoboCard"] = function(card,use,self,request)
+ai_card_use["#etiaoboCard"] = function(self, card, use, request)
 	local slash = (self:getEvaluationCard("slash"))
 	local slasher, target
 	self:sortInPlace(self.enemies, "defense")
@@ -414,7 +432,7 @@ sgs.ai_use_priority["#etiaoboCard"] = 0
 sgs.ai_use_value["#etiaoboCard"] = 0
 sgs.ai_card_intention["#etiaoboCard"] = 80
 
-for _,skill in ipairs(package_skills) do sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end
+for _,skill in ipairs(package_skills) do ai_fill_skill[skill.name]=skill.getTurnUseCard end
 
 -- 曹操傳 E鳴驚人技能的 Isolated AI；只使用 viewer 可見的 mark 與純值 view。
 local function value(player, method, ...)
@@ -448,19 +466,21 @@ end
 -- 技能候選由 Room 提供；關係使用曹操傳全局隊伍 mark，避免身份局內奸推測。
 for _, skill in ipairs({ "emjr_cc_fanji", "emjr_cc_chuanji", "emjr_cc_huiqiang" }) do
     if skill == "emjr_cc_fanji" then
-        sgs.ai_skill_invoke[skill] = function(self, data)
+        ai_skill_invoke[skill] = function(self, options, request)
+            local data = request and self:getDecisionData(request) or nil
             local attacker = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
-            return attacker and is_enemy(self, attacker) or false
+            return (attacker and is_enemy(self, attacker) or false) or false
         end
     elseif skill == "emjr_cc_huiqiang" then
-        sgs.ai_skill_invoke[skill] = function(self, data)
+        ai_skill_invoke[skill] = function(self, options, request)
+            local data = request and self:getDecisionData(request) or nil
             local target = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
-            return target and is_enemy(self, target) or false
+            return (target and is_enemy(self, target) or false) or false
         end
     else
         -- TriggerSkill 已確認有合法相鄰敵軍候選；穿擊不消耗資源，可直接發動。
-        sgs.ai_skill_invoke[skill] = function(self)
-            return true
+        ai_skill_invoke[skill] = function(self, options, request)
+            return (true) or false
         end
         sgs.ai_skill_playerchosen[skill] = choose_enemy
     end
@@ -486,23 +506,25 @@ local function treasure(player)
 end
 
 -- 青龍雷擊／朱雀天火只在敵人受傷且尚有靈氣時消耗觸發資源。
-sgs.ai_skill_invoke["emjr_cc_jinglei"] = function(self, data)
+ai_skill_invoke["emjr_cc_jinglei"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local damaged = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
     local access = beast(self.player) or treasure(self.player) == 1
-    if not access or not can_spend(self.player) then return false end
+    if not access or not can_spend(self.player) then return (false) or false end
     for _, enemy in ipairs(self.enemies or {}) do
-        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return true end
+        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return (true) or false end
     end
-    return false
+    return (false) or false
 end
-sgs.ai_skill_invoke["emjr_cc_tianhuo"] = function(self, data)
+ai_skill_invoke["emjr_cc_tianhuo"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local damaged = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
     local access = beast(self.player) or treasure(self.player) == 3
-    if not access or not can_spend(self.player) then return false end
+    if not access or not can_spend(self.player) then return (false) or false end
     for _, enemy in ipairs(self.enemies or {}) do
-        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return true end
+        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return (true) or false end
     end
-    return false
+    return (false) or false
 end
 
 local function use_skill(self, skill, card_class, card_kind, useful, request)
@@ -559,4 +581,30 @@ ai_skill_activate["emjr_cc_hundun"] = function(self, request)
     if not has_enemy then return nil end
     return use_skill(self, "emjr_cc_hundun", "#emjr_cc_hundunCard", "TrickCard",
         function() return true end, request)
+end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["echinei"]
+    local policy = function(self, from, to, card, context)
+        local bh, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(to,"hasSkills","echinei") and damage_call(self,"findFriendsByType",sgs.Friend_Draw, to) and not damage_call(self,"willSkipDrawPhase",to) then bh = math.min(bh, damage_call(to,"getMaxHp") - 1) end
+        return bh
+    end
+    sgs.ai_need_damaged["echinei"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_active_best" and context.rule == "echinei" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "echinei", {
+        {phase="need_hp_active_best", order=3, rule="echinei"},
+    })
+end)()
 end

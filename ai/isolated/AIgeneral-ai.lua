@@ -1,5 +1,4 @@
--- Fixed b6025acc AIgeneral strategy bodies. Native authorization is separate
--- from source planning; foreign private roles use an explicit viewer estimate.
+-- Source: b6025acc ai/AIgeneral-ai.lua.
 local known = AIValue.requireKnown
 
 local function visible_role(self,player)
@@ -31,35 +30,41 @@ local function tongyi_evaluation(self,name)
 end
 
 --深度思考
-sgs.ai_skill_invoke.deep_seek = function(self, data)
+ai_skill_invoke.deep_seek = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toDamage().to
     if  self:getRoleEstimate(target) ~= "neutral" or target:isLord()  then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 
-sgs.ai_skill_choice.deep_seek = function(self, choices, data)
+ai_skill_choice.deep_seek = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local target = data:toPlayer()
     local items = choices:split("+")
 
     if self:getRoleEstimate(target)== "rebel" and table.contains(items, "rebel")  then
-        return "rebel"
+        return ai_choice_result(("rebel"), options)
     elseif target:isLord() and table.contains(items, "lord")  then
-        return "lord"
+        return ai_choice_result(("lord"), options)
     elseif self:getRoleEstimate(target)== "loyalist" and table.contains(items, "loyalist")  then
-        return "loyalist"
+        return ai_choice_result(("loyalist"), options)
     elseif self:getRoleEstimate(target)== "renegade" and table.contains(items, "renegade")  then
-        return "renegade"
+        return ai_choice_result(("renegade"), options)
     end
-    return items[1]
+    return ai_choice_result((items[1]), options)
 end
 
-sgs.ai_fill_skill.tieba_zhili = function(self,inclusive,request)
+ai_fill_skill.tieba_zhili = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:legacySkillSeed("tieba_zhili", "#tieba_zhiliCard", request)
 end
 
-sgs.ai_skill_use_func["#tieba_zhiliCard"] = function(card, use, self)
+ai_card_use["#tieba_zhiliCard"] = function(self, card, use, request)
     sort_enemies(self,"handcard",true)
     local target
     for _,enemy in sgs.list(self.enemies)do
@@ -192,43 +197,47 @@ sgs.ai_skill_cardask["@huiyuanshenli"] = function(self, data)
     return "."
 end
 
-sgs.ai_skill_invoke.huiyuanshenli = function(self, data)
+ai_skill_invoke.huiyuanshenli = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if self:isEnemy(target) and not self:cantbeHurt(target) and self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player) and not self:needToLoseHp(target, self.player, nil) then
-        return true
+        return (true) or false
     end
     if self:isFriend(target) and self:needToLoseHp(target, self.player, nil) then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 
 --通义
 
-sgs.ai_skill_choice["tongyiAIWJ"]    = function(self, choices, data)
+ai_skill_choice["tongyiAIWJ"]    = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
     local target = data:toPlayer()
     if self.player:getStrategyFlag("Jink") then
         if self.player:objectName() == target:objectName() and self:getCardsNum("Jink") > 0 then
-            return "yes"
+            return ai_choice_result(("yes"), options)
         elseif self.player:objectName() == target:objectName() and self:getCardsNum("Jink") == 0 then
-            return "no"
+            return ai_choice_result(("no"), options)
         end
         if known_card(target, self.player, "Jink") > 0 then
-            return "yes"
+            return ai_choice_result(("yes"), options)
         end
     end
     if self.player:getStrategyFlag("Nullification") then
         if self.player:objectName() == target:objectName() and self:getCardsNum("Nullification") > 0 then
-            return "yes"
+            return ai_choice_result(("yes"), options)
         elseif self.player:objectName() == target:objectName() and self:getCardsNum("Nullification") == 0 then
-            return "no"
+            return ai_choice_result(("no"), options)
         end
         if known_card(target, self.player, "Nullification") > 0 then
-            return "yes"
+            return ai_choice_result(("yes"), options)
         end
     end
-    return items[math.random(1,#items)]
+    return ai_choice_result((items[math.random(1,#items)]), options)
 end
 
 sgs.ai_guhuo_card.tongyiTQ = function(self, toname, class_name)
@@ -251,35 +260,38 @@ end
 
 
 --千问
-sgs.ai_skill_invoke.tiaojiaoCMT = function(self, data)
+ai_skill_invoke.tiaojiaoCMT = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
     if damage.from and self.player:objectName() == damage.from:objectName() then
         if self:isFriend(damage.to) and damage.to:isWounded() and known(getBestHp(damage.to),"getBestHp") < damage.to:getHp() then
-            return true
+            return (true) or false
         end
         if self:isEnemy(damage.to) then
-            if damage.damage > 1 then return false end
+            if damage.damage > 1 then return (false) or false end
             if not damage.to:isWounded() then
-                return self:doDisCard(damage.to, "h", true)
+                return (self:doDisCard(damage.to, "h", true)) or false
             end
             if self:isWeak(damage.to) then
-                return false
+                return (false) or false
             end
-            return self:doDisCard(damage.to, "h", true) and math.random() < 0.5
+            return (self:doDisCard(damage.to, "h", true) and math.random() < 0.5) or false
         end
     end
-    return false
+    return (false) or false
 end
 
-sgs.ai_skill_invoke.daduanCMT = true
+ai_skill_invoke.daduanCMT = true
 
-sgs.ai_fill_skill.tiaojiaoCMT=function(self,inclusive,request)
+ai_fill_skill.tiaojiaoCMT=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getHandcardNum() > 2 then return nil end
     if self:needBear() and not self.player:isWounded() and self:isWeak() then return nil end
     if self:getPriorTurnUseCount() < 2 then return nil end
     return self:legacySkillSeed("tiaojiaoCMT", "#tiaojiaoCMTCard", request)
 end
-sgs.ai_skill_use_func["#tiaojiaoCMTCard"] = function(card,use,self)
+ai_card_use["#tiaojiaoCMTCard"] = function(self, card, use, request)
     local arr1,arr2 = wounded_friends(self)
     local target = nil
 

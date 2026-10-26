@@ -1,4 +1,4 @@
--- du, fixed b6025acc: preserve policy order and donor terminal incompatibilities.
+-- Source: b6025acc ai/du-ai.lua.
 local known = AIValue.requireKnown
 local nullable={getCard=true,getMaxCard=true,findPlayerBySkillName=true,getLord=true,getCurrent=true,getSourceLord=true,toPlayer=true,updateIntention=true,updatePlayers=true,setStrategyPlayerFlag=true}
 
@@ -34,26 +34,31 @@ local function source_analeptic_available(self,c)
  if type(b)~="boolean"then ai_unsupported("jieyou requires original Analeptic_IsAvailable fact","jieyou")end;return b
 end
 local function nested(reg,key,...)
- local fn=sgs[reg]and sgs[reg][key];if type(fn)~="function"then ai_unsupported("du nested source callback unavailable",reg.."."..key)end
+ local fn=(reg == "ai_skill_use" and ai_skill_use or (reg == "ai_card_use" and ai_card_use or (reg == "ai_skill_invoke" and ai_skill_invoke or (reg == "ai_fill_skill" and ai_fill_skill or (reg == "ai_skill_choice" and ai_skill_choice or sgs[reg])))))and (reg == "ai_skill_use" and ai_skill_use or (reg == "ai_card_use" and ai_card_use or (reg == "ai_skill_invoke" and ai_skill_invoke or (reg == "ai_fill_skill" and ai_fill_skill or (reg == "ai_skill_choice" and ai_skill_choice or sgs[reg])))))[key];if type(fn)~="function"then ai_unsupported("du nested source callback unavailable",reg.."."..key)end
  local v=fn(...);if AIUnsupported.is(v)then error(v,0)end;return v
 end
 
-sgs.ai_skill_invoke.jinfan = function(self, data)
-    return true
+ai_skill_invoke.jinfan = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
-sgs.ai_skill_choice.jinfan = function(self, choices)
+ai_skill_choice.jinfan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
     choices = choices:split("+")
 
     local allow = getChoice(choices, "jinfanTake_allow")
     local disallow = getChoice(choices, "jinfanTake_disallow")
     if self:isFriend(self.room:getCurrent()) and allow then
-        return allow
+        return ai_choice_result((allow), options)
     end
-    return disallow
+    return ai_choice_result((disallow), options)
 end
 
-sgs.ai_fill_skill.jinfanTake = function(self,inclusive,request)
+ai_fill_skill.jinfanTake = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getStrategyHasUsed("#jfTakeCard") then
         return
     end
@@ -64,7 +69,7 @@ sgs.ai_fill_skill.jinfanTake = function(self,inclusive,request)
     end
 end
 
-sgs.ai_skill_use_func["#jfTakeCard"] = function(card, use, self)
+ai_card_use["#jfTakeCard"] = function(self, card, use, request)
     sgs.ai_use_priority["#jfTakeCard"] = 9.1
     if role(self,self.player) == "neutral" then
         sgs.ai_use_priority["#jfTakeCard"] = 0
@@ -117,7 +122,7 @@ sgs.ai_skill_askforag.jinfan = function(self, card_ids)
     return to_obtain[1]:getKnownEffectiveId()
 end
 
-sgs.ai_skill_use["@@duYinling"] = function(self, prompt)
+ai_skill_use["@@duYinling"] = function(self, prompt, request)
     self:sortInPlace(self.enemies, "handcard_defense")
     local targets = {}
 
@@ -321,26 +326,27 @@ sgs.ai_cardneed.duXiaoguo = function(to, card, self)
     return isCard("Slash", card, to) and self:getKnownCard(to, self.player, "Slash", true) == 0
 end
 
-sgs.ai_skill_invoke.duXiaoguo = function(self, data)
+ai_skill_invoke.duXiaoguo = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
     if not self:isEnemy(damage.to) then
-        return false
+        return (false) or false
     end
 
     if self.player:getHandcardNum() == 1 then
         if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then
-            return true
+            return (true) or false
         end
         local card = self.player:getHandcards():first()
         if card:isKindOf("Jink") or card:isKindOf("Peach") then
-            return
+            return false
         end
     end
     if self:ajustDamage(self.player, damage.to, 1, damage.card) > 0 then
-        return self:doDisCard(damage.to, "h")
+        return (self:doDisCard(damage.to, "h")) or false
     end
 
-    return false
+    return (false) or false
 end
 
 function sgs.ai_skill_pindian.duXiaoguo(minusecard, self, requestor, maxcard)
@@ -358,7 +364,9 @@ end
 
 
 
-sgs.ai_fill_skill.du_zhouxuan = function(self,inclusive,request)
+ai_fill_skill.du_zhouxuan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getStrategyMark("@yaochong") == 0 or not self.player:canDiscard(self.player, "h") then
         return
     end
@@ -401,7 +409,7 @@ sgs.ai_fill_skill.du_zhouxuan = function(self,inclusive,request)
     end
 end
 
-sgs.ai_skill_use_func["#du_zhouxuanCard"] = function(card, use, self)
+ai_card_use["#du_zhouxuanCard"] = function(self, card, use, request)
     if (self.player:getStrategyMark("@yaochong") > 0) then
         local target
         if self:getOverflow() > 1 then
@@ -489,7 +497,9 @@ sgs.ai_getBestHp_skill.duWuhun = function(owner)
 end
 
 
-sgs.ai_fill_skill.jieyou = function(self,inclusive,request)
+ai_fill_skill.jieyou = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards)
 
@@ -546,14 +556,18 @@ sgs.jieyou_suit_value = {
 
 sgs.ai_suit_priority.jieyou = "diamond|heart|club|spade"
 
-sgs.ai_skill_invoke.jiuwei = function(self, data)
+ai_skill_invoke.jiuwei = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local effect = data:toCardEffect()
-    return self:doDisCard(effect.to, "he")
+    return (self:doDisCard(effect.to, "he")) or false
 end
 
 -- jiuwei alias requires immutable shared source identity gate.
 
-sgs.ai_skill_choice["jiuwei"] = function(self, choices, data)
+ai_skill_choice["jiuwei"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
     local get = getChoice(choices, "jwTake")
     local discard = getChoice(choices, "jwDrop")
@@ -561,16 +575,17 @@ sgs.ai_skill_choice["jiuwei"] = function(self, choices, data)
     for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
         if pflag(self,p,"jiuwei_target") then
             if self:isFriend(p) then
-                return get
+                return ai_choice_result((get), options)
             else
-                return discard
+                return ai_choice_result((discard), options)
             end
         end
     end
-    return items[math.random(1, #items)]
+    return ai_choice_result((items[math.random(1, #items)]), options)
 end
 
-sgs.ai_skill_invoke.du_tongque = function(self, data)
+ai_skill_invoke.du_tongque = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local dying = data:toDying()
     local victim = dying.damage.to
     local role = self.player:getKnownRole()
@@ -590,9 +605,9 @@ sgs.ai_skill_invoke.du_tongque = function(self, data)
         end
     end
     if self_people >= list:length() / 2 then
-        return false
+        return (false) or false
     end
-    return true
+    return (true) or false
 end
 
 sgs.ai_skill_cardask["#caocao_tongque"] = function(self, data)
@@ -637,17 +652,18 @@ sgs.ai_event_callback[sgs.ChoiceMade].tongque = function(self, player, data)
     end
 end
 
-sgs.ai_skill_invoke.du_xixing = function(self, data)
+ai_skill_invoke.du_xixing = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
 
     if self:isFriend(target) then
-        return false
+        return (false) or false
     end
     if self:isEnemy(target) then
-        return self:doDisCard(target, "h", true)
+        return (self:doDisCard(target, "h", true)) or false
     end
 
-    return true
+    return (true) or false
 end
 
 sgs.ai_can_damagehp.du_xixing = function(self, from, card, to)
@@ -673,14 +689,15 @@ sgs.ai_playerchosen_intention.duBaonue = -40
 
 
 
-sgs.ai_skill_invoke["tongpao_jink"] = function(self, data)
+ai_skill_invoke["tongpao_jink"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local lieges = self.room:getLieges("wu", self.player)
     for _, p in sgs.qlist(lieges) do
         if self:hasEightDiagramEffect(p) and self:isFriend(p) then
-            return true
+            return (true) or false
         end
     end
-    return self:getCardsNum("Jink") == 0
+    return (self:getCardsNum("Jink") == 0) or false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.tongpao_jink = function(self, player, promptlist)
@@ -740,7 +757,9 @@ function sgs.ai_slash_prohibit.tongpao(self, from, to, card)
     return false
 end
 
-sgs.ai_fill_skill.tongpaodest = function(self,inclusive,request) -- 考虑主动使用连理杀
+ai_fill_skill.tongpaodest = function(self, options, request)
+    local inclusive = options and options.inclusive
+ -- 考虑主动使用连理杀
     local slash = self:getEvaluationCard("slash")
     
     if slash:isAvailable(self.player) and not self.player:hasFlag("Global_tongpaoFailed") then
@@ -749,7 +768,7 @@ sgs.ai_fill_skill.tongpaodest = function(self,inclusive,request) -- 考虑主动
 end
 
 
-sgs.ai_skill_use_func["#tongpaodestCard"] = function(card, use, self)
+ai_card_use["#tongpaodestCard"] = function(self, card, use, request)
     if self.player:getKnownKingdom() ~= "wu" and self.player:hasFlag("Global_tongpaoFailed") then
         return
     end
@@ -820,7 +839,8 @@ sgs.ai_skill_cardask["@tongpao-slash"] = function(self, data)
     return "."
 end
 
-sgs.ai_skill_invoke["tongpao_slash"] = function(self, data)
+ai_skill_invoke["tongpao_slash"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local asked = data:toStringList()
     local prompt = asked[2]
 
@@ -832,21 +852,21 @@ sgs.ai_skill_invoke["tongpao_slash"] = function(self, data)
     for _, p in sgs.qlist(lieges) do
         if p and p:getPhase() ~= sgs.Player_NotActive and self:isFriend(p) and self:getOverflow(p) > 2 and
             not self:hasCrossbowEffect(p) then
-            return true
+            return (true) or false
         end
     end
     local cards = self.player:getHandcards()
     for _, card in sgs.qlist(cards) do
         if isCard("Slash", card, self.player) then
-            return false
+            return (false) or false
         end
     end
     for _, p in sgs.qlist(lieges) do
         if self:isFriend(p) then
-            return true
+            return (true) or false
         end
     end
-    return false
+    return (false) or false
 end
 sgs.ai_choicemade_filter.skillInvoke.tongpao_slash = function(self, player, promptlist)
     if promptlist[#promptlist] == "yes" then

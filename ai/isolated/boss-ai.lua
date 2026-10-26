@@ -1,5 +1,4 @@
--- Fixed boss-ai.lua donor b6025acc983331337614289d8cac79b078c003af.
--- Source policy order is preserved; submitted costs require native receipts.
+-- Source: b6025acc ai/boss-ai.lua.
 local known = AIValue.requireKnown
 
 local function current(use,to)
@@ -75,7 +74,8 @@ sgs.ai_armor_value.bossmanjia = function(player,self,card)
 	if not card then return sgs.ai_armor_value.vine(player,self) end
 end
 
-sgs.ai_skill_invoke.bosslianyu = function(self,data)
+ai_skill_invoke.bosslianyu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local value,avail = 0,0
 	for _,enemy in sgs.list(self.enemies)do
 		if not self:damageIsEffective(enemy, sgs.DamageStruct_Fire, self.player) then continue end
@@ -87,17 +87,18 @@ sgs.ai_skill_invoke.bosslianyu = function(self,data)
 			end
 		end
 	end
-	return avail>0 and value/avail>=2/3
+	return (avail>0 and value/avail>=2/3) or false
 end
 
-sgs.ai_skill_invoke.bosssuoming = function(self,data)
+ai_skill_invoke.bosssuoming = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local value = 0
 	for _,enemy in sgs.list(self.enemies)do
 		if self:isGoodTarget(enemy, self.enemies) then
 			value = value+1
 		end
 	end
-	return value/#self.enemies>=2/3
+	return (value/#self.enemies>=2/3) or false
 end
 
 sgs.ai_skill_playerchosen.bossxixing = function(self,targets)
@@ -109,44 +110,50 @@ sgs.ai_skill_playerchosen.bossxixing = function(self,targets)
 	end
 end
 
-sgs.ai_skill_invoke.bossqiangzheng = function(self,data)
+ai_skill_invoke.bossqiangzheng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local value = 0
 	for _,enemy in sgs.list(self.enemies)do
 		if enemy:getHandcardNum()==1 and (enemy:hasSkill("kongcheng") or (enemy:hasSkill("zhiji") and enemy:getStrategyMark("zhiji")==0)) then
 			value = value+1
 		end
 	end
-	return value/#self.enemies<2/3
+	return (value/#self.enemies<2/3) or false
 end
 
-sgs.ai_skill_invoke.bossqushou = function(self,data)
+ai_skill_invoke.bossqushou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local sa = self:getEvaluationCard("savage_assault")
 	local dummy_use = AIUsePlan.new();dummy_use.isDummy=true
 	self:useTrickCard(sa,dummy_use)
-	return (dummy_use.card~=nil)
+	return ((dummy_use.card~=nil)) or false
 end
 
-sgs.ai_skill_invoke.bossmojian = function(self,data)
+ai_skill_invoke.bossmojian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local aa = self:getEvaluationCard("archery_attack")
 	local dummy_use = AIUsePlan.new();dummy_use.isDummy=true
 	self:useTrickCard(aa,dummy_use)
-	return (dummy_use.card~=nil)
+	return ((dummy_use.card~=nil)) or false
 end
 
-sgs.ai_skill_invoke.bossdanshu = function(self,data)
-	if not self.player:isWounded() then return false end
+ai_skill_invoke.bossdanshu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if not self.player:isWounded() then return (false) or false end
 	local zj = self.room:findPlayerBySkillName("guidao")
-	if self.player:getHp()/self.player:getMaxHp()>=0.5 and zj and self:isEnemy(zj) and self:canRetrial(zj) then return false end
-	return true
+	if self.player:getHp()/self.player:getMaxHp()>=0.5 and zj and self:isEnemy(zj) and self:canRetrial(zj) then return (false) or false end
+	return (true) or false
 end
 
-sgs.ai_fill_skill.kuangxi=function(self,inclusive,request)
+ai_fill_skill.kuangxi=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if not self.player:getStrategyFlag("KuangxiEnterDying")then
         return self:legacySkillSeed("kuangxi", "KuangxiCard", request)
     end
 end
 
-sgs.ai_skill_use_func.KuangxiCard = function(card, use, self, request)
+ai_card_use.KuangxiCard = function(self, card, use, request)
 	self:sort(self.enemies, "hp")
 	local can_invoke = false
 	for _, friend in ipairs(self.friends) do
@@ -165,10 +172,11 @@ sgs.ai_skill_use_func.KuangxiCard = function(card, use, self, request)
 	end
 end
 
-sgs.ai_skill_invoke.baoying = function(self, data)
+ai_skill_invoke.baoying = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
 	local peaches = 1 - dying.who:getHp()
-	return (peaches > 1  or self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches) and self:isFriend(dying.who)
+	return ((peaches > 1  or self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches) and self:isFriend(dying.who)) or false
 end
 
 sgs.ai_use_value.KuangxiCard = 2.5
@@ -180,7 +188,8 @@ sgs.ai_skill_askforyiji.huying = function(self,card_ids)
 end
 
 function SmartAIView:useCardGodNihilo(card, use)
-	if can_to(self,card,self.player) then
+    local recommend = self:targetRecommendScorer(card)
+	if can_to(self,card,self.player) and recommend(self.player, 0) ~= nil then
 		local xiahou = self.room:findPlayerBySkillName("yanyu")
 		if xiahou and self:isEnemy(xiahou) and xiahou:getStrategyMark("YanyuDiscard2") > 0 then return end
 		if self.player:getKnownKingdom()=="god" then
@@ -191,13 +200,14 @@ function SmartAIView:useCardGodNihilo(card, use)
 		then return end
 		use.card = card
 		use.to:append(self.player)
-		for _,p in sgs.list(self.friends_noself)do
+		for _,p in sgs.list(self:orderTargetsByRecommend(self.friends_noself, recommend))do
 			if can_to(self,card,p,use.to)
 			and self:canDraw(p) and p:getHandcardNum()<math.min(5,p:getMaxHp())
 			then use.to:append(p) end
 		end
 	end
 end
+sgs.registerSkillCardType("GodNihilo", "draw")
 
 sgs.ai_card_intention.GodNihilo = -80
 
@@ -208,10 +218,11 @@ sgs.ai_use_priority.GodNihilo = 1
 sgs.dynamic_value.benefit.GodNihilo = true
 
 function SmartAIView:useCardGodFlower(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	local extraTarget = card:getTargetModExtra(self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	local function addTarget(to,ft)
-		if current(use,to) then return end
+		if current(use,to) or recommend(to, 0) == nil then return end
 		if not use.to:contains(to) and self:doDisCard(to, ft, true, 2) then
 			use.card = card
 			use.to:append(to)
@@ -223,7 +234,7 @@ function SmartAIView:useCardGodFlower(card,use)
 	if dummy and dummy:isAvailable(self.player) then
 		dummy = self:aiUseCard(dummy)
 		if dummy.card then
-			for _,to in sgs.qlist(dummy.to)do
+			for _,to in sgs.qlist(self:orderTargetsByRecommend(dummy.to, recommend))do
 				if table.contains(players,to) and to:getHp()<=2
 				and to:getHandcardNum()<=to:getHp()
 				and addTarget(to,"h") then return end
@@ -231,11 +242,11 @@ function SmartAIView:useCardGodFlower(card,use)
 		end
 	end
 	self:sort(players,"defense")
-	for _,enemy in ipairs(players)do
+	for _,enemy in ipairs(self:orderTargetsByRecommend(players, recommend))do
 		if enemy:hasEquip() and addTarget(enemy,"he")
 		then return end
 	end
-	for _,enemy in ipairs(players)do
+	for _,enemy in ipairs(self:orderTargetsByRecommend(players, recommend))do
 		local n = 0
 		for _,h in sgs.qlist(self:getKnownCards(enemy, self.player, "h"))do
 			if (h:getStrategyFlag("visible") or h:getStrategyFlag("visible_"..self.player:objectName().."_"..enemy:objectName()))
@@ -246,24 +257,25 @@ function SmartAIView:useCardGodFlower(card,use)
 			end
 		end
 	end
-	for _,enemy in ipairs(players)do
+	for _,enemy in ipairs(self:orderTargetsByRecommend(players, recommend))do
 		if enemy:getHandcardNum()>0 and enemy:hasSkills(sgs.cardneed_skill)
 		and addTarget(enemy,"h")
 		then return end
 	end
-	for _,enemy in ipairs(players)do
+	for _,enemy in ipairs(self:orderTargetsByRecommend(players, recommend))do
 		if enemy:getHandcardNum()>0 and self:isEnemy(enemy)
 		and addTarget(enemy,"h") then return end
 	end
-	for _,enemy in ipairs(players)do
+	for _,enemy in ipairs(self:orderTargetsByRecommend(players, recommend))do
 		if enemy:getHandcardNum()>0 and not self:isFriend(enemy)
 		and addTarget(enemy,"h") then return end
 	end
-	for _,enemy in ipairs(players)do
+	for _,enemy in ipairs(self:orderTargetsByRecommend(players, recommend))do
 		if enemy:getHandcardNum()>0
 		and addTarget(enemy,"h") then return end
 	end
 end
+sgs.registerSkillCardType("GodFlower", "decrease")
 
 sgs.ai_use_value.GodFlower = 9
 sgs.ai_use_priority.GodFlower = 4.3
@@ -282,11 +294,14 @@ sgs.ai_use_priority.GodHalberd = 5
 sgs.ai_use_value.GodHat = 6
 sgs.ai_use_value.GodSword = 9
 
-sgs.ai_skill_invoke.god_double_sword = function(self,data)
+ai_skill_invoke.god_double_sword = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 sgs.ai_use_value.GodDoubleSword = 4
 sgs.ai_use_priority.GodDoubleSword = 3
@@ -326,12 +341,13 @@ sgs.ai_use_revises.god_axe = function(self,card,use)
 	then self:setStrategyCardFlag(card,"Qinggang",true) end
 end
 
-sgs.ai_skill_invoke.god_edict = function(self,data)
+ai_skill_invoke.god_edict = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isFriend(target) then
-		return #self:poisonCards("he", target)>0 or self:isWeak(target)
+		return (#self:poisonCards("he", target)>0 or self:isWeak(target)) or false
 	end
-	return #self:poisonCards("he", target)<1
+	return (#self:poisonCards("he", target)<1) or false
 end
 sgs.ai_use_value.GodEdict = 3
 sgs.ai_use_priority.GodEdict = 2
@@ -357,8 +373,9 @@ sgs.ai_skill_cardask["god_edict0"] = function(self,data)
     return "."
 end
 
-sgs.ai_skill_invoke.god_headdress = function(self,data)
-	return self:getOverflow()~=9
+ai_skill_invoke.god_headdress = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:getOverflow()~=9) or false
 end
 sgs.ai_use_value.GodEdict = 3
 sgs.ai_use_priority.GodEdict = 2
@@ -393,18 +410,22 @@ sgs.ai_skill_cardask["god_headdress0"] = function(self,data)
     return "."
 end
 
-sgs.ai_skill_invoke.GodDamage = function(self,data)
+ai_skill_invoke.GodDamage = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local items = data:toString():split(":")
     local target = self.room:findPlayerByObjectName(items[2])
 	if target and self:isEnemy(target)
 	then
-		return target:getLostHp()<1 or not self:isWeak(target)
+		return (target:getLostHp()<1 or not self:isWeak(target)) or false
 	end
+	return false
+
 end
 
 function SmartAIView:useCardGodSpeel(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	self:sort(self.enemies,"skill",false)
-	for _,ep in sgs.list(self.enemies)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if current(use,ep) then continue end
 		if boss_player_fact(self,ep,"god_speel_count")<1
 		and ep:getVisibleSkillList():length()>0
@@ -414,6 +435,7 @@ function SmartAIView:useCardGodSpeel(card,use)
 		end
 	end
 end
+sgs.registerSkillCardType("GodSpeel", "debuff")
 sgs.ai_use_priority.GodSpeel = 5.4
 sgs.ai_keep_value.GodSpeel = 4
 sgs.ai_use_value.GodSpeel = 3.7
@@ -453,11 +475,13 @@ sgs.ai_skill_playerchosen.god_ship = function(self,players)
 end
 
 
-sgs.ai_skill_invoke.yl_shiyou = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.yl_shiyou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
-sgs.ai_skill_invoke.yl_dayuan = function(self,data)
+ai_skill_invoke.yl_dayuan = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local judge=data:toJudge()
     local context=self:getDecisionContext()
     local outcomes=context.judge and context.judge.candidate_outcomes
@@ -472,15 +496,19 @@ sgs.ai_skill_invoke.yl_dayuan = function(self,data)
             end
             if self:isFriend(judge.who)and good()
                 or self:isEnemy(judge.who)and not good()then
-                return self:needRetrial(judge)
+                return (self:needRetrial(judge)) or false
             end
         end
     end
+    return false
+
 end
 sgs.ai_skill_suit.yl_dayuan=function(self)return known(dayuan_memory(self).suit,"Dayuan saved suit")end
-sgs.ai_skill_choice.yl_dayuan=function(self)return known(dayuan_memory(self).number,"Dayuan saved number")end
+ai_skill_choice.yl_dayuan=function(self, options, request)return ai_choice_result((known(dayuan_memory(self).number,"Dayuan saved number")), options)end
 
-sgs.ai_fill_skill.yl_diting = function(self,inclusive,request)
+ai_fill_skill.yl_diting = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards)
     self:sortByKeepValue(cards)
@@ -491,7 +519,7 @@ sgs.ai_fill_skill.yl_diting = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#yl_ditingCard"] = function(card,use,self)
+ai_card_use["#yl_ditingCard"] = function(self, card, use, request)
 	use.card = card
 end
 

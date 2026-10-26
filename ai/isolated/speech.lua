@@ -1,5 +1,4 @@
--- Common speech is a pure strategy operation: it consumes this VM's decision
--- RNG and stages typed effects. Native publication happens only after commit.
+-- Speech consumes decision RNG and stages effects for publication after commit.
 local function speech_unknown(message)
     return ai_unsupported(message, "speech")
 end

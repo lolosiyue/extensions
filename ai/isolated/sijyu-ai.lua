@@ -1,28 +1,39 @@
--- Necessary fixed-source slice: sijyu-ai.lua:537-541 (b6025acc).
--- Other package callbacks are not claimed by this slice.
+-- Existing source default; the package may replace it below.
+if sgs.ai_ajustdamage_from.sijyu_zhuluan == nil then
+    sgs.ai_ajustdamage_from.sijyu_zhuluan = function(self,from,to,card,nature)
+        local damage_call, helpers = self:getDamageValueContext()
+        if card and table.contains(self:cardSkillNamesKnowledge(card,"sijyu_zhuluan.skill_names"),"sijyu_zhuluan")
+            and from and damage_call(from,"getMark","zhuluandamage_lun")==0 then return 1 end
+    end
+end
+
+-- Source: b6025acc ai/sijyu-ai.lua.
 sgs.ai_ajustdamage_from.sijyu_xiaowang = function(self, from, to, card, nature)
     if nature ~= sgs.DamageStruct_Fire then
         return 1
     end
 end
 
--- R47b complete fixed Xuanmeng / Zhanshi / Zuotai AI family (sijyu311–359).
 do
 
- sgs.ai_skill_invoke.sijyu_xuanmeng=true
- sgs.ai_skill_use['@@sijyu_xuanmeng']=function(self,prompt,method)
+ ai_skill_invoke.sijyu_xuanmeng=true
+ ai_skill_use['@@sijyu_xuanmeng']=function(self, prompt, request)
   -- The fixed source returns its sole zero-cost Lua SkillCard immediately;
   -- selecting this answer is the first authority boundary, not a simulation.
+  local method = request and request.handling_method
   local card=self:bindSkillCard('sijyu_xuanmeng',{},nil,nil,'#sijyu_xuanmeng')
   local plan=AIUsePlan.new();plan.card=card;return plan:toAnswer()
  end
- sgs.ai_skill_choice.sijyu_xuanmeng=function(self,choices,data)
+ ai_skill_choice.sijyu_xuanmeng=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
   local items=choices:split('+')
   local cards=sgs.QList2Table(self.player:getCards('h'))
   for _,card in ipairs(cards)do
-   if table.contains(items,card:objectName())then return card:objectName()end
+   if table.contains(items,card:objectName())then return ai_choice_result((card:objectName()), options)end
   end
-  return items[1]
+  return ai_choice_result((items[1]), options)
  end
  sgs.ai_skill_cardask['@sijyu_zhanshi']=function(self,data,pattern,target)
   if target and self:isEnemy(target) and self:damageIsEffective(target)
@@ -54,7 +65,6 @@ do
  end
 end
 
--- R47c complete fixed Sijyu Lijian family (source548–571).
 do
 
  local function current_damage(self)
@@ -76,10 +86,11 @@ do
   end
   return damage
  end
- sgs.ai_skill_invoke.sijyu_lijian=function(self,data)
+ ai_skill_invoke.sijyu_lijian=function(self, options, request)
+  local data = request and self:getDecisionData(request) or nil
   local damage=data:toDamage()
-  if not self:isFriend(damage.to)then return true end
-  return false
+  if not self:isFriend(damage.to)then return (true) or false end
+  return (false) or false
  end
  sgs.ai_skill_discard.sijyu_lijian=function(self,discard_num,min_num,optional,include_equip)
   local cards=sgs.QList2Table(self.player:getCards('he'))
@@ -99,7 +110,6 @@ do
 end
 
 
--- R47d: fixed full Qixing/Fengyi bodies, sijyu-ai.lua641–737.
 do
 
  local function manjuan(player)
@@ -180,7 +190,6 @@ do
 end
 
 
--- R49: complete fixed named damage/card-priority callbacks.
 do
 
 sgs.ai_can_damagehp.sijyu_tuodao = function(self, from, card, to)
@@ -208,7 +217,6 @@ sgs.ai_can_damagehp.sijyu_kehou = function(self, from, card, to)
 end
 
 end
--- End R49 named damage/card-priority callbacks.
 
 -- Fixed sijyu-ai.lua300–309: conditions keep their source order. The last
 -- registry truthiness check and addition happen together in the actual VM.
@@ -220,3 +228,7 @@ sgs.ai_use_revises.sijyu_qizhan=function(self,card,use)
   self:incrementNamedSourcePriority('sijyu_qizhan',card,card:getClassName())
  end
 end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+end)()

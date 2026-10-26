@@ -1,4 +1,4 @@
--- Fixed b6025acc source bodies; request-scoped readonly planning and selected payment.
+-- Source: b6025acc ai/OverseasVersion-ai.lua.
 local known = AIValue.requireKnown
 
 local function visible(self,id)
@@ -58,7 +58,6 @@ local function source_role(self,p)
 end
 local function observed_hand(self,p)
  if p:objectName()==self.player:objectName()then return known(p:getHandcards(),'owner hand')end
- -- These source loops themselves filter visible/visible_observer flags. No hidden face is inspected.
  return known(p:getKnownCards(),'observer disclosed hand')
 end
 local function fact(self,k)return known(known(self:getDecisionContext().round27_choice,'Overseas scoped context')[k],k)end
@@ -191,20 +190,21 @@ local function card_targets(self,from,card,except)
  if from:objectName()~=self.player:objectName()then ai_unsupported('foreign getCardTargets is not an owner query','OverseasVersion.targets')end
  local values=AIList.new({});for _,name in ipairs(fact(self,'card_target_names'))do values:append(player(self,name))end;return values
 end
-local function scoped_data(self,key,data)
+local function scoped_input(self,key,options,request)
  local kind=({ov_fupan='String',ov_enyuan='String',ov_yuzhang='String',ov_xinshou='String',ov_qiji2='String',ov_qiaosi='IntListCount'})[key]
- if not kind then return data end
+ if not kind then return options,request end
  local row=known(fact(self,'data'),'Overseas source data')
  if row.kind~=kind then ai_unsupported('source scalar QVariant kind mismatch',key)end
- local methods={}
+ -- Preserve the explicitly supplied inquiry; absent input stays empty.
+ local context=request and self:getDecisionContext(request)or{}
  if kind=='String'then
   if type(row.value)~='string'then ai_unsupported('source string is unknown',key)end
-  methods.toString=function()return row.value end
+  context.value=row.value
  else
   if type(row.count)~='number'or row.count<0 or row.count%1~=0 then ai_unsupported('source list length is unknown',key)end
-  methods.toIntList=function()return setmetatable({length=function()return row.count end},{__index=function()ai_unsupported('only source IntList length is disclosed',key)end})end
+  context.int_list_count=row.count
  end
- return setmetatable(methods,{__index=function(_,k)return data and data[k]end})
+ return self:inquiryInput('skill_invoke',key,context,options)
 end
 local function peiqi_state(self)
  -- Same per-viewer self.peiqiData slot used by the already audited common
@@ -236,7 +236,7 @@ end
 sgs.ai_skill_cardask["ov_danfa0"] = function(self,data,pattern)
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	local ids = self.player:getPile("ov_dan")
 	for _,h in sgs.list(cards)do
 		if self.player:getPhase()==sgs.Player_Start
@@ -260,7 +260,9 @@ end
 
 
 remember_function('ai_skill_cardask','ov_danfa0',sgs.ai_skill_cardask['ov_danfa0'],{},{})
-sgs.ai_fill_skill["ov_lingbao"] = function(self,inclusive,request)
+ai_fill_skill["ov_lingbao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getPile("ov_dan")
 	if cards:length()<2 then return end
 	local valid,suit = {},sgs.IntList()
@@ -322,14 +324,14 @@ sgs.ai_fill_skill["ov_lingbao"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_lingbao',sgs.ai_fill_skill['ov_lingbao'],{'ov_lingbao_to'},{'ov_lingbao_to'})
-sgs.ai_skill_use_func["#ov_lingbaoCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_lingbao',ai_fill_skill['ov_lingbao'],{'ov_lingbao_to'},{'ov_lingbao_to'})
+ai_card_use["#ov_lingbaoCard"] = function(self, card, use, request)
 	use.card = card
 	use.to = self.ov_lingbao_to
 end
 
 
-remember_function('ai_skill_use_func','#ov_lingbaoCard',sgs.ai_skill_use_func['#ov_lingbaoCard'],{'ov_lingbao_to'},{})
+remember_function('ai_card_use','#ov_lingbaoCard',ai_card_use['#ov_lingbaoCard'],{'ov_lingbao_to'},{})
 sgs.ai_use_value.ov_lingbaoCard = 6.4
 sgs.ai_use_priority.ov_lingbaoCard = 0.4
 
@@ -350,22 +352,25 @@ sgs.ai_keep_value.OvChongyingshenfu = 11
 sgs.ai_keep_value.OvTaijifuchen = 11
 sgs.ai_keep_value.OvLingbaoxianhu = 11
 
-sgs.ai_skill_invoke.ov_miaolve = function(self,data)
-	return true
+ai_skill_invoke.ov_miaolve = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_miaolve',sgs.ai_skill_invoke['ov_miaolve'],{},{})
-sgs.ai_skill_choice.ov_miaolve = function(self,choices)
+remember_function('ai_skill_invoke','ov_miaolve',ai_skill_invoke['ov_miaolve'],{},{})
+ai_skill_choice.ov_miaolve = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_miaolve',sgs.ai_skill_choice['ov_miaolve'],{},{})
+remember_function('ai_skill_choice','ov_miaolve',ai_skill_choice['ov_miaolve'],{},{})
 sgs.ai_skill_cardask["ov_yingjia0"] = function(self,data,pattern)
     local cards = self.player:getCards("h")
-    cards = self:sortByKeepValue(cards,nil,true) -- 按保留值排序
+    cards = self:sortByKeepValue(cards,nil,true)
 	self.friends = self:sort(self.friends,"handcard",true)
 	for _,fp in sgs.list(self.friends)do
 		if fp:getHandcardNum()>1
@@ -382,10 +387,11 @@ end
 
 remember_function('ai_skill_cardask','ov_yingjia0',sgs.ai_skill_cardask['ov_yingjia0'],{},{})
 function SmartAIView:useCardMantianguohai(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	local extraTarget = 1+extra_targets(self,card)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	self.enemies = self:sort(self.enemies,"hp")
-	for _,ep in sgs.list(self.enemies)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if is_current(use,ep) then continue end
 		if not use.to:contains(ep) and can_to(self,card,self.player,ep)
 		and self:doDisCard(ep,"ej") and self.player:getHandcardNum()>1
@@ -396,7 +402,7 @@ function SmartAIView:useCardMantianguohai(card,use)
 			then return end
 		end
 	end
-	for _,ep in sgs.list(self.friends_noself)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.friends_noself, recommend))do
 		if is_current(use,ep) then continue end
 		if not use.to:contains(ep) and can_to(self,card,self.player,ep)
 		and self:doDisCard(ep,"ej") and self.player:getHandcardNum()>1
@@ -407,7 +413,7 @@ function SmartAIView:useCardMantianguohai(card,use)
 			then return end
 		end
 	end
-	for _,ep in sgs.list(self.friends_noself)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.friends_noself, recommend))do
 		if is_current(use,ep) then continue end
 		if not use.to:contains(ep) and can_to(self,card,self.player,ep)
 		and ep:getHandcardNum()>0 and self.player:getHandcardNum()>1
@@ -419,7 +425,7 @@ function SmartAIView:useCardMantianguohai(card,use)
 		end
 	end
 	self.enemies = self:sort(self.enemies,"card",true)
-	for _,ep in sgs.list(self.enemies)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if is_current(use,ep) then continue end
 		if not use.to:contains(ep) and can_to(self,card,self.player,ep)
 		and ep:getCardCount()>0 and self.player:getHandcardNum()>1
@@ -430,7 +436,7 @@ function SmartAIView:useCardMantianguohai(card,use)
 			then return end
 		end
 	end
-	for _,ep in sgs.list(self.room:getOtherPlayers(self.player))do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.room:getOtherPlayers(self.player), recommend))do
 		if is_current(use,ep) then continue end
 		if not use.to:contains(ep) and can_to(self,card,self.player,ep)
 		and ep:getCardCount()>0 and self.player:getHandcardNum()>1
@@ -442,6 +448,7 @@ function SmartAIView:useCardMantianguohai(card,use)
 		end
 	end
 end
+sgs.registerSkillCardType("Mantianguohai", "decrease")
 
 remember_function('SmartAIView','useCardMantianguohai',SmartAIView['useCardMantianguohai'],{},{})
 sgs.ai_use_priority.Mantianguohai = 5.4
@@ -481,7 +488,7 @@ remember_function('ai_nullification','Mantianguohai',sgs.ai_nullification['Manti
 sgs.ai_skill_cardask["ov_cuijin0"] = function(self,data,pattern)
 	local use = data:toCardUse()
     local cards = self.player:getCards("he")
-    cards = self:sortByKeepValue(cards,nil,true) -- 按保留值排序
+    cards = self:sortByKeepValue(cards,nil,true)
 	local can = #cards>1 and cards[1]:getKnownEffectiveId()
 	if self:isEnemy(use.from)
 	then
@@ -512,13 +519,15 @@ end
 
 
 remember_function('ai_skill_cardask','ov_cuijin0',sgs.ai_skill_cardask['ov_cuijin0'],{},{})
-sgs.ai_fill_skill["ov_beini"] = function(self,inclusive,request)
+ai_fill_skill["ov_beini"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_beiniCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_beini',sgs.ai_fill_skill['ov_beini'],{},{})
-sgs.ai_skill_use_func["#ov_beiniCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_beini',ai_fill_skill['ov_beini'],{},{})
+ai_card_use["#ov_beiniCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	dynamic(self,'ai_skill_invoke','ov_beini',false)
 	for _,ep in sgs.list(self.enemies)do
@@ -554,16 +563,17 @@ sgs.ai_skill_use_func["#ov_beiniCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_beiniCard',sgs.ai_skill_use_func['#ov_beiniCard'],{},{})
+remember_function('ai_card_use','#ov_beiniCard',ai_card_use['#ov_beiniCard'],{},{})
 sgs.ai_use_value.ov_beiniCard = 2.4
 sgs.ai_use_priority.ov_beiniCard = 4.8
 
-sgs.ai_skill_invoke.ov_dingfa = function(self,data)
-	return true
+ai_skill_invoke.ov_dingfa = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_dingfa',sgs.ai_skill_invoke['ov_dingfa'],{},{})
+remember_function('ai_skill_invoke','ov_dingfa',ai_skill_invoke['ov_dingfa'],{},{})
 sgs.ai_skill_playerchosen.ov_dingfa = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -581,20 +591,22 @@ end
 remember_function('ai_skill_playerchosen','ov_dingfa',sgs.ai_skill_playerchosen['ov_dingfa'],{},{})
 sgs.ai_playerchosen_intention.ov_dingfa = 55
 
-sgs.ai_skill_choice.ov_dingfa = function(self,choices)
+ai_skill_choice.ov_dingfa = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	for _,ep in sgs.list(self.enemies)do
-		if ep:getHp()<2 then return items[1] end
+		if ep:getHp()<2 then return ai_choice_result((items[1]), options) end
 	end
-	return #items>1 and self:isWeak() and items[2] or items[1]
+	return ai_choice_result((#items>1 and self:isWeak() and items[2] or items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_dingfa',sgs.ai_skill_choice['ov_dingfa'],{},{})
-sgs.ai_skill_use["@@ov_zhenjun"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_dingfa',ai_skill_choice['ov_dingfa'],{},{})
+ai_skill_use["@@ov_zhenjun"] = function(self, prompt, request)
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
     for _,fp in sgs.list(self.friends_noself)do
 		for _,p in sgs.list(siblings(self,true))do
 			if self:isEnemy(p) and fp:inMyAttackRange(p)
@@ -622,7 +634,7 @@ sgs.ai_skill_use["@@ov_zhenjun"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_zhenjun',sgs.ai_skill_use['@@ov_zhenjun'],{},{})
+remember_function('ai_skill_use','@@ov_zhenjun',ai_skill_use['@@ov_zhenjun'],{},{})
 sgs.ai_skill_playerchosen.ov_zhenjun = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -640,13 +652,15 @@ end
 remember_function('ai_skill_playerchosen','ov_zhenjun',sgs.ai_skill_playerchosen['ov_zhenjun'],{},{})
 sgs.ai_playerchosen_intention.ov_zhenjun = 55
 
-sgs.ai_fill_skill["ov_weipo"] = function(self,inclusive,request)
+ai_fill_skill["ov_weipo"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_weipoCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_weipo',sgs.ai_fill_skill['ov_weipo'],{},{})
-sgs.ai_skill_use_func["#ov_weipoCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_weipo',ai_fill_skill['ov_weipo'],{},{})
+ai_card_use["#ov_weipoCard"] = function(self, card, use, request)
 	local slashs = self:getCards("Slash")
 	if #slashs>0
 	then
@@ -673,11 +687,13 @@ sgs.ai_skill_use_func["#ov_weipoCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_weipoCard',sgs.ai_skill_use_func['#ov_weipoCard'],{},{})
+remember_function('ai_card_use','#ov_weipoCard',ai_card_use['#ov_weipoCard'],{},{})
 sgs.ai_use_value.ov_weipoCard = 5.4
 sgs.ai_use_priority.ov_weipoCard = 3.8
 
-sgs.ai_fill_skill["ov_weipobf"] = function(self,inclusive,request)
+ai_fill_skill["ov_weipobf"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	cards = self:sortByKeepValue(cards)
   	for _,c in sgs.list(cards)do
@@ -690,8 +706,8 @@ sgs.ai_fill_skill["ov_weipobf"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_weipobf',sgs.ai_fill_skill['ov_weipobf'],{},{})
-sgs.ai_skill_use_func["#ov_weipobfCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_weipobf',ai_fill_skill['ov_weipobf'],{},{})
+ai_card_use["#ov_weipobfCard"] = function(self, card, use, request)
 	for _,ep in sgs.list(self.room:findPlayersBySkillName("ov_weipo"))do
 		if self.player:getStrategyMark("&ov_weipo+#"..ep:objectName())>0
 		and self.player:getStrategyMark(ep:objectName().."ov_weipo-PlayClear")<1
@@ -704,14 +720,14 @@ sgs.ai_skill_use_func["#ov_weipobfCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_weipobfCard',sgs.ai_skill_use_func['#ov_weipobfCard'],{},{})
+remember_function('ai_card_use','#ov_weipobfCard',ai_card_use['#ov_weipobfCard'],{},{})
 sgs.ai_use_value.ov_weipobfCard = 2.4
 sgs.ai_use_priority.ov_weipobfCard = 3.8
 
 sgs.ai_skill_cardask["ov_chenshi0"] = function(self,data,pattern)
     local cards = self.player:getCards("he")
 	if cards:length()<2 then return "." end
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	local owner = data:toPlayer()
 	if not self:isEnemy(owner) then
 		return cards[1]:getKnownEffectiveId()
@@ -723,7 +739,7 @@ remember_function('ai_skill_cardask','ov_chenshi0',sgs.ai_skill_cardask['ov_chen
 sgs.ai_skill_cardask["ov_chenshi1"] = function(self,data,pattern)
     local cards = self.player:getCards("he")
 	if cards:length()<1 then return "." end
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	local owner = data:toPlayer()
 	if not self:isEnemy(owner) or self:isWeak() then
 		return cards[1]:getKnownEffectiveId()
@@ -740,10 +756,11 @@ end
 
 remember_function('ai_can_damagehp','ov_moushi',sgs.ai_can_damagehp['ov_moushi'],{},{})
 function SmartAIView:useCardBinglinchengxia(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	self.enemies = self:sort(self.enemies,"hp")
 	local extraTarget = extra_targets(self,card)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-	for _,ep in sgs.list(self.enemies)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if is_current(use,ep) then continue end
 		if can_to(self,card,self.player,ep)
 		and self:isGoodTarget(ep,self.enemies,clone(self))
@@ -754,7 +771,7 @@ function SmartAIView:useCardBinglinchengxia(card,use)
 			then return end
 		end
 	end
-	for _,ep in sgs.list(self.room:getOtherPlayers(self.player))do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.room:getOtherPlayers(self.player), recommend))do
 		if is_current(use,ep) then continue end
 		if can_to(self,card,self.player,ep) and not self:isFriend(ep)
 		and self:isGoodTarget(ep,self.enemies,clone(self))
@@ -790,30 +807,40 @@ end
 
 
 remember_function('ai_nullification','Binglinchengxia',sgs.ai_nullification['Binglinchengxia'],{},{})
-sgs.ai_skill_choice.ov_weipo = function(self,choices)
+ai_skill_choice.ov_weipo = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"_ov_binglinchengxia")
-	then return "_ov_binglinchengxia" end
+	then return ai_choice_result(("_ov_binglinchengxia"), options) end
 	for c,cn in sgs.list(items)do
 		c = pattern_card(self,cn,nil,true)
 		if c and c:isAvailable(self.player)
-		then return cn end
+		then return ai_choice_result((cn), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_weipo',sgs.ai_skill_choice['ov_weipo'],{},{})
-sgs.ai_skill_invoke.ov_fengpo = function(self,data)
+remember_function('ai_skill_choice','ov_weipo',ai_skill_choice['ov_weipo'],{},{})
+ai_skill_invoke.ov_fengpo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_fengpo',sgs.ai_skill_invoke['ov_fengpo'],{},{})
-sgs.ai_skill_choice.ov_fengpo = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_fengpo',ai_skill_invoke['ov_fengpo'],{},{})
+ai_skill_choice.ov_fengpo = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local use = data:toCardUse()
 	local items = choices:split("+")
 	local x = 0
@@ -823,47 +850,57 @@ sgs.ai_skill_choice.ov_fengpo = function(self,choices,data)
 		then x = x+1 end
 		if c:isKindOf("Jink")
 		and use.card:isKindOf("Slash")
-		then return items[1] end
+		then return ai_choice_result((items[1]), options) end
 	end
-	return items[2]
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_fengpo',sgs.ai_skill_choice['ov_fengpo'],{},{})
-sgs.ai_skill_invoke.ov_moukui = function(self,data)
+remember_function('ai_skill_choice','ov_fengpo',ai_skill_choice['ov_fengpo'],{},{})
+ai_skill_invoke.ov_moukui = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_moukui',sgs.ai_skill_invoke['ov_moukui'],{},{})
-sgs.ai_skill_choice.ov_moukui = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_moukui',ai_skill_invoke['ov_moukui'],{},{})
+ai_skill_choice.ov_moukui = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if target and not self:isFriend(target)
-	and #items>2 then return items[3] end
-	return self:isFriend(target) and items[1] or #items>1 and items[2]
+	and #items>2 then return ai_choice_result((items[3]), options) end
+	return ai_choice_result((self:isFriend(target) and items[1] or #items>1 and items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_moukui',sgs.ai_skill_choice['ov_moukui'],{},{})
-sgs.ai_skill_choice.ov_mouzhu = function(self,choices)
+remember_function('ai_skill_choice','ov_moukui',ai_skill_choice['ov_moukui'],{},{})
+ai_skill_choice.ov_mouzhu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	return self:getCardsNum("Jink")>0 and items[1] or #items>1 and items[2]
+	return ai_choice_result((self:getCardsNum("Jink")>0 and items[1] or #items>1 and items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_mouzhu',sgs.ai_skill_choice['ov_mouzhu'],{},{})
-sgs.ai_fill_skill["ov_mouzhu"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_mouzhu',ai_skill_choice['ov_mouzhu'],{},{})
+ai_fill_skill["ov_mouzhu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_mouzhuCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_mouzhu',sgs.ai_fill_skill['ov_mouzhu'],{},{})
-sgs.ai_skill_use_func["#ov_mouzhuCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_mouzhu',ai_fill_skill['ov_mouzhu'],{},{})
+ai_card_use["#ov_mouzhuCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,ep in sgs.list(self.enemies)do
 		if ep:getHp()>=self.player:getHp()
@@ -887,14 +924,14 @@ sgs.ai_skill_use_func["#ov_mouzhuCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_mouzhuCard',sgs.ai_skill_use_func['#ov_mouzhuCard'],{},{})
+remember_function('ai_card_use','#ov_mouzhuCard',ai_card_use['#ov_mouzhuCard'],{},{})
 sgs.ai_use_value.ov_mouzhuCard = 3.4
 sgs.ai_use_priority.ov_mouzhuCard = 4.8
 
 sgs.ai_skill_cardask["ov_mouzhu0"] = function(self,data,pattern)
 	local owner = data:toPlayer()
     local cards = self.player:getCards("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	if self:isFriend(owner) or self:isWeak()
 	then
 		return #cards>0 and cards[1]:getKnownEffectiveId()
@@ -903,7 +940,7 @@ end
 
 
 remember_function('ai_skill_cardask','ov_mouzhu0',sgs.ai_skill_cardask['ov_mouzhu0'],{},{})
-sgs.ai_skill_use["@@ov_yanhuo"] = function(self,prompt)
+ai_skill_use["@@ov_yanhuo"] = function(self, prompt, request)
 	local valid = {}
 	local destlist = siblings(self,true)
 	for _,friend in sgs.list(destlist)do
@@ -935,7 +972,7 @@ sgs.ai_skill_use["@@ov_yanhuo"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_yanhuo',sgs.ai_skill_use['@@ov_yanhuo'],{},{})
+remember_function('ai_skill_use','@@ov_yanhuo',ai_skill_use['@@ov_yanhuo'],{},{})
 sgs.ai_use_revises.ov_shenxing = function(self,card,use)
 	if card:isKindOf("DefensiveHorse")
 	then return false
@@ -946,7 +983,9 @@ end
 
 
 remember_function('ai_use_revises','ov_shenxing',sgs.ai_use_revises['ov_shenxing'],{},{})
-sgs.ai_fill_skill["ov_daoji"] = function(self,inclusive,request)
+ai_fill_skill["ov_daoji"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	cards = self:sortByKeepValue(cards)
 	local toids = {}
@@ -959,8 +998,8 @@ sgs.ai_fill_skill["ov_daoji"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_daoji',sgs.ai_fill_skill['ov_daoji'],{},{})
-sgs.ai_skill_use_func["#ov_daojiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_daoji',ai_fill_skill['ov_daoji'],{},{})
+ai_card_use["#ov_daojiCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,ep in sgs.list(self.enemies)do
 		if self:doDisCard(ep,"e")
@@ -990,11 +1029,12 @@ sgs.ai_skill_use_func["#ov_daojiCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_daojiCard',sgs.ai_skill_use_func['#ov_daojiCard'],{},{})
+remember_function('ai_card_use','#ov_daojiCard',ai_card_use['#ov_daojiCard'],{},{})
 sgs.ai_use_value.ov_daojiCard = 6.4
 sgs.ai_use_priority.ov_daojiCard = 4.8
 
-sgs.ai_skill_invoke.ov_hengjiang = function(self,data)
+ai_skill_invoke.ov_hengjiang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	local n = 0
     for _,target in sgs.list(self.room:getAllPlayers())do
@@ -1010,11 +1050,11 @@ sgs.ai_skill_invoke.ov_hengjiang = function(self,data)
 			then n = n+1 end
 		end
 	end
-	return n>0
+	return (n>0) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_hengjiang',sgs.ai_skill_invoke['ov_hengjiang'],{},{})
+remember_function('ai_skill_invoke','ov_hengjiang',ai_skill_invoke['ov_hengjiang'],{},{})
 sgs.ai_skill_playerchosen.ov_gezhi = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -1031,18 +1071,23 @@ end
 remember_function('ai_skill_playerchosen','ov_gezhi',sgs.ai_skill_playerchosen['ov_gezhi'],{},{})
 sgs.ai_playerchosen_intention.ov_gezhi = -55
 
-sgs.ai_skill_invoke.ov_yujue = function(self,data)
+ai_skill_invoke.ov_yujue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
 		self["ov_yujue_to_"..target:objectName()] = self:isFriend(target)
-		return self:isFriend(target)
+		return (self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_yujue',sgs.ai_skill_invoke['ov_yujue'],{},{})
-sgs.ai_fill_skill["ov_yujuevs"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_yujue',ai_skill_invoke['ov_yujue'],{},{})
+ai_fill_skill["ov_yujuevs"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards)
 	for n,lh in sgs.list(self.room:findPlayersBySkillName("ov_yujue"))do
@@ -1078,8 +1123,8 @@ sgs.ai_fill_skill["ov_yujuevs"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_yujuevs',sgs.ai_fill_skill['ov_yujuevs'],{'ov_yujuevs_to'},{'ov_yujuevs_to'})
-sgs.ai_skill_use_func["#ov_yujuevsCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_yujuevs',ai_fill_skill['ov_yujuevs'],{'ov_yujuevs_to'},{'ov_yujuevs_to'})
+ai_card_use["#ov_yujuevsCard"] = function(self, card, use, request)
 	if self.ov_yujuevs_to
 	then
 		use.card = card
@@ -1089,35 +1134,37 @@ sgs.ai_skill_use_func["#ov_yujuevsCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_yujuevsCard',sgs.ai_skill_use_func['#ov_yujuevsCard'],{'ov_yujuevs_to'},{})
+remember_function('ai_card_use','#ov_yujuevsCard',ai_card_use['#ov_yujuevsCard'],{'ov_yujuevs_to'},{})
 sgs.ai_use_value.ov_yujuevsCard = 5.4
 sgs.ai_use_priority.ov_yujuevsCard = 4.8
 
-sgs.ai_skill_invoke.ov_fengqi = function(self,data)
-	return true
+ai_skill_invoke.ov_fengqi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_fengqi',sgs.ai_skill_invoke['ov_fengqi'],{},{})
+remember_function('ai_skill_invoke','ov_fengqi',ai_skill_invoke['ov_fengqi'],{},{})
 sgs.ai_skill_cardask["ov_gezhi0"] = function(self,data,pattern)
     local cards = self.player:getCards("h")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	return #cards>1 and cards[1]:getKnownEffectiveId()
 	or #cards>0 and self:getKeepValue(cards[1])<3 and cards[1]:getKnownEffectiveId()
 end
 
 
 remember_function('ai_skill_cardask','ov_gezhi0',sgs.ai_skill_cardask['ov_gezhi0'],{},{})
-sgs.ai_skill_invoke.ov_lingfa = function(self,data)
-	return true
+ai_skill_invoke.ov_lingfa = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_lingfa',sgs.ai_skill_invoke['ov_lingfa'],{},{})
+remember_function('ai_skill_invoke','ov_lingfa',ai_skill_invoke['ov_lingfa'],{},{})
 sgs.ai_skill_cardask["ov_lingfa1"] = function(self,data,pattern)
 	local owner = data:toPlayer()
     local cards = self.player:getCards("he")
-    cards = self:sortByKeepValue(cards,nil,true) -- 按保留值排序
+    cards = self:sortByKeepValue(cards,nil,true)
 	if self:canDamageHp(owner) and not self:isWeak() then return "." end
 	return #cards>0 and cards[1]:getKnownEffectiveId() or "."
 end
@@ -1127,7 +1174,7 @@ remember_function('ai_skill_cardask','ov_lingfa1',sgs.ai_skill_cardask['ov_lingf
 sgs.ai_skill_cardask["ov_lingfa2"] = function(self,data,pattern)
 	local owner = data:toPlayer()
     local cards = self.player:getCards("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	if self:canDamageHp(owner) and not self:isWeak() then return "." end
 	if self:isFriend(owner) or self:isWeak()
 	then
@@ -1137,42 +1184,48 @@ end
 
 
 remember_function('ai_skill_cardask','ov_lingfa2',sgs.ai_skill_cardask['ov_lingfa2'],{},{})
-sgs.ai_skill_invoke.ov_zhian = function(self,data)
+ai_skill_invoke.ov_zhian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_zhian',sgs.ai_skill_invoke['ov_zhian'],{},{})
-sgs.ai_skill_choice.ov_zhian = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_zhian',ai_skill_invoke['ov_zhian'],{},{})
+ai_skill_choice.ov_zhian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local use = data:toCardUse()
 	local items = choices:split("+")
 	if self:isEnemy(use.from)
 	then
 		if self:isWeak(use.from)
-		then return items[#items]
+		then return ai_choice_result((items[#items]), options)
 		elseif use.card:isKindOf("DelayedTrick")
 		and self:isFriend(use.to:at(0))
 		and self.player:getHandcardNum()>2
-		then return items[2]
+		then return ai_choice_result((items[2]), options)
 		elseif use.card:isKindOf("EquipCard")
 		and self.player:getHandcardNum()>2
-		then return items[2] end
+		then return ai_choice_result((items[2]), options) end
 	elseif not self:isFriend(use.from)
 	and use.card:isKindOf("DelayedTrick")
 	and self:isFriend(use.to:at(0))
-	then return items[2] end
-	return items[1]
+	then return ai_choice_result((items[2]), options) end
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_zhian',sgs.ai_skill_choice['ov_zhian'],{},{})
+remember_function('ai_skill_choice','ov_zhian',ai_skill_choice['ov_zhian'],{},{})
 sgs.ai_skill_cardask["ov_fengji0"] = function(self,data,pattern)
     local cards = self.player:getCards("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
   	for n,c in sgs.list(cards)do
 		n = self:getRestCardsNum(c:getClassName())
 		if n>1
@@ -1186,12 +1239,13 @@ end
 
 
 remember_function('ai_skill_cardask','ov_fengji0',sgs.ai_skill_cardask['ov_fengji0'],{},{})
-sgs.ai_skill_invoke.ov_budao = function(self,data)
-	return self.player:getLostHp()>1
+ai_skill_invoke.ov_budao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self.player:getLostHp()>1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_budao',sgs.ai_skill_invoke['ov_budao'],{},{})
+remember_function('ai_skill_invoke','ov_budao',ai_skill_invoke['ov_budao'],{},{})
 sgs.ai_skill_playerchosen.ov_budao = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp",true)
@@ -1208,7 +1262,9 @@ end
 remember_function('ai_skill_playerchosen','ov_budao',sgs.ai_skill_playerchosen['ov_budao'],{},{})
 sgs.ai_playerchosen_intention.ov_budao = -55
 
-sgs.ai_fill_skill["ov_sfzhouhu"] = function(self,inclusive,request)
+ai_fill_skill["ov_sfzhouhu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards,nil,true)
    	for i,c in sgs.list(cards)do
@@ -1241,17 +1297,19 @@ sgs.ai_fill_skill["ov_sfzhouhu"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_sfzhouhu',sgs.ai_fill_skill['ov_sfzhouhu'],{},{})
-sgs.ai_skill_use_func["#ov_sfzhouhuCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_sfzhouhu',ai_fill_skill['ov_sfzhouhu'],{},{})
+ai_card_use["#ov_sfzhouhuCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_sfzhouhuCard',sgs.ai_skill_use_func['#ov_sfzhouhuCard'],{},{})
+remember_function('ai_card_use','#ov_sfzhouhuCard',ai_card_use['#ov_sfzhouhuCard'],{},{})
 sgs.ai_use_value.ov_sfzhouhuCard = 3.4
 sgs.ai_use_priority.ov_sfzhouhuCard = -0.8
 
-sgs.ai_fill_skill["ov_sffengqi"] = function(self,inclusive,request)
+ai_fill_skill["ov_sffengqi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards,nil,true)
    	for i,c in sgs.list(cards)do
@@ -1274,17 +1332,19 @@ sgs.ai_fill_skill["ov_sffengqi"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_sffengqi',sgs.ai_fill_skill['ov_sffengqi'],{},{})
-sgs.ai_skill_use_func["#ov_sffengqiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_sffengqi',ai_fill_skill['ov_sffengqi'],{},{})
+ai_card_use["#ov_sffengqiCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_sffengqiCard',sgs.ai_skill_use_func['#ov_sffengqiCard'],{},{})
+remember_function('ai_card_use','#ov_sffengqiCard',ai_card_use['#ov_sffengqiCard'],{},{})
 sgs.ai_use_value.ov_sffengqiCard = 3.4
 sgs.ai_use_priority.ov_sffengqiCard = -0.8
 
-sgs.ai_fill_skill["ov_sffengqi"] = function(self,inclusive,request)
+ai_fill_skill["ov_sffengqi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards,nil,true)
    	for i,c in sgs.list(cards)do
@@ -1307,17 +1367,19 @@ sgs.ai_fill_skill["ov_sffengqi"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_sffengqi',sgs.ai_fill_skill['ov_sffengqi'],{},{})
-sgs.ai_skill_use_func["#ov_sffengqiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_sffengqi',ai_fill_skill['ov_sffengqi'],{},{})
+ai_card_use["#ov_sffengqiCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_sffengqiCard',sgs.ai_skill_use_func['#ov_sffengqiCard'],{},{})
+remember_function('ai_card_use','#ov_sffengqiCard',ai_card_use['#ov_sffengqiCard'],{},{})
 sgs.ai_use_value.ov_sffengqiCard = 3.4
 sgs.ai_use_priority.ov_sffengqiCard = -0.8
 
-sgs.ai_fill_skill["ov_gongqi"] = function(self,inclusive,request)
+ai_fill_skill["ov_gongqi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards,nil,true)
   	for i,c in sgs.list(cards)do
@@ -1341,13 +1403,13 @@ sgs.ai_fill_skill["ov_gongqi"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_gongqi',sgs.ai_fill_skill['ov_gongqi'],{},{})
-sgs.ai_skill_use_func["#ov_gongqiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_gongqi',ai_fill_skill['ov_gongqi'],{},{})
+ai_card_use["#ov_gongqiCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_gongqiCard',sgs.ai_skill_use_func['#ov_gongqiCard'],{},{})
+remember_function('ai_card_use','#ov_gongqiCard',ai_card_use['#ov_gongqiCard'],{},{})
 sgs.ai_use_value.ov_gongqiCard = 3.4
 sgs.ai_use_priority.ov_gongqiCard = 3.8
 
@@ -1379,13 +1441,15 @@ end
 remember_function('ai_skill_playerchosen','ov_gongqi',sgs.ai_skill_playerchosen['ov_gongqi'],{},{})
 sgs.ai_playerchosen_intention.ov_gongqi = 55
 
-sgs.ai_fill_skill["ov_jiefan"] = function(self,inclusive,request)
+ai_fill_skill["ov_jiefan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_jiefanCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_jiefan',sgs.ai_fill_skill['ov_jiefan'],{},{})
-sgs.ai_skill_use_func["#ov_jiefanCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_jiefan',ai_fill_skill['ov_jiefan'],{},{})
+ai_card_use["#ov_jiefanCard"] = function(self, card, use, request)
 	self.friends = self:sort(self.friends,"hp")
 	for n,ep in sgs.list(self.friends)do
 		n = 0
@@ -1404,17 +1468,19 @@ sgs.ai_skill_use_func["#ov_jiefanCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_jiefanCard',sgs.ai_skill_use_func['#ov_jiefanCard'],{},{})
+remember_function('ai_card_use','#ov_jiefanCard',ai_card_use['#ov_jiefanCard'],{},{})
 sgs.ai_use_value.ov_jiefanCard = 4.4
 sgs.ai_use_priority.ov_jiefanCard = 4.8
 
-sgs.ai_fill_skill["ov_fuzuan"] = function(self,inclusive,request)
+ai_fill_skill["ov_fuzuan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_fuzuanCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_fuzuan',sgs.ai_fill_skill['ov_fuzuan'],{},{})
-sgs.ai_skill_use_func["#ov_fuzuanCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_fuzuan',ai_fill_skill['ov_fuzuan'],{},{})
+ai_card_use["#ov_fuzuanCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard",true)
 	self.friends = self:sort(self.friends,"hp")
 	if self:getPriorTurnUseCards()
@@ -1497,11 +1563,11 @@ sgs.ai_skill_use_func["#ov_fuzuanCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_fuzuanCard',sgs.ai_skill_use_func['#ov_fuzuanCard'],{},{})
+remember_function('ai_card_use','#ov_fuzuanCard',ai_card_use['#ov_fuzuanCard'],{},{})
 sgs.ai_use_value.ov_fuzuanCard = 2.4
 sgs.ai_use_priority.ov_fuzuanCard = 3.8
 
-sgs.ai_skill_use["@@ov_fuzuan"] = function(self,prompt)
+ai_skill_use["@@ov_fuzuan"] = function(self, prompt, request)
 	local destlist = self.room:getAlivePlayers()
     destlist = self:sort(destlist,"hp")
 	for n,p in sgs.list(destlist)do
@@ -1527,13 +1593,14 @@ sgs.ai_skill_use["@@ov_fuzuan"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_fuzuan',sgs.ai_skill_use['@@ov_fuzuan'],{},{})
-sgs.ai_skill_invoke.ov_congqi = function(self,data)
-	return #self.friends_noself>0
+remember_function('ai_skill_use','@@ov_fuzuan',ai_skill_use['@@ov_fuzuan'],{},{})
+ai_skill_invoke.ov_congqi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.friends_noself>0) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_congqi',sgs.ai_skill_invoke['ov_congqi'],{},{})
+remember_function('ai_skill_invoke','ov_congqi',ai_skill_invoke['ov_congqi'],{},{})
 sgs.ai_skill_playerchosen.ov_congqi = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp",true)
@@ -1551,33 +1618,44 @@ end
 remember_function('ai_skill_playerchosen','ov_congqi',sgs.ai_skill_playerchosen['ov_congqi'],{},{})
 sgs.ai_playerchosen_intention.ov_congqi = -55
 
-sgs.ai_skill_choice.ov_fuzuan = function(self,choices)
+ai_skill_choice.ov_fuzuan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"ov_feifu")
-	then return "ov_feifu" end
+	then return ai_choice_result(("ov_feifu"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_fuzuan',sgs.ai_skill_choice['ov_fuzuan'],{},{})
-sgs.ai_skill_invoke.ov_zhenxi = function(self,data)
+remember_function('ai_skill_choice','ov_fuzuan',ai_skill_choice['ov_fuzuan'],{},{})
+ai_skill_invoke.ov_zhenxi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
-		and target:getCardCount()>0
+		return (not self:isFriend(target)
+		and target:getCardCount()>0) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_zhenxi',sgs.ai_skill_invoke['ov_zhenxi'],{},{})
-sgs.ai_skill_choice.ov_zhenxi = function(self,choices)
+remember_function('ai_skill_invoke','ov_zhenxi',ai_skill_invoke['ov_zhenxi'],{},{})
+ai_skill_choice.ov_zhenxi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if #items>2 then return items[3] end
+	if #items>2 then return ai_choice_result((items[3]), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_zhenxi',sgs.ai_skill_choice['ov_zhenxi'],{},{})
-sgs.ai_skill_use["@@ov_kaiji"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_zhenxi',ai_skill_choice['ov_zhenxi'],{},{})
+ai_skill_use["@@ov_kaiji"] = function(self, prompt, request)
 	local valid = {}
 	local destlist = self.room:getAllPlayers()
     destlist = self:sort(destlist,"hp")
@@ -1597,52 +1675,58 @@ sgs.ai_skill_use["@@ov_kaiji"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_kaiji',sgs.ai_skill_use['@@ov_kaiji'],{},{})
-sgs.ai_skill_invoke.ov_shepan = function(self,data)
+remember_function('ai_skill_use','@@ov_kaiji',ai_skill_use['@@ov_kaiji'],{},{})
+ai_skill_invoke.ov_shepan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target then return true end
+	if target then return (true) or false end
 	local use = tag(self,"ov_shepan","CardUse")
 	if use and use.card
 	then
 		if use.card:isDamageCard()
-		then return true
+		then return (true) or false
 		elseif use.to:contains(use.from)
-		then return false
+		then return (false) or false
 		elseif self:isEnemy(use.from)
-		then return true end
+		then return (true) or false end
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_shepan',sgs.ai_skill_invoke['ov_shepan'],{},{})
-sgs.ai_skill_choice.ov_shepan = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_shepan',ai_skill_invoke['ov_shepan'],{},{})
+ai_skill_choice.ov_shepan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local use = data:toCardUse()
 	if self:isFriend(use.from)
 	then
 		if self:doDisCard(use.from,"ej")
-		then return items[2]
+		then return ai_choice_result((items[2]), options)
 		elseif use.card:isDamageCard()
 		and self:isWeak()
 		then
 			local n = use.from:getHandcardNum()-self.player:getHandcardNum()
-			if n==1 then return items[2] end
+			if n==1 then return ai_choice_result((items[2]), options) end
 		end
 	else
 		if self:doDisCard(use.from,"ej")
-		then return items[2]
+		then return ai_choice_result((items[2]), options)
 		elseif use.card:isDamageCard()
 		then
 			local n = use.from:getHandcardNum()-self.player:getHandcardNum()
-			if n==1 then return items[2] end
+			if n==1 then return ai_choice_result((items[2]), options) end
 		end
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_shepan',sgs.ai_skill_choice['ov_shepan'],{},{})
-sgs.ai_skill_use["@@ov_fenghan"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_shepan',ai_skill_choice['ov_shepan'],{},{})
+ai_skill_use["@@ov_fenghan"] = function(self, prompt, request)
 	local valid = {}
 	local destlist = self.room:getAllPlayers()
     destlist = self:sort(destlist,"hp")
@@ -1664,7 +1748,7 @@ sgs.ai_skill_use["@@ov_fenghan"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_fenghan',sgs.ai_skill_use['@@ov_fenghan'],{},{})
+remember_function('ai_skill_use','@@ov_fenghan',ai_skill_use['@@ov_fenghan'],{},{})
 sgs.ai_skill_playerchosen.ov_congji = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp",true)
@@ -1695,20 +1779,24 @@ end
 
 
 remember_function('ai_guhuo_card','ov_yingji',sgs.ai_guhuo_card['ov_yingji'],{},{})
-sgs.ai_skill_invoke.ov_shanghe = function(self,data)
-	return self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<1
+ai_skill_invoke.ov_shanghe = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_shanghe',sgs.ai_skill_invoke['ov_shanghe'],{},{})
-sgs.ai_skill_invoke.ov_jieyu = function(self,data)
-	return self.room:getDiscardPile():length()>self.player:getHandcardNum()
-	and self:getCardsNum("Peach")<1
+remember_function('ai_skill_invoke','ov_shanghe',ai_skill_invoke['ov_shanghe'],{},{})
+ai_skill_invoke.ov_jieyu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self.room:getDiscardPile():length()>self.player:getHandcardNum()
+	and self:getCardsNum("Peach")<1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_jieyu',sgs.ai_skill_invoke['ov_jieyu'],{},{})
-sgs.ai_fill_skill["ov_sidai"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_jieyu',ai_skill_invoke['ov_jieyu'],{},{})
+ai_fill_skill["ov_sidai"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards,nil,true)
 	local fs = clone(self,"slash")
@@ -1729,7 +1817,7 @@ sgs.ai_fill_skill["ov_sidai"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_sidai',sgs.ai_fill_skill['ov_sidai'],{},{})
+remember_function('ai_fill_skill','ov_sidai',ai_fill_skill['ov_sidai'],{},{})
 sgs.ai_skill_cardask["ov_sidai0"] = function(self,data,pattern)
     local cards = self.player:getCards("he")
     cards = self:sortByKeepValue(cards)
@@ -1744,20 +1832,23 @@ end
 
 
 remember_function('ai_skill_cardask','ov_sidai0',sgs.ai_skill_cardask['ov_sidai0'],{},{})
-sgs.ai_skill_invoke.ov_shigong = function(self,data)
-	return #self.friends>0
-	and self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<1
+ai_skill_invoke.ov_shigong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.friends>0
+	and self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_shigong',sgs.ai_skill_invoke['ov_shigong'],{},{})
-sgs.ai_fill_skill["ov_zhuidu"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_shigong',ai_skill_invoke['ov_shigong'],{},{})
+ai_fill_skill["ov_zhuidu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_zhuiduCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_zhuidu',sgs.ai_fill_skill['ov_zhuidu'],{},{})
-sgs.ai_skill_use_func["#ov_zhuiduCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_zhuidu',ai_fill_skill['ov_zhuidu'],{},{})
+ai_card_use["#ov_zhuiduCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,ep in sgs.list(self.enemies)do
 		if ep:getHp()<=self.enemies[1]:getHp()
@@ -1790,18 +1881,20 @@ sgs.ai_skill_use_func["#ov_zhuiduCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_zhuiduCard',sgs.ai_skill_use_func['#ov_zhuiduCard'],{},{})
+remember_function('ai_card_use','#ov_zhuiduCard',ai_card_use['#ov_zhuiduCard'],{},{})
 sgs.ai_use_value.ov_zhuiduCard = 4.4
 sgs.ai_use_priority.ov_zhuiduCard = 1.8
 
-sgs.ai_skill_choice.ov_zhuidu = function(self,choices)
+ai_skill_choice.ov_zhuidu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if #items>2 then return items[3] end
-	return items[1]
+	if #items>2 then return ai_choice_result((items[3]), options) end
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_zhuidu',sgs.ai_skill_choice['ov_zhuidu'],{},{})
+remember_function('ai_skill_choice','ov_zhuidu',ai_skill_choice['ov_zhuidu'],{},{})
 sgs.ai_skill_playerchosen.ov_xiongzheng = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -1822,7 +1915,7 @@ end
 remember_function('ai_skill_playerchosen','ov_xiongzheng',sgs.ai_skill_playerchosen['ov_xiongzheng'],{},{})
 sgs.ai_playerchosen_intention.ov_xiongzheng = 55
 
-sgs.ai_skill_use["@@ov_xiongzheng"] = function(self,prompt)
+ai_skill_use["@@ov_xiongzheng"] = function(self, prompt, request)
 	local valid1,valid2 = {},{}
 	local destlist = self.room:getAllPlayers()
     destlist = self:sort(destlist,"hp")
@@ -1867,8 +1960,10 @@ sgs.ai_skill_use["@@ov_xiongzheng"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_xiongzheng',sgs.ai_skill_use['@@ov_xiongzheng'],{},{})
-sgs.ai_fill_skill["ov_luannianvs"] = function(self,inclusive,request)
+remember_function('ai_skill_use','@@ov_xiongzheng',ai_skill_use['@@ov_xiongzheng'],{},{})
+ai_fill_skill["ov_luannianvs"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards,nil,true)
 	for i,owner in sgs.list(self.room:findPlayersBySkillName("ov_luannian"))do
@@ -1888,8 +1983,8 @@ sgs.ai_fill_skill["ov_luannianvs"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_luannianvs',sgs.ai_fill_skill['ov_luannianvs'],{'ov_luannian_to'},{'ov_luannian_to'})
-sgs.ai_skill_use_func["#ov_luannianCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_luannianvs',ai_fill_skill['ov_luannianvs'],{'ov_luannian_to'},{'ov_luannian_to'})
+ai_card_use["#ov_luannianCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	if self.ov_luannian_to
 	then
@@ -1899,13 +1994,13 @@ sgs.ai_skill_use_func["#ov_luannianCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_luannianCard',sgs.ai_skill_use_func['#ov_luannianCard'],{'ov_luannian_to'},{})
+remember_function('ai_card_use','#ov_luannianCard',ai_card_use['#ov_luannianCard'],{'ov_luannian_to'},{})
 sgs.ai_use_value.ov_luannianCard = 2.4
 sgs.ai_use_priority.ov_luannianCard = 1.8
 
 sgs.ai_skill_cardask["ov_qingtao0"] = function(self,data,pattern)
     local cards = self.player:getCards("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
   	for n,c in sgs.list(cards)do
 		if c:getTypeId()~=1 or c:isKindOf("Analeptic")
 		then return c:getKnownEffectiveId() end
@@ -1915,7 +2010,9 @@ end
 
 
 remember_function('ai_skill_cardask','ov_qingtao0',sgs.ai_skill_cardask['ov_qingtao0'],{},{})
-sgs.ai_fill_skill["ov_bingde"] = function(self,inclusive,request)
+ai_fill_skill["ov_bingde"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local can = self:getPriorTurnUseCount()<2
 	local suits = {"spade","club","heart","diamond","no_suit"}
 	for _,s in sgs.list(suits)do
@@ -1955,35 +2052,41 @@ sgs.ai_fill_skill["ov_bingde"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_bingde',sgs.ai_fill_skill['ov_bingde'],{'ov_bingde_choice'},{'ov_bingde_choice'})
-sgs.ai_skill_use_func["#ov_bingdeCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_bingde',ai_fill_skill['ov_bingde'],{'ov_bingde_choice'},{'ov_bingde_choice'})
+ai_card_use["#ov_bingdeCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_bingdeCard',sgs.ai_skill_use_func['#ov_bingdeCard'],{},{})
+remember_function('ai_card_use','#ov_bingdeCard',ai_card_use['#ov_bingdeCard'],{},{})
 sgs.ai_use_value.ov_bingdeCard = 5.4
 sgs.ai_use_priority.ov_bingdeCard = 2.8
 
-sgs.ai_skill_choice.ov_bingde = function(self,choices)
+ai_skill_choice.ov_bingde = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
   	for _,pm in sgs.list(items)do
 		if self.ov_bingde_choice==pm
-		then return pm end
+		then return ai_choice_result((pm), options) end
 	end
   	for _,pm in sgs.list(items)do
 		if self.player:getStrategyMark(pm.."ov_bingde-PlayClear")>1
-		then return pm end
+		then return ai_choice_result((pm), options) end
 	end
   	for _,pm in sgs.list(items)do
 		if self.player:getStrategyMark(pm.."ov_bingde-PlayClear")>0
-		then return pm end
+		then return ai_choice_result((pm), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_bingde',sgs.ai_skill_choice['ov_bingde'],{'ov_bingde_choice'},{'ov_bingde_choice'})
-sgs.ai_fill_skill["ov_xiongsi"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_bingde',ai_skill_choice['ov_bingde'],{'ov_bingde_choice'},{'ov_bingde_choice'})
+ai_fill_skill["ov_xiongsi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local slash = clone(self)
 	slash = mutate(self,slash,"skill","ov_xiongsi")
 	self.ov_xiongsi_to = nil
@@ -2009,8 +2112,8 @@ sgs.ai_fill_skill["ov_xiongsi"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_xiongsi',sgs.ai_fill_skill['ov_xiongsi'],{'ov_xiongsi_to'},{'ov_xiongsi_to'})
-sgs.ai_skill_use_func["#ov_xiongsiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_xiongsi',ai_fill_skill['ov_xiongsi'],{'ov_xiongsi_to'},{'ov_xiongsi_to'})
+ai_card_use["#ov_xiongsiCard"] = function(self, card, use, request)
 	if self.ov_xiongsi_to
 	then
 		use.card = card
@@ -2019,7 +2122,7 @@ sgs.ai_skill_use_func["#ov_xiongsiCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_xiongsiCard',sgs.ai_skill_use_func['#ov_xiongsiCard'],{'ov_xiongsi_to'},{})
+remember_function('ai_card_use','#ov_xiongsiCard',ai_card_use['#ov_xiongsiCard'],{'ov_xiongsi_to'},{})
 sgs.ai_use_value.ov_xiongsiCard = 2.4
 sgs.ai_use_priority.ov_xiongsiCard = 1.8
 
@@ -2042,16 +2145,19 @@ end
 remember_function('ai_skill_playerchosen','ov_linglu',sgs.ai_skill_playerchosen['ov_linglu'],{},{})
 sgs.ai_playerchosen_intention.ov_linglu = 55
 
-sgs.ai_skill_invoke.ov_linglu = function(self,data)
+ai_skill_invoke.ov_linglu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_linglu',sgs.ai_skill_invoke['ov_linglu'],{},{})
+remember_function('ai_skill_invoke','ov_linglu',ai_skill_invoke['ov_linglu'],{},{})
 sgs.ai_skill_playerchosen.ov_juntun = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"handcard",true)
@@ -2072,7 +2178,9 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_juntun',sgs.ai_skill_playerchosen['ov_juntun'],{},{})
-sgs.ai_fill_skill["ov_xiongxi"] = function(self,inclusive,request)
+ai_fill_skill["ov_xiongxi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards,nil,true)
 	local toids = {}
@@ -2085,8 +2193,8 @@ sgs.ai_fill_skill["ov_xiongxi"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_xiongxi',sgs.ai_fill_skill['ov_xiongxi'],{},{})
-sgs.ai_skill_use_func["#ov_xiongxiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_xiongxi',ai_fill_skill['ov_xiongxi'],{},{})
+ai_card_use["#ov_xiongxiCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,ep in sgs.list(self.enemies)do
 		if ep:getStrategyMark("ov_xiongxi-Clear")<1
@@ -2099,13 +2207,14 @@ sgs.ai_skill_use_func["#ov_xiongxiCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_xiongxiCard',sgs.ai_skill_use_func['#ov_xiongxiCard'],{},{})
+remember_function('ai_card_use','#ov_xiongxiCard',ai_card_use['#ov_xiongxiCard'],{},{})
 sgs.ai_use_value.ov_xiongxiCard = 2.4
 sgs.ai_use_priority.ov_xiongxiCard = 1.8
 
-sgs.ai_skill_invoke.ov_xiafeng = function(self,data)
+ai_skill_invoke.ov_xiafeng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local bn = tag(self,"ov_baonieNum","Int")
-	if bn<1 then return end
+	if bn<1 then return false end
 	bn = bn>3 and 3 or bn
   	for _,c in sgs.list(self.player:getCards("h"))do
 		if c:isDamageCard()
@@ -2119,7 +2228,7 @@ sgs.ai_skill_invoke.ov_xiafeng = function(self,data)
 			end
 		end
 	end
-	return self:withOwnerRange("InfinityAttackRange","ov_xiafeng",function()
+	return (self:withOwnerRange("InfinityAttackRange","ov_xiafeng",function()
 	local touse,_,unknown = self:getTurnUse();if unknown then error(unknown,0)end
 	local n = 0
 	for i=1,bn do
@@ -2133,11 +2242,11 @@ sgs.ai_skill_invoke.ov_xiafeng = function(self,data)
 	-- End of native owner-range hypothesis; source trailing choice write remains in the same closure.
 	dynamic(self,'ai_skill_choice','ov_xiafeng',""..n)
 	return n>1
- end)
+ end)) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_xiafeng',sgs.ai_skill_invoke['ov_xiafeng'],{},{})
+remember_function('ai_skill_invoke','ov_xiafeng',ai_skill_invoke['ov_xiafeng'],{},{})
 sgs.ai_use_revises.ov_xiafeng = function(self,card,use)
 	if self.player:getStrategyMark("ov_xiafeng-Clear")>0
 	then
@@ -2152,29 +2261,32 @@ end
 
 
 remember_function('ai_use_revises','ov_xiafeng',sgs.ai_use_revises['ov_xiafeng'],{},{})
-sgs.ai_skill_choice.ov_zhengjian = function(self,choices)
+ai_skill_choice.ov_zhengjian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if #items>1 and math.random(1,5)>=#items
-	then return items[2] end
-	return items[1]
+	then return ai_choice_result((items[2]), options) end
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_zhengjian',sgs.ai_skill_choice['ov_zhengjian'],{},{})
-sgs.ai_skill_invoke.ov_zhengjian = function(self,data)
+remember_function('ai_skill_choice','ov_zhengjian',ai_skill_choice['ov_zhengjian'],{},{})
+ai_skill_invoke.ov_zhengjian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
-	return math.random(1,5)<3
+	return (math.random(1,5)<3) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_zhengjian',sgs.ai_skill_invoke['ov_zhengjian'],{},{})
+remember_function('ai_skill_invoke','ov_zhengjian',ai_skill_invoke['ov_zhengjian'],{},{})
 sgs.ai_guhuo_card.ov_zhuitingvs = function(self,toname,class_name)
     local handcards = self:addHandPile()
-    handcards = self:sortByKeepValue(handcards,nil,true) -- 按保留值排序
+    handcards = self:sortByKeepValue(handcards,nil,true)
 	for _,p in sgs.list(siblings(self,true))do
 		if (self.player:getKnownKingdom()=="qun" or self.player:getKnownKingdom()=="wei")
 		and p:hasLordSkill("ov_zhuiting")
@@ -2196,7 +2308,8 @@ end
 
 
 remember_function('ai_guhuo_card','ov_zhuitingvs',sgs.ai_guhuo_card['ov_zhuitingvs'],{},{})
-sgs.ai_skill_invoke.ov_niju = function(self,data)
+ai_skill_invoke.ov_niju = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	self.ov_niju_choice = 1
 	local pindian = data:toPindian()
 	local qun = self.room:getLieges("qun",self.player):length()
@@ -2208,22 +2321,22 @@ sgs.ai_skill_invoke.ov_niju = function(self,data)
 			then
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.to_card:getKnownEffectiveId())
 				if pindian.from_number<=pindian.to_number+qun
-				then return true end
+				then return (true) or false end
 				self.ov_niju_choice = 2
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.from_card:getKnownEffectiveId())
 				if pindian.from_number-qun<=pindian.to_number
-				then return true end
+				then return (true) or false end
 			end
 		else
 			if pindian.from_number<=pindian.to_number
 			then
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.from_card:getKnownEffectiveId())
 				if pindian.from_number+qun>=pindian.to_number
-				then return true end
+				then return (true) or false end
 				self.ov_niju_choice = 2
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.to_card:getKnownEffectiveId())
 				if pindian.from_number>=pindian.to_number-qun
-				then return true end
+				then return (true) or false end
 			end
 		end
 	else
@@ -2233,37 +2346,41 @@ sgs.ai_skill_invoke.ov_niju = function(self,data)
 			then
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.from_card:getKnownEffectiveId())
 				if pindian.from_number+qun>pindian.to_number
-				then return true end
+				then return (true) or false end
 				self.ov_niju_choice = 2
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.to_card:getKnownEffectiveId())
 				if pindian.from_number>pindian.to_number-qun
-				then return true end
+				then return (true) or false end
 			end
 		else
 			if pindian.from_number>pindian.to_number
 			then
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.to_card:getKnownEffectiveId())
 				if pindian.from_number<=pindian.to_number+qun
-				then return true end
+				then return (true) or false end
 				self.ov_niju_choice = 2
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.from_card:getKnownEffectiveId())
 				if pindian.from_number-qun<=pindian.to_number
-				then return true end
+				then return (true) or false end
 			end
 		end
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_niju',sgs.ai_skill_invoke['ov_niju'],{'ov_niju_choice'},{'ov_niju_choice'})
-sgs.ai_skill_choice.ov_niju = function(self,choices)
+remember_function('ai_skill_invoke','ov_niju',ai_skill_invoke['ov_niju'],{'ov_niju_choice'},{'ov_niju_choice'})
+ai_skill_choice.ov_niju = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if self.ov_niju_choice then return items[self.ov_niju_choice] end
-	return items[1]
+	if self.ov_niju_choice then return ai_choice_result((items[self.ov_niju_choice]), options) end
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_niju',sgs.ai_skill_choice['ov_niju'],{'ov_niju_choice'},{})
+remember_function('ai_skill_choice','ov_niju',ai_skill_choice['ov_niju'],{'ov_niju_choice'},{})
 sgs.ai_skill_discard.ov_chongwang = function(self)
 	local to_cards = {}
 	local cards = self.player:getCards("he")
@@ -2280,7 +2397,9 @@ end
 
 
 remember_function('ai_skill_discard','ov_chongwang',sgs.ai_skill_discard['ov_chongwang'],{},{})
-sgs.ai_fill_skill["ov_juxiangvs"] = function(self,inclusive,request)
+ai_fill_skill["ov_juxiangvs"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("e")
 	cards = self:sortByKeepValue(cards)
 	for i,owner in sgs.list(self.room:findPlayersBySkillName("ov_juxiang"))do
@@ -2322,8 +2441,8 @@ sgs.ai_fill_skill["ov_juxiangvs"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_juxiangvs',sgs.ai_fill_skill['ov_juxiangvs'],{'ov_juxiang_to'},{'ov_juxiang_to'})
-sgs.ai_skill_use_func["#ov_juxiangCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_juxiangvs',ai_fill_skill['ov_juxiangvs'],{'ov_juxiang_to'},{'ov_juxiang_to'})
+ai_card_use["#ov_juxiangCard"] = function(self, card, use, request)
 	if self.ov_juxiang_to
 	then
 		use.card = card
@@ -2332,11 +2451,13 @@ sgs.ai_skill_use_func["#ov_juxiangCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_juxiangCard',sgs.ai_skill_use_func['#ov_juxiangCard'],{'ov_juxiang_to'},{})
+remember_function('ai_card_use','#ov_juxiangCard',ai_card_use['#ov_juxiangCard'],{'ov_juxiang_to'},{})
 sgs.ai_use_value.ov_juxiangCard = 2.4
 sgs.ai_use_priority.ov_juxiangCard = 5.8
 
-sgs.ai_fill_skill["ov_shijunvs"] = function(self,inclusive,request)
+ai_fill_skill["ov_shijunvs"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	for i,owner in sgs.list(self.room:findPlayersBySkillName("ov_shijun"))do
 		if owner:getStrategyMark("ov_shijun-PlayClear")>0
 		or not owner:hasLordSkill("ov_shijun")
@@ -2351,8 +2472,8 @@ sgs.ai_fill_skill["ov_shijunvs"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_shijunvs',sgs.ai_fill_skill['ov_shijunvs'],{'ov_shijun_to'},{'ov_shijun_to'})
-sgs.ai_skill_use_func["#ov_shijunCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_shijunvs',ai_fill_skill['ov_shijunvs'],{'ov_shijun_to'},{'ov_shijun_to'})
+ai_card_use["#ov_shijunCard"] = function(self, card, use, request)
 	if self.ov_shijun_to
 	then
 		use.card = card
@@ -2361,11 +2482,11 @@ sgs.ai_skill_use_func["#ov_shijunCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_shijunCard',sgs.ai_skill_use_func['#ov_shijunCard'],{'ov_shijun_to'},{})
+remember_function('ai_card_use','#ov_shijunCard',ai_card_use['#ov_shijunCard'],{'ov_shijun_to'},{})
 sgs.ai_use_value.ov_shijunCard = 2.4
 sgs.ai_use_priority.ov_shijunCard = 4.8
 
-sgs.ai_skill_use["@@ov_polu"] = function(self,prompt)
+ai_skill_use["@@ov_polu"] = function(self, prompt, request)
 	local valid = {}
 	local destlist = self.room:getAllPlayers()
     destlist = self:sort(destlist,"hp")
@@ -2380,8 +2501,8 @@ sgs.ai_skill_use["@@ov_polu"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_polu',sgs.ai_skill_use['@@ov_polu'],{},{})
-sgs.ai_skill_use["@@ov_dingzhen"] = function(self,prompt)
+remember_function('ai_skill_use','@@ov_polu',ai_skill_use['@@ov_polu'],{},{})
+ai_skill_use["@@ov_dingzhen"] = function(self, prompt, request)
 	local valid = {}
 	local destlist = self.room:getAllPlayers()
     destlist = self:sort(destlist,"hp")
@@ -2397,7 +2518,7 @@ sgs.ai_skill_use["@@ov_dingzhen"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_dingzhen',sgs.ai_skill_use['@@ov_dingzhen'],{},{})
+remember_function('ai_skill_use','@@ov_dingzhen',ai_skill_use['@@ov_dingzhen'],{},{})
 sgs.ai_skill_askforyiji.ov_youye = function(self,card_ids,tos)
 	local to = self.room:getCurrent()
 	local cards = list_i2c(self,card_ids)
@@ -2429,7 +2550,7 @@ end
 
 
 remember_function('ai_skill_cardask','ov_dingzhen1',sgs.ai_skill_cardask['ov_dingzhen1'],{},{})
-sgs.ai_skill_use["@@ov_qingkou"] = function(self,prompt)
+ai_skill_use["@@ov_qingkou"] = function(self, prompt, request)
 	local duel = clone(self,"duel")
 	duel = mutate(self,duel,"skill","ov_qingkou")
 	local d = self:aiUseCard(duel)
@@ -2444,19 +2565,20 @@ sgs.ai_skill_use["@@ov_qingkou"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_qingkou',sgs.ai_skill_use['@@ov_qingkou'],{},{})
-sgs.ai_skill_invoke.ov_juchen = function(self,data)
+remember_function('ai_skill_use','@@ov_qingkou',ai_skill_use['@@ov_qingkou'],{},{})
+ai_skill_invoke.ov_juchen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards,nil,true)
 	for i,c in sgs.list(cards)do
 		if i<=#cards/2 and c:isRed()
-		then return true end
+		then return (true) or false end
 	end
-	return #cards>1 and cards[1]:isRed()
+	return (#cards>1 and cards[1]:isRed()) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_juchen',sgs.ai_skill_invoke['ov_juchen'],{},{})
+remember_function('ai_skill_invoke','ov_juchen',ai_skill_invoke['ov_juchen'],{},{})
 sgs.ai_skill_discard.ov_juchen = function(self)
 	local to = self.room:getCurrent()
 	local cards = self.player:getCards("he")
@@ -2474,7 +2596,9 @@ end
 
 
 remember_function('ai_skill_discard','ov_juchen',sgs.ai_skill_discard['ov_juchen'],{},{})
-sgs.ai_fill_skill["ov_xingzhui"] = function(self,inclusive,request)
+ai_fill_skill["ov_xingzhui"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self:isWeak()
 	and #self.enemies>0
 	then
@@ -2494,13 +2618,13 @@ sgs.ai_fill_skill["ov_xingzhui"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_xingzhui',sgs.ai_fill_skill['ov_xingzhui'],{},{})
-sgs.ai_skill_use_func["#ov_xingzhuiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_xingzhui',ai_fill_skill['ov_xingzhui'],{},{})
+ai_card_use["#ov_xingzhuiCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_xingzhuiCard',sgs.ai_skill_use_func['#ov_xingzhuiCard'],{},{})
+remember_function('ai_card_use','#ov_xingzhuiCard',ai_card_use['#ov_xingzhuiCard'],{},{})
 sgs.ai_use_value.ov_xingzhuiCard = 3.4
 sgs.ai_use_priority.ov_xingzhuiCard = 0.8
 
@@ -2531,28 +2655,35 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_xingzhui',sgs.ai_skill_playerchosen['ov_xingzhui'],{},{})
-sgs.ai_skill_invoke.ov_jiekuang = function(self,data)
+ai_skill_invoke.ov_jiekuang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	local use = tag(self,"ov_jiekuang","CardUse")
 	if target and self:isWeak(target)
 	and self:isFriend(target)
 	then
-		return use.card:isDamageCard()
-		or self:isEnemy(use.from)
+		return (use.card:isDamageCard()
+		or self:isEnemy(use.from)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_jiekuang',sgs.ai_skill_invoke['ov_jiekuang'],{},{})
-sgs.ai_skill_choice.ov_jiekuang = function(self,choices)
+remember_function('ai_skill_invoke','ov_jiekuang',ai_skill_invoke['ov_jiekuang'],{},{})
+ai_skill_choice.ov_jiekuang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if self.player:isWounded() then return items[2] end
-	return items[1]
+	if self.player:isWounded() then return ai_choice_result((items[2]), options) end
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_jiekuang',sgs.ai_skill_choice['ov_jiekuang'],{},{})
-sgs.ai_fill_skill["ov_luanlve"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_jiekuang',ai_skill_choice['ov_jiekuang'],{},{})
+ai_fill_skill["ov_luanlve"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local snatch = clone(self,"snatch")
 	snatch = mutate(self,snatch,"skill","ov_luanlve")
 	local n = self.player:getStrategyMark("&ov_luanlve")
@@ -2584,8 +2715,8 @@ sgs.ai_fill_skill["ov_luanlve"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_luanlve',sgs.ai_fill_skill['ov_luanlve'],{'ov_luanlve_to'},{'ov_luanlve_to'})
-sgs.ai_skill_use_func["#ov_luanlveCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_luanlve',ai_fill_skill['ov_luanlve'],{'ov_luanlve_to'},{'ov_luanlve_to'})
+ai_card_use["#ov_luanlveCard"] = function(self, card, use, request)
 	if self.ov_luanlve_to
 	then
 		use.card = card
@@ -2594,11 +2725,13 @@ sgs.ai_skill_use_func["#ov_luanlveCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_luanlveCard',sgs.ai_skill_use_func['#ov_luanlveCard'],{'ov_luanlve_to'},{})
+remember_function('ai_card_use','#ov_luanlveCard',ai_card_use['#ov_luanlveCard'],{'ov_luanlve_to'},{})
 sgs.ai_use_value.ov_luanlveCard = 2.4
 sgs.ai_use_priority.ov_luanlveCard = 4.8
 
-sgs.ai_fill_skill["ov_jichou"] = function(self,inclusive,request)
+ai_fill_skill["ov_jichou"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	for _,p in sgs.list(source_patterns(self))do
 		if self.player:getStrategyMark("ov_jichou_"..p)>0 then continue end
 		local c = clone(self,p)
@@ -2629,27 +2762,31 @@ sgs.ai_fill_skill["ov_jichou"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_jichou',sgs.ai_fill_skill['ov_jichou'],{'ov_jichouUse','ov_zhengjianChoice'},{'ov_jichouUse','ov_zhengjianChoice'})
-sgs.ai_skill_use_func["#ov_jichouCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_jichou',ai_fill_skill['ov_jichou'],{'ov_jichouUse','ov_zhengjianChoice'},{'ov_jichouUse','ov_zhengjianChoice'})
+ai_card_use["#ov_jichouCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_jichouCard',sgs.ai_skill_use_func['#ov_jichouCard'],{},{})
+remember_function('ai_card_use','#ov_jichouCard',ai_card_use['#ov_jichouCard'],{},{})
 sgs.ai_use_value.ov_jichouCard = 2.4
 sgs.ai_use_priority.ov_jichouCard = -1.8
 
-sgs.ai_skill_choice.ov_jichou = function(self,choices)
+ai_skill_choice.ov_jichou = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,self.ov_zhengjianChoice)
-	then return self.ov_zhengjianChoice end
+	then return ai_choice_result((self.ov_zhengjianChoice), options) end
 	if table.contains(items,self.ov_jichouUse.card:objectName())
-	then return self.ov_jichouUse.card:objectName() end
+	then return ai_choice_result((self.ov_jichouUse.card:objectName()), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_jichou',sgs.ai_skill_choice['ov_jichou'],{'ov_jichouUse','ov_zhengjianChoice'},{})
-sgs.ai_skill_use["@@ov_jichou"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_jichou',ai_skill_choice['ov_jichou'],{'ov_jichouUse','ov_zhengjianChoice'},{})
+ai_skill_use["@@ov_jichou"] = function(self, prompt, request)
 	local cd = self.ov_jichouUse
 	if cd.card then
 		local tos = {}
@@ -2661,7 +2798,7 @@ sgs.ai_skill_use["@@ov_jichou"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_jichou',sgs.ai_skill_use['@@ov_jichou'],{'ov_jichouUse'},{})
+remember_function('ai_skill_use','@@ov_jichou',ai_skill_use['@@ov_jichou'],{'ov_jichouUse'},{})
 sgs.ai_guhuo_card.ov_jichou = function(self,toname,class_name)
 	if self.player:getStrategyMark("ov_jichou_"..toname)<1
 	and self.player:getStrategyMark("ov_jichou-Clear")<1 then
@@ -2690,13 +2827,16 @@ end
 remember_function('ai_skill_playerchosen','ov_jichou',sgs.ai_skill_playerchosen['ov_jichou'],{},{})
 sgs.ai_playerchosen_intention.ov_jichou = -55
 
-sgs.ai_skill_invoke.ov_jilun = function(self,data)
-	return #self.friends>0
+ai_skill_invoke.ov_jilun = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.friends>0) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_jilun',sgs.ai_skill_invoke['ov_jilun'],{},{})
-sgs.ai_skill_choice.ov_jilun = function(self,choices)
+remember_function('ai_skill_invoke','ov_jilun',ai_skill_invoke['ov_jilun'],{},{})
+ai_skill_choice.ov_jilun = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"ov_jilun2") then
 		local n = items[1]:split("=")[2]
@@ -2715,18 +2855,20 @@ sgs.ai_skill_choice.ov_jilun = function(self,choices)
 				if d.card and self:getUseValue(c)>n then
 					if c:canRecast() and d.to:length()<1 then continue end
 					self.ov_jichouUse = d
-					return "ov_jilun2"
+					return ai_choice_result(("ov_jilun2"), options)
 				end
 			end
 		end
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	elseif table.contains(items,self.ov_jichou_cn)
-	then return self.ov_jichou_cn end
+	then return ai_choice_result((self.ov_jichou_cn), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_jilun',sgs.ai_skill_choice['ov_jilun'],{'ov_jichouUse','ov_jichou_cn'},{'ov_jichouUse','ov_jichou_cn'})
-sgs.ai_skill_use["@@ov_fenwu"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_jilun',ai_skill_choice['ov_jilun'],{'ov_jichouUse','ov_jichou_cn'},{'ov_jichouUse','ov_jichou_cn'})
+ai_skill_use["@@ov_fenwu"] = function(self, prompt, request)
 	local duel = clone(self)
 	duel = mutate(self,duel,"skill","ov_fenwu")
 	local d = self:aiUseCard(duel)
@@ -2743,8 +2885,9 @@ sgs.ai_skill_use["@@ov_fenwu"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_fenwu',sgs.ai_skill_use['@@ov_fenwu'],{},{})
-sgs.ai_skill_invoke.ov_fupan = function(self,data)
+remember_function('ai_skill_use','@@ov_fenwu',ai_skill_use['@@ov_fenwu'],{},{})
+ai_skill_invoke.ov_fupan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toString()
 	if to~=""
 	then
@@ -2755,15 +2898,15 @@ sgs.ai_skill_invoke.ov_fupan = function(self,data)
 		end
 		if to
 		then
-			return self:isEnemy(to)
-			and (self:isWeak(to) or n<1)
+			return (self:isEnemy(to)
+			and (self:isWeak(to) or n<1)) or false
 		end
 	end
-	return #self.friends>0
+	return (#self.friends>0) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_fupan',sgs.ai_skill_invoke['ov_fupan'],{},{})
+remember_function('ai_skill_invoke','ov_fupan',ai_skill_invoke['ov_fupan'],{},{})
 sgs.ai_skill_askforyiji.ov_fupan = function(self,card_ids,tos)
 	local cards = list_i2c(self,card_ids)
 	cards = self:sortByKeepValue(cards)
@@ -2818,13 +2961,15 @@ end
 
 
 remember_function('ai_can_damagehp','ov_fupan',sgs.ai_can_damagehp['ov_fupan'],{},{})
-sgs.ai_fill_skill["ov_mutao"] = function(self,inclusive,request)
+ai_fill_skill["ov_mutao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_mutaoCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_mutao',sgs.ai_fill_skill['ov_mutao'],{},{})
-sgs.ai_skill_use_func["#ov_mutaoCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_mutao',ai_fill_skill['ov_mutao'],{},{})
+ai_card_use["#ov_mutaoCard"] = function(self, card, use, request)
 	local n = self:getCardsNum("Slash")
 	if n>0
 	then
@@ -2868,32 +3013,40 @@ sgs.ai_skill_use_func["#ov_mutaoCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_mutaoCard',sgs.ai_skill_use_func['#ov_mutaoCard'],{},{})
+remember_function('ai_card_use','#ov_mutaoCard',ai_card_use['#ov_mutaoCard'],{},{})
 sgs.ai_use_value.ov_mutaoCard = 3.4
 sgs.ai_use_priority.ov_mutaoCard = 2.8
 
-sgs.ai_skill_invoke.ov_yimou = function(self,data)
+ai_skill_invoke.ov_yimou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isFriend(target)
+		return (self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_yimou',sgs.ai_skill_invoke['ov_yimou'],{},{})
-sgs.ai_skill_choice.ov_yimou = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_yimou',ai_skill_invoke['ov_yimou'],{},{})
+ai_skill_choice.ov_yimou = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if #items>2 and self:isWeak(target)
 	and not self:isWeak()
-	then return items[3] end
+	then return ai_choice_result((items[3]), options) end
 	if #items>1 and #self.friends>1
-	then return items[2] end
+	then return ai_choice_result((items[2]), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_yimou',sgs.ai_skill_choice['ov_yimou'],{},{})
+remember_function('ai_skill_choice','ov_yimou',ai_skill_choice['ov_yimou'],{},{})
 sgs.ai_skill_playerchosen.ov_yimou = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"handcard")
@@ -2911,7 +3064,9 @@ end
 remember_function('ai_skill_playerchosen','ov_yimou',sgs.ai_skill_playerchosen['ov_yimou'],{},{})
 sgs.ai_playerchosen_intention.ov_yimou = -55
 
-sgs.ai_fill_skill["ov_kujian"] = function(self,inclusive,request)
+ai_fill_skill["ov_kujian"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards)
 	local toids = {}
@@ -2931,8 +3086,8 @@ sgs.ai_fill_skill["ov_kujian"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_kujian',sgs.ai_fill_skill['ov_kujian'],{},{})
-sgs.ai_skill_use_func["#ov_kujianCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_kujian',ai_fill_skill['ov_kujian'],{},{})
+ai_card_use["#ov_kujianCard"] = function(self, card, use, request)
 	self.friends_noself = self:sort(self.friends_noself,"handcard",true)
 	for _,ep in sgs.list(self.friends_noself)do
 		if ep:getHandcardNum()<5
@@ -2950,7 +3105,7 @@ sgs.ai_skill_use_func["#ov_kujianCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_kujianCard',sgs.ai_skill_use_func['#ov_kujianCard'],{},{})
+remember_function('ai_card_use','#ov_kujianCard',ai_card_use['#ov_kujianCard'],{},{})
 sgs.ai_use_value.ov_kujianCard = 3.4
 sgs.ai_use_priority.ov_kujianCard = -1.8
 
@@ -2972,26 +3127,32 @@ end
 remember_function('ai_skill_playerchosen','ov_ruilian',sgs.ai_skill_playerchosen['ov_ruilian'],{},{})
 sgs.ai_playerchosen_intention.ov_ruilian = -55
 
-sgs.ai_skill_invoke.ov_ruilian = function(self,data)
+ai_skill_invoke.ov_ruilian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isEnemy(target)
+		return (not self:isEnemy(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_ruilian',sgs.ai_skill_invoke['ov_ruilian'],{},{})
-sgs.ai_skill_invoke.ov_jiaohua = function(self,data)
+remember_function('ai_skill_invoke','ov_ruilian',ai_skill_invoke['ov_ruilian'],{},{})
+ai_skill_invoke.ov_jiaohua = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isFriend(target)
+		return (self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_jiaohua',sgs.ai_skill_invoke['ov_jiaohua'],{},{})
+remember_function('ai_skill_invoke','ov_jiaohua',ai_skill_invoke['ov_jiaohua'],{},{})
 sgs.ai_skill_playerchosen.ov_tanfeng = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"handcard")
@@ -3017,7 +3178,10 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_tanfeng',sgs.ai_skill_playerchosen['ov_tanfeng'],{},{})
-sgs.ai_skill_choice.ov_tanfeng = function(self,choices,data)
+ai_skill_choice.ov_tanfeng = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if table.contains(items,"Player_Judge")
@@ -3025,37 +3189,38 @@ sgs.ai_skill_choice.ov_tanfeng = function(self,choices,data)
 		if self:isFriend(target)
 		then
 			if self:doDisCard(target,"j")
-			then return "Player_Judge"
+			then return ai_choice_result(("Player_Judge"), options)
 			elseif table.contains(items,"Player_Discard")
-			then return "Player_Discard"
+			then return ai_choice_result(("Player_Discard"), options)
 			elseif table.contains(items,"Player_Finish")
-			then return "Player_Finish" end
+			then return ai_choice_result(("Player_Finish"), options) end
 		elseif table.contains(items,"Player_Play")
-		then return "Player_Play"
+		then return ai_choice_result(("Player_Play"), options)
 		elseif table.contains(items,"Player_Draw")
-		then return "Player_Draw"
+		then return ai_choice_result(("Player_Draw"), options)
 		elseif table.contains(items,"Player_Finish")
-		then return "Player_Finish" end
+		then return ai_choice_result(("Player_Finish"), options) end
 	end
 	if self:canDamageHp(target)
 	and not self:isWeak()
-	then return items[1] end
-	return items[2]
+	then return ai_choice_result((items[1]), options) end
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_tanfeng',sgs.ai_skill_choice['ov_tanfeng'],{},{})
-sgs.ai_skill_invoke.ov_xiawei = function(self,data)
+remember_function('ai_skill_choice','ov_tanfeng',ai_skill_choice['ov_tanfeng'],{},{})
+ai_skill_invoke.ov_xiawei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local n = self.player:getCardCount()
 	n = n<2 and 2 or n
 	n = math.random(1,n)
 	n = n>4 and 4 or n
 	dynamic(self,'ai_skill_choice','wangxing',""..n)
-	return n>0
+	return (n>0) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_xiawei',sgs.ai_skill_invoke['ov_xiawei'],{},{})
+remember_function('ai_skill_invoke','ov_xiawei',ai_skill_invoke['ov_xiawei'],{},{})
 sgs.ai_card_priority.ov_xiawei = function(self,card)
 	return self.player:getPile("&ov_wei"):contains(card:getKnownEffectiveId()) and 0.5
 end
@@ -3122,7 +3287,9 @@ end
 remember_function('ai_skill_playerchosen','ov_jianweibf',sgs.ai_skill_playerchosen['ov_jianweibf'],{},{})
 sgs.ai_playerchosen_intention.ov_jianweibf = 55
 
-sgs.ai_fill_skill["ov_jiange"] = function(self,inclusive,request)
+ai_fill_skill["ov_jiange"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile("he")
 	cards = self:sortByKeepValue(cards,nil,true)
 	for c,h in sgs.list(cards)do
@@ -3138,7 +3305,7 @@ sgs.ai_fill_skill["ov_jiange"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_jiange',sgs.ai_fill_skill['ov_jiange'],{},{})
+remember_function('ai_fill_skill','ov_jiange',ai_fill_skill['ov_jiange'],{},{})
 sgs.ai_guhuo_card.ov_jiange = function(self,toname,class_name)
 	if class_name=="Slash"
 	and self.player:getStrategyMark("ov_jiange-Clear")<1
@@ -3185,7 +3352,9 @@ end
 remember_function('ai_skill_playerchosen','ov_chuanshu',sgs.ai_skill_playerchosen['ov_chuanshu'],{},{})
 sgs.ai_playerchosen_intention.ov_chuanshu = -55
 
-sgs.ai_fill_skill["ov_chaofeng"] = function(self,inclusive,request)
+ai_fill_skill["ov_chaofeng"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile("he")
 	cards = self:sortByKeepValue(cards,nil,true)
 	for _,h in sgs.list(cards)do
@@ -3207,7 +3376,7 @@ sgs.ai_fill_skill["ov_chaofeng"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_chaofeng',sgs.ai_fill_skill['ov_chaofeng'],{},{})
+remember_function('ai_fill_skill','ov_chaofeng',ai_fill_skill['ov_chaofeng'],{},{})
 sgs.ai_guhuo_card.ov_chaofeng = function(self,toname,class_name)
 	if class_name=="Slash"
 	then
@@ -3240,7 +3409,7 @@ end
 
 
 remember_function('ai_guhuo_card','ov_chaofeng',sgs.ai_guhuo_card['ov_chaofeng'],{},{})
-sgs.ai_skill_use["@@ov_chaofeng"] = function(self,prompt)
+ai_skill_use["@@ov_chaofeng"] = function(self, prompt, request)
 	local valid = {}
 	self.ov_chaofeng_card = nil
 	local mc = self:getMaxCard()
@@ -3273,7 +3442,7 @@ sgs.ai_skill_use["@@ov_chaofeng"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_chaofeng',sgs.ai_skill_use['@@ov_chaofeng'],{'ov_chaofeng_card'},{'ov_chaofeng_card'})
+remember_function('ai_skill_use','@@ov_chaofeng',ai_skill_use['@@ov_chaofeng'],{'ov_chaofeng_card'},{'ov_chaofeng_card'})
 sgs.ai_skill_pindian.ov_chaofeng = function(card,self,requestor,maxcard,mincard)
 	if self:isFriend(requestor)
 	then return maxcard end
@@ -3300,7 +3469,7 @@ end
 remember_function('ai_skill_playerchosen','ov_lvren',sgs.ai_skill_playerchosen['ov_lvren'],{},{})
 sgs.ai_playerchosen_intention.ov_lvren = 55
 
-sgs.ai_skill_use["@@ov_zhenhu!"] = function(self,prompt)
+ai_skill_use["@@ov_zhenhu!"] = function(self, prompt, request)
 	local valid = {}
 	local destlist = siblings(self,true)
     destlist = self:sort(destlist,"handcard")
@@ -3328,8 +3497,9 @@ sgs.ai_skill_use["@@ov_zhenhu!"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_zhenhu!',sgs.ai_skill_use['@@ov_zhenhu!'],{},{})
-sgs.ai_skill_invoke.ov_zhenhu = function(self,data)
+remember_function('ai_skill_use','@@ov_zhenhu!',ai_skill_use['@@ov_zhenhu!'],{},{})
+ai_skill_invoke.ov_zhenhu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local valid = {}
 	local mc = self:getMaxCard()
 	local destlist = siblings(self,true)
@@ -3348,11 +3518,11 @@ sgs.ai_skill_invoke.ov_zhenhu = function(self,data)
 	end
 	local n = mc and self.player:hasSkill("ov_lvren") and mc:getNumber()+(#valid*2) or mc and mc:getNumber() or 0
 	n = n<1 and math.random(4,7)+(#valid*2) or n
-	return #valid>0 and n>10
+	return (#valid>0 and n>10) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_zhenhu',sgs.ai_skill_invoke['ov_zhenhu'],{},{})
+remember_function('ai_skill_invoke','ov_zhenhu',ai_skill_invoke['ov_zhenhu'],{},{})
 sgs.ai_skill_playerchosen.ov_yulong = function(self,players)
 	local mc = self:getMaxCard()
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
@@ -3367,7 +3537,9 @@ end
 remember_function('ai_skill_playerchosen','ov_yulong',sgs.ai_skill_playerchosen['ov_yulong'],{},{})
 sgs.ai_playerchosen_intention.ov_yulong = 55
 
-sgs.ai_fill_skill["ov_lihuo"] = function(self,inclusive,request)
+ai_fill_skill["ov_lihuo"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
   	for _,c in sgs.list(self:addHandPile())do
         if c:isKindOf("NatureSlash") then continue end
 		local fs = clone(self,"fire_slash")
@@ -3380,18 +3552,21 @@ sgs.ai_fill_skill["ov_lihuo"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_lihuo',sgs.ai_fill_skill['ov_lihuo'],{},{})
-sgs.ai_skill_invoke.ov_lihuo = function(self,data)
+remember_function('ai_fill_skill','ov_lihuo',ai_fill_skill['ov_lihuo'],{},{})
+ai_skill_invoke.ov_lihuo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	-- Reached native constructor records the fresh hypothetical use before evaluation.
 	local fs = self:observeOverseasLihuoHypothesis()
 	use.card = fs
 	if self:aiUseCard(fs).card
-	then return true end
+	then return (true) or false end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_lihuo',sgs.ai_skill_invoke['ov_lihuo'],{},{})
+remember_function('ai_skill_invoke','ov_lihuo',ai_skill_invoke['ov_lihuo'],{},{})
 sgs.ai_skill_playerchosen.ov_lihuo = function(self,targets)
 	return sgs.ai_skill_playerchosen.yb_zhuzhan2(self,targets)
 end
@@ -3422,14 +3597,17 @@ end
 remember_function('ai_skill_playerchosen','ov_chunlao',sgs.ai_skill_playerchosen['ov_chunlao'],{},{})
 sgs.ai_playerchosen_intention.ov_chunlao = -55
 
-sgs.ai_skill_invoke.ov_chunlao = function(self,data)
+ai_skill_invoke.ov_chunlao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
 	if to and self:isFriend(to)
-	then return true end
+	then return (true) or false end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_chunlao',sgs.ai_skill_invoke['ov_chunlao'],{},{})
+remember_function('ai_skill_invoke','ov_chunlao',ai_skill_invoke['ov_chunlao'],{},{})
 sgs.ai_skill_playerchosen.ov_chunlaobf = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -3456,7 +3634,9 @@ end
 
 
 remember_function('ai_skill_discard','ov_chunlaobf',sgs.ai_skill_discard['ov_chunlaobf'],{},{})
-sgs.ai_fill_skill["ov_boming"] = function(self,inclusive,request)
+ai_fill_skill["ov_boming"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards)
 	if #cards<1 then return end
@@ -3483,8 +3663,8 @@ sgs.ai_fill_skill["ov_boming"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_boming',sgs.ai_fill_skill['ov_boming'],{'bm_to'},{'bm_to'})
-sgs.ai_skill_use_func["#ov_bomingCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_boming',ai_fill_skill['ov_boming'],{'bm_to'},{'bm_to'})
+ai_card_use["#ov_bomingCard"] = function(self, card, use, request)
 	if self.bm_to
 	then
 		use.card = card
@@ -3493,27 +3673,32 @@ sgs.ai_skill_use_func["#ov_bomingCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_bomingCard',sgs.ai_skill_use_func['#ov_bomingCard'],{'bm_to'},{})
+remember_function('ai_card_use','#ov_bomingCard',ai_card_use['#ov_bomingCard'],{'bm_to'},{})
 sgs.ai_use_value.ov_bomingCard = 4.4
 sgs.ai_use_priority.ov_bomingCard = 1.8
 
-sgs.ai_skill_invoke.ov_ejian = function(self,data)
+ai_skill_invoke.ov_ejian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isEnemy(target)
+		return (self:isEnemy(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_ejian',sgs.ai_skill_invoke['ov_ejian'],{},{})
-sgs.ai_fill_skill["ov_jinglve"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_ejian',ai_skill_invoke['ov_ejian'],{},{})
+ai_fill_skill["ov_jinglve"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_jinglveCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_jinglve',sgs.ai_fill_skill['ov_jinglve'],{},{})
-sgs.ai_skill_use_func["#ov_jinglveCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_jinglve',ai_fill_skill['ov_jinglve'],{},{})
+ai_card_use["#ov_jinglveCard"] = function(self, card, use, request)
  local c=self:evaluateSkillCard("ov_jinglve","JinglveCard",{})
  self.enemies=self:sort(self.enemies,"handcard")
  for _,p in ipairs(self.enemies)do
@@ -3524,11 +3709,13 @@ sgs.ai_skill_use_func["#ov_jinglveCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_jinglveCard',sgs.ai_skill_use_func['#ov_jinglveCard'],{},{})
+remember_function('ai_card_use','#ov_jinglveCard',ai_card_use['#ov_jinglveCard'],{},{})
 sgs.ai_use_value.ov_jinglveCard = 4.4
 sgs.ai_use_priority.ov_jinglveCard = 7.8
 
-sgs.ai_fill_skill["ov_fuman"] = function(self,inclusive,request)
+ai_fill_skill["ov_fuman"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards)
 	if #cards>=self.player:getMaxCards()
@@ -3539,8 +3726,8 @@ sgs.ai_fill_skill["ov_fuman"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_fuman',sgs.ai_fill_skill['ov_fuman'],{},{})
-sgs.ai_skill_use_func["#ov_fumanCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_fuman',ai_fill_skill['ov_fuman'],{},{})
+ai_card_use["#ov_fumanCard"] = function(self, card, use, request)
 	for c,fp in sgs.list(self.friends_noself)do
 		if self.player:getStrategyMark(fp:objectName().."ov_fuman-PlayClear")<1
 		then
@@ -3552,11 +3739,12 @@ sgs.ai_skill_use_func["#ov_fumanCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_fumanCard',sgs.ai_skill_use_func['#ov_fumanCard'],{},{})
+remember_function('ai_card_use','#ov_fumanCard',ai_card_use['#ov_fumanCard'],{},{})
 sgs.ai_use_value.ov_fumanCard = 4.4
 sgs.ai_use_priority.ov_fumanCard = 1.8
 
-sgs.ai_skill_invoke.ov_cuorui = function(self,data)
+ai_skill_invoke.ov_cuorui = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local n = self.player:getHandcardNum()
 	for i,p in sgs.list(self.room:getAlivePlayers())do
 		i = p:getHandcardNum()
@@ -3564,11 +3752,11 @@ sgs.ai_skill_invoke.ov_cuorui = function(self,data)
 	end
 	n = n-self.player:getHandcardNum()
 	n = n>5 and 5 or n
-	return n>3 or self:isWeak() and n>2
+	return (n>3 or self:isWeak() and n>2) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_cuorui',sgs.ai_skill_invoke['ov_cuorui'],{},{})
+remember_function('ai_skill_invoke','ov_cuorui',ai_skill_invoke['ov_cuorui'],{},{})
 sgs.ai_skill_playerchosen.ov_cuorui = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -3588,48 +3776,58 @@ end
 remember_function('ai_skill_playerchosen','ov_cuorui',sgs.ai_skill_playerchosen['ov_cuorui'],{},{})
 sgs.ai_playerchosen_intention.ov_cuorui = 55
 
-sgs.ai_skill_choice.ov_liewei = function(self,choices)
+ai_skill_choice.ov_liewei = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if self:isWeak() then return items[1] end
-	return items[2]
+	if self:isWeak() then return ai_choice_result((items[1]), options) end
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_liewei',sgs.ai_skill_choice['ov_liewei'],{},{})
-sgs.ai_skill_invoke.ov_xiewei = function(self,data)
+remember_function('ai_skill_choice','ov_liewei',ai_skill_choice['ov_liewei'],{},{})
+ai_skill_invoke.ov_xiewei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isEnemy(target)
 	then
 		for _,fp in sgs.list(self.friends_noself)do
 			if target:canSlash(fp) and self:isWeak(fp)
-			then return true end
+			then return (true) or false end
 		end
-		return not self:isWeak()
-		and (self:getCardsNum("Slash")>2 or target:getHandcardNum()<3)
+		return (not self:isWeak()
+		and (self:getCardsNum("Slash")>2 or target:getHandcardNum()<3)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_xiewei',sgs.ai_skill_invoke['ov_xiewei'],{},{})
-sgs.ai_skill_choice.ov_liewei = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_xiewei',ai_skill_invoke['ov_xiewei'],{},{})
+ai_skill_choice.ov_liewei = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if self:isFriend(target)
 	then
 		if target:getHandcardNum()<=self.player:getHandcardNum()
-		then return items[1] else return items[2] end
+		then return ai_choice_result((items[1]), options) else return ai_choice_result((items[2]), options) end
 	else
 		if #items>2
 		then
-			return items[3]
+			return ai_choice_result((items[3]), options)
 		end
 		if target:getHandcardNum()>self.player:getHandcardNum()+1
-		then return items[1] else return items[2] end
+		then return ai_choice_result((items[1]), options) else return ai_choice_result((items[2]), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_liewei',sgs.ai_skill_choice['ov_liewei'],{},{})
+remember_function('ai_skill_choice','ov_liewei',ai_skill_choice['ov_liewei'],{},{})
 sgs.ai_skill_playerchosen.ov_shuangren = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"handcard")
@@ -3717,15 +3915,19 @@ end
 remember_function('ai_skill_playerchosen','ov_fenming',sgs.ai_skill_playerchosen['ov_fenming'],{},{})
 sgs.ai_playerchosen_intention.ov_fenming = 55
 
-sgs.ai_skill_choice.ov_liewei = function(self,choices)
+ai_skill_choice.ov_liewei = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if self.player:isChained() then return items[3] end
-	return items[1]
+	if self.player:isChained() then return ai_choice_result((items[3]), options) end
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_liewei',sgs.ai_skill_choice['ov_liewei'],{},{})
-sgs.ai_fill_skill["ov_mouli"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_liewei',ai_skill_choice['ov_liewei'],{},{})
+ai_fill_skill["ov_mouli"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     for _,pn in sgs.list(source_patterns(self))do
 		local c = clone(self,pn)
 		if c and c:getTypeId()==1
@@ -3744,8 +3946,8 @@ sgs.ai_fill_skill["ov_mouli"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_mouli',sgs.ai_fill_skill['ov_mouli'],{'ml_to'},{'ml_to'})
-sgs.ai_skill_use_func["#ov_mouliCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_mouli',ai_fill_skill['ov_mouli'],{'ml_to'},{'ml_to'})
+ai_card_use["#ov_mouliCard"] = function(self, card, use, request)
 	if self.ml_to
 	then
 		use.card = card
@@ -3754,7 +3956,7 @@ sgs.ai_skill_use_func["#ov_mouliCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_mouliCard',sgs.ai_skill_use_func['#ov_mouliCard'],{'ml_to'},{})
+remember_function('ai_card_use','#ov_mouliCard',ai_card_use['#ov_mouliCard'],{'ml_to'},{})
 sgs.ai_use_value.ov_mouliCard = 4.4
 sgs.ai_use_priority.ov_mouliCard = 2.8
 
@@ -3769,12 +3971,13 @@ end
 
 
 remember_function('ai_guhuo_card','ov_mouli',sgs.ai_guhuo_card['ov_mouli'],{},{})
-sgs.ai_skill_invoke.ov_qianxi = function(self,data)
-	return true
+ai_skill_invoke.ov_qianxi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_qianxi',sgs.ai_skill_invoke['ov_qianxi'],{},{})
+remember_function('ai_skill_invoke','ov_qianxi',ai_skill_invoke['ov_qianxi'],{},{})
 sgs.ai_skill_discard.ov_qianxi = function(self)
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards)
@@ -3807,29 +4010,32 @@ end
 remember_function('ai_skill_playerchosen','ov_qianxi',sgs.ai_skill_playerchosen['ov_qianxi'],{},{})
 sgs.ai_playerchosen_intention.ov_qianxi = 55
 
-sgs.ai_skill_invoke.ov_enyuan = function(self,data)
+ai_skill_invoke.ov_enyuan = function(self, options, request)
 	-- The recovery prompt is asked while CardsMoveOneTime is still set.
+	local data = request and self:getDecisionData(request) or nil
 	local prompt = data:toString():split(":")
 	if prompt[1]=="ov_enyuan1"
 	then
 		local target = BeMan(self.room,prompt[2])
-		return self:isFriend(target) and target:isWounded()
+		return (self:isFriend(target) and target:isWounded()) or false
 	end
 	-- Both initial prompts pass the source ServerPlayer, not the event struct.
 	local target = data:toPlayer()
 	if self.player:getStrategyFlag("Damaged")
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
 	if self.player:getStrategyFlag("CardsMoveOneTime")
 	then
-		return self:isFriend(target)
+		return (self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_enyuan',sgs.ai_skill_invoke['ov_enyuan'],{},{})
-sgs.ai_skill_use["@@ov_xuanhuo"] = function(self,prompt)
+remember_function('ai_skill_invoke','ov_enyuan',ai_skill_invoke['ov_enyuan'],{},{})
+ai_skill_use["@@ov_xuanhuo"] = function(self, prompt, request)
 	local to,ids = nil,{}
 	local destlist = self.room:getOtherPlayers(self.player)
     destlist = self:sort(destlist,"handcard")
@@ -3866,7 +4072,7 @@ sgs.ai_skill_use["@@ov_xuanhuo"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_xuanhuo',sgs.ai_skill_use['@@ov_xuanhuo'],{'ov_xh_to'},{'ov_xh_to'})
+remember_function('ai_skill_use','@@ov_xuanhuo',ai_skill_use['@@ov_xuanhuo'],{'ov_xh_to'},{'ov_xh_to'})
 sgs.ai_skill_playerchosen.ov_xuanhuo = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -3885,7 +4091,10 @@ end
 remember_function('ai_skill_playerchosen','ov_xuanhuo',sgs.ai_skill_playerchosen['ov_xuanhuo'],{'ov_xh_to'},{})
 sgs.ai_playerchosen_intention.ov_xuanhuo = 55
 
-sgs.ai_skill_choice.ov_xuanhuo = function(self,choices,data)
+ai_skill_choice.ov_xuanhuo = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if table.contains(items,"slash")
@@ -3893,22 +4102,24 @@ sgs.ai_skill_choice.ov_xuanhuo = function(self,choices,data)
 		if self:isFriend(target)
 		then
 			if not self:hasTrickEffective(clone(self,"duel"),target,self.player)
-			then return "duel" end
+			then return ai_choice_result(("duel"), options) end
 			if not(self:isWeak(target) and self:slashIsEffective(clone(self),target))
-			then return "slash" end
+			then return ai_choice_result(("slash"), options) end
 		elseif self.player:getHandcardNum()>target:getHandcardNum()
 		and self:hasTrickEffective(clone(self,"duel"),target,self.player)
 		then
-			return "duel"
+			return ai_choice_result(("duel"), options)
 		end
-		return "slash"
+		return ai_choice_result(("slash"), options)
 	end
 	if not self:isFriend(target)
-	then return items[1] end
+	then return ai_choice_result((items[1]), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_xuanhuo',sgs.ai_skill_choice['ov_xuanhuo'],{},{})
+remember_function('ai_skill_choice','ov_xuanhuo',ai_skill_choice['ov_xuanhuo'],{},{})
 sgs.ai_skill_playerchosen.ov_zenhui = function(self,players)
 	dynamic(self,'ai_skill_choice','ov_zenhui',"ov_zenhui2")
 	write_delegate(self,"yb_zhuzhan2_data",tag(self,"ov_zenhuiData","CardUse"))
@@ -3962,7 +4173,9 @@ end
 
 
 remember_function('ai_skill_cardask','ov_jiaojin',sgs.ai_skill_cardask['ov_jiaojin'],{},{})
-sgs.ai_fill_skill["ov_yuanhu"] = function(self,inclusive,request)
+ai_fill_skill["ov_yuanhu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	cards = self:sortByKeepValue(cards)
   	for i,c in sgs.list(cards)do
@@ -4041,8 +4254,8 @@ sgs.ai_fill_skill["ov_yuanhu"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_yuanhu',sgs.ai_fill_skill['ov_yuanhu'],{'ov_yh_to'},{'ov_yh_to'})
-sgs.ai_skill_use_func["#ov_yuanhuCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_yuanhu',ai_fill_skill['ov_yuanhu'],{'ov_yh_to'},{'ov_yh_to'})
+ai_card_use["#ov_yuanhuCard"] = function(self, card, use, request)
 	if self.ov_yh_to
 	then
 		use.card = card
@@ -4051,11 +4264,11 @@ sgs.ai_skill_use_func["#ov_yuanhuCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_yuanhuCard',sgs.ai_skill_use_func['#ov_yuanhuCard'],{'ov_yh_to'},{})
+remember_function('ai_card_use','#ov_yuanhuCard',ai_card_use['#ov_yuanhuCard'],{'ov_yh_to'},{})
 sgs.ai_use_value.ov_yuanhuCard = 9.4
 sgs.ai_use_priority.ov_yuanhuCard = 7.8
 
-sgs.ai_skill_use["@@ov_yuanhu"] = function(self,prompt)
+ai_skill_use["@@ov_yuanhu"] = function(self, prompt, request)
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	cards = self:sortByKeepValue(cards)
   	for i,c in sgs.list(cards)do
@@ -4130,7 +4343,7 @@ sgs.ai_skill_use["@@ov_yuanhu"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_yuanhu',sgs.ai_skill_use['@@ov_yuanhu'],{},{})
+remember_function('ai_skill_use','@@ov_yuanhu',ai_skill_use['@@ov_yuanhu'],{},{})
 sgs.ai_skill_playerchosen.ov_juezhu = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -4144,29 +4357,33 @@ end
 remember_function('ai_skill_playerchosen','ov_juezhu',sgs.ai_skill_playerchosen['ov_juezhu'],{},{})
 sgs.ai_playerchosen_intention.ov_juezhu = -55
 
-sgs.ai_skill_invoke.ov_juezhu = function(self,data)
-	return sgs.ai_skill_playerchosen.ov_juezhu(self,self.room:getAlivePlayers())
+ai_skill_invoke.ov_juezhu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (sgs.ai_skill_playerchosen.ov_juezhu(self,self.room:getAlivePlayers())) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_juezhu',sgs.ai_skill_invoke['ov_juezhu'],{},{})
-sgs.ai_skill_invoke.ov_zhilve = function(self,data)
-	return true
+remember_function('ai_skill_invoke','ov_juezhu',ai_skill_invoke['ov_juezhu'],{},{})
+ai_skill_invoke.ov_zhilve = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_zhilve',sgs.ai_skill_invoke['ov_zhilve'],{},{})
-sgs.ai_skill_choice.ov_zhilve = function(self,choices)
+remember_function('ai_skill_invoke','ov_zhilve',ai_skill_invoke['ov_zhilve'],{},{})
+ai_skill_choice.ov_zhilve = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if sgs.ai_skill_invoke.peiqi(self,{}) then
+	if ai_skill_invoke.peiqi(self,self:inquiryInput("skill_invoke","peiqi",{})) then
 		if self.room:getCardPlace(self.peiqiData.cid)~=sgs.Player_PlaceEquip
-		or not self:isWeak() then return items[1] end
+		or not self:isWeak() then return ai_choice_result((items[1]), options) end
 	end
-	return items[2]
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_zhilve',sgs.ai_skill_choice['ov_zhilve'],{},{})
+remember_function('ai_skill_choice','ov_zhilve',ai_skill_choice['ov_zhilve'],{},{})
 sgs.ai_skill_playerchosen["ov_zhilve_from"] = function(self,players)
 	for _,target in sgs.list(players)do
 		if target:objectName()==self.peiqiData.from:objectName()
@@ -4216,11 +4433,11 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_zhengrong',sgs.ai_skill_playerchosen['ov_zhengrong'],{},{})
-sgs.ai_skill_use["@@ov_hongju"] = function(self,prompt)
+ai_skill_use["@@ov_hongju"] = function(self, prompt, request)
 	local valid = {}
 	local honor = list_i2c(self,self.player:getPile("honor"))
     local cards = self.player:getCards("h")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	for _,c in sgs.list(honor)do
 		if self:aiUseCard(c).card
 		then
@@ -4263,15 +4480,18 @@ sgs.ai_skill_use["@@ov_hongju"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_hongju',sgs.ai_skill_use['@@ov_hongju'],{},{})
-sgs.ai_skill_invoke.ov_hongju = function(self,data)
-	return self.player:isWounded()
-	or #self.enemies>0
+remember_function('ai_skill_use','@@ov_hongju',ai_skill_use['@@ov_hongju'],{},{})
+ai_skill_invoke.ov_hongju = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self.player:isWounded()
+	or #self.enemies>0) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_hongju',sgs.ai_skill_invoke['ov_hongju'],{},{})
-sgs.ai_fill_skill["ov_qingce"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_hongju',ai_skill_invoke['ov_hongju'],{},{})
+ai_fill_skill["ov_qingce"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getPile("honor")
 	if cards:length()>0
 	then
@@ -4280,8 +4500,8 @@ sgs.ai_fill_skill["ov_qingce"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_qingce',sgs.ai_fill_skill['ov_qingce'],{},{})
-sgs.ai_skill_use_func["#ov_qingceCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_qingce',ai_fill_skill['ov_qingce'],{},{})
+ai_card_use["#ov_qingceCard"] = function(self, card, use, request)
 	for c,fp in sgs.list(self.friends_noself)do
 		if self:doDisCard(fp,"ej")
 		then
@@ -4310,11 +4530,11 @@ sgs.ai_skill_use_func["#ov_qingceCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_qingceCard',sgs.ai_skill_use_func['#ov_qingceCard'],{},{})
+remember_function('ai_card_use','#ov_qingceCard',ai_card_use['#ov_qingceCard'],{},{})
 sgs.ai_use_value.ov_qingceCard = 4.4
 sgs.ai_use_priority.ov_qingceCard = 4.8
 
-sgs.ai_skill_use["@@ov_xingluan!"] = function(self,prompt)
+ai_skill_use["@@ov_xingluan!"] = function(self, prompt, request)
 	local valid,to = {},nil
 	local ids = tag(self,"ov_xingluanForAI","IntList")
     ids = self:sortByUseValue(list_i2c(self,ids))
@@ -4388,13 +4608,14 @@ sgs.ai_skill_use["@@ov_xingluan!"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_xingluan!',sgs.ai_skill_use['@@ov_xingluan!'],{},{})
-sgs.ai_skill_invoke.ov_xingluan = function(self,data)
-	return true
+remember_function('ai_skill_use','@@ov_xingluan!',ai_skill_use['@@ov_xingluan!'],{},{})
+ai_skill_invoke.ov_xingluan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_xingluan',sgs.ai_skill_invoke['ov_xingluan'],{},{})
+remember_function('ai_skill_invoke','ov_xingluan',ai_skill_invoke['ov_xingluan'],{},{})
 sgs.ai_skill_playerchosen.ov_qirang = function(self,players)
 	write_delegate(self,"yb_fujia2_data",tag(self,"ov_qirangData","CardUse"))
 	local to = sgs.ai_skill_playerchosen.yb_fujia2(self,players)
@@ -4406,35 +4627,42 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_qirang',sgs.ai_skill_playerchosen['ov_qirang'],{},{})
-sgs.ai_skill_invoke.ov_yuhua = function(self,data)
+ai_skill_invoke.ov_yuhua = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	sgs.guanXingFriend = true
-	return true
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_yuhua',sgs.ai_skill_invoke['ov_yuhua'],{},{})
-sgs.ai_skill_invoke.ov_xuhe = function(self,data)
+remember_function('ai_skill_invoke','ov_yuhua',ai_skill_invoke['ov_yuhua'],{},{})
+ai_skill_invoke.ov_xuhe = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_xuhe',sgs.ai_skill_invoke['ov_xuhe'],{},{})
-sgs.ai_skill_choice.ov_xuhe = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_xuhe',ai_skill_invoke['ov_xuhe'],{},{})
+ai_skill_choice.ov_xuhe = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if self:isEnemy(target)
 	then
 		if target:getHandcardNum()>self.player:getHandcardNum()*(math.random()+1.3)
-		and not self:isWeak() then return items[1] end
+		and not self:isWeak() then return ai_choice_result((items[1]), options) end
 	end
-	return items[2]
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_xuhe',sgs.ai_skill_choice['ov_xuhe'],{},{})
+remember_function('ai_skill_choice','ov_xuhe',ai_skill_choice['ov_xuhe'],{},{})
 sgs.ai_skill_playerschosen.ov_wuhun = function(self,players,x,n)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp")
@@ -4455,13 +4683,14 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_wuhun',sgs.ai_skill_playerschosen['ov_wuhun'],{},{})
-sgs.ai_skill_invoke.ov_wuhun = function(self,data)
-	return #self.enemies>0
-	or #self.friends>0
+ai_skill_invoke.ov_wuhun = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.enemies>0
+	or #self.friends>0) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_wuhun',sgs.ai_skill_invoke['ov_wuhun'],{},{})
+remember_function('ai_skill_invoke','ov_wuhun',ai_skill_invoke['ov_wuhun'],{},{})
 sgs.ai_skill_playerchosen.ov_kuanji = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"handcard")
@@ -4495,18 +4724,20 @@ remember_function('ai_skill_playerchosen','_ov_tiaojiyanmei',sgs.ai_skill_player
 sgs.ai_playerchosen_intention._ov_tiaojiyanmei = -55
 
 function SmartAIView:useCardTiaojiyanmei(card,use)
+    local recommend = self:targetRecommendScorer(card)
+    local receive = self:targetRecommendScorer(card, self.player, nil, "draw")
 	if card:canRecast() then use.card = card end
 	self:setPriorityValue("Tiaojiyanmei",5.5,"OverseasVersion")
 	if self.player:isLocked(card) then return end
 	local extraTarget = 1+extra_targets(self,card)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	self.enemies = self:sort(self.enemies,"hp")
-	for _,ep in sgs.list(self.enemies)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if is_current(use,ep) then continue end
 		if use.to:length()<2 and can_to(self,card,ep,self.player,use.to) then
 			use.to:append(ep)
 			local remove1 = true
-			for _,fp in sgs.list(self.friends)do
+			for _,fp in sgs.list(self:orderTargetsByRecommend(self.friends, receive))do
 				if is_current(use,fp) then continue end
 				if ep:getHandcardNum()>fp:getHandcardNum()
 				and can_to(self,card,fp,self.player,use.to) then
@@ -4520,13 +4751,13 @@ function SmartAIView:useCardTiaojiyanmei(card,use)
 			if remove1 then use.to:removeOne(ep) end
 		end
 	end
-	for _,ep in sgs.list(self.room:getAlivePlayers())do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.room:getAlivePlayers(), recommend))do
 		if is_current(use,ep) then continue end
 		if use.to:length()<2 and can_to(self,card,ep,self.player,use.to)
 		and not self:isFriend(ep) then
 			use.to:append(ep)
 			local remove1 = true
-			for _,fp in sgs.list(self.friends)do
+			for _,fp in sgs.list(self:orderTargetsByRecommend(self.friends, receive))do
 				if is_current(use,fp) then continue end
 				if ep:getHandcardNum()>fp:getHandcardNum()
 				and can_to(self,card,fp,self.player,use.to) then
@@ -4540,7 +4771,7 @@ function SmartAIView:useCardTiaojiyanmei(card,use)
 			if remove1 then use.to:removeOne(ep) end
 		end
 	end
-	for _,fp in sgs.list(self.friends)do
+	for _,fp in sgs.list(self:orderTargetsByRecommend(self.friends, receive))do
 		if is_current(use,fp) then continue end
 		if use.to:length()>1 and use.to:at(0):getHandcardNum()>fp:getHandcardNum()
 		and can_to(self,card,fp,self.player,use.to) then
@@ -4553,6 +4784,7 @@ function SmartAIView:useCardTiaojiyanmei(card,use)
 	if use.to:length()<2 then use.to:clear() end
 	self:setPriorityValue("Tiaojiyanmei",9-self.player:getHandcardNum(),"OverseasVersion")
 end
+sgs.registerSkillCardType("Tiaojiyanmei", "decrease")
 
 remember_function('SmartAIView','useCardTiaojiyanmei',SmartAIView['useCardTiaojiyanmei'],{},{})
 sgs.ai_use_priority.Tiaojiyanmei = 5.5
@@ -4644,13 +4876,15 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_yizhu',sgs.ai_skill_playerchosen['ov_yizhu'],{},{})
-sgs.ai_fill_skill["ov_luanchou"] = function(self,inclusive,request)
+ai_fill_skill["ov_luanchou"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_luanchouCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_luanchou',sgs.ai_fill_skill['ov_luanchou'],{},{})
-sgs.ai_skill_use_func["#ov_luanchouCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_luanchou',ai_fill_skill['ov_luanchou'],{},{})
+ai_card_use["#ov_luanchouCard"] = function(self, card, use, request)
 	self.friends = self:sort(self.friends,"hp")
 	for c,fp1 in sgs.list(self.friends)do
 		for _,fp2 in sgs.list(sgs.reverse(self.friends))do
@@ -4680,41 +4914,46 @@ sgs.ai_skill_use_func["#ov_luanchouCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_luanchouCard',sgs.ai_skill_use_func['#ov_luanchouCard'],{},{})
+remember_function('ai_card_use','#ov_luanchouCard',ai_card_use['#ov_luanchouCard'],{},{})
 sgs.ai_use_value.ov_luanchouCard = 4.4
 sgs.ai_use_priority.ov_luanchouCard = 7.8
 
-sgs.ai_skill_invoke.ov_gonghuan = function(self,data)
+ai_skill_invoke.ov_gonghuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
 		if self:isFriend(target)
 		then
-			return self:isWeak(target)
-			and (not self:isWeak() or target:getHp()<self.player:getHp() or target:getHandcardNum()>self.player:getHandcardNum())
+			return (self:isWeak(target)
+			and (not self:isWeak() or target:getHp()<self.player:getHp() or target:getHandcardNum()>self.player:getHandcardNum())) or false
 		end
-		return not self:isEnemy(target)
-		and self:isWeak(target) and not self:isWeak()
+		return (not self:isEnemy(target)
+		and self:isWeak(target) and not self:isWeak()) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_gonghuan',sgs.ai_skill_invoke['ov_gonghuan'],{},{})
-sgs.ai_fill_skill["ov_gongxin"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_gonghuan',ai_skill_invoke['ov_gonghuan'],{},{})
+ai_fill_skill["ov_gongxin"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_gongxinCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_gongxin',sgs.ai_fill_skill['ov_gongxin'],{},{})
-sgs.ai_skill_use_func["#ov_gongxinCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_gongxin',ai_fill_skill['ov_gongxin'],{},{})
+ai_card_use["#ov_gongxinCard"] = function(self, card, use, request)
 	local cas = true
 	if cas
 	then
 		cas = self:evaluateSkillCard("ov_gongxin","GongxinCard",{})
-		local gxUse = sgs.ai_skill_use_func["GongxinCard"]
+		local gxUse = ai_card_use["GongxinCard"]
 		if gxUse
 		then
-			gxUse(cas,use,self)
+			gxUse(self, cas, use, nil)
 			if use.to:length()>0
 			then
 				use.card = card
@@ -4725,39 +4964,44 @@ sgs.ai_skill_use_func["#ov_gongxinCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_gongxinCard',sgs.ai_skill_use_func['#ov_gongxinCard'],{},{})
+remember_function('ai_card_use','#ov_gongxinCard',ai_card_use['#ov_gongxinCard'],{},{})
 sgs.ai_use_value.ov_gongxinCard = 4.4
 sgs.ai_use_priority.ov_gongxinCard = 9.8
 
-sgs.ai_skill_choice.ov_gongxin = function(self,choices,data)
+ai_skill_choice.ov_gongxin = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if table.contains(items,"ov_gongxin1")
 	then
 		if self.gongxinchoice=="put"
-		then return "ov_gongxin1" end
-		return "ov_gongxin2"
+		then return ai_choice_result(("ov_gongxin1"), options) end
+		return ai_choice_result(("ov_gongxin2"), options)
 	end
 	if table.contains(items,"red")
 	then
 		for i,h in sgs.list(complete_hand(self,target))do
 			if self:isWeak(target)
 			and (isCard("Peach",h,target) or isCard("Analeptic",h,target))
-			then return h:getColorString() end
+			then return ai_choice_result((h:getColorString()), options) end
 		end
 		for i,h in sgs.list(complete_hand(self,target))do
 			if isCard("Jink",h,target)
-			then return h:getColorString() end
+			then return ai_choice_result((h:getColorString()), options) end
 		end
 		for i,h in sgs.list(complete_hand(self,target))do
 			if isCard("Nullification",h,target)
-			then return h:getColorString() end
+			then return ai_choice_result((h:getColorString()), options) end
 		end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_gongxin',sgs.ai_skill_choice['ov_gongxin'],{'gongxinchoice'},{'gongxinchoice'})
+remember_function('ai_skill_choice','ov_gongxin',ai_skill_choice['ov_gongxin'],{'gongxinchoice'},{'gongxinchoice'})
 sgs.ai_skill_askforag.ov_gongxin = function(self,card_ids)
 	local id = gongxin_ag(self,card_ids)
 	if id>=0 then return id end
@@ -4768,18 +5012,21 @@ end
 
 
 remember_function('ai_skill_askforag','ov_gongxin',sgs.ai_skill_askforag['ov_gongxin'],{},{})
-sgs.ai_skill_choice.ov_shelie = function(self,choices,data)
+ai_skill_choice.ov_shelie = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local uses,_,unknown = self:getTurnUse();if unknown then error(unknown,0)end
 	if #uses>2
 	then
-		return items[2]
+		return ai_choice_result((items[2]), options)
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_shelie',sgs.ai_skill_choice['ov_shelie'],{},{})
+remember_function('ai_skill_choice','ov_shelie',ai_skill_choice['ov_shelie'],{},{})
 sgs.ai_skill_playerchosen.ov_suizheng = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp",true)
@@ -4810,19 +5057,23 @@ end
 
 
 remember_function('ai_skill_discard','ov_suizheng',sgs.ai_skill_discard['ov_suizheng'],{},{})
-sgs.ai_skill_invoke.ov_tuidao = function(self,data)
+ai_skill_invoke.ov_tuidao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isEnemy(target)
+		return (self:isEnemy(target)) or false
 	end
-	return #self.friends_noself>0
-	or #self.enemies<1
+	return (#self.friends_noself>0
+	or #self.enemies<1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_tuidao',sgs.ai_skill_invoke['ov_tuidao'],{},{})
-sgs.ai_skill_choice.ov_tuidao = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_tuidao',ai_skill_invoke['ov_tuidao'],{},{})
+ai_skill_choice.ov_tuidao = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if target
@@ -4830,15 +5081,15 @@ sgs.ai_skill_choice.ov_tuidao = function(self,choices,data)
 	then
 		if target:hasEquip()
 		then
-			return items[3]
+			return ai_choice_result((items[3]), options)
 		end
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	end
-	return items[2]
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_tuidao',sgs.ai_skill_choice['ov_tuidao'],{},{})
+remember_function('ai_skill_choice','ov_tuidao',ai_skill_choice['ov_tuidao'],{},{})
 sgs.ai_skill_playerchosen.ov_tuidao = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp",true)
@@ -4879,58 +5130,69 @@ end
 remember_function('ai_skill_playerchosen','ov_gongge',sgs.ai_skill_playerchosen['ov_gongge'],{},{})
 sgs.ai_playerchosen_intention.ov_gongge = 55
 
-sgs.ai_skill_choice.ov_gongge = function(self,choices,data)
+ai_skill_choice.ov_gongge = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local use = tag(self,"ov_gongge","CardUse")
 	local target = data:toPlayer()
 	if target
 	then
 		if target:getHandcardNum()<2
-		then return items[3] end
+		then return ai_choice_result((items[3]), options) end
 		if target:getCardCount()>2
 		or target:getHp()<self.player:getHp()
-		then return items[2] end
+		then return ai_choice_result((items[2]), options) end
 		if target:getSkillList():length()>2
 		and self.player:getHandcardNum()<3
-		then return items[1] end
+		then return ai_choice_result((items[1]), options) end
 		if target:getLostHp()<2
-		then return items[3] end
+		then return ai_choice_result((items[3]), options) end
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_gongge',sgs.ai_skill_choice['ov_gongge'],{},{})
-sgs.ai_skill_invoke.ov_qingxi = function(self,data)
+remember_function('ai_skill_choice','ov_gongge',ai_skill_choice['ov_gongge'],{},{})
+ai_skill_invoke.ov_qingxi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_qingxi',sgs.ai_skill_invoke['ov_qingxi'],{},{})
-sgs.ai_skill_choice.ov_qingxi = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_qingxi',ai_skill_invoke['ov_qingxi'],{},{})
+ai_skill_choice.ov_qingxi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if target
 	then
 		if target:getEquips():length()<self.player:getEquips():length()
-		and not self:isWeak() then return items[1] end
+		and not self:isWeak() then return ai_choice_result((items[1]), options) end
 		if target:hasEquip() and self.player:hasEquip()
 		and self:getCardsNum("Jink")>0
-		then return items[2] end
+		then return ai_choice_result((items[2]), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_qingxi',sgs.ai_skill_choice['ov_qingxi'],{},{})
-sgs.ai_skill_use["@@ov_zaoli!"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_qingxi',ai_skill_choice['ov_qingxi'],{},{})
+ai_skill_use["@@ov_zaoli!"] = function(self, prompt, request)
 	local valid = {}
     local cards = self.player:getCards("hej")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,h in sgs.list(cards)do
 		if h:getTypeId()==3 then table.insert(valid,h:getKnownEffectiveId()) end
 		if h:isAvailable(self.player) and self:aiUseCard(h).card
@@ -4947,54 +5209,65 @@ sgs.ai_skill_use["@@ov_zaoli!"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_zaoli!',sgs.ai_skill_use['@@ov_zaoli!'],{},{})
-sgs.ai_skill_invoke.ov_yuzhang = function(self,data)
+remember_function('ai_skill_use','@@ov_zaoli!',ai_skill_use['@@ov_zaoli!'],{},{})
+ai_skill_invoke.ov_yuzhang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local ts = data:toString()
 	if ts:startsWith("ov_yuzhang")
 	then
 		ts = ts:split(":")[2]
 		if ts=="Player_Judge"
 		and self:doDisCard(self.player,"j")
-		then return true end
+		then return (true) or false end
 		if ts=="Player_Discard"
 		and self.player:getHandcardNum()>self.player:getMaxCards()*(math.random()+1)
-		then return true end
-		return
+		then return (true) or false end
+		return false
 	end
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_yuzhang',sgs.ai_skill_invoke['ov_yuzhang'],{},{})
-sgs.ai_skill_choice.ov_yuzhang = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_yuzhang',ai_skill_invoke['ov_yuzhang'],{},{})
+ai_skill_choice.ov_yuzhang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if target
 	then
 		if target:getHandcardNum()>self.player:getHandcardNum()*(math.random()+1)
-		then return items[1] end
+		then return ai_choice_result((items[1]), options) end
 		if target:getCardCount()<4
-		then return items[2] end
+		then return ai_choice_result((items[2]), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_yuzhang',sgs.ai_skill_choice['ov_yuzhang'],{},{})
-sgs.ai_skill_invoke.ov_guoyi = function(self,data)
+remember_function('ai_skill_choice','ov_yuzhang',ai_skill_choice['ov_yuzhang'],{},{})
+ai_skill_invoke.ov_guoyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isFriend(target)
+		return (not self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_guoyi',sgs.ai_skill_invoke['ov_guoyi'],{},{})
-sgs.ai_skill_use["@@ov_liexi"] = function(self,prompt)
+remember_function('ai_skill_invoke','ov_guoyi',ai_skill_invoke['ov_guoyi'],{},{})
+ai_skill_use["@@ov_liexi"] = function(self, prompt, request)
 	local valid = {}
     local cards = self.player:getCards("he")
     cards = self:sortByKeepValue(cards,nil,true)
@@ -5026,7 +5299,7 @@ sgs.ai_skill_use["@@ov_liexi"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_liexi',sgs.ai_skill_use['@@ov_liexi'],{},{})
+remember_function('ai_skill_use','@@ov_liexi',ai_skill_use['@@ov_liexi'],{},{})
 sgs.ai_skill_playerschosen.ov_shezhong = function(self,players,x,n)
 	local destlist = self:sort(players,"hp")
 	local tos = {}
@@ -5051,13 +5324,15 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_shezhong',sgs.ai_skill_playerchosen['ov_shezhong'],{},{})
-sgs.ai_fill_skill["ov_kaizengvs"] = function(self,inclusive,request)
+ai_fill_skill["ov_kaizengvs"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_kaizengCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_kaizengvs',sgs.ai_fill_skill['ov_kaizengvs'],{},{})
-sgs.ai_skill_use_func["#ov_kaizengCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_kaizengvs',ai_fill_skill['ov_kaizengvs'],{},{})
+ai_card_use["#ov_kaizengCard"] = function(self, card, use, request)
 	for c,fp in sgs.list(self.room:getAlivePlayers())do
 		if fp:hasSkill("ov_kaizeng")
 		and fp:getHandcardNum()>0
@@ -5072,25 +5347,30 @@ sgs.ai_skill_use_func["#ov_kaizengCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_kaizengCard',sgs.ai_skill_use_func['#ov_kaizengCard'],{'ov_kz_to'},{'ov_kz_to'})
+remember_function('ai_card_use','#ov_kaizengCard',ai_card_use['#ov_kaizengCard'],{'ov_kz_to'},{'ov_kz_to'})
 sgs.ai_use_value.ov_kaizengCard = 5.4
 sgs.ai_use_priority.ov_kaizengCard = 4.8
 
-sgs.ai_skill_choice.ov_kaizeng = function(self,choices,data)
+ai_skill_choice.ov_kaizeng = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	for d,cn in sgs.list(items)do
 		d = clone(self,cn)
 		if d
 		then
 			if getKnownCard(self.ov_kz_to,self.player,d:getClassName(),nil,"he")>0
-			then return cn end
+			then return ai_choice_result((cn), options) end
 		elseif getKnownCard(self.ov_kz_to,self.player,cn,nil,"he")>0
-		then return cn end
+		then return ai_choice_result((cn), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_kaizeng',sgs.ai_skill_choice['ov_kaizeng'],{'ov_kz_to'},{})
+remember_function('ai_skill_choice','ov_kaizeng',ai_skill_choice['ov_kaizeng'],{'ov_kz_to'},{})
 sgs.ai_skill_discard.ov_kaizeng = function(self,max,min,optional)
 	local to_cards = {}
 	local target = self.room:getCurrent()
@@ -5132,13 +5412,15 @@ end
 
 
 remember_function('ai_skill_discard','ov_kaizeng',sgs.ai_skill_discard['ov_kaizeng'],{},{})
-sgs.ai_fill_skill["ov_xiechang"] = function(self,inclusive,request)
+ai_fill_skill["ov_xiechang"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_xiechangCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_xiechang',sgs.ai_fill_skill['ov_xiechang'],{},{})
-sgs.ai_skill_use_func["#ov_xiechangCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_xiechang',ai_fill_skill['ov_xiechang'],{},{})
+ai_card_use["#ov_xiechangCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	local xc = self:getMaxCard()
 	self.ov_xiechang_card = xc
@@ -5174,11 +5456,12 @@ sgs.ai_skill_use_func["#ov_xiechangCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_xiechangCard',sgs.ai_skill_use_func['#ov_xiechangCard'],{'ov_xiechang_card'},{'ov_xiechang_card'})
+remember_function('ai_card_use','#ov_xiechangCard',ai_card_use['#ov_xiechangCard'],{'ov_xiechang_card'},{'ov_xiechang_card'})
 sgs.ai_use_value.ov_xiechangCard = 4.4
 sgs.ai_use_priority.ov_xiechangCard = 2.8
 
-sgs.ai_skill_invoke.ov_duoren = function(self,data)
+ai_skill_invoke.ov_duoren = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
@@ -5190,13 +5473,15 @@ sgs.ai_skill_invoke.ov_duoren = function(self,data)
 			if sk:isAttachedLordSkill()
 			or sk:isLordSkill()
 			then continue end
-			return can and self.player:getLostHp()>0
+			return (can and self.player:getLostHp()>0) or false
 		end
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_duoren',sgs.ai_skill_invoke['ov_duoren'],{},{})
+remember_function('ai_skill_invoke','ov_duoren',ai_skill_invoke['ov_duoren'],{},{})
 sgs.ai_skill_playerchosen.ov_yanshi = function(self,players)
 	local destlist = self:sort(players,"hp")
     for _,target in sgs.list(destlist)do
@@ -5214,30 +5499,34 @@ end
 remember_function('ai_skill_playerchosen','ov_yanshi',sgs.ai_skill_playerchosen['ov_yanshi'],{},{})
 sgs.ai_playerchosen_intention.ov_yanshi = -55
 
-sgs.ai_skill_invoke.ov_bingzhao = function(self,data)
+ai_skill_invoke.ov_bingzhao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isFriend(target)
+		return (self:isFriend(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_bingzhao',sgs.ai_skill_invoke['ov_bingzhao'],{},{})
-sgs.ai_skill_invoke.ov_wanwei = function(self,data)
+remember_function('ai_skill_invoke','ov_bingzhao',ai_skill_invoke['ov_bingzhao'],{},{})
+ai_skill_invoke.ov_wanwei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isFriend(target)
+		return (self:isFriend(target)
 		and self:isWeak(target)
-		and not self:isWeak()
+		and not self:isWeak()) or false
 	end
-	return true
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_wanwei',sgs.ai_skill_invoke['ov_wanwei'],{},{})
-sgs.ai_skill_use["@@ov_wanwei!"] = function(self,prompt)
+remember_function('ai_skill_invoke','ov_wanwei',ai_skill_invoke['ov_wanwei'],{},{})
+ai_skill_use["@@ov_wanwei!"] = function(self, prompt, request)
 	local valid = {}
 	local c = visible(self,self.player:getStrategyMark("ov_wanwei_id"))
     local d = self:aiUseCard(c)
@@ -5254,8 +5543,10 @@ sgs.ai_skill_use["@@ov_wanwei!"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_wanwei!',sgs.ai_skill_use['@@ov_wanwei!'],{},{})
-sgs.ai_fill_skill["ov_yuejian"] = function(self,inclusive,request)
+remember_function('ai_skill_use','@@ov_wanwei!',ai_skill_use['@@ov_wanwei!'],{},{})
+ai_fill_skill["ov_yuejian"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local ids = {}
 	local n = self.player:getHandcardNum()-self.player:getMaxCards()
 	n = n<1 and 1 or n
@@ -5276,13 +5567,13 @@ sgs.ai_fill_skill["ov_yuejian"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_yuejian',sgs.ai_fill_skill['ov_yuejian'],{},{})
-sgs.ai_skill_use_func["#ov_yuejianCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_yuejian',ai_fill_skill['ov_yuejian'],{},{})
+ai_card_use["#ov_yuejianCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_yuejianCard',sgs.ai_skill_use_func['#ov_yuejianCard'],{},{})
+remember_function('ai_card_use','#ov_yuejianCard',ai_card_use['#ov_yuejianCard'],{},{})
 sgs.ai_use_value.ov_yuejianCard = 3.4
 sgs.ai_use_priority.ov_yuejianCard = -0.8
 
@@ -5303,7 +5594,9 @@ local function proposal(self, card, request)
     -- bonus, ownership, discard limitations and the current activation scope).
     return self:evaluateTurnSkillCard("ov_muyue", "#ov_muyueCard", costs, request)
 end
-sgs.ai_fill_skill.ov_muyue = function(self, inclusive, request)
+ai_fill_skill.ov_muyue = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     -- These resets occur at every source fill, even if no plan is produced.
     self:setStrategyMemory("ACTN", false)
     self:setStrategyMemory("ov_muyue_to", false)
@@ -5355,7 +5648,7 @@ sgs.ai_fill_skill.ov_muyue = function(self, inclusive, request)
         end
     end
 end
-sgs.ai_skill_use_func["#ov_muyueCard"] = function(card, use, self)
+ai_card_use["#ov_muyueCard"] = function(self, card, use, request)
     use.card = card
 end
 sgs.ai_use_value.ov_muyueCard = 3.4
@@ -5400,31 +5693,42 @@ end
 remember_function('ai_skill_playerchosen','ov_chayi',sgs.ai_skill_playerchosen['ov_chayi'],{},{})
 sgs.ai_playerchosen_intention.ov_chayi = 55
 
-sgs.ai_skill_choice.ov_chayi = function(self,choices,data)
+ai_skill_choice.ov_chayi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if self.player:getHandcardNum()<1
-	then return items[1]
+	then return ai_choice_result((items[1]), options)
 	elseif self:isWeak()
 	and self.player:getHandcardNum()<=self.player:getHp()
-	then return items[2]
+	then return ai_choice_result((items[2]), options)
 	elseif self.player:getHandcardNum()>4
-	then return items[2] end
+	then return ai_choice_result((items[2]), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_chayi',sgs.ai_skill_choice['ov_chayi'],{},{})
-sgs.ai_skill_invoke.ov_zuici = function(self,data)
+remember_function('ai_skill_choice','ov_chayi',ai_skill_choice['ov_chayi'],{},{})
+ai_skill_invoke.ov_zuici = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isEnemy(target) then
-		return target:getPhase()>sgs.Player_Play
+		return (target:getPhase()>sgs.Player_Play
 		or target:getStrategyMark("&ov_dingyi1")>0
-		or target:getStrategyMark("&ov_dingyi2")>0 and self:getOverflow(target)>1
+		or target:getStrategyMark("&ov_dingyi2")>0 and self:getOverflow(target)>1) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_zuici',sgs.ai_skill_invoke['ov_zuici'],{},{})
-sgs.ai_skill_choice.ov_zuici = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_zuici',ai_skill_invoke['ov_zuici'],{},{})
+ai_skill_choice.ov_zuici = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	local cs = {}
@@ -5435,13 +5739,17 @@ sgs.ai_skill_choice.ov_zuici = function(self,choices,data)
 	if #cs>0
 	then
 		cs = self:sortByUseValue(cs,self:isEnemy(target))
-		return cs[1]:getClassName()
+		return ai_choice_result((cs[1]:getClassName()), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_zuici',sgs.ai_skill_choice['ov_zuici'],{},{})
-sgs.ai_fill_skill["ov_fubi"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_zuici',ai_skill_choice['ov_zuici'],{},{})
+ai_fill_skill["ov_fubi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	self.ov_fubi_to = nil
 	self.ov_fubi_choice = nil
 	for _,p in sgs.list(self.friends)do
@@ -5541,8 +5849,8 @@ sgs.ai_fill_skill["ov_fubi"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_fubi',sgs.ai_fill_skill['ov_fubi'],{'ov_fubi_choice','ov_fubi_to'},{'ov_fubi_choice','ov_fubi_to'})
-sgs.ai_skill_use_func["#ov_fubiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_fubi',ai_fill_skill['ov_fubi'],{'ov_fubi_choice','ov_fubi_to'},{'ov_fubi_choice','ov_fubi_to'})
+ai_card_use["#ov_fubiCard"] = function(self, card, use, request)
 	if self.ov_fubi_to
 	then
 		use.card = card
@@ -5551,7 +5859,7 @@ sgs.ai_skill_use_func["#ov_fubiCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_fubiCard',sgs.ai_skill_use_func['#ov_fubiCard'],{'ov_fubi_to'},{})
+remember_function('ai_card_use','#ov_fubiCard',ai_card_use['#ov_fubiCard'],{'ov_fubi_to'},{})
 sgs.ai_use_value.ov_fubiCard = 3.4
 sgs.ai_use_priority.ov_fubiCard = 4.8
 
@@ -5599,17 +5907,22 @@ end
 remember_function('ai_skill_playerchosen','ov_zhiqu',sgs.ai_skill_playerchosen['ov_zhiqu'],{},{})
 sgs.ai_playerchosen_intention.ov_zhiqu = 55
 
-sgs.ai_skill_choice.ov_xianfeng = function(self,choices,data)
+ai_skill_choice.ov_xianfeng = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if self:isFriend(target)
-	then return items[1] end
+	then return ai_choice_result((items[1]), options) end
 	if not self:isWeak() and self:canDraw()
-	then return items[2] end
+	then return ai_choice_result((items[2]), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_xianfeng',sgs.ai_skill_choice['ov_xianfeng'],{},{})
+remember_function('ai_skill_choice','ov_xianfeng',ai_skill_choice['ov_xianfeng'],{},{})
 sgs.ai_skill_cardask["ov_xingwu0"] = function(self,data,pattern,prompt)
 	local damage = data:toDamage()
 	if self:getOverflow()>0
@@ -5628,7 +5941,7 @@ end
 
 
 remember_function('ai_skill_cardask','ov_xingwu0',sgs.ai_skill_cardask['ov_xingwu0'],{},{})
-sgs.ai_skill_use["@@ov_xingwu"] = function(self,prompt)
+ai_skill_use["@@ov_xingwu"] = function(self, prompt, request)
 	local valid = {}
 	for _,id in sgs.list(self.player:getPile("ov_xingwu"))do
     	table.insert(valid,id)
@@ -5641,16 +5954,17 @@ sgs.ai_skill_use["@@ov_xingwu"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_xingwu',sgs.ai_skill_use['@@ov_xingwu'],{},{})
-sgs.ai_skill_invoke.ov_lijian = function(self,data)
+remember_function('ai_skill_use','@@ov_xingwu',ai_skill_use['@@ov_xingwu'],{},{})
+ai_skill_invoke.ov_lijian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	self.ov_lijian_to = target
-	return true
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_lijian',sgs.ai_skill_invoke['ov_lijian'],{'ov_lijian_to'},{'ov_lijian_to'})
-sgs.ai_skill_use["@@ov_lijian"] = function(self,prompt)
+remember_function('ai_skill_invoke','ov_lijian',ai_skill_invoke['ov_lijian'],{'ov_lijian_to'},{'ov_lijian_to'})
+ai_skill_use["@@ov_lijian"] = function(self, prompt, request)
 	local valid = {}
 	local ids = tag(self,"ov_lijianForAI","IntList")
 	for _,id in sgs.list(ids)do
@@ -5662,14 +5976,17 @@ sgs.ai_skill_use["@@ov_lijian"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_lijian',sgs.ai_skill_use['@@ov_lijian'],{'ov_lijian_to'},{})
-sgs.ai_skill_invoke.ov_lijian_damage = function(self,data)
-	return self:isEnemy(self.ov_lijian_to)
+remember_function('ai_skill_use','@@ov_lijian',ai_skill_use['@@ov_lijian'],{'ov_lijian_to'},{})
+ai_skill_invoke.ov_lijian_damage = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:isEnemy(self.ov_lijian_to)) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_lijian_damage',sgs.ai_skill_invoke['ov_lijian_damage'],{'ov_lijian_to'},{})
-sgs.ai_fill_skill["ov_quanqian"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_lijian_damage',ai_skill_invoke['ov_lijian_damage'],{'ov_lijian_to'},{})
+ai_fill_skill["ov_quanqian"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local ids = {}
 	for _,c in sgs.list(self:poisonCards("h"))do
 		table.insert(ids,c:getKnownEffectiveId())
@@ -5685,8 +6002,8 @@ sgs.ai_fill_skill["ov_quanqian"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_quanqian',sgs.ai_fill_skill['ov_quanqian'],{},{})
-sgs.ai_skill_use_func["#ov_quanqianCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_quanqian',ai_fill_skill['ov_quanqian'],{},{})
+ai_card_use["#ov_quanqianCard"] = function(self, card, use, request)
 	local n = 0
 	for _,p in sgs.list(self.room:getAlivePlayers())do
 		if p:getHandcardNum()>n then n = p:getHandcardNum() end
@@ -5718,21 +6035,24 @@ sgs.ai_skill_use_func["#ov_quanqianCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_quanqianCard',sgs.ai_skill_use_func['#ov_quanqianCard'],{},{})
+remember_function('ai_card_use','#ov_quanqianCard',ai_card_use['#ov_quanqianCard'],{},{})
 sgs.ai_use_value.ov_quanqianCard = 3.4
 sgs.ai_use_priority.ov_quanqianCard = 5.8
 
-sgs.ai_skill_choice.ov_quanqian = function(self,choices,data)
+ai_skill_choice.ov_quanqian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	self.ov_quanqian_to = target
 	if self:isFriend(target)
-	then return items[1] end
-	return items[2]
+	then return ai_choice_result((items[1]), options) end
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_quanqian',sgs.ai_skill_choice['ov_quanqian'],{'ov_quanqian_to'},{'ov_quanqian_to'})
+remember_function('ai_skill_choice','ov_quanqian',ai_skill_choice['ov_quanqian'],{'ov_quanqian_to'},{'ov_quanqian_to'})
 sgs.ai_skill_suit.ov_quanqian = function(self)
 	local sus = {}
 	for s,h in sgs.list(self.complete_hand(self,ov_quanqian_to))do
@@ -5751,30 +6071,38 @@ end
 
 
 remember_function('ai_skill_suit','ov_quanqian',sgs.ai_skill_suit['ov_quanqian'],{},{})
-sgs.ai_skill_invoke.ov_shenyi = function(self,data)
+ai_skill_invoke.ov_shenyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isEnemy(target)
-		or self.player:isKongcheng()
+		return (not self:isEnemy(target)
+		or self.player:isKongcheng()) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_shenyi',sgs.ai_skill_invoke['ov_shenyi'],{},{})
-sgs.ai_skill_choice.ov_shenyi = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_shenyi',ai_skill_invoke['ov_shenyi'],{},{})
+ai_skill_choice.ov_shenyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local cs = {}
 	for _,n in sgs.list(items)do
 		table.insert(cs,clone(self,n))
 	end
 	cs = self:sortByKeepValue(cs,true)
-	return cs[1]:objectName()
+	return ai_choice_result((cs[1]:objectName()), options)
 end
 
 
-remember_function('ai_skill_choice','ov_shenyi',sgs.ai_skill_choice['ov_shenyi'],{},{})
-sgs.ai_fill_skill["ov_xinghan"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_shenyi',ai_skill_choice['ov_shenyi'],{},{})
+ai_fill_skill["ov_xinghan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cs = {}
 	for _,id in sgs.list(self.player:getPile("ov_xiayi"))do
 		table.insert(cs,visible(self,id))
@@ -5783,7 +6111,7 @@ sgs.ai_fill_skill["ov_xinghan"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_xinghan',sgs.ai_fill_skill['ov_xinghan'],{},{})
+remember_function('ai_fill_skill','ov_xinghan',ai_fill_skill['ov_xinghan'],{},{})
 function sgs.ai_cardsview.ov_xinghan(self,class_name,player)
 	for _,id in sgs.list(player:getPile("ov_xiayi"))do
 		if visible(self,id):isKindOf(class_name)
@@ -5793,7 +6121,7 @@ end
 
 
 remember_function('ai_cardsview','ov_xinghan',sgs.ai_cardsview['ov_xinghan'],{},{})
-sgs.ai_skill_use["@@ov_xinghan"] = function(self,prompt)
+ai_skill_use["@@ov_xinghan"] = function(self, prompt, request)
 	for _,id in sgs.list(self.player:getPile("ov_xiayi"))do
 		local c = visible(self,id)
 		local dummy = self:aiUseCard(c)
@@ -5810,8 +6138,10 @@ sgs.ai_skill_use["@@ov_xinghan"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_xinghan',sgs.ai_skill_use['@@ov_xinghan'],{},{})
-sgs.ai_fill_skill["ov_chengxi"] = function(self,inclusive,request)
+remember_function('ai_skill_use','@@ov_xinghan',ai_skill_use['@@ov_xinghan'],{},{})
+ai_fill_skill["ov_chengxi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local mc = self:getMaxCard()
 	if mc and mc:getNumber()>10
 	then
@@ -5825,8 +6155,8 @@ sgs.ai_fill_skill["ov_chengxi"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_chengxi',sgs.ai_fill_skill['ov_chengxi'],{},{})
-sgs.ai_skill_use_func["#ov_chengxiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_chengxi',ai_fill_skill['ov_chengxi'],{},{})
+ai_card_use["#ov_chengxiCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,p in sgs.list(self.enemies)do
 		if self.player:canPindian(p)
@@ -5847,7 +6177,7 @@ sgs.ai_skill_use_func["#ov_chengxiCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_chengxiCard',sgs.ai_skill_use_func['#ov_chengxiCard'],{'ov_chengxi_to'},{'ov_chengxi_to'})
+remember_function('ai_card_use','#ov_chengxiCard',ai_card_use['#ov_chengxiCard'],{'ov_chengxi_to'},{'ov_chengxi_to'})
 sgs.ai_use_value.ov_chengxiCard = 3.4
 sgs.ai_use_priority.ov_chengxiCard = 8.8
 
@@ -5869,16 +6199,19 @@ end
 remember_function('ai_skill_playerchosen','ov_chengxi',sgs.ai_skill_playerchosen['ov_chengxi'],{'ov_chengxi_to'},{})
 sgs.ai_playerchosen_intention.ov_chengxi = 55
 
-sgs.ai_skill_invoke.ov_huzhong = function(self,data)
+ai_skill_invoke.ov_huzhong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isEnemy(target)
+		return (self:isEnemy(target)) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_huzhong',sgs.ai_skill_invoke['ov_huzhong'],{},{})
+remember_function('ai_skill_invoke','ov_huzhong',ai_skill_invoke['ov_huzhong'],{},{})
 sgs.ai_skill_cardask["ov_huzhong0"] = function(self,data,pattern,prompt)
 	local use = data:toCardUse()
 	for _,p in sgs.list(card_targets(self,self.player,use.card,use.to))do
@@ -5896,7 +6229,9 @@ end
 
 
 remember_function('ai_skill_cardask','ov_fenwang0',sgs.ai_skill_cardask['ov_fenwang0'],{},{})
-sgs.ai_fill_skill["ov_danlie"] = function(self,inclusive,request)
+ai_fill_skill["ov_danlie"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local mc = self:getMaxCard()
 	if mc and mc:getNumber()+self.player:getLostHp()>10 then
 		for _,c in sgs.list(self:getPriorTurnUseCards())do
@@ -5908,8 +6243,8 @@ sgs.ai_fill_skill["ov_danlie"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_danlie',sgs.ai_fill_skill['ov_danlie'],{},{})
-sgs.ai_skill_use_func["#ov_danlieCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_danlie',ai_fill_skill['ov_danlie'],{},{})
+ai_card_use["#ov_danlieCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,p in sgs.list(self.enemies)do
 		if self.player:canPindian(p)
@@ -5928,41 +6263,47 @@ sgs.ai_skill_use_func["#ov_danlieCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_danlieCard',sgs.ai_skill_use_func['#ov_danlieCard'],{},{})
+remember_function('ai_card_use','#ov_danlieCard',ai_card_use['#ov_danlieCard'],{},{})
 sgs.ai_use_value.ov_danlieCard = 3.4
 sgs.ai_use_priority.ov_danlieCard = 3.8
 
-sgs.ai_skill_choice.ov_zhongyi = function(self,choices,data)
+ai_skill_choice.ov_zhongyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local n = items[1]:split("=")[2]
 	local m = items[3]:split("=")[2]
-	if n-m>1 then return items[3] end
+	if n-m>1 then return ai_choice_result((items[3]), options) end
 	if self:isWeak() then
-		return items[2]
+		return ai_choice_result((items[2]), options)
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_zhongyi',sgs.ai_skill_choice['ov_zhongyi'],{},{})
-sgs.ai_skill_invoke.ov_chue = function(self,data)
+remember_function('ai_skill_choice','ov_zhongyi',ai_skill_choice['ov_zhongyi'],{},{})
+ai_skill_invoke.ov_chue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use and use.card then
 		local du = self:aiUseCard(use.card,dummy(true,99,use.to))
 		if du.card and du.to:length()>0 then
 			self.ov_chue_to = du.to
-			return not self:isWeak()
+			return (not self:isWeak()) or false
 		end
 	else
 		local dc = clone(self)
 		dc = mutate(self,dc,"skill","_ov_chue")
 		local dummy = self:aiUseCard(dc)
-		return dummy.card~=nil
+		return (dummy.card~=nil) or false
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_chue',sgs.ai_skill_invoke['ov_chue'],{'ov_chue_to'},{'ov_chue_to'})
+remember_function('ai_skill_invoke','ov_chue',ai_skill_invoke['ov_chue'],{'ov_chue_to'},{'ov_chue_to'})
 sgs.ai_skill_playerschosen.ov_chue = function(self,players,x,n)
 	local destlist = {}
     for _,p in sgs.list(players)do
@@ -5974,7 +6315,7 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_chue',sgs.ai_skill_playerschosen['ov_chue'],{'ov_chue_to'},{})
-sgs.ai_skill_use["@@ov_chue!"] = function(self,prompt)
+ai_skill_use["@@ov_chue!"] = function(self, prompt, request)
 	local dc = clone(self)
 	dc = mutate(self,dc,"skill","_ov_chue")
 	local dummy = self:aiUseCard(dc)
@@ -5988,7 +6329,7 @@ sgs.ai_skill_use["@@ov_chue!"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_chue!',sgs.ai_skill_use['@@ov_chue!'],{},{})
+remember_function('ai_skill_use','@@ov_chue!',ai_skill_use['@@ov_chue!'],{},{})
 sgs.ai_skill_playerchosen.ov_tianshou = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp",true)
@@ -6007,7 +6348,9 @@ end
 remember_function('ai_skill_playerchosen','ov_tianshou',sgs.ai_skill_playerchosen['ov_tianshou'],{},{})
 sgs.ai_playerchosen_intention.ov_tianshou = -66
 
-sgs.ai_fill_skill["ov_huajing"] = function(self,inclusive,request)
+ai_fill_skill["ov_huajing"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:usedTimes("#ov_huajingCard") >= 1 or self.player:getStrategyMark("ov_huajing-Clear") > 0 then
 		return
 	end
@@ -6033,13 +6376,13 @@ sgs.ai_fill_skill["ov_huajing"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_huajing',sgs.ai_fill_skill['ov_huajing'],{},{})
-sgs.ai_skill_use_func["#ov_huajingCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_huajing',ai_fill_skill['ov_huajing'],{},{})
+ai_card_use["#ov_huajingCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_huajingCard',sgs.ai_skill_use_func['#ov_huajingCard'],{},{})
+remember_function('ai_card_use','#ov_huajingCard',ai_card_use['#ov_huajingCard'],{},{})
 sgs.ai_use_value.ov_huajingCard = 3.4
 sgs.ai_use_priority.ov_huajingCard = 4.8
 
@@ -6050,17 +6393,18 @@ end
 
 
 remember_function('ai_skill_cardask','ov_dengjian0',sgs.ai_skill_cardask['ov_dengjian0'],{},{})
-sgs.ai_skill_invoke.ov_xinshou = function(self,data)
+ai_skill_invoke.ov_xinshou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local st = data:toString()
 	if st~="" then
-		return #self.friends>1
+		return (#self.friends>1) or false
 	end
-	return #self.friends>1
-	or self.player:getStrategyMark("ov_xinshou1-Clear")<1
+	return (#self.friends>1
+	or self.player:getStrategyMark("ov_xinshou1-Clear")<1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_xinshou',sgs.ai_skill_invoke['ov_xinshou'],{},{})
+remember_function('ai_skill_invoke','ov_xinshou',ai_skill_invoke['ov_xinshou'],{},{})
 sgs.ai_skill_playerchosen.ov_xinshou = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	destlist = self:sort(destlist,"hp",true)
@@ -6079,13 +6423,15 @@ end
 remember_function('ai_skill_playerchosen','ov_xinshou',sgs.ai_skill_playerchosen['ov_xinshou'],{},{})
 sgs.ai_playerchosen_intention.ov_xinshou = -66
 
-sgs.ai_fill_skill["ov_jieqiu"] = function(self,inclusive,request)
+ai_fill_skill["ov_jieqiu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_jieqiuCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_jieqiu',sgs.ai_fill_skill['ov_jieqiu'],{},{})
-sgs.ai_skill_use_func["#ov_jieqiuCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_jieqiu',ai_fill_skill['ov_jieqiu'],{},{})
+ai_card_use["#ov_jieqiuCard"] = function(self, card, use, request)
 	self.friends_noself = self:sort(self.friends_noself)
 	for _,p in sgs.list(self.friends_noself)do
 		local can = true
@@ -6115,17 +6461,19 @@ sgs.ai_skill_use_func["#ov_jieqiuCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_jieqiuCard',sgs.ai_skill_use_func['#ov_jieqiuCard'],{},{})
+remember_function('ai_card_use','#ov_jieqiuCard',ai_card_use['#ov_jieqiuCard'],{},{})
 sgs.ai_use_value.ov_jieqiuCard = 3.4
 sgs.ai_use_priority.ov_jieqiuCard = 4.8
 
-sgs.ai_fill_skill["ov_enchou"] = function(self,inclusive,request)
+ai_fill_skill["ov_enchou"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_enchouCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_enchou',sgs.ai_fill_skill['ov_enchou'],{},{})
-sgs.ai_skill_use_func["#ov_enchouCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_enchou',ai_fill_skill['ov_enchou'],{},{})
+ai_card_use["#ov_enchouCard"] = function(self, card, use, request)
 	self.friends_noself = self:sort(self.friends_noself,"hp",true)
 	for _,p in sgs.list(self.friends_noself)do
 		local can = false
@@ -6155,7 +6503,7 @@ sgs.ai_skill_use_func["#ov_enchouCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_enchouCard',sgs.ai_skill_use_func['#ov_enchouCard'],{},{})
+remember_function('ai_card_use','#ov_enchouCard',ai_card_use['#ov_enchouCard'],{},{})
 sgs.ai_use_value.ov_enchouCard = 3.4
 sgs.ai_use_priority.ov_enchouCard = 5.8
 
@@ -6171,7 +6519,9 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_duwang',sgs.ai_skill_playerschosen['ov_duwang'],{},{})
-sgs.ai_fill_skill["ov_yanshiYL"] = function(self,inclusive,request)
+ai_fill_skill["ov_yanshiYL"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cs = complete_hand(self,self.player)
 	cs = self:sortByKeepValue(cs)
 	local sc = nil
@@ -6204,13 +6554,13 @@ sgs.ai_fill_skill["ov_yanshiYL"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_yanshiYL',sgs.ai_fill_skill['ov_yanshiYL'],{},{})
-sgs.ai_skill_use_func["#ov_yanshiYLCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_yanshiYL',ai_fill_skill['ov_yanshiYL'],{},{})
+ai_card_use["#ov_yanshiYLCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_yanshiYLCard',sgs.ai_skill_use_func['#ov_yanshiYLCard'],{},{})
+remember_function('ai_card_use','#ov_yanshiYLCard',ai_card_use['#ov_yanshiYLCard'],{},{})
 sgs.ai_use_value.ov_yanshiYLCard = 3.4
 sgs.ai_use_priority.ov_yanshiYLCard = 5.8
 
@@ -6230,22 +6580,25 @@ end
 
 
 remember_function('ai_skill_cardask','ov_yanshiYLuse',sgs.ai_skill_cardask['ov_yanshiYLuse'],{},{})
-sgs.ai_fill_skill["ov_juexing"] = function(self,inclusive,request)
+ai_fill_skill["ov_juexing"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local dc = clone(self,"duel")
 	dc = mutate(self,dc,"skill","ov_juexing")
 	return dc
 end
 
 
-remember_function('ai_fill_skill','ov_juexing',sgs.ai_fill_skill['ov_juexing'],{},{})
-sgs.ai_skill_invoke.ov_qiaosi = function(self,data)
+remember_function('ai_fill_skill','ov_juexing',ai_fill_skill['ov_juexing'],{},{})
+ai_skill_invoke.ov_qiaosi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local st = data:toIntList()
-	return st:length()>=self.player:getHp()
-	or not self:isWeak() and st:length()>math.random(1,2)
+	return (st:length()>=self.player:getHp()
+	or not self:isWeak() and st:length()>math.random(1,2)) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_qiaosi',sgs.ai_skill_invoke['ov_qiaosi'],{},{})
+remember_function('ai_skill_invoke','ov_qiaosi',ai_skill_invoke['ov_qiaosi'],{},{})
 sgs.ai_skill_playerschosen.ov_baizu = function(self,players,x,n)
 	local destlist = {}
 	players = self:sort(players,"handcard")
@@ -6264,17 +6617,21 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_baizu',sgs.ai_skill_playerschosen['ov_baizu'],{},{})
-sgs.ai_skill_invoke.ov_beiding = function(self,data)
+ai_skill_invoke.ov_beiding = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local cp = self.room:getCurrent()
-	return cp~=self.player or self.player:getHandcardNum()<3
+	return (cp~=self.player or self.player:getHandcardNum()<3) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_beiding',sgs.ai_skill_invoke['ov_beiding'],{},{})
-sgs.ai_skill_choice.ov_beiding = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_beiding',ai_skill_invoke['ov_beiding'],{},{})
+ai_skill_choice.ov_beiding = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"cancel") and math.random()>0.5 then
-		return "cancel"
+		return ai_choice_result(("cancel"), options)
 	end
 	local cs = {}
 	local cp = self.room:getCurrent()
@@ -6288,7 +6645,7 @@ sgs.ai_skill_choice.ov_beiding = function(self,choices,data)
 				local d = self:aiUseCard(dc)
 				if d.card then
 					if d.to:contains(cp) or dc:isKindOf("AOE") or dc:isKindOf("GlobalEffect") then
-						return pn
+						return ai_choice_result((pn), options)
 					end
 				end
 			end
@@ -6298,15 +6655,15 @@ sgs.ai_skill_choice.ov_beiding = function(self,choices,data)
     for _,dc in sgs.list(cs)do
 		local d = self:aiUseCard(dc)
 		if d.card then
-			return pn
+			return ai_choice_result((pn), options)
 		end
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_beiding',sgs.ai_skill_choice['ov_beiding'],{},{})
-sgs.ai_skill_use["@@ov_beiding"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_beiding',ai_skill_choice['ov_beiding'],{},{})
+ai_skill_use["@@ov_beiding"] = function(self, prompt, request)
     local dc = property(self,"ov_beidingUse")
 	dc = clone(self,dc)
 	dc = mutate(self,dc,"skill","_ov_beiding")
@@ -6323,21 +6680,24 @@ end
 
 
 
-remember_function('ai_skill_use','@@ov_beiding',sgs.ai_skill_use['@@ov_beiding'],{},{})
-sgs.ai_skill_invoke.ov_hunyou = function(self,data)
-	return self:getAllPeachNum()+self.player:getHp()<1
+remember_function('ai_skill_use','@@ov_beiding',ai_skill_use['@@ov_beiding'],{},{})
+ai_skill_invoke.ov_hunyou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:getAllPeachNum()+self.player:getHp()<1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_hunyou',sgs.ai_skill_invoke['ov_hunyou'],{},{})
-sgs.ai_fill_skill["ov_huanji"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_hunyou',ai_skill_invoke['ov_hunyou'],{},{})
+ai_fill_skill["ov_huanji"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self.player:isWounded()
 	and policy(self,"#ov_huanjiCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_huanji',sgs.ai_fill_skill['ov_huanji'],{},{})
-sgs.ai_skill_use_func["#ov_huanjiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_huanji',ai_fill_skill['ov_huanji'],{},{})
+ai_card_use["#ov_huanjiCard"] = function(self, card, use, request)
 	local n = 0
 	for _,h in sgs.list(complete_hand(self,self.player))do
 		if h:isNDTrick() or h:isKindOf("BasicCard") then
@@ -6351,18 +6711,21 @@ sgs.ai_skill_use_func["#ov_huanjiCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_huanjiCard',sgs.ai_skill_use_func['#ov_huanjiCard'],{},{})
+remember_function('ai_card_use','#ov_huanjiCard',ai_card_use['#ov_huanjiCard'],{},{})
 sgs.ai_use_value.ov_huanjiCard = 3.4
 sgs.ai_use_priority.ov_huanjiCard = 11.8
 
-sgs.ai_skill_choice.ov_huanji = function(self,choices,data)
+ai_skill_choice.ov_huanji = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local cs = {}
     for _,pn in sgs.list(items)do
 		for _,h in sgs.list(complete_hand(self,self.player))do
 			if h:objectName()==pn then
 				if self:wasPreviouslyPlannedCard(h)
-				then return pn end
+				then return ai_choice_result((pn), options) end
 			end
 		end
 		local dc = clone(self,pn)
@@ -6374,23 +6737,26 @@ sgs.ai_skill_choice.ov_huanji = function(self,choices,data)
 	cs = self:sortByUseValue(cs)
     for _,dc in sgs.list(cs)do
 		if self:aiUseCard(dc).card then
-			return pn
+			return ai_choice_result((pn), options)
 		end
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_huanji',sgs.ai_skill_choice['ov_huanji'],{},{})
-sgs.ai_skill_invoke.ov_jiezhan = function(self,data)
+remember_function('ai_skill_choice','ov_huanji',ai_skill_choice['ov_huanji'],{},{})
+ai_skill_invoke.ov_jiezhan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local cp = data:toPlayer()
-	return self:canDraw() and self:isEnemy(cp)
-	and (self:getCardsNum("Jink")>0 or not self:isWeak())
+	return (self:canDraw() and self:isEnemy(cp)
+	and (self:getCardsNum("Jink")>0 or not self:isWeak())) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_jiezhan',sgs.ai_skill_invoke['ov_jiezhan'],{},{})
-sgs.ai_fill_skill["ov_qinghan"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_jiezhan',ai_skill_invoke['ov_jiezhan'],{},{})
+ai_fill_skill["ov_qinghan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cs = self.player:getCards("he")
 	cs = self:sortByKeepValue(cs)
 	for _,c in sgs.list(cs)do
@@ -6401,8 +6767,8 @@ sgs.ai_fill_skill["ov_qinghan"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_qinghan',sgs.ai_fill_skill['ov_qinghan'],{},{})
-sgs.ai_skill_use_func["#ov_qinghanCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_qinghan',ai_fill_skill['ov_qinghan'],{},{})
+ai_card_use["#ov_qinghanCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies)
 	for _,p in sgs.list(self.enemies)do
 		if self.player:canPindian(p) then
@@ -6414,11 +6780,14 @@ sgs.ai_skill_use_func["#ov_qinghanCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_qinghanCard',sgs.ai_skill_use_func['#ov_qinghanCard'],{},{})
+remember_function('ai_card_use','#ov_qinghanCard',ai_card_use['#ov_qinghanCard'],{},{})
 sgs.ai_use_value.ov_qinghanCard = 3.4
 sgs.ai_use_priority.ov_qinghanCard = 5.8
 
-sgs.ai_skill_choice.ov_qinghan = function(self,choices,data)
+ai_skill_choice.ov_qinghan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local cs = {}
 	local cp = data:toPlayer()
@@ -6431,7 +6800,7 @@ sgs.ai_skill_choice.ov_qinghan = function(self,choices,data)
 			local d = self:aiUseCard(dc)
 			if d.card then
 				if d.to:contains(cp) or dc:isKindOf("AOE") or dc:isKindOf("GlobalEffect") then
-					return pn
+					return ai_choice_result((pn), options)
 				end
 			end
 		end
@@ -6439,45 +6808,51 @@ sgs.ai_skill_choice.ov_qinghan = function(self,choices,data)
 	cs = self:sortByUseValue(cs)
     for _,dc in sgs.list(cs)do
 		if self:aiUseCard(dc).card then
-			return pn
+			return ai_choice_result((pn), options)
 		end
 	end
-	return items[#items]
+	return ai_choice_result((items[#items]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_qinghan',sgs.ai_skill_choice['ov_qinghan'],{},{})
-sgs.ai_skill_invoke.ov_zhihuan = function(self,data)
+remember_function('ai_skill_choice','ov_qinghan',ai_skill_choice['ov_qinghan'],{},{})
+ai_skill_invoke.ov_zhihuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	self.ov_zhihuan_to = damage.to
 	if self:isEnemy(damage.to) then
-		return not self:isWeak(damage.to)
+		return (not self:isWeak(damage.to)) or false
 	end
 	if self:isFriend(damage.to) then
-		return #self:poisonCards("e",damage.to)>0
+		return (#self:poisonCards("e",damage.to)>0) or false
 	end
-	return true
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_zhihuan',sgs.ai_skill_invoke['ov_zhihuan'],{'ov_zhihuan_to'},{'ov_zhihuan_to'})
-sgs.ai_skill_choice.ov_zhihuan = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_zhihuan',ai_skill_invoke['ov_zhihuan'],{'ov_zhihuan_to'},{'ov_zhihuan_to'})
+ai_skill_choice.ov_zhihuan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if self:doDisCard(self.ov_zhihuan_to,"e",true) then
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	end
-	return items[2]
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_zhihuan',sgs.ai_skill_choice['ov_zhihuan'],{'ov_zhihuan_to'},{})
-sgs.ai_fill_skill["ov_xianyuan"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_zhihuan',ai_skill_choice['ov_zhihuan'],{'ov_zhihuan_to'},{})
+ai_fill_skill["ov_xianyuan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_xianyuanCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_xianyuan',sgs.ai_fill_skill['ov_xianyuan'],{},{})
-sgs.ai_skill_use_func["#ov_xianyuanCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_xianyuan',ai_fill_skill['ov_xianyuan'],{},{})
+ai_card_use["#ov_xianyuanCard"] = function(self, card, use, request)
 	local n = self.player:getStrategyMark("&ov_xianyuan")
 	self.friends_noself = self:sort(self.friends_noself)
 	for _,p in sgs.list(self.friends_noself)do
@@ -6496,31 +6871,35 @@ sgs.ai_skill_use_func["#ov_xianyuanCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_xianyuanCard',sgs.ai_skill_use_func['#ov_xianyuanCard'],{},{})
+remember_function('ai_card_use','#ov_xianyuanCard',ai_card_use['#ov_xianyuanCard'],{},{})
 sgs.ai_use_value.ov_xianyuanCard = 3.4
 sgs.ai_use_priority.ov_xianyuanCard = 0.8
 
-sgs.ai_skill_choice.ov_xianyuan = function(self,choices,data)
+ai_skill_choice.ov_xianyuan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if items[1]:contains("ov_xianyuan0") then
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	end
 	local to = data:toPlayer()
 	if self:isFriend(to) then
-		return items[2]
+		return ai_choice_result((items[2]), options)
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_xianyuan',sgs.ai_skill_choice['ov_xianyuan'],{},{})
-sgs.ai_skill_invoke.ov_lingyin = function(self,data)
+remember_function('ai_skill_choice','ov_xianyuan',ai_skill_choice['ov_xianyuan'],{},{})
+ai_skill_invoke.ov_lingyin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	return not self:isFriend(use.from) or use.card:isDamageCard()
+	return (not self:isFriend(use.from) or use.card:isDamageCard()) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_lingyin',sgs.ai_skill_invoke['ov_lingyin'],{},{})
+remember_function('ai_skill_invoke','ov_lingyin',ai_skill_invoke['ov_lingyin'],{},{})
 sgs.ai_skill_playerchosen.ov_zongquan = function(self,players,x,n)
 	for _,p in sgs.list(players)do
 		if p==self.ov_zongquan_tp then
@@ -6534,14 +6913,15 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_zongquan',sgs.ai_skill_playerchosen['ov_zongquan'],{'ov_zongquan_tp'},{'ov_zongquan_tp'})
-sgs.ai_skill_invoke.ov_guimou = function(self,data)
+ai_skill_invoke.ov_guimou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local judge = data:toJudge()
 	self.ov_guimou_judge = judge
-	return self:needRetrial(judge) or judge.reason=="ov_zongquan"
+	return (self:needRetrial(judge) or judge.reason=="ov_zongquan") or false
 end
 
 
-remember_function('ai_skill_invoke','ov_guimou',sgs.ai_skill_invoke['ov_guimou'],{'ov_guimou_judge'},{'ov_guimou_judge'})
+remember_function('ai_skill_invoke','ov_guimou',ai_skill_invoke['ov_guimou'],{'ov_guimou_judge'},{'ov_guimou_judge'})
 sgs.ai_skill_askforag.ov_guimou = function(self,card_ids)
 	local cs = {}
 	for _,id in sgs.list(card_ids)do
@@ -6634,16 +7014,19 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_qiji1',sgs.ai_skill_playerchosen['ov_qiji1'],{},{})
-sgs.ai_skill_invoke.ov_qiji2 = function(self,data)
+ai_skill_invoke.ov_qiji2 = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local sts = data:toString():split(":")
 	local to = BeMan(self.room,sts[2])
-	return self:isFriend(to)
-	and (not self:isWeak() or self:getCardsNum("Jink")>0)
+	return (self:isFriend(to)
+	and (not self:isWeak() or self:getCardsNum("Jink")>0)) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_qiji2',sgs.ai_skill_invoke['ov_qiji2'],{},{})
-sgs.ai_fill_skill["ov_lifeng"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_qiji2',ai_skill_invoke['ov_qiji2'],{},{})
+ai_fill_skill["ov_lifeng"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cs = self.player:getCards("he")
 	cs = self:sortByKeepValue(cs)
 	self.enemies = self:sort(self.enemies)
@@ -6664,8 +7047,8 @@ sgs.ai_fill_skill["ov_lifeng"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_lifeng',sgs.ai_fill_skill['ov_lifeng'],{'ov_lifeng_to'},{'ov_lifeng_to'})
-sgs.ai_skill_use_func["#ov_lifengCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_lifeng',ai_fill_skill['ov_lifeng'],{'ov_lifeng_to'},{'ov_lifeng_to'})
+ai_card_use["#ov_lifengCard"] = function(self, card, use, request)
 	if self.ov_lifeng_to then
 		use.card = card
 		use.to:append(self.ov_lifeng_to)
@@ -6673,7 +7056,7 @@ sgs.ai_skill_use_func["#ov_lifengCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_lifengCard',sgs.ai_skill_use_func['#ov_lifengCard'],{'ov_lifeng_to'},{})
+remember_function('ai_card_use','#ov_lifengCard',ai_card_use['#ov_lifengCard'],{'ov_lifeng_to'},{})
 sgs.ai_use_value.ov_lifengCard = 3.4
 sgs.ai_use_priority.ov_lifengCard = 1.8
 
@@ -6686,18 +7069,19 @@ end
 
 
 remember_function('ai_skill_cardask','ov_lifeng0',sgs.ai_skill_cardask['ov_lifeng0'],{},{})
-sgs.ai_skill_invoke.ov_lifeng = function(self,data)
-	return true
+ai_skill_invoke.ov_lifeng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_lifeng',sgs.ai_skill_invoke['ov_lifeng'],{},{})
-sgs.ai_skill_use["@@ov_niwo"] = function(self,prompt)
+remember_function('ai_skill_invoke','ov_lifeng',ai_skill_invoke['ov_lifeng'],{},{})
+ai_skill_use["@@ov_niwo"] = function(self, prompt, request)
 	local valid = {}
     local ucs,_,unknown = self:getTurnUse();if unknown then error(unknown,0)end
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,h in sgs.list(cards)do
 		if same_card_in(ucs,h) then continue end
         table.insert(valid,h:getKnownEffectiveId())
@@ -6742,7 +7126,7 @@ sgs.ai_skill_use["@@ov_niwo"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_niwo',sgs.ai_skill_use['@@ov_niwo'],{},{})
+remember_function('ai_skill_use','@@ov_niwo',ai_skill_use['@@ov_niwo'],{},{})
 sgs.ai_skill_cardask["ov_guihan0"] = function(self,data,pattern,prompt)
 	if self:isWeak() or self.player:getCardCount()>2 then
 		return true
@@ -6751,13 +7135,15 @@ end
 
 
 remember_function('ai_skill_cardask','ov_guihan0',sgs.ai_skill_cardask['ov_guihan0'],{},{})
-sgs.ai_fill_skill["ov_guihan"] = function(self,inclusive,request)
+ai_fill_skill["ov_guihan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_guihanCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_guihan',sgs.ai_fill_skill['ov_guihan'],{},{})
-sgs.ai_skill_use_func["#ov_guihanCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_guihan',ai_fill_skill['ov_guihan'],{},{})
+ai_card_use["#ov_guihanCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies)
 	for _,p in sgs.list(self.enemies)do
 		if use.to:length()<3 and p:getHandcardNum()>0 and p:isWounded() then
@@ -6776,24 +7162,29 @@ sgs.ai_skill_use_func["#ov_guihanCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_guihanCard',sgs.ai_skill_use_func['#ov_guihanCard'],{},{})
+remember_function('ai_card_use','#ov_guihanCard',ai_card_use['#ov_guihanCard'],{},{})
 sgs.ai_use_value.ov_guihanCard = 3.4
 sgs.ai_use_priority.ov_guihanCard = 2.8
 
-sgs.ai_skill_choice.ov_guihan = function(self,choices,data)
+ai_skill_choice.ov_guihan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-	return items[2]
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_guihan',sgs.ai_skill_choice['ov_guihan'],{},{})
-sgs.ai_fill_skill["ov_renxian"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_guihan',ai_skill_choice['ov_guihan'],{},{})
+ai_fill_skill["ov_renxian"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_renxianCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_renxian',sgs.ai_fill_skill['ov_renxian'],{},{})
-sgs.ai_skill_use_func["#ov_renxianCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_renxian',ai_fill_skill['ov_renxian'],{},{})
+ai_card_use["#ov_renxianCard"] = function(self, card, use, request)
 	self.friends_noself = self:sort(self.friends_noself)
 	for _,p in sgs.list(self.friends_noself)do
 		if self:canDraw(p) then
@@ -6809,7 +7200,7 @@ sgs.ai_skill_use_func["#ov_renxianCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_renxianCard',sgs.ai_skill_use_func['#ov_renxianCard'],{},{})
+remember_function('ai_card_use','#ov_renxianCard',ai_card_use['#ov_renxianCard'],{},{})
 sgs.ai_use_value.ov_renxianCard = 3.4
 sgs.ai_use_priority.ov_renxianCard = -1.8
 
@@ -6827,55 +7218,66 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_chenxun',sgs.ai_skill_playerchosen['ov_chenxun'],{},{})
-sgs.ai_skill_invoke.ov_chihui = function(self,data)
+ai_skill_invoke.ov_chihui = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local cp = self.room:getCurrent()
-	return self:doDisCard(to,"ej") or self:isFriend(cp) and self:isWeak(cp)
+	return (self:doDisCard(to,"ej") or self:isFriend(cp) and self:isWeak(cp)) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_chihui',sgs.ai_skill_invoke['ov_chihui'],{},{})
-sgs.ai_skill_choice.ov_xianyuan = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_chihui',ai_skill_invoke['ov_chihui'],{},{})
+ai_skill_choice.ov_xianyuan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if items[1]:contains("ov_chihui") then
 		local cp = self.room:getCurrent()
 		if self:doDisCard(to,"ej") then
-			return items[1]
+			return ai_choice_result((items[1]), options)
 		end
 	end
-	return items[#items]
+	return ai_choice_result((items[#items]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_xianyuan',sgs.ai_skill_choice['ov_xianyuan'],{},{})
-sgs.ai_skill_invoke.ov_fuxi = function(self,data)
-	return self:canDraw() or self.player:getHp()<1
+remember_function('ai_skill_choice','ov_xianyuan',ai_skill_choice['ov_xianyuan'],{},{})
+ai_skill_invoke.ov_fuxi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw() or self.player:getHp()<1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_fuxi',sgs.ai_skill_invoke['ov_fuxi'],{},{})
-sgs.ai_skill_choice.ov_fuxi = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_fuxi',ai_skill_invoke['ov_fuxi'],{},{})
+ai_skill_choice.ov_fuxi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"ov_fuxi4") then
-		return "ov_fuxi4"
+		return ai_choice_result(("ov_fuxi4"), options)
 	end
 	if table.contains(items,"ov_fuxi3") and self.player:getHandcardNum()<3 then
-		return "ov_fuxi3"
+		return ai_choice_result(("ov_fuxi3"), options)
 	end
 	if table.contains(items,"ov_fuxi1") and self:isWeak(self.enemies) then
-		return "ov_fuxi1"
+		return ai_choice_result(("ov_fuxi1"), options)
 	end
-	return items[#items]
+	return ai_choice_result((items[#items]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_fuxi',sgs.ai_skill_choice['ov_fuxi'],{},{})
-sgs.ai_skill_invoke.ov_huangzhu = function(self,data)
-	return self:canDraw()
+remember_function('ai_skill_choice','ov_fuxi',ai_skill_choice['ov_fuxi'],{},{})
+ai_skill_invoke.ov_huangzhu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_huangzhu',sgs.ai_skill_invoke['ov_huangzhu'],{},{})
-sgs.ai_fill_skill["ov_liyuan"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_huangzhu',ai_skill_invoke['ov_huangzhu'],{},{})
+ai_fill_skill["ov_liyuan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cs = self.player:getCards("he")
 	cs = self:sortByKeepValue(cs)
 	for _,c in sgs.list(cs)do
@@ -6889,7 +7291,7 @@ sgs.ai_fill_skill["ov_liyuan"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_liyuan',sgs.ai_fill_skill['ov_liyuan'],{},{})
+remember_function('ai_fill_skill','ov_liyuan',ai_fill_skill['ov_liyuan'],{},{})
 sgs.ai_skill_discard.ov_shouzhu = function(self,max,min,optional)
 	local to_cards = {}
 	local target = self.room:getCurrent()
@@ -6921,7 +7323,9 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_daigui',sgs.ai_skill_playerschosen['ov_daigui'],{},{})
-sgs.ai_fill_skill["ov_cairu"] = function(self,inclusive,request)
+ai_fill_skill["ov_cairu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local ts = {}
 	if self.player:getStrategyMark("fire_attackov_cairuUse-Clear")<2 then
 		table.insert(ts,"fire_attack")
@@ -6952,7 +7356,7 @@ sgs.ai_fill_skill["ov_cairu"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_cairu',sgs.ai_fill_skill['ov_cairu'],{},{})
+remember_function('ai_fill_skill','ov_cairu',ai_fill_skill['ov_cairu'],{},{})
 sgs.ai_skill_playerchosen.tongxin = function(self,players,x,n)
 	players = self:sort(players,nil,true)
 	for _,p in sgs.list(players)do
@@ -6971,27 +7375,34 @@ end
 remember_function('ai_skill_playerchosen','tongxin',sgs.ai_skill_playerchosen['tongxin'],{},{})
 sgs.ai_playerchosen_intention.tongxin = -44
 
-sgs.ai_skill_invoke.ov_ciyin = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.ov_ciyin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_ciyin',sgs.ai_skill_invoke['ov_ciyin'],{},{})
-sgs.ai_skill_choice.ov_ciyin = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_ciyin',ai_skill_invoke['ov_ciyin'],{},{})
+ai_skill_choice.ov_ciyin = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_ciyin',sgs.ai_skill_choice['ov_ciyin'],{},{})
-sgs.ai_skill_choice.ov_qiyiju = function(self,choices,data)
+remember_function('ai_skill_choice','ov_ciyin',ai_skill_choice['ov_ciyin'],{},{})
+ai_skill_choice.ov_qiyiju = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-	if self:isWeak() then return items[1] end
-	return items[2]
+	if self:isWeak() then return ai_choice_result((items[1]), options) end
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_qiyiju',sgs.ai_skill_choice['ov_qiyiju'],{},{})
+remember_function('ai_skill_choice','ov_qiyiju',ai_skill_choice['ov_qiyiju'],{},{})
 sgs.ai_skill_playerschosen.ov_jushou = function(self,players,x,n)
 	local destlist = {}
 	players = self:sort(players,nil,true)
@@ -7013,22 +7424,27 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_jushou',sgs.ai_skill_playerschosen['ov_jushou'],{},{})
-sgs.ai_skill_choice.ov_jushou = function(self,choices,data)
+ai_skill_choice.ov_jushou = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local from = data:toPlayer()
-	if not self:isEnemy(from) then return items[1] end
-	return items[2]
+	if not self:isEnemy(from) then return ai_choice_result((items[1]), options) end
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_jushou',sgs.ai_skill_choice['ov_jushou'],{},{})
-sgs.ai_fill_skill["ov_liaoluanvs"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_jushou',ai_skill_choice['ov_jushou'],{},{})
+ai_fill_skill["ov_liaoluanvs"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_liaoluanCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_liaoluanvs',sgs.ai_fill_skill['ov_liaoluanvs'],{},{})
-sgs.ai_skill_use_func["#ov_liaoluanCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_liaoluanvs',ai_fill_skill['ov_liaoluanvs'],{},{})
+ai_card_use["#ov_liaoluanCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies)
 	for _,p in sgs.list(self.enemies)do
 		if self.player:inMyAttackRange(p) and self:damageIsEffective(p) and self:isWeak(p) then
@@ -7062,7 +7478,7 @@ sgs.ai_skill_use_func["#ov_liaoluanCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_liaoluanCard',sgs.ai_skill_use_func['#ov_liaoluanCard'],{},{})
+remember_function('ai_card_use','#ov_liaoluanCard',ai_card_use['#ov_liaoluanCard'],{},{})
 sgs.ai_use_value.ov_liaoluanCard = 3.4
 sgs.ai_use_priority.ov_liaoluanCard = 1.8
 
@@ -7095,40 +7511,52 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_juqian',sgs.ai_skill_playerschosen['ov_juqian'],{},{})
-sgs.ai_skill_choice.ov_juqian = function(self,choices,data)
-	return sgs.ai_skill_choice.ov_jushou(self,choices,data)
+ai_skill_choice.ov_juqian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	return ai_choice_result((ai_skill_choice.ov_jushou(self,{reason="ov_jushou",choices=options and options.choices or (choices~=nil and {} or nil),inquiry_scope="nested"},request)), options)
 end
 
 
-remember_function('ai_skill_choice','ov_juqian',sgs.ai_skill_choice['ov_juqian'],{},{})
+remember_function('ai_skill_choice','ov_juqian',ai_skill_choice['ov_juqian'],{},{})
 sgs.ai_skill_playerschosen.ov_juluan = function(self,players,x,n)
     return sgs.ai_skill_playerschosen.ov_jushou(self,players,x,n)
 end
 
 
 remember_function('ai_skill_playerschosen','ov_juluan',sgs.ai_skill_playerschosen['ov_juluan'],{},{})
-sgs.ai_skill_choice.ov_juluan = function(self,choices,data)
-	return sgs.ai_skill_choice.ov_jushou(self,choices,data)
+ai_skill_choice.ov_juluan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	return ai_choice_result((ai_skill_choice.ov_jushou(self,{reason="ov_jushou",choices=options and options.choices or (choices~=nil and {} or nil),inquiry_scope="nested"},request)), options)
 end
 
 
-remember_function('ai_skill_choice','ov_juluan',sgs.ai_skill_choice['ov_juluan'],{},{})
-sgs.ai_skill_invoke.ov_xianxing = function(self,data)
-	return self:canDraw()
+remember_function('ai_skill_choice','ov_juluan',ai_skill_choice['ov_juluan'],{},{})
+ai_skill_invoke.ov_xianxing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_xianxing',sgs.ai_skill_invoke['ov_xianxing'],{},{})
-sgs.ai_skill_choice.ov_xianxing = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_xianxing',ai_skill_invoke['ov_xianxing'],{},{})
+ai_skill_choice.ov_xianxing = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if self.player:getStrategyMark("&ov_xianxing-Clear")<4 and not self:isWeak()
-	then return items[1] end
-	return items[2]
+	then return ai_choice_result((items[1]), options) end
+	return ai_choice_result((items[2]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_xianxing',sgs.ai_skill_choice['ov_xianxing'],{},{})
-sgs.ai_fill_skill["ov_xijun"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_xianxing',ai_skill_choice['ov_xianxing'],{},{})
+ai_fill_skill["ov_xijun"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local ts = {"slash","duel"}
 	local cs = self.player:getCards("he")
 	cs = self:sortByKeepValue(cs)
@@ -7145,8 +7573,8 @@ sgs.ai_fill_skill["ov_xijun"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_xijun',sgs.ai_fill_skill['ov_xijun'],{},{})
-sgs.ai_skill_use["@@ov_xijun"] = function(self,prompt)
+remember_function('ai_fill_skill','ov_xijun',ai_fill_skill['ov_xijun'],{},{})
+ai_skill_use["@@ov_xijun"] = function(self, prompt, request)
 	local ts = {"slash","duel"}
 	local cs = self.player:getCards("he")
 	cs = self:sortByKeepValue(cs)
@@ -7170,7 +7598,7 @@ sgs.ai_skill_use["@@ov_xijun"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_xijun',sgs.ai_skill_use['@@ov_xijun'],{},{})
+remember_function('ai_skill_use','@@ov_xijun',ai_skill_use['@@ov_xijun'],{},{})
 function sgs.ai_cardsview.ov_xijun(self,class_name,player)
 	local dc = clone(self,class_name)
 	if dc then
@@ -7217,13 +7645,14 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_ronggui',sgs.ai_skill_playerchosen['ov_ronggui'],{},{})
-sgs.ai_skill_invoke.ov_tanlu = function(self,data)
+ai_skill_invoke.ov_tanlu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return self:isEnemy(to) or not self:isFriend(to) and self:isWeak()
+	return (self:isEnemy(to) or not self:isFriend(to) and self:isWeak()) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_tanlu',sgs.ai_skill_invoke['ov_tanlu'],{},{})
+remember_function('ai_skill_invoke','ov_tanlu',ai_skill_invoke['ov_tanlu'],{},{})
 sgs.ai_skill_discard.ov_tanlu = function(self,max,min,optional)
 	local to_cards = {}
 	local target = self.room:getCurrent()
@@ -7238,7 +7667,9 @@ end
 
 
 remember_function('ai_skill_discard','ov_tanlu',sgs.ai_skill_discard['ov_tanlu'],{},{})
-sgs.ai_fill_skill["ov_bimeng"] = function(self,inclusive,request)
+ai_fill_skill["ov_bimeng"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local ts = {}
 	local cs = self.player:getCards("h")
 	cs = self:sortByKeepValue(cs)
@@ -7270,14 +7701,15 @@ sgs.ai_fill_skill["ov_bimeng"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_bimeng',sgs.ai_fill_skill['ov_bimeng'],{},{})
-sgs.ai_skill_invoke.ov_zhue = function(self,data)
+remember_function('ai_fill_skill','ov_bimeng',ai_fill_skill['ov_bimeng'],{},{})
+ai_skill_invoke.ov_zhue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	return self:isFriend(use.from) and self:canDraw(use.from)
+	return (self:isFriend(use.from) and self:canDraw(use.from)) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_zhue',sgs.ai_skill_invoke['ov_zhue'],{},{})
+remember_function('ai_skill_invoke','ov_zhue',ai_skill_invoke['ov_zhue'],{},{})
 sgs.ai_skill_cardask["ov_fuzhu0"] = function(self,data,pattern,prompt)
 	local use = data:toCardUse()
 	if self:isFriend(use.from) then
@@ -7292,7 +7724,7 @@ end
 
 
 remember_function('ai_skill_cardask','ov_fuzhu0',sgs.ai_skill_cardask['ov_fuzhu0'],{},{})
-sgs.ai_skill_use["@@ov_fuzhu"] = function(self,prompt)
+ai_skill_use["@@ov_fuzhu"] = function(self, prompt, request)
     for _,id in sgs.list(tag(self,"ov_fuzhuForAI","IntList"))do
 		local dc = visible(self,id)
 		if dc:getTypeId()==2 and dc:isAvailable(self.player) then
@@ -7311,14 +7743,16 @@ sgs.ai_skill_use["@@ov_fuzhu"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_fuzhu',sgs.ai_skill_use['@@ov_fuzhu'],{},{})
-sgs.ai_fill_skill["ov_fenxian"] = function(self,inclusive,request)
+remember_function('ai_skill_use','@@ov_fuzhu',ai_skill_use['@@ov_fuzhu'],{},{})
+ai_fill_skill["ov_fenxian"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_fenxianCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_fenxian',sgs.ai_fill_skill['ov_fenxian'],{},{})
-sgs.ai_skill_use_func["#ov_fenxianCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_fenxian',ai_fill_skill['ov_fenxian'],{},{})
+ai_card_use["#ov_fenxianCard"] = function(self, card, use, request)
 	for _,p in sgs.list(self.friends)do
 		if #self:poisonCards("ej",p)>0 then
 			use.card = card
@@ -7351,7 +7785,7 @@ sgs.ai_skill_use_func["#ov_fenxianCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_fenxianCard',sgs.ai_skill_use_func['#ov_fenxianCard'],{},{})
+remember_function('ai_card_use','#ov_fenxianCard',ai_card_use['#ov_fenxianCard'],{},{})
 sgs.ai_use_value.ov_fenxianCard = 3.4
 sgs.ai_use_priority.ov_fenxianCard = 8.8
 
@@ -7391,13 +7825,15 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_fenxian',sgs.ai_skill_playerschosen['ov_fenxian'],{},{})
-sgs.ai_fill_skill["ov_shiyi"] = function(self,inclusive,request)
+ai_fill_skill["ov_shiyi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_shiyiCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_shiyi',sgs.ai_fill_skill['ov_shiyi'],{},{})
-sgs.ai_skill_use_func["#ov_shiyiCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_shiyi',ai_fill_skill['ov_shiyi'],{},{})
+ai_card_use["#ov_shiyiCard"] = function(self, card, use, request)
 	for _,p in sgs.list(self.friends_noself)do
 		if self:canDraw(p) then
 			use.card = card
@@ -7415,7 +7851,7 @@ sgs.ai_skill_use_func["#ov_shiyiCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_shiyiCard',sgs.ai_skill_use_func['#ov_shiyiCard'],{},{})
+remember_function('ai_card_use','#ov_shiyiCard',ai_card_use['#ov_shiyiCard'],{},{})
 sgs.ai_use_value.ov_shiyiCard = 3.4
 sgs.ai_use_priority.ov_shiyiCard = 8.8
 
@@ -7437,13 +7873,16 @@ end
 remember_function('ai_skill_playerchosen','ov_chunhui',sgs.ai_skill_playerchosen['ov_chunhui'],{},{})
 sgs.ai_playerchosen_intention.ov_chunhui = -66
 
-sgs.ai_skill_invoke.ov_miewei = function(self,data)
-	return #self.enemies>0
+ai_skill_invoke.ov_miewei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.enemies>0) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_miewei',sgs.ai_skill_invoke['ov_miewei'],{},{})
-sgs.ai_fill_skill["ov_miyong"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_miewei',ai_skill_invoke['ov_miewei'],{},{})
+ai_fill_skill["ov_miyong"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cs = self.player:getCards("h")
 	cs = self:sortByKeepValue(cs)
 	for i,c in sgs.list(cs)do
@@ -7455,17 +7894,19 @@ sgs.ai_fill_skill["ov_miyong"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_miyong',sgs.ai_fill_skill['ov_miyong'],{},{})
-sgs.ai_skill_use_func["#ov_miyongCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_miyong',ai_fill_skill['ov_miyong'],{},{})
+ai_card_use["#ov_miyongCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_miyongCard',sgs.ai_skill_use_func['#ov_miyongCard'],{},{})
+remember_function('ai_card_use','#ov_miyongCard',ai_card_use['#ov_miyongCard'],{},{})
 sgs.ai_use_value.ov_miyongCard = 3.4
 sgs.ai_use_priority.ov_miyongCard = 1.8
 
-sgs.ai_fill_skill["ov_hanhong"] = function(self,inclusive,request)
+ai_fill_skill["ov_hanhong"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:getOverflow()>0 then
 		for _,s in sgs.list({"heart","diamond","club","spade"}) do
 			if self.player:getStrategyMark("ov_hanhong_tiansuan_remove_"..s.."-PlayClear")<1
@@ -7475,29 +7916,32 @@ sgs.ai_fill_skill["ov_hanhong"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_hanhong',sgs.ai_fill_skill['ov_hanhong'],{},{})
-sgs.ai_skill_use_func["#ov_hanhongCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_hanhong',ai_fill_skill['ov_hanhong'],{},{})
+ai_card_use["#ov_hanhongCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_hanhongCard',sgs.ai_skill_use_func['#ov_hanhongCard'],{},{})
+remember_function('ai_card_use','#ov_hanhongCard',ai_card_use['#ov_hanhongCard'],{},{})
 sgs.ai_use_value.ov_hanhongCard = 3.4
 sgs.ai_use_priority.ov_hanhongCard = 1.8
 
-sgs.ai_skill_invoke.ov_miewei = function(self,data)
-	return self:getOverflow()<1
+ai_skill_invoke.ov_miewei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:getOverflow()<1) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_miewei',sgs.ai_skill_invoke['ov_miewei'],{},{})
-sgs.ai_fill_skill["ov_qianxiong"] = function(self,inclusive,request)
+remember_function('ai_skill_invoke','ov_miewei',ai_skill_invoke['ov_miewei'],{},{})
+ai_fill_skill["ov_qianxiong"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#ov_qianxiongCard:.:")
 end
 
 
-remember_function('ai_fill_skill','ov_qianxiong',sgs.ai_fill_skill['ov_qianxiong'],{},{})
-sgs.ai_skill_use_func["#ov_qianxiongCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_qianxiong',ai_fill_skill['ov_qianxiong'],{},{})
+ai_card_use["#ov_qianxiongCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,nil,true)
 	for _,p in sgs.list(self.enemies)do
 		use.card = card
@@ -7507,11 +7951,14 @@ sgs.ai_skill_use_func["#ov_qianxiongCard"] = function(card,use,self)
 end
 
 
-remember_function('ai_skill_use_func','#ov_qianxiongCard',sgs.ai_skill_use_func['#ov_qianxiongCard'],{},{})
+remember_function('ai_card_use','#ov_qianxiongCard',ai_card_use['#ov_qianxiongCard'],{},{})
 sgs.ai_use_value.ov_qianxiongCard = 3.4
 sgs.ai_use_priority.ov_qianxiongCard = 8.8
 
-sgs.ai_skill_choice.ov_qianxiong = function(self,choices,data)
+ai_skill_choice.ov_qianxiong = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local tp = data:toPlayer()
 	local ids = tp:getPile("ov_qianxiong")
 	local cs = {}
@@ -7520,14 +7967,14 @@ sgs.ai_skill_choice.ov_qianxiong = function(self,choices,data)
 		if self:aiUseCard(c).card then table.insert(cs,c) end
 	end
 	if #cs>ids:length()/2 then
-		return items[2]
+		return ai_choice_result((items[2]), options)
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-remember_function('ai_skill_choice','ov_qianxiong',sgs.ai_skill_choice['ov_qianxiong'],{},{})
-sgs.ai_skill_use["@@ov_qianxiong"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_qianxiong',ai_skill_choice['ov_qianxiong'],{},{})
+ai_skill_use["@@ov_qianxiong"] = function(self, prompt, request)
     for _,id in sgs.list(tag(self,"ov_qianxiongForAI","IntList"))do
 		local dc = visible(self,id)
 		if dc:isAvailable(self.player) then
@@ -7546,7 +7993,7 @@ sgs.ai_skill_use["@@ov_qianxiong"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_qianxiong',sgs.ai_skill_use['@@ov_qianxiong'],{},{})
+remember_function('ai_skill_use','@@ov_qianxiong',ai_skill_use['@@ov_qianxiong'],{},{})
 sgs.ai_skill_playerschosen.ov_zhengdi = function(self,players,x,n)
 	players = self:sort(players)
 	local tps = {}
@@ -7567,15 +8014,22 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_zhengdi',sgs.ai_skill_playerchosen['ov_zhengdi'],{},{})
-sgs.ai_skill_choice.ov_zhengdi = function(self,choices,data)
+ai_skill_choice.ov_zhengdi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local from = data:toPlayer()
-	if self:isFriend(from) then return items[1] end
+	if self:isFriend(from) then return ai_choice_result((items[1]), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_zhengdi',sgs.ai_skill_choice['ov_zhengdi'],{},{})
-sgs.ai_fill_skill["ov_fushu"] = function(self,inclusive,request)
+remember_function('ai_skill_choice','ov_zhengdi',ai_skill_choice['ov_zhengdi'],{},{})
+ai_fill_skill["ov_fushu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local ms = self:getMaxCard()
 	if ms and self:aiUseCard(clone(self,"peach")) then
 		return policy(self,"#ov_fushuCard:"..ms:getLegacyStringKey()..":")
@@ -7583,13 +8037,13 @@ sgs.ai_fill_skill["ov_fushu"] = function(self,inclusive,request)
 end
 
 
-remember_function('ai_fill_skill','ov_fushu',sgs.ai_fill_skill['ov_fushu'],{},{})
-sgs.ai_skill_use_func["#ov_fushuCard"] = function(card,use,self)
+remember_function('ai_fill_skill','ov_fushu',ai_fill_skill['ov_fushu'],{},{})
+ai_card_use["#ov_fushuCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 
-remember_function('ai_skill_use_func','#ov_fushuCard',sgs.ai_skill_use_func['#ov_fushuCard'],{},{})
+remember_function('ai_card_use','#ov_fushuCard',ai_card_use['#ov_fushuCard'],{},{})
 sgs.ai_use_value.ov_fushuCard = 3.4
 sgs.ai_use_priority.ov_fushuCard = -1.8
 
@@ -7623,7 +8077,7 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_xiumu',sgs.ai_skill_playerchosen['ov_xiumu'],{},{})
-sgs.ai_skill_use["@@ov_xiumu!"] = function(self,prompt)
+ai_skill_use["@@ov_xiumu!"] = function(self, prompt, request)
 	local n = 0
 	local valid = {}
 	local cs = self.player:getCards("h")
@@ -7637,7 +8091,7 @@ sgs.ai_skill_use["@@ov_xiumu!"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_xiumu!',sgs.ai_skill_use['@@ov_xiumu!'],{},{})
+remember_function('ai_skill_use','@@ov_xiumu!',ai_skill_use['@@ov_xiumu!'],{},{})
 sgs.ai_skill_playerschosen.ov_huiyu = function(self,players,x,n)
 	players = self:sort(players,nil,true)
 	local tps = {}
@@ -7666,13 +8120,14 @@ end
 
 
 remember_function('ai_skill_playerschosen','ov_huiyu',sgs.ai_skill_playerschosen['ov_huiyu'],{},{})
-sgs.ai_skill_invoke.ov_beixing = function(self,data)
+ai_skill_invoke.ov_beixing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return self:isEnemy(to)
+	return (self:isEnemy(to)) or false
 end
 
 
-remember_function('ai_skill_invoke','ov_beixing',sgs.ai_skill_invoke['ov_beixing'],{},{})
+remember_function('ai_skill_invoke','ov_beixing',ai_skill_invoke['ov_beixing'],{},{})
 sgs.ai_skill_playerchosen.ov_beixing = function(self,players,x,n)
 	players = self:sort(players)
 	for _,p in sgs.list(players)do
@@ -7684,19 +8139,25 @@ end
 
 
 remember_function('ai_skill_playerchosen','ov_beixing',sgs.ai_skill_playerchosen['ov_beixing'],{},{})
-sgs.ai_skill_invoke.ov_qinyi = function(self,data)
+ai_skill_invoke.ov_qinyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	for _,cn in sgs.list(card_names(self))do
 		if self.player:getStrategyMark("ov_qinyiBan"..cn)>0 then continue end
 		local dc = clone(self,cn,"ov_qinyi")
 		if dc:isAvailable(self.player) and self:aiUseCard(dc).card then
-			return true
+			return (true) or false
 		end
 	end
+	return false
+
 end
 
 
-remember_function('ai_skill_invoke','ov_qinyi',sgs.ai_skill_invoke['ov_qinyi'],{},{})
-sgs.ai_skill_choice.ov_qinyi = function(self,choices,data)
+remember_function('ai_skill_invoke','ov_qinyi',ai_skill_invoke['ov_qinyi'],{},{})
+ai_skill_choice.ov_qinyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local cs = {}
 	for _,cn in sgs.list(items)do
@@ -7711,14 +8172,16 @@ sgs.ai_skill_choice.ov_qinyi = function(self,choices,data)
 		if d.card then
 			if c:canRecast() and d.to:length()<1 then continue end
 			self.ov_qinyiUse = d
-			return c:objectName()
+			return ai_choice_result((c:objectName()), options)
 		end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 
-remember_function('ai_skill_choice','ov_qinyi',sgs.ai_skill_choice['ov_qinyi'],{'ov_qinyiUse'},{'ov_qinyiUse'})
-sgs.ai_skill_use["@@ov_qinyi"] = function(self,prompt)
+remember_function('ai_skill_choice','ov_qinyi',ai_skill_choice['ov_qinyi'],{'ov_qinyiUse'},{'ov_qinyiUse'})
+ai_skill_use["@@ov_qinyi"] = function(self, prompt, request)
 	local d = self.ov_qinyiUse
 	if d.card then
 		local tos = {}
@@ -7730,18 +8193,17 @@ sgs.ai_skill_use["@@ov_qinyi"] = function(self,prompt)
 end
 
 
-remember_function('ai_skill_use','@@ov_qinyi',sgs.ai_skill_use['@@ov_qinyi'],{'ov_qinyiUse'},{})
-sgs.ai_skill_invoke.ov_jixin = function(self,data)
-	return self:canDraw()
+remember_function('ai_skill_use','@@ov_qinyi',ai_skill_use['@@ov_qinyi'],{'ov_qinyiUse'},{})
+ai_skill_invoke.ov_jixin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
------------------------------------
 -- 武将自身的选将策略
------------------------------------
 
 -- 侠鲁肃：内奸不推荐
 
-remember_function('ai_skill_invoke','ov_jixin',sgs.ai_skill_invoke['ov_jixin'],{},{})
+remember_function('ai_skill_invoke','ov_jixin',ai_skill_invoke['ov_jixin'],{},{})
 sgs.ai_general_choice["ov_lusu"] = function(ai, lord, role)
 	if role == "renegade" then
 		return -1
@@ -7780,7 +8242,7 @@ end
 remember_function('ai_general_choice','ov_zhaoe',sgs.ai_general_choice['ov_zhaoe'],{},{})
 
 for _,row in ipairs(authored)do
- local registry=row.reg=='SmartAIView'and SmartAIView or sgs[row.reg]
+ local registry=row.reg=='SmartAIView'and SmartAIView or row.reg=='ai_skill_use'and ai_skill_use or (row.reg == "ai_card_use" and ai_card_use or (row.reg == "ai_skill_invoke" and ai_skill_invoke or (row.reg == "ai_fill_skill" and ai_fill_skill or (row.reg == "ai_skill_choice" and ai_skill_choice or sgs[row.reg]))))
  -- A later literal writer wins. Never wrap another package's alias by prefix.
  if registry[row.key]==row.fn then
   local f,key,kind,read,write=row.fn,row.key,row.reg,row.read,row.write
@@ -7789,7 +8251,7 @@ for _,row in ipairs(authored)do
    for i=1,a.n do if type(a[i])=='table'and a[i].player and a[i].world and a[i].request then self=a[i];break end end
    if not self then return f(...)end
    load_state(self,read)
-   if kind=='ai_skill_invoke'then a[2]=scoped_data(self,key,a[2])end
+   if kind=='ai_skill_invoke'then a[2],a[3]=scoped_input(self,key,a[2],a[3]);a.n=math.max(a.n,3)end
    if key=='ov_zhilve_from'or key=='ov_zhilve_to'or key=='ov_zhilve'and kind=='ai_skill_cardchosen'then peiqi_state(self)end
    local previous,request=self._overseas_key,self._overseas_request;self._overseas_key=key;if kind=='ai_fill_skill'then self._overseas_request=a[3]end
    local out=table.pack(pcall(f,table.unpack(a,1,a.n)))
@@ -7803,15 +8265,43 @@ for _,row in ipairs(authored)do
  end
 end
 for _,name in ipairs{'Mantianguohai','Binglinchengxia','Tiaojiyanmei'}do
- ai_card_use[name]=function(self,card,use)return self['useCard'..name](self,card,use)end
+ ai_card_use[name]=function(self,card,use, request)return self['useCard'..name](self,card,use)end
 end
 
 sgs.ai_skill_playerchosen['ov_yingjia']=function(self,...) return dynamic_read(self,'ai_skill_playerchosen','ov_yingjia')end
-sgs.ai_skill_invoke['ov_beini']=function(self,...) return dynamic_read(self,'ai_skill_invoke','ov_beini')end
-sgs.ai_skill_choice['shifa']=function(self,...) return dynamic_read(self,'ai_skill_choice','shifa')end
-sgs.ai_skill_choice['ov_xiafeng']=function(self,...) return dynamic_read(self,'ai_skill_choice','ov_xiafeng')end
+ai_skill_invoke['ov_beini']=function(self, options, request) return (dynamic_read(self,'ai_skill_invoke','ov_beini')) or false end
+ai_skill_choice['shifa']=function(self, options, request) return ai_choice_result((dynamic_read(self,'ai_skill_choice','shifa')), options)end
+ai_skill_choice['ov_xiafeng']=function(self, options, request) return ai_choice_result((dynamic_read(self,'ai_skill_choice','ov_xiafeng')), options)end
 sgs.ai_skill_askforag['ov_niju']=function(self,...) return dynamic_read(self,'ai_skill_askforag','ov_niju')end
-sgs.ai_skill_choice['wangxing']=function(self,...) return dynamic_read(self,'ai_skill_choice','wangxing')end
-sgs.ai_skill_choice['ov_zenhui']=function(self,...) return dynamic_read(self,'ai_skill_choice','ov_zenhui')end
-sgs.ai_skill_choice['ov_yizhu']=function(self,...) return dynamic_read(self,'ai_skill_choice','ov_yizhu')end
-sgs.ai_skill_invoke['ov_yanshiYL']=function(self,...) return dynamic_read(self,'ai_skill_invoke','ov_yanshiYL')end
+ai_skill_choice['wangxing']=function(self, options, request) return ai_choice_result((dynamic_read(self,'ai_skill_choice','wangxing')), options)end
+ai_skill_choice['ov_zenhui']=function(self, options, request) return ai_choice_result((dynamic_read(self,'ai_skill_choice','ov_zenhui')), options)end
+ai_skill_choice['ov_yizhu']=function(self, options, request) return ai_choice_result((dynamic_read(self,'ai_skill_choice','ov_yizhu')), options)end
+ai_skill_invoke['ov_yanshiYL']=function(self, options, request) return (dynamic_read(self,'ai_skill_invoke','ov_yanshiYL')) or false end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["ov_equan"]
+    local damage_known = AIValue.requireKnownFor("ajustDamage", "damage projection is unknown: ")
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(from, "getPhase") ~= damage_known(sgs.Player_NotActive, "NotActive phase")
+                and damage_call(from, "hasSkill", "ov_equan") then return nil, true end
+        return value
+    end
+    sgs.ai_need_damaged["ov_equan"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "can_lose_after_lethal" and context.rule == "ov_equan" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "ov_equan", {
+        {phase="can_lose_after_lethal", order=3, rule="ov_equan"},
+    })
+end)()
+end

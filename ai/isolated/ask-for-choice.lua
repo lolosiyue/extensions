@@ -67,13 +67,21 @@ local function r35_original(self)
     end
     return facts.original_overrides_loaded
 end
-local function r35_choice_boundary(result)
-    if AIUnsupported.is(result)then error(result,0)end
-    -- SWIG lua_tostring accepts numbers; nil/boolean/table have no text. The
-    -- legacy boundary returns empty QString for those nontext callback values.
-    if type(result)=='number'then return tostring(result)end
-    if type(result)=='string'and result~=''then return result end
-    return {kind='answer',answer='',original_empty_choice=true}
+function ai_choice_result(value, options)
+    if AIUnsupported.is(value) then error(value, 0) end
+    local scope = type(options) == "table" and options.inquiry_scope or nil
+    if scope == "original_top_level" then
+        -- Original's outer text boundary accepts numbers, including zero.
+        if type(value) == "number" then return tostring(value) end
+        if type(value) == "string" and value ~= "" then return value end
+        return {kind="answer", answer="", original_empty_choice=true}
+    elseif scope == "ordinary_top_level" then
+        if type(value) == "string" then return value end
+        -- A handled request for the default differs from native nil, which
+        -- leaves this policy uncovered and still checks authoritative coverage.
+        return {kind="choice_default"}
+    end
+    return value
 end
 
 local function legacy_call(self, kind, callback, options, request)
@@ -92,8 +100,6 @@ local function legacy_call(self, kind, callback, options, request)
         or context.data or context
     local result, extra
     if type(callback) ~= "function" then result = callback
-    elseif kind == "skill_invoke" then result = callback(self, data)
-    elseif kind == "choice" then result = callback(self, table.concat(options.choices or {}, "+"), data)
     elseif kind == "suit" or kind == "kingdom" then result = callback(self)
     elseif kind == "general" then
         local selectable = {}
@@ -127,11 +133,8 @@ local function legacy_call(self, kind, callback, options, request)
         local cards, high, low = pindian_selection(self, options)
         result = callback(cards[1], self, targets[1], high, low)
     end
-    -- Pure policies may return the exact unsupported brand as well as throw it.
-    -- Preserve that signal before invoke truthiness or list/default adapters can
-    -- reinterpret it. Ordinary donor tables retain their original handling.
+    -- Propagate branded unsupported results before truthiness, list or default conversion.
     if AIUnsupported and AIUnsupported.is(result)then error(result,0)end
-    if kind=="choice" and r35_original(self)then return result end
     if kind == "players_chosen" then
         local seeded, selected, allowed = {}, {}, {}
         for key, value in pairs(options) do seeded[key] = value end
@@ -160,22 +163,12 @@ local function legacy_call(self, kind, callback, options, request)
         end
         return ai_skill_discard_default(self, seeded, request)
     end
-    if kind == "skill_invoke" and type(callback) ~= "function" and type(callback) ~= "boolean" then
-        return ai_skill_invoke_default(self, options)
-    end
-    -- swig/ai.i:262 uses lua_toboolean after SmartAI:askForSkillInvoke.
-    -- Function callbacks may intentionally return a Card, 0, or an empty string;
-    -- all are Lua-truthy and are never response payment IDs.
-    if kind == "skill_invoke" and type(callback) == "function" then return not not result end
     if result == nil then return nil end
     if kind == "general" then
         if type(result) ~= "string" or result == "" or result:sub(1, 1) == "~" then return nil end
         for _, name in ipairs(options.choices or {}) do if name == result then return result end end
         return nil
     end
-    -- SmartAI:askForChoice accepts only string callback results. Numeric
-    -- results reach its random default before the outer lua_tostring boundary.
-    if kind == "choice" and type(result) ~= "string" then return nil end
     if kind == "suit" and type(result) ~= "number" then return nil end
     if kind == "amazing_grace" then
         if type(result) ~= "number" then return nil end
@@ -286,9 +279,7 @@ local function finish_registry(self, kind, result)
     return result
 end
 
--- Native captures audited literal aliases once, before any AI callback runs.
--- The value VM never reads the donor registry or treats function presence as
--- proof that a package's optional alias existed in that actual load order.
+-- Resolve aliases only from the immutable native load-order snapshot.
 ai_audited_aliases = ai_audited_aliases or {}
 local audited_alias_callbacks = setmetatable({}, {__mode="k"})
 local function alias_path(table_value, path)
@@ -298,19 +289,29 @@ local function alias_path(table_value, path)
     end
     return table_value
 end
+local function alias_registry(name)
+    -- Migrated policy aliases share the native registry; other families retain
+    -- their existing tables and argument contracts.
+    if name == "ai_skill_use" then return ai_skill_use end
+    if name == "ai_card_use" then return ai_card_use end
+    if name == "ai_skill_invoke" then return ai_skill_invoke end
+    if name == "ai_fill_skill" then return ai_fill_skill end
+    if name == "ai_skill_choice" then return ai_skill_choice end
+    return sgs[name]
+end
 -- An alias is this VM's own registration and always calls its canonical policy.
 function ai_audited_aliases.resolve(self, callback)
     local binding = audited_alias_callbacks[callback]
     if not binding then return callback end
     callback = binding.callback
-    if binding.defer_canonical then callback = alias_path(sgs[binding.canonical_registry], binding.canonical_path) end
+    if binding.defer_canonical then callback = alias_path(alias_registry(binding.canonical_registry), binding.canonical_path) end
     if type(callback) ~= "function" then ai_unsupported("audited alias canonical policy is unavailable", binding.id) end
     return callback
 end
 function ai_audited_aliases.register(binding)
-    local canonical = alias_path(sgs[binding.canonical_registry], binding.canonical_path)
+    local canonical = alias_path(alias_registry(binding.canonical_registry), binding.canonical_path)
     if type(canonical) ~= "function" and not binding.defer_canonical then ai_unsupported("audited alias canonical policy is unavailable", binding.id) end
-    local registry = sgs[binding.registry]
+    local registry = alias_registry(binding.registry)
     for i=1,#binding.path-1 do registry=registry[binding.path[i]] end
     -- A specific already-ported policy has priority over a generic alias bridge.
     if registry[binding.path[#binding.path]] ~= nil then return end
@@ -332,6 +333,139 @@ function ai_audited_aliases.register(binding)
     audited_alias_callbacks[wrapper] = binding
     registry[binding.path[#binding.path]] = wrapper
 end
+
+-- Invoke policies share one native ABI. A missing answer remains distinct from
+-- a handled decline; migrated policies return false for their old handled nil.
+local invoke_handlers = {}
+ai_skill_invoke = setmetatable({}, {
+    __index = invoke_handlers,
+    __newindex = function(_, reason, handler)
+        local value_type = type(handler)
+        if type(reason) ~= "string" or reason == ""
+            or (value_type ~= "function" and value_type ~= "boolean" and value_type ~= "nil") then
+            error("invalid isolated invoke decision handler")
+        end
+        invoke_handlers[reason] = handler
+    end,
+    __pairs = function() return next, invoke_handlers, nil end
+})
+if type(ai_coverage) == "table" then
+    ai_coverage.declare("skill_invoke", function()
+        local keys = {}
+        for key in pairs(invoke_handlers) do keys[#keys + 1] = key end
+        return keys
+    end)
+end
+ai_register_handler("skill_invoke", function(self, request)
+    local options = type(request.options) == "table" and request.options or nil
+    local reason = options and options.reason
+    local original = r35_original(self)
+    local callback
+    if type(reason) == "string" then callback = invoke_handlers[reason] end
+    -- Exact native reasons have priority; skill-event suffixes use the same
+    -- normalized key as the existing invoke policies.
+    if callback == nil and type(reason) == "string" then
+        callback = invoke_handlers[reason:gsub("%-", "_")]
+    end
+    callback = ai_audited_aliases.resolve(self, callback)
+    if callback ~= nil then
+        local result = callback
+        if type(callback) == "function" then
+            if not original and reason == "lianli-slash" then
+                local ok, value = pcall(callback, self, options, request)
+                if AIUnsupported.is(value) then error(value, 0) end
+                if not ok then
+                    return ai_unsupported("Lianli source error diagnostic is not projected", "lianli.source_error")
+                end
+                result = value
+            else
+                result = callback(self, options, request)
+            end
+        end
+        if AIUnsupported.is(result) then error(result, 0) end
+        if result ~= nil then
+            -- Ordinary invokes accept every Lua-truthy result. Original keeps
+            -- its strict true policy; neither path treats values as card IDs.
+            if original then result = result == true else result = not not result end
+            return finish_registry(self, "skill_invoke", result)
+        end
+    elseif original then
+        if not options then return ai_unsupported("Original ask options missing", "skill_invoke") end
+        -- The internal method owns the public-skill frequency fallback and its
+        -- nil third state. Only this outer response turns that nil into false.
+        local answer = self:askForSkillInvoke(reason, options, request, "top_level")
+        if AIUnsupported.is(answer) then error(answer, 0) end
+        return finish_registry(self, "skill_invoke", answer == true)
+    end
+    if options and type(options.context) == "table" and options.context.legacy_hook == true then
+        return ai_unsupported("reason-specific invoke policy is not ported", reason)
+    end
+    return finish_registry(self, "skill_invoke", ai_skill_invoke_default(self, options, request))
+end)
+
+-- Choice policies use the same native arguments for direct calls and inquiries.
+-- Scalar registrations retain their lifecycle and are classified after aliases.
+local choice_handlers = {}
+ai_skill_choice = setmetatable({}, {
+    __index = choice_handlers,
+    __newindex = function(_, reason, handler)
+        local value_type = type(handler)
+        if type(reason) ~= "string" or reason == ""
+            or (value_type ~= "function" and value_type ~= "string" and value_type ~= "nil"
+                and value_type ~= "boolean" and value_type ~= "number" and value_type ~= "table") then
+            error("invalid isolated choice decision handler")
+        end
+        choice_handlers[reason] = handler
+    end,
+    __pairs = function() return next, choice_handlers, nil end
+})
+if type(ai_coverage) == "table" then
+    ai_coverage.declare("choice", function()
+        local keys = {}
+        for key in pairs(choice_handlers) do keys[#keys + 1] = key end
+        return keys
+    end)
+end
+ai_register_handler("choice", function(self, request)
+    local options = type(request.options) == "table" and request.options or nil
+    local reason = options and options.reason
+    local original = r35_original(self)
+    if (reason == "jilve" or reason == "heg_tianxiang") and type(self.getStrategyMemory) == "function" then
+        local override, present = self:getStrategyMemory("choice_override:" .. reason)
+        if present and type(override) == "string" then
+            for _, choice in ipairs(options.choices or {}) do if choice == override then return override end end
+        end
+    end
+    local callback
+    if type(reason) == "string" then callback = choice_handlers[reason] end
+    callback = ai_audited_aliases.resolve(self, callback)
+    if callback ~= nil then
+        if type(callback) == "function" or type(callback) == "string" then
+            -- Inquiry scope belongs to this call. Do not mutate the raw request
+            -- or let a nested inquiry accidentally inherit its outer boundary.
+            local scoped_options = {}
+            for key, value in pairs(options or {}) do scoped_options[key] = value end
+            scoped_options.inquiry_scope = original and "original_top_level" or "ordinary_top_level"
+            if type(callback) == "string" then return ai_choice_result(callback, scoped_options) end
+            local result = callback(self, scoped_options, request)
+            if AIUnsupported.is(result) then error(result, 0) end
+            if type(result) == "table" and result.kind == "choice_default" then
+                return ai_skill_choice_default(self, options, request)
+            end
+            if result ~= nil then return result end
+        else
+            -- A stored nontext scalar requests the ordinary default even in
+            -- Original; it is not a function result at the text boundary.
+            return ai_skill_choice_default(self, options, request)
+        end
+    end
+    if options and type(options.context) == "table" and options.context.legacy_hook == true then
+        local message = original and "reason-specific Original choice policy is not ported"
+            or "reason-specific choice policy is not ported"
+        return ai_unsupported(message, reason)
+    end
+    return ai_skill_choice_default(self, options, request)
+end)
 
 local function make_registry(kind, default_name, name)
     local handlers = {}
@@ -388,17 +522,8 @@ local function make_registry(kind, default_name, name)
             return finish_registry(self,kind,{kind='answer',cards={id},targets={selected:objectName()}})
         end
 
-        -- Explicit value handlers also own Original skill-invoke decisions.
-        if r35_original(self) and (kind=='card_chosen'
-            or kind=='skill_invoke' and not handlers[reason])then
+        if r35_original(self) and kind=='card_chosen'then
             if type(options)~='table'then ai_unsupported('Original ask options missing',kind)end
-            if kind=='skill_invoke'then
-                local data=type(self.getDecisionData)=='function'and self:getDecisionData()or decision_context(self,options,request)
-                local answer=self:askForSkillInvoke(reason,data)
-                if AIUnsupported.is(answer)then error(answer,0)end
-                -- SWIG lua_toboolean converts the source's absent/nonfrequent nil to false.
-                return finish_registry(self,kind,answer==true)
-            end
             local context=decision_context(self,options,request)
             local who=legacy_player(self,context.who or context.target)
             if not who or type(context.flags)~='string'or type(context.method)~='number'then
@@ -464,12 +589,6 @@ local function make_registry(kind, default_name, name)
             -- selectable list is empty, so callbacks must not consume RNG here.
             if not selectable or reason == "for_lord" then return ai_general_choice_default(self, options, request) end
         end
-        if kind=="choice" and (reason=="jilve" or reason=="heg_tianxiang") and type(self.getStrategyMemory)=="function" then
-            local override,present=self:getStrategyMemory("choice_override:"..reason)
-            if present and type(override)=="string" then
-                for _,choice in ipairs(options.choices or {}) do if choice==override then return override end end
-            end
-        end
         local handler = type(reason) == "string" and handlers[reason] or nil
         if handler then
             local result = handler(self, options, request)
@@ -483,35 +602,15 @@ local function make_registry(kind, default_name, name)
         local legacy = legacy_by_kind[kind]
         local callback
         local legacy_key = reason
-        if type(reason) == "string" and (kind == "skill_invoke" or kind == "amazing_grace"
+        if type(reason) == "string" and (kind == "amazing_grace"
             or kind == "card_chosen" or kind == "yiji" or kind == "player_chosen") then
             legacy_key = reason:gsub("%-", "_")
         end
         if type(legacy_key) == "string" then callback = legacy[legacy_key] end
         callback = ai_audited_aliases.resolve(self, callback)
-        if kind=="choice" and r35_original(self)then
-            if type(callback)=='string' or type(callback)=='function'then
-                return r35_choice_boundary(legacy_call(self,kind,callback,options,request))
-            end
-            if callback==nil and options.context and options.context.legacy_hook==true then
-                return ai_unsupported('reason-specific Original choice policy is not ported',reason)
-            end
-            return ai_skill_choice_default(self,options,request)
-        end
         if kind == "card_chosen" and type(callback) == "number" then legacy[legacy_key] = nil end
         if callback ~= nil then
-            local result
-            if kind=='skill_invoke' and reason=='lianli-slash' then
-                -- The source SmartAI callback protects the entire invocation.
-                -- Its ordinary error skips the later personality RNG and is
-                -- converted from nil to native false, without legacy fallback.
-                local ok,value=pcall(legacy_call,self,kind,callback,options,request)
-                if AIUnsupported.is(value)then error(value,0)end
-                if not ok then
-                    ai_unsupported('Lianli source error diagnostic is not projected','lianli.source_error')
-                end
-                result=value
-            else result = legacy_call(self, kind, callback, options, request) end
+            local result = legacy_call(self, kind, callback, options, request)
             if kind=="card_chosen" and type(result)=="number" then
                 -- Source reason callbacks (unlike #skill hooks) fall through
                 -- when their selected ID occurs in the refreshed disabled set.
@@ -539,8 +638,6 @@ local function make_registry(kind, default_name, name)
     })
 end
 
-ai_skill_invoke = make_registry("skill_invoke", "ai_skill_invoke_default", "ai_skill_invoke")
-ai_skill_choice = make_registry("choice", "ai_skill_choice_default", "ai_skill_choice")
 ai_skill_suit = make_registry("suit", "ai_skill_suit_default", "ai_skill_suit")
 ai_skill_kingdom = make_registry("kingdom", "ai_skill_kingdom_default", "ai_skill_kingdom")
 ai_general_choice = make_registry("general", "ai_general_choice_default", "ai_general_choice")
@@ -777,9 +874,7 @@ ai_skill_choice_default = ai_skill_choice_default or function(self, options)
         if choice == "benghuai" and not removed then removed = true
         else allowed[#allowed + 1] = choice end
     end
-    -- table.removeOne removes only the first occurrence. The sole-benghuai
-    -- donor error has an explicitly authorized, audited repair: choose the
-    -- only legal answer without making an invalid RNG call.
+    -- removeOne removes the first occurrence; a sole benghuai choice needs no RNG.
     if #allowed == 0 then
         if type(self.useKnowledgeEstimate) ~= "function" then
             return unsupported("choice error repair requires a knowledge audit", "choice")
@@ -1085,9 +1180,7 @@ function SmartAIView:selectCurrentAmazingGrace(ids,optional,reason)
     return ai_skill_askforag_default(self,options)
 end
 
--- Direct source ai_skill_askforag.amazing_grace policy for Guanxing. This
--- intentionally skips askForAG's Peach/AOE preselection and callback dispatch.
--- The cards must already be disclosed by the current native inquiry.
+-- Guanxing uses AmazingGrace's direct policy, bypassing askForAG preselection.
 function SmartAIView:selectAmazingGracePolicy(ids)
     local options=self.request and self.request.options
     if type(ids)~="table"or #ids==0 then return unsupported("AG policy requires a nonempty disclosed domain","amazing_grace")end
@@ -1491,9 +1584,7 @@ ai_skill_askforyiji_default = ai_skill_askforyiji_default or function(self, opti
 end
 
 ai_skill_playerchosen_default = ai_skill_playerchosen_default or function(self, options)
-    -- SmartAI returns nil without drawing RNG when no valid Player was chosen.
-    -- Any mandatory server fallback belongs to the native decision service;
-    -- it must not be simulated by a second, different Lua random selection.
+    -- Invalid selections return nil without RNG; native owns mandatory fallback.
     return {kind="pass"}
 end
 
@@ -1562,10 +1653,8 @@ response_card_default = function(self, options, request)
     -- candidates. Filtering before sorting would consume a different RNG stream.
     local allowed, classes, seen = {}, {}, {}
     for _, id in ipairs(ids) do allowed[id] = true end
-    -- Native projects the complete source first pass over addHandPile's exact
-    -- pattern zone, including locked/using cards excluded from action offers.
-    -- Their class can still precede another class's Guhuo hypothesis. Offers
-    -- therefore constrain submission only, never discovery or sorting order.
+    -- Discover Guhuo classes from the complete pattern zone, including locked/used cards.
+    -- Offers constrain submission only and must not change class order.
     local policy = request.conversion_policy
     local physical_order = type(policy) == "table" and policy.physical_class_order
     if type(policy) ~= "table" or policy.physical_class_order_complete ~= true
@@ -1642,6 +1731,13 @@ response_card_default = function(self, options, request)
                         end
                     else
                         matches = card._view and card._view.matches_response_pattern
+                        if matches == nil and self._original_selected_specs
+                            and self._original_selected_specs[card]
+                            and type(self.originalSelectedResponsePatternMatches) == "function" then
+                            -- Read only an exact ticket from this request. The
+                            -- selected card still needs its final materializer.
+                            matches = self:originalSelectedResponsePatternMatches(card)
+                        end
                         if type(matches) ~= "boolean" then
                             return unsupported("readonly response pattern match is unknown", "respond_card")
                         end
@@ -1731,9 +1827,7 @@ response_damage_decline = function(self, options, request)
     if not damage then return false end
     local from = legacy_player(self, effect.from)
     if not from then return unsupported("response damage source is unknown", "askForCard") end
-    -- These two audited providers legitimately return a source no-result nil.
-    -- Retain their actual identity; arbitrary overrides/raw missing facts do not
-    -- acquire that permission, and branded coverage signals are never truthy.
+    -- Only the captured common providers may return nil as a known no-result.
     local benefit_provider = self.canDamageHp
     local benefit = benefit_provider(self, from, card, self.player)
     if AIUnsupported.is(benefit) then error(benefit,0) end
@@ -1811,9 +1905,7 @@ response_answer = function(self, card, options)
     end
     local id = card:getEffectiveId()
     for _, offered_id in ipairs(options.card_ids or {}) do if id == offered_id then return id end end
-    -- This exact reached native physical-pile selection is not an initial
-    -- offered numeric answer. Keep its typed result through askForCard's
-    -- ordinary numeric membership gate; native responseCard revalidates it.
+    -- Preserve the typed pile selection through offering checks; native revalidates it.
     if self:isRushBPhysicalResponseSelection(card) then
         return {kind="answer", cards={id}}
     end
@@ -1821,8 +1913,7 @@ response_answer = function(self, card, options)
 end
 
 
--- R37 fixed Original askForSinglePeach precedes ordinary registry/personality.
--- No AiResult transition: this SWIG method parses its return without a tag write.
+-- Original askForSinglePeach precedes ordinary rules; SWIG parses its result without a tag write.
 original_single_peach_entry=function(self,options,request)
     local name=options and options.players and options.players[1]
     local dying=name and self.room:findPlayerByObjectName(name,true)
@@ -1868,8 +1959,23 @@ original_response_entry=function(self,options,request,question)
         local context=self:getDecisionContext()
         local trick=context.card
         if not AIValue.isCard(trick)then return unsupported("Original nullification actual trick is unknown",question)end
-        local from,to=legacy_player(self,context.from),legacy_player(self,context.to)
-        if context.from~=nil and context.from~="" and not from then return unsupported("Original nullification source is unknown",question)end
+        local source,target=context.from,context.to
+        local chain=context.original26_nullification
+        if type(chain)=="table"and chain.chain_known==true then
+            if chain.source~="native_nullification_chain"or type(chain.root_effect)~="table"
+                or type(chain.times)~="number"or chain.times<0 or chain.times%1~=0
+                or type(chain.type)~="boolean"then
+                return unsupported("Original nullification chain witness is malformed",question)
+            end
+            local root=chain.root_effect
+            trick=AIValue.isCard(root.card)and root.card or CardView.new(root.card)
+            if not trick then return unsupported("Original nullification root trick is unknown",question)end
+            source,target=root.from,root.to
+        elseif trick:isKindOf("Nullification")then
+            return unsupported("Original counter-nullification root is unknown",question)
+        end
+        local from,to=legacy_player(self,source),legacy_player(self,target)
+        if source~=nil and source~="" and not from then return unsupported("Original nullification source is unknown",question)end
         if not to or type(context.positive)~="boolean"then return unsupported("Original nullification target/polarity is unknown",question)end
         value=self:askForNullification(trick,from,to,context.positive)
     end
@@ -1893,9 +1999,9 @@ original_response_entry=function(self,options,request,question)
             and self:originalHegemonyResponseWireOrigin(value)==true
         if value==nil or type(value)=="boolean"or value==""
             or (type(value)~="number"and type(value)~="string"and not wire_origin)then
-            value=self:originalHegemonyTrustCardDefault()
-            if AIUnsupported.is(value)then error(value,0)end
-            if value==nil then return{kind="pass"}end
+            -- The Original reason policy returned no card. Continue with this
+            -- VM's candidate planner; unknown coverage still rejects there.
+            return response_card_default(self,options,request)
         end
         if type(value)=="string"then
             if value:sub(1,1)=="$"then return unsupported("Original DummyCard wire needs aggregate payment authority",question)end
@@ -1923,17 +2029,10 @@ original_response_entry=function(self,options,request,question)
     return answer
 end
 
--- R32: returned coverage signals are never truthy source decisions. Only
--- captured common providers may distinguish an ordinary source nil from a
--- missing facade input.
-local function round32_null_query(object, method, ...)
-    local provider = object and object[method]
-    local value = inquiry_call(object, method, ...)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value == nil and type(SmartAIView.isKnownNilStrategyResult) == "function"
-        and SmartAIView.isKnownNilStrategyResult(object,method,provider) then return nil end
-    return inquiry_known(value,method)
-end
+-- Preserve ordinary nil returns; coverage signals are never strategy answers.
+local round32_null_query = AIValue.bindQuery {
+    read = inquiry_call, known = inquiry_known, known_nil = AIValue.isKnownNil,
+}
 
 response_nullfilter = function(self, options, request, primitive_target, primitive_data)
     local hp = inquiry_known(self.player:getHp(), "own HP")
@@ -1979,6 +2078,13 @@ response_nullfilter = function(self, options, request, primitive_target, primiti
 end
 
 
+-- Pure-value responses share the policy body without positional registry calls.
+function SmartAIView:shouldDeclineCardResponse(options, request)
+    local result = response_nullfilter(self, options, request)
+    if AIUnsupported.is(result) then error(result, 0) end
+    return result == "." or type(result) == "table" and result.kind == "pass"
+end
+
 -- Direct ordinary provider for mode wrappers. This bypasses the registry
 -- deliberately: the wrapper itself occupies that registry slot. Reuse the
 -- complete response_nullfilter body and its literal refusal ABI.
@@ -2019,10 +2125,7 @@ end
 local function record_no_jink(self, slash, primitive_data)
     local id, name, previous, scope, ordinal, card_token
     if primitive_data then
-        -- Each donor dummy Slash is a new native card. A request-scoped ordinal
-        -- preserves that fresh mark identity without inventing a physical ID or
-        -- merging all readonly dummy cards into the same negative-ID mark.
-        -- The decision id keeps each request's dummy Slash marks apart.
+        -- Give each dummy Slash a request-local ordinal so its marks remain distinct.
         scope=self.request and self.request.decision_id
         if type(scope)~="string"or not scope:match("^[1-9]%d*$")then
             return unsupported("nested no-Jink request scope is unknown","aocai:slash-jink")
@@ -2070,7 +2173,7 @@ local function record_no_jink(self, slash, primitive_data)
     self._strategy_effects[#self._strategy_effects + 1] = effect
 end
 
-local function common_slash_jink(self, options, request, target, primitive_data, primitive_pattern)
+local function common_slash_jink(self, options, request, target, primitive_data, primitive_pattern, pure_policy)
 	local slash = inquiry_known(self:getEvaluationCard("slash"), "Slash evaluation descriptor")
 	local j = 1
 	local effect
@@ -2080,6 +2183,7 @@ local function common_slash_jink(self, options, request, target, primitive_data,
 		j = inquiry_known(effect.offset_num, "Slash effect offset count")
 	end
 	local function decline_filter()
+        if pure_policy then return self:shouldDeclineCardResponse(options, request) end
         local callback = legacy_by_kind.askForCard.nullfilter
         local result
         if primitive_data~=nil then
@@ -2100,7 +2204,6 @@ local function common_slash_jink(self, options, request, target, primitive_data,
 		if sgs.AIHumanized then
 			self:stageSpeechDelay(math.random(self:getSpeechDelay()*0.3,self:getSpeechDelay()*1.3), "cardask:slash-jink")
 		end
-		--add
 		if table.contains(slash:getSkillNames(), "s_w_wushuang") then
 			for _,c in sgs.list(self:getCard("Jink",true))do
 				if not (c:getSuit()~=slash:getSuit()) then
@@ -2110,7 +2213,6 @@ local function common_slash_jink(self, options, request, target, primitive_data,
 
 		local js = self:getCard("Jink",true)
 		if j>#js then return "." end
-		--add
 		if self.player:hasSkill("sfofl_yuanchou") or target:hasSkill("sfofl_yuanchou") then
 			for _,c in sgs.list(js)do
 				if not (c:getSuit()~=slash:getSuit()) then
@@ -2257,20 +2359,27 @@ local function common_cardask_answer(self, value, options)
     if value == "." then return {kind="pass"} end
     return response_answer(self, value, options) or {kind="pass"}
 end
--- Reusable source selection for askForUseCard's slash-jink wrapper. It returns
--- the selected CardView/conversion or "." before any inquiry-specific offering
--- gate; the caller retains its own native action authorization.
-function SmartAIView:selectSlashJink(options, request, target)
-    return common_slash_jink(self, options, request, target or cardask_target(self, request, 2))
+-- Slash-Jink shares card selection; each caller validates its own offered action.
+function SmartAIView:selectSlashJink(options, request, target, pure_policy)
+    return common_slash_jink(self, options, request, target or cardask_target(self, request, 2), nil, nil, pure_policy)
+end
+
+function SmartAIView:cardResponseAnswer(value, options)
+    if AIUnsupported.is(value) then error(value, 0) end
+    if value == "." or value == nil then return {kind="pass"} end
+    if not AIValue.isCard(value) and not AIValue.isConversion(value) then
+        return unsupported("response policy returned an invalid card value", "respond_card")
+    end
+    local answer = response_answer(self, value, options)
+    if answer == nil then return unsupported("selected response is outside the current offers", "respond_card") end
+    return answer
 end
 
 function SmartAIView:selectCollateralSlash(victim, wielder)
     return common_collateral_slash(self, victim, wielder)
 end
 
--- The lower-case Slash policy invokes the donor's positional cardask ABI.
--- The modern options/request registry above is deliberately a different table.
--- Keep both entries on the same complete ordinary policy body.
+-- Keep the positional cardask ABI separate from the options/request registry.
 ai_choice_legacy_registries.ai_skill_cardask["collateral-slash"] = function(self,data,pattern,victim,wielder,prompt)
     if r35_original(self) then
         return unsupported("Original Collateral cardask provider is not this ordinary body","collateral-slash")
@@ -2399,9 +2508,7 @@ local function physical_choice_cards(self, ids, options)
         local virtual
         if type(card.isVirtualCard) == "function" then virtual = card:isVirtualCard() end
         if type(virtual) ~= "boolean" then return nil end
-        -- Card::setId stores the physical card's own ID in subcards. A nonempty
-        -- subcard list therefore does not imply a conversion; the native
-        -- isVirtualCard projection is the authoritative distinction here.
+        -- Physical cards may also have subcards; use isVirtualCard to distinguish conversions.
         if finite_number(id) and id >= 0 and id % 1 == 0 and not virtual then
             physical[#physical + 1] = card
         end
@@ -2605,7 +2712,11 @@ respond_defaults.askForSinglePeach = function(self, options, request)
     if inquiry_call(self, "needDeath", dying) then return pass() end
     local lord = self.room:getLord()
     local role = inquiry_known(self.player:getRole(), "own role")
-    if role == "loyalist" and lord and dying:objectName() ~= lord:objectName()
+    -- A dying player discards the held Peach together with the rest of the hand, so
+    -- declining self-rescue saves nothing for the lord. The reserve rule is for
+    -- another dying player only.
+    if role == "loyalist" and lord and dying ~= self.player
+        and dying:objectName() ~= lord:objectName()
         and inquiry_known(self:isWeak(lord), "lord weakness") and count("Peach") <= 1 then
         -- The donor receives a Player, not a DyingStruct: dying.who is nil.
         -- Its important-friend conjunction is therefore false even for loyalists.
@@ -2635,7 +2746,10 @@ respond_defaults.askForSinglePeach = function(self, options, request)
     if self.player == dying then
         peach = use_peach("Peach,Analeptic")
         if peach and inquiry_call(dying, "getState") == "robot" and setting("humanized")
-            and math.random() < setting("turn_count") * 0.1
+            -- Humanized flavour may lose one self-rescue, never the game: the
+            -- smart-ai term 0.1 * round reaches certainty from round 10, which is
+            -- not the "small-probability mistake" the setting promises.
+            and math.random() < math.min(setting("turn_count") * 0.1, 0.2)
             and #inquiry_known(self:getFriends(), "friends") < dying:aliveCount() / 2
             and #inquiry_known(self:getCard("Analeptic,Peach", true), "rescue card order") < 2 then
             self:stageSpeechDelay(self:getSpeechDelay() * 2, "single_peach:self_refusal")
@@ -2798,7 +2912,6 @@ amazing_grace_policy = function(self, card_ids, options)
 		else break end
 	end
 
-	---------------
 
 	cards = inquiry_known(self:sortByCardNeed(cards,true), "AG card-need order")
 
@@ -3103,16 +3216,12 @@ amazing_grace_policy = function(self, card_ids, options)
 	return cards[1]:getEffectiveId()
 end
 
--- This source callback is also a real reason-specific entry. Register it in
--- the legacy-ABI table so a truthful native legacy_hook hint reaches the same
--- policy, rather than rejecting before the common default can call it.
+-- Register this reason-specific callback with the legacy ABI for legacy_hook dispatch.
 ai_choice_legacy_registries.ai_skill_askforag.amazing_grace = function(self, card_ids)
     return self:selectAmazingGracePolicy(card_ids)
 end
 
--- Shared AgCardsToName consumes ov_muyue's scalar declaration cache. An
--- uninitialized cache is the donor's initial nil; no match deliberately falls
--- through askForAG's common policy. Never infer an undisclosed card identity.
+-- An unset ov_muyue declaration cache falls through to askForAG's common policy.
 ai_choice_legacy_registries.ai_skill_askforag.AgCardsToName = function(self, ids)
     local declaration = rawget(self,"ACTN")
     if declaration == nil then declaration = self:getStrategyMemory("ACTN") end
@@ -3163,9 +3272,7 @@ local function nested_common_cardask(self,key,proof,pattern,target,target2)
     return inquiry_known(inquiry_call(card,"getLegacyStringKey"),"nested selected card source string"),true
 end
 
--- The effective SP Aocai invoke calls askForCard(pattern,prompt,1): 1 is
--- QVariant data, not MethodUse. Nil method skips the ordinary response search.
--- Keep this narrow source entry independent of native action admission.
+-- Aocai's third askForCard argument is data; nil method skips the response search.
 function SmartAIView:askForCard(pattern,prompt,data,method)
     if data~=1 or method~=nil then
         return unsupported("nested askForCard signature is not projected","nested_askForCard")
@@ -3215,9 +3322,7 @@ function SmartAIView:askForCard(pattern,prompt,data,method)
                 return unsupported("nested source cardask is not ported",parts[1])
             end
             if AIUnsupported and AIUnsupported.is(result)then error(result,0)end
-            -- Authored pure cardask adapters return branded card values where
-            -- the donor returned Card:toString(). Preserve that source ABI only
-            -- for those values; ordinary callback tables remain ignored.
+            -- Only branded card values adapt Card:toString(); ordinary callback tables remain ignored.
             if AIValue.isCard(result)or AIValue.isConversion(result)then
                 result=inquiry_known(inquiry_call(result,"getLegacyStringKey"),"nested selected card source string")
             end

@@ -1,13 +1,11 @@
--- Maneuvering package policy. Source: b6025acc ai/maneuvering-ai.lua.
+-- Source: b6025acc ai/maneuvering-ai.lua.
 local known = AIValue.requireKnown
-local function query(object,method,...)
-    if AIValue.isPlayer(object) then
-        if method=="getMark" and type(object.getStrategyMark)=="function" then method="getStrategyMark" end
-        if method=="hasFlag" and type(object.getStrategyFlag)=="function" then method="getStrategyFlag" end
-    end
-    if not object or type(object[method])~="function" then ai_unsupported("maneuvering method is unavailable",method) end
-    return known(object[method](object,...),method)
-end
+local query = AIValue.bindQuery {
+    resolve = AIValue.playerStrategyMethod,
+    missing = function(method) ai_unsupported("maneuvering method is unavailable", method) end,
+    known = known,
+}
+
 local function fan_spec(card)
     return {name="fire_slash",skill="fan",suit=query(card,"getSuit"),number=query(card,"getNumber"),subcards={query(card,"getEffectiveId")}}
 end
@@ -17,7 +15,9 @@ sgs.ai_view_as.fan=function(card,player,place)
     if place~=sgs.Player_PlaceSpecial and query(card,"isKindOf","Slash")
         and not query(card,"isKindOf","NatureSlash") then return fan_spec(card) end
 end
-sgs.ai_fill_skill.fan=function(self,inclusive,request)
+ai_fill_skill.fan=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards=query(self,"sortByKeepValue",query(self,"addHandPile"),nil,"l")
     for _,card in ipairs(cards) do
         if query(card,"isKindOf","Slash") and not query(card,"isKindOf","NatureSlash") then
@@ -29,20 +29,21 @@ sgs.ai_fill_skill.fan=function(self,inclusive,request)
         end
     end
 end
-sgs.ai_skill_invoke.fan=function(self,data)
+ai_skill_invoke.fan=function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local use=query(data,"toCardUse")
     for _,target in ipairs(known(use.to,"fan use targets")) do
         local fire=self:getFanConversionProbe(known(use.card,"fan use card"))
         local damage=query(self,"ajustDamage",self.player,target,1,fire)
         if query(self,"isFriend",target) then
-            if damage==0 or query(target,"isChained") and query(self,"isGoodChainTarget",target,fire) then return true end
+            if damage==0 or query(target,"isChained") and query(self,"isGoodChainTarget",target,fire) then return (true) or false end
         else
             if query(target,"isChained") then
-                if query(self,"isGoodChainTarget",target,fire) then return true end
-            elseif damage>=query(self,"ajustDamage",self.player,target,1,use.card) then return true end
+                if query(self,"isGoodChainTarget",target,fire) then return (true) or false end
+            elseif damage>=query(self,"ajustDamage",self.player,target,1,use.card) then return (true) or false end
         end
     end
-    return false
+    return (false) or false
 end
 sgs.ai_weapon_value.fan=function(self,enemy)
     if enemy and query(self,"ajustDamage",self.player,enemy,1,nil,"F")>1 then return 6 end
@@ -204,4 +205,98 @@ end
 function SmartAIView:useCardFireSlash(...)
     local result = self:useCardSlash(...)
     if AIUnsupported.is(result) then error(result, 0) end
+end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, to, value, damage_call, from, helpers, context)
+        if damage_call(to,"hasArmorEffect","SilverLion") and not damage_call(self,"ignoreArmor",from,to) then return true, true end
+        return value
+    end
+    local function policy_2(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        local damage_card_flag,damage_card_value=helpers.card_flag,helpers.card_value
+        if damage_card_flag(self,card,"drank") then dmg=dmg+math.max(1,damage_card_value(self,card,"drank_amount",0)) end
+        return dmg, nature
+    end
+    local previous_1 = sgs.ai_ajustdamage_to["SilverLion"]
+    sgs.ai_ajustdamage_to["SilverLion"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "cap" and context.rule == "SilverLion" then
+                return policy_1(self, to, context.value, context.query, from, context.extra[3], context)
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "SilverLion", {
+        {phase="cap", rule="SilverLion", order=3300},
+    })
+    local previous_2 = sgs.ai_ajustdamage_from["Analeptic"]
+    sgs.ai_ajustdamage_from["Analeptic"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "slash_card" and context.rule == "drank" then
+                local damage, next_nature, terminal = policy_2(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_2) == "function" then return previous_2(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_from", "Analeptic", {
+        {phase="slash_card", rule="drank", order=5200},
+    })
+end)()
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_defense_slash["Vine"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        for _, card in ipairs(call(self.player, "getHandcards")) do
+            if (call(card, "isKindOf", "FireSlash") or call(card, "objectName") == "slash" and call(self.player, "hasWeapon", "Fan"))
+                and not state.ignore and call(to, "hasArmorEffect", "Vine") then defense = defense - .6; break end
+        end
+        return defense
+    end
+    sgs.ai_defense_slash["Vine"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "elemental" and context.rule == "slash_defense.fire_vine" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "Vine", {
+        {phase="elemental", order=10, rule="slash_defense.fire_vine"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["SupplyShortage"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if call(to, "containsTrick", "supply_shortage") and not call(to, "containsTrick", "YanxiaoCard") then defense = defense - .15 end
+        return defense
+    end
+    sgs.ai_defense_slash["SupplyShortage"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "final" and context.rule == "slash_defense.supply_shortage" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "SupplyShortage", {
+        {phase="final", order=45, rule="slash_defense.supply_shortage"},
+    })
+end)()
 end

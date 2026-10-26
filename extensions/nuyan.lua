@@ -1193,6 +1193,13 @@ local function make_trigger(sp,hidden)
     }
     return sgs.CreateTriggerSkillV2(spec)
 end
+local owned={}
+local function attach(general,id)
+    local skill=skills[id]
+    if not skill then return end
+    general:addSkill(skill)
+    owned[id]=true
+end
 local function register(sp)
     specs[sp.id]=sp
     local skill
@@ -1391,8 +1398,10 @@ local bond_limit=sgs.CreateCardLimitSkill{
     name="#nuyan_bond_limit",
     limit_list=function(self,p) return "use" end,
     limit_pattern=function(self,p,c)
-        local current=p:getRoom():getCurrent()
-        if not current or current==p or not c then return "" end
+        -- Card limits receive a Player, which has no getRoom(); the current player is the active sibling.
+        local current
+        for _,q in sgs.qlist(p:getAliveSiblings()) do if q:getPhase()~=sgs.Player_NotActive then current=q end end
+        if not current or not c then return "" end
         if c:isKindOf("Analeptic") and hasmode(current,"bond_no_analeptic") then return c:toString() end
         if c:isKindOf("Peach") and p:getHp()<=0 and hasmode(current,"bond_no_self_peach") then return c:toString() end
         return ""
@@ -1480,8 +1489,8 @@ do
     translations["nuyan_xiahoudun"] = "夏侯惇"
     translations["#nuyan_xiahoudun"] = "怒焰·常规"
     if not skills["nuyan_ganglie"] then register({id = "nuyan_ganglie", mode = "ganglie", classic = false, jie = false, label = "刚烈", text = "锁定技，当你受到伤害后，伤害来源选择一项：1.随机弃置2张手牌；2.流失1点体力。", compulsory = true}) end
-    general:addSkill(skills["nuyan_ganglie"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_ganglie")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 夏侯惇 经典
@@ -1490,8 +1499,8 @@ do
     translations["nuyan_jd_xiahoudun"] = "夏侯惇"
     translations["#nuyan_jd_xiahoudun"] = "怒焰·经典"
     if not skills["nuyan_jd_ganglie"] then register({id = "nuyan_jd_ganglie", mode = "ganglie", classic = true, jie = false, label = "刚烈", text = "锁定技，当你受到伤害后，伤害来源选择一项：1.随机弃置2张手牌；2.流失1点体力。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_ganglie"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_ganglie")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 典韦 常规
@@ -1500,8 +1509,8 @@ do
     translations["nuyan_dianwei"] = "典韦"
     translations["#nuyan_dianwei"] = "怒焰·常规"
     if not skills["nuyan_qiangxi"] then register({id = "nuyan_qiangxi", mode = "qiangxi", classic = false, jie = false, label = "强袭", text = "出牌阶段限一次，你可以弃置1张装备牌，无视距离对一名其他角色造成2点伤害。", compulsory = false}) end
-    general:addSkill(skills["nuyan_qiangxi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_qiangxi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 典韦 经典
@@ -1510,8 +1519,8 @@ do
     translations["nuyan_jd_dianwei"] = "典韦"
     translations["#nuyan_jd_dianwei"] = "怒焰·经典"
     if not skills["nuyan_jd_qiangxi"] then register({id = "nuyan_jd_qiangxi", mode = "qiangxi", classic = true, jie = false, label = "强袭", text = "出牌阶段对每名角色限一次，你可以失去1点体力或弃置1张装备牌，无视距离对一名其他角色造成1点伤害。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_qiangxi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_qiangxi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 法正 常规
@@ -1520,8 +1529,8 @@ do
     translations["nuyan_fazheng"] = "法正"
     translations["#nuyan_fazheng"] = "怒焰·常规"
     if not skills["nuyan_xuanhuo"] then register({id = "nuyan_xuanhuo", mode = "xuanhuo", classic = false, jie = false, label = "眩惑", text = "出牌阶段限一次，你可以将1张方块手牌交给一名其他角色，然后获得其X张牌（X为该角色怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_xuanhuo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xuanhuo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 法正 经典
@@ -1530,8 +1539,8 @@ do
     translations["nuyan_jd_fazheng"] = "法正"
     translations["#nuyan_jd_fazheng"] = "怒焰·经典"
     if not skills["nuyan_jd_xuanhuo"] then register({id = "nuyan_jd_xuanhuo", mode = "xuanhuo", classic = true, jie = false, label = "眩惑", text = "出牌阶段限一次，你可以将1张方块手牌交给一名其他角色，然后获得其X张牌（X为该角色怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_xuanhuo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xuanhuo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 甘宁 常规
@@ -1540,8 +1549,8 @@ do
     translations["nuyan_ganning"] = "甘宁"
     translations["#nuyan_ganning"] = "怒焰·常规"
     if not skills["nuyan_qixi"] then register({id = "nuyan_qixi", mode = "qixi", classic = false, jie = false, label = "奇袭", text = "出牌阶段，你可以将1张梅花手牌当做【过河拆桥】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_qixi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_qixi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 甘宁 常规·界限突破
@@ -1550,8 +1559,8 @@ do
     translations["nuyan_jie_ganning"] = "甘宁"
     translations["#nuyan_jie_ganning"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_qixi"] then register({id = "nuyan_jie_qixi", mode = "qixi", classic = false, jie = true, label = "奇袭", text = "出牌阶段，你可以将1张梅花手牌当做【过河拆桥】使用，若目标装备区有装备牌，则随机弃置其1张装备牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jie_qixi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_qixi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 甘宁 经典
@@ -1560,8 +1569,8 @@ do
     translations["nuyan_jd_ganning"] = "甘宁"
     translations["#nuyan_jd_ganning"] = "怒焰·经典"
     if not skills["nuyan_jd_qixi"] then register({id = "nuyan_jd_qixi", mode = "qixi", classic = true, jie = false, label = "奇袭", text = "出牌阶段，你可以将1张黑色手牌当做【过河拆桥】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_qixi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_qixi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 甘宁 经典·界限突破
@@ -1570,8 +1579,8 @@ do
     translations["nuyan_jd_jie_ganning"] = "甘宁"
     translations["#nuyan_jd_jie_ganning"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_qixi"] then register({id = "nuyan_jd_jie_qixi", mode = "qixi", classic = true, jie = true, label = "奇袭", text = "出牌阶段，你可以将1张黑色手牌当做【过河拆桥】使用，若目标装备区有装备牌，则随机弃置其1张装备牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jie_qixi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_qixi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄盖 常规
@@ -1580,8 +1589,8 @@ do
     translations["nuyan_huanggai"] = "黄盖"
     translations["#nuyan_huanggai"] = "怒焰·常规"
     if not skills["nuyan_kurou"] then register({id = "nuyan_kurou", mode = "kurou", classic = false, jie = false, label = "苦肉", text = "出牌阶段限X次，你可以失去1点体力，然后摸2张牌（X为你的星级）。若如此做，此阶段你使用【杀】的次数上限+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_kurou"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_kurou")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄盖 经典
@@ -1590,8 +1599,8 @@ do
     translations["nuyan_jd_huanggai"] = "黄盖"
     translations["#nuyan_jd_huanggai"] = "怒焰·经典"
     if not skills["nuyan_jd_kurou"] then register({id = "nuyan_jd_kurou", mode = "kurou", classic = true, jie = false, label = "苦肉", text = "出牌阶段限两次，你可以失去1点体力，然后摸2张牌，若你此回合进行过'苦肉'，你可以额外使用1张【杀】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_kurou"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_kurou")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 庞德 常规
@@ -1600,8 +1609,8 @@ do
     translations["nuyan_pangde"] = "庞德"
     translations["#nuyan_pangde"] = "怒焰·常规"
     if not skills["nuyan_mengjin"] then register({id = "nuyan_mengjin", mode = "mengjin", classic = false, jie = false, label = "猛进", text = "你使用的【杀】被目标角色的【闪】抵消后，你可以弃置其X张牌（X为其使用【闪】的数量）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_mengjin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_mengjin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 庞德 经典
@@ -1610,8 +1619,8 @@ do
     translations["nuyan_jd_pangde"] = "庞德"
     translations["#nuyan_jd_pangde"] = "怒焰·经典"
     if not skills["nuyan_jd_mengjin"] then register({id = "nuyan_jd_mengjin", mode = "mengjin", classic = true, jie = false, label = "猛进", text = "你使用的【杀】被目标角色的【闪】抵消后，你可以弃置其X张牌（X为其使用【闪】的数量）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_mengjin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_mengjin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 袁绍 常规
@@ -1620,8 +1629,8 @@ do
     translations["nuyan_yuanshao"] = "袁绍"
     translations["#nuyan_yuanshao"] = "怒焰·常规"
     if not skills["nuyan_luanji"] then register({id = "nuyan_luanji", mode = "luanji", classic = false, jie = false, label = "乱击", text = "出牌阶段，你可以将3张手牌当做【万箭齐发】强化使用。若如此做，你获得1点怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_luanji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_luanji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 袁绍 经典
@@ -1630,8 +1639,8 @@ do
     translations["nuyan_jd_yuanshao"] = "袁绍"
     translations["#nuyan_jd_yuanshao"] = "怒焰·经典"
     if not skills["nuyan_jd_luanji"] then register({id = "nuyan_jd_luanji", mode = "luanji", classic = true, jie = false, label = "乱击", text = "出牌阶段，你可以将3张手牌当做强化【万箭齐发】使用，若如此做，你获得1点怒气。若没有角色受到此【万箭齐发】的伤害，你摸2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_luanji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_luanji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 郭嘉 常规
@@ -1640,8 +1649,8 @@ do
     translations["nuyan_guojia"] = "郭嘉"
     translations["#nuyan_guojia"] = "怒焰·常规"
     if not skills["nuyan_yiji"] then register({id = "nuyan_yiji", mode = "yiji", classic = false, jie = false, label = "遗计", text = "锁定技，当你受到伤害后，令一名角色摸2X张牌（X为伤害量）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_yiji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_yiji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 郭嘉 经典
@@ -1650,8 +1659,8 @@ do
     translations["nuyan_jd_guojia"] = "郭嘉"
     translations["#nuyan_jd_guojia"] = "怒焰·经典"
     if not skills["nuyan_jd_yiji"] then register({id = "nuyan_jd_yiji", mode = "yiji", classic = true, jie = false, label = "遗计", text = "锁定技，当你受到伤害后，令一名角色摸2X张牌（X为伤害量）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_yiji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_yiji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 夏侯渊 常规
@@ -1660,8 +1669,8 @@ do
     translations["nuyan_xiahouyuan"] = "夏侯渊"
     translations["#nuyan_xiahouyuan"] = "怒焰·常规"
     if not skills["nuyan_shensu"] then register({id = "nuyan_shensu", mode = "shensu", classic = false, jie = false, label = "神速", text = "出牌阶段，你可以消耗2点怒气，视为你使用1张无距离限制的强化【杀】，且此【杀】不计入出牌阶段使用次数。", compulsory = false}) end
-    general:addSkill(skills["nuyan_shensu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_shensu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 夏侯渊 经典
@@ -1670,8 +1679,8 @@ do
     translations["nuyan_jd_xiahouyuan"] = "夏侯渊"
     translations["#nuyan_jd_xiahouyuan"] = "怒焰·经典"
     if not skills["nuyan_jd_shensu"] then register({id = "nuyan_jd_shensu", mode = "shensu", classic = true, jie = false, label = "神速", text = "出牌阶段，你可以消耗2点怒气，视为你使用1张无距离限制的强化【杀】，且此【杀】不计入出牌阶段使用次数。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_shensu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_shensu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 邓艾 常规
@@ -1680,8 +1689,8 @@ do
     translations["nuyan_dengai"] = "邓艾"
     translations["#nuyan_dengai"] = "怒焰·常规"
     if not skills["nuyan_jixi"] then register({id = "nuyan_jixi", mode = "jixi", classic = false, jie = false, label = "急袭", text = "出牌阶段，你可以将手牌中的【闪】当做【顺手牵羊】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jixi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jixi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 邓艾 经典
@@ -1690,8 +1699,8 @@ do
     translations["nuyan_jd_dengai"] = "邓艾"
     translations["#nuyan_jd_dengai"] = "怒焰·经典"
     if not skills["nuyan_jd_jixi"] then register({id = "nuyan_jd_jixi", mode = "jixi", classic = true, jie = false, label = "急袭", text = "出牌阶段，你可以将手牌中的【闪】当做【顺手牵羊】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jixi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jixi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 许褚 常规
@@ -1700,8 +1709,8 @@ do
     translations["nuyan_xuchu"] = "许褚"
     translations["#nuyan_xuchu"] = "怒焰·常规"
     if not skills["nuyan_luoyi"] then register({id = "nuyan_luoyi", mode = "luoyi", classic = false, jie = false, label = "裸衣", text = "出牌阶段限一次，你可以弃置1张装备牌，然后本回合你使用【杀】或【决斗】时伤害+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_luoyi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_luoyi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 许褚 常规·界限突破
@@ -1710,8 +1719,8 @@ do
     translations["nuyan_jie_xuchu"] = "许褚"
     translations["#nuyan_jie_xuchu"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_luoyi"] then register({id = "nuyan_jie_luoyi", mode = "luoyi", classic = false, jie = true, label = "裸衣", text = "出牌阶段每种类别限一次，你可以弃置1张手牌，然后本回合你使用【杀】或【决斗】对其他角色造成的伤害+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jie_luoyi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_luoyi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 许褚 经典
@@ -1720,8 +1729,8 @@ do
     translations["nuyan_jd_xuchu"] = "许褚"
     translations["#nuyan_jd_xuchu"] = "怒焰·经典"
     if not skills["nuyan_jd_luoyi"] then register({id = "nuyan_jd_luoyi", mode = "luoyi", classic = true, jie = false, label = "裸衣", text = "出牌阶段限一次，你可以弃置1张装备牌，然后本回合你使用【杀】或【决斗】时伤害+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_luoyi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_luoyi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 许褚 经典·界限突破
@@ -1730,8 +1739,8 @@ do
     translations["nuyan_jd_jie_xuchu"] = "许褚"
     translations["#nuyan_jd_jie_xuchu"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_luoyi"] then register({id = "nuyan_jd_jie_luoyi", mode = "luoyi", classic = true, jie = true, label = "裸衣", text = "出牌阶段每种类别限一次，你可以弃置1张手牌，然后本回合你使用【杀】或【决斗】对其他角色造成的伤害+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jie_luoyi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_luoyi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹植 常规
@@ -1740,8 +1749,8 @@ do
     translations["nuyan_caozhi"] = "曹植"
     translations["#nuyan_caozhi"] = "怒焰·常规"
     if not skills["nuyan_jiushi"] then register({id = "nuyan_jiushi", mode = "jiushi", classic = false, jie = false, label = "酒诗", text = "你的黑色手牌可以当做【酒】使用；弃牌阶段，你的手牌上限+2X（X为你当前怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jiushi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jiushi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹植 经典
@@ -1750,8 +1759,8 @@ do
     translations["nuyan_jd_caozhi"] = "曹植"
     translations["#nuyan_jd_caozhi"] = "怒焰·经典"
     if not skills["nuyan_jd_jiushi"] then register({id = "nuyan_jd_jiushi", mode = "jiushi", classic = true, jie = false, label = "酒诗", text = "你的黑色手牌可以当做【酒】使用；弃牌阶段，你的手牌上限+2X（X为你当前怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jiushi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jiushi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹冲 常规
@@ -1760,8 +1769,8 @@ do
     translations["nuyan_caochong"] = "曹冲"
     translations["#nuyan_caochong"] = "怒焰·常规"
     if not skills["nuyan_renxin"] then register({id = "nuyan_renxin", mode = "renxin", classic = false, jie = false, label = "仁心", text = "出牌阶段限一次，你可以令一名角色失去1点怒气，然后其回复X点体力（X为其当前怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_renxin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_renxin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹冲 经典
@@ -1770,8 +1779,8 @@ do
     translations["nuyan_jd_caochong"] = "曹冲"
     translations["#nuyan_jd_caochong"] = "怒焰·经典"
     if not skills["nuyan_jd_chengxiang"] then register({id = "nuyan_jd_chengxiang", mode = "chengxiang", classic = true, jie = false, label = "称象", text = "锁定技，当你受到伤害后，你亮出牌堆顶的4张牌，然后获得其中的任意张点数之和小于等于13的牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_chengxiang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_chengxiang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄忠 常规
@@ -1780,8 +1789,8 @@ do
     translations["nuyan_huangzhong"] = "黄忠"
     translations["#nuyan_huangzhong"] = "怒焰·常规"
     if not skills["nuyan_liegong"] then register({id = "nuyan_liegong", mode = "liegong", classic = false, jie = false, label = "烈弓", text = "锁定技，当你使用【杀】指定一个目标后，若该角色体力值不小于你的体力值，则其不能使用【闪】响应此【杀】。", compulsory = true}) end
-    general:addSkill(skills["nuyan_liegong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_liegong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄忠 常规·界限突破
@@ -1790,8 +1799,8 @@ do
     translations["nuyan_jie_huangzhong"] = "黄忠"
     translations["#nuyan_jie_huangzhong"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_liegong"] then register({id = "nuyan_jie_liegong", mode = "liegong", classic = false, jie = true, label = "烈弓", text = "锁定技，当你使用【杀】指定目标后，若目标体力值不小于你的体力值或目标手牌数不小于你的手牌数，则此【杀】不可被响应。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jie_liegong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_liegong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄忠 经典
@@ -1800,8 +1809,8 @@ do
     translations["nuyan_jd_huangzhong"] = "黄忠"
     translations["#nuyan_jd_huangzhong"] = "怒焰·经典"
     if not skills["nuyan_jd_liegong"] then register({id = "nuyan_jd_liegong", mode = "liegong", classic = true, jie = false, label = "烈弓", text = "锁定技，当你使用【杀】指定一个目标后，若该角色体力值不小于你的体力值，则其不能使用【闪】响应此【杀】。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_liegong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_liegong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄忠 经典·界限突破
@@ -1810,8 +1819,8 @@ do
     translations["nuyan_jd_jie_huangzhong"] = "黄忠"
     translations["#nuyan_jd_jie_huangzhong"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_liegong"] then register({id = "nuyan_jd_jie_liegong", mode = "liegong", classic = true, jie = true, label = "烈弓", text = "锁定技，当你使用【杀】指定目标后，若目标体力值不小于你的体力值或目标手牌数不小于你的手牌数，则此【杀】不可被响应。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jie_liegong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_liegong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张飞 常规
@@ -1820,8 +1829,8 @@ do
     translations["nuyan_zhangfei"] = "张飞"
     translations["#nuyan_zhangfei"] = "怒焰·常规"
     if not skills["nuyan_paoxiao"] then register({id = "nuyan_paoxiao", mode = "paoxiao", classic = false, jie = false, label = "咆哮", text = "锁定技，出牌阶段，你使用【杀】无次数限制。", compulsory = true}) end
-    general:addSkill(skills["nuyan_paoxiao"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_paoxiao")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张飞 常规·界限突破
@@ -1830,8 +1839,8 @@ do
     translations["nuyan_jie_zhangfei"] = "张飞"
     translations["#nuyan_jie_zhangfei"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_paoxiao"] then register({id = "nuyan_jie_paoxiao", mode = "paoxiao", classic = false, jie = true, label = "咆哮", text = "锁定技，出牌阶段，你使用【杀】无次数与距离限制。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jie_paoxiao"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_paoxiao")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张飞 经典
@@ -1840,8 +1849,8 @@ do
     translations["nuyan_jd_zhangfei"] = "张飞"
     translations["#nuyan_jd_zhangfei"] = "怒焰·经典"
     if not skills["nuyan_jd_paoxiao"] then register({id = "nuyan_jd_paoxiao", mode = "paoxiao", classic = true, jie = false, label = "咆哮", text = "锁定技，出牌阶段，你使用【杀】无次数限制。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_paoxiao"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_paoxiao")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张飞 经典·界限突破
@@ -1850,8 +1859,8 @@ do
     translations["nuyan_jd_jie_zhangfei"] = "张飞"
     translations["#nuyan_jd_jie_zhangfei"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_paoxiao"] then register({id = "nuyan_jd_jie_paoxiao", mode = "paoxiao", classic = true, jie = true, label = "咆哮", text = "锁定技，出牌阶段，你使用【杀】无次数与距离限制。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jie_paoxiao"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_paoxiao")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 魏延 常规
@@ -1860,8 +1869,8 @@ do
     translations["nuyan_weiyan"] = "魏延"
     translations["#nuyan_weiyan"] = "怒焰·常规"
     if not skills["nuyan_kuanggu"] then register({id = "nuyan_kuanggu", mode = "kuanggu", classic = false, jie = false, label = "狂骨", text = "锁定技，出牌阶段，当你造成伤害后，立即回复1点体力。", compulsory = true}) end
-    general:addSkill(skills["nuyan_kuanggu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_kuanggu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 魏延 经典
@@ -1870,8 +1879,8 @@ do
     translations["nuyan_jd_weiyan"] = "魏延"
     translations["#nuyan_jd_weiyan"] = "怒焰·经典"
     if not skills["nuyan_jd_kuanggu"] then register({id = "nuyan_jd_kuanggu", mode = "kuanggu", classic = true, jie = false, label = "狂骨", text = "出牌阶段，当你对一名其他角色造成伤害后，你可以选择一项：1.回复1点体力；2.摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_kuanggu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_kuanggu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘禅 常规
@@ -1880,8 +1889,8 @@ do
     translations["nuyan_liushan"] = "刘禅"
     translations["#nuyan_liushan"] = "怒焰·常规"
     if not skills["nuyan_xiangle"] then register({id = "nuyan_xiangle", mode = "xiangle", classic = false, jie = false, label = "享乐", text = "锁定技，其他角色的【杀】或单体非延时锦囊指定你为目标后，若未对你造成伤害，其受到1点无来源伤害。", compulsory = true}) end
-    general:addSkill(skills["nuyan_xiangle"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xiangle")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘禅 常规·界限突破
@@ -1890,8 +1899,8 @@ do
     translations["nuyan_jie_liushan"] = "刘禅"
     translations["#nuyan_jie_liushan"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_xiangle"] then register({id = "nuyan_jie_xiangle", mode = "xiangle", classic = false, jie = true, label = "享乐", text = "锁定技，若其他角色的【杀】或单体非延时锦囊对你造成的伤害小于2点，其受到1点无来源伤害。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jie_xiangle"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_xiangle")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘禅 经典
@@ -1900,8 +1909,8 @@ do
     translations["nuyan_jd_liushan"] = "刘禅"
     translations["#nuyan_jd_liushan"] = "怒焰·经典"
     if not skills["nuyan_jd_xiangle"] then register({id = "nuyan_jd_xiangle", mode = "xiangle", classic = true, jie = false, label = "享乐", text = "锁定技，其他角色的【杀】或单体非延时锦囊指定你为目标后，若未对你造成伤害，其受到1点无来源伤害。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_xiangle"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xiangle")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘禅 经典·界限突破
@@ -1910,8 +1919,8 @@ do
     translations["nuyan_jd_jie_liushan"] = "刘禅"
     translations["#nuyan_jd_jie_liushan"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_xiangle"] then register({id = "nuyan_jd_jie_xiangle", mode = "xiangle", classic = true, jie = true, label = "享乐", text = "锁定技，若其他角色的【杀】或单体非延时锦囊对你造成的伤害小于2点，其受到1点无来源伤害。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jie_xiangle"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_xiangle")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马谡 常规
@@ -1920,8 +1929,8 @@ do
     translations["nuyan_masu"] = "马谡"
     translations["#nuyan_masu"] = "怒焰·常规"
     if not skills["nuyan_zhiman"] then register({id = "nuyan_zhiman", mode = "zhiman", classic = false, jie = false, label = "制蛮", text = "出牌阶段限一次，你可以弃置1张牌，选择一名角色并对其造成1点体力流失。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhiman"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhiman")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马谡 经典
@@ -1930,8 +1939,8 @@ do
     translations["nuyan_jd_masu"] = "马谡"
     translations["#nuyan_jd_masu"] = "怒焰·经典"
     if not skills["nuyan_jd_zhiman"] then register({id = "nuyan_jd_zhiman", mode = "zhiman", classic = true, jie = false, label = "制蛮", text = "出牌阶段限一次，你可以弃置1张牌，选择一名角色并对其造成1点体力流失。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhiman"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhiman")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 小乔 常规
@@ -1940,8 +1949,8 @@ do
     translations["nuyan_xiaoqiao"] = "小乔"
     translations["#nuyan_xiaoqiao"] = "怒焰·常规"
     if not skills["nuyan_tianxiang"] then register({id = "nuyan_tianxiang", mode = "tianxiang", classic = false, jie = false, label = "天香", text = "出牌阶段，你可以将1张红色手牌当做【釜底抽薪】强化使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_tianxiang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_tianxiang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 小乔 经典
@@ -1950,8 +1959,8 @@ do
     translations["nuyan_jd_xiaoqiao"] = "小乔"
     translations["#nuyan_jd_xiaoqiao"] = "怒焰·经典"
     if not skills["nuyan_jd_tianxiang"] then register({id = "nuyan_jd_tianxiang", mode = "tianxiang", classic = true, jie = false, label = "天香", text = "出牌阶段，你可以将1张红色手牌当做【釜底抽薪】强化使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_tianxiang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_tianxiang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吕蒙 常规
@@ -1960,8 +1969,8 @@ do
     translations["nuyan_lvmeng"] = "吕蒙"
     translations["#nuyan_lvmeng"] = "怒焰·常规"
     if not skills["nuyan_gongxin"] then register({id = "nuyan_gongxin", mode = "gongxin", classic = false, jie = false, label = "攻心", text = "出牌阶段，你可以消耗1点怒气，视为你使用1张普通【顺手牵羊】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_gongxin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_gongxin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吕蒙 经典
@@ -1970,8 +1979,8 @@ do
     translations["nuyan_jd_lvmeng"] = "吕蒙"
     translations["#nuyan_jd_lvmeng"] = "怒焰·经典"
     if not skills["nuyan_jd_gongxin"] then register({id = "nuyan_jd_gongxin", mode = "gongxin", classic = true, jie = false, label = "攻心", text = "出牌阶段，你可以消耗1点怒气，视为你使用1张普通【顺手牵羊】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_gongxin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_gongxin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 陆逊 常规
@@ -1980,8 +1989,8 @@ do
     translations["nuyan_luxun"] = "陆逊"
     translations["#nuyan_luxun"] = "怒焰·常规"
     if not skills["nuyan_lianying"] then register({id = "nuyan_lianying", mode = "lianying", classic = false, jie = false, label = "连营", text = "锁定技，当你失去最后的手牌时，你摸2张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_lianying"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_lianying")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 陆逊 经典
@@ -1990,8 +1999,8 @@ do
     translations["nuyan_jd_luxun"] = "陆逊"
     translations["#nuyan_jd_luxun"] = "怒焰·经典"
     if not skills["nuyan_jd_lianying"] then register({id = "nuyan_jd_lianying", mode = "lianying", classic = true, jie = false, label = "连营", text = "锁定技，当你失去最后的手牌时，你摸2张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_lianying"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_lianying")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 凌统 常规
@@ -2000,8 +2009,8 @@ do
     translations["nuyan_lingtong"] = "凌统"
     translations["#nuyan_lingtong"] = "怒焰·常规"
     if not skills["nuyan_xuanfeng"] then register({id = "nuyan_xuanfeng", mode = "xuanfeng", classic = false, jie = false, label = "旋风", text = "出牌阶段限一次，当你失去装备区中的1张牌时，你可以选择一名其他角色，弃置目标任意区域2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_xuanfeng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xuanfeng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 凌统 经典
@@ -2010,8 +2019,8 @@ do
     translations["nuyan_jd_lingtong"] = "凌统"
     translations["#nuyan_jd_lingtong"] = "怒焰·经典"
     if not skills["nuyan_jd_xuanfeng"] then register({id = "nuyan_jd_xuanfeng", mode = "xuanfeng", classic = true, jie = false, label = "旋风", text = "出牌阶段限一次，当你失去装备区中的1张牌时，你可以选择一名其他角色，弃置目标任意区域2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_xuanfeng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xuanfeng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 董卓 常规
@@ -2020,8 +2029,8 @@ do
     translations["nuyan_dongzhuo"] = "董卓"
     translations["#nuyan_dongzhuo"] = "怒焰·常规"
     if not skills["nuyan_baoli"] then register({id = "nuyan_baoli", mode = "baoli", classic = false, jie = false, label = "暴戾", text = "出牌阶段，若你的怒气值未满，你可以失去1点体力，然后获得2点怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_baoli"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_baoli")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 董卓 经典
@@ -2030,8 +2039,8 @@ do
     translations["nuyan_jd_dongzhuo"] = "董卓"
     translations["#nuyan_jd_dongzhuo"] = "怒焰·经典"
     if not skills["nuyan_jd_baoli"] then register({id = "nuyan_jd_baoli", mode = "baoli", classic = true, jie = false, label = "暴戾", text = "出牌阶段，若你的怒气值未满，你可以失去1点体力，然后获得2点怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_baoli"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_baoli")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 华雄 常规
@@ -2040,8 +2049,8 @@ do
     translations["nuyan_huaxiong"] = "华雄"
     translations["#nuyan_huaxiong"] = "怒焰·常规"
     if not skills["nuyan_shiyong"] then register({id = "nuyan_shiyong", mode = "shiyong", classic = false, jie = false, label = "恃勇", text = "锁定技，当你成为【杀】或单体非延时锦囊的目标后，若此牌为黑色，你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_shiyong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_shiyong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 华雄 经典
@@ -2050,8 +2059,8 @@ do
     translations["nuyan_jd_huaxiong"] = "华雄"
     translations["#nuyan_jd_huaxiong"] = "怒焰·经典"
     if not skills["nuyan_jd_shiyong"] then register({id = "nuyan_jd_shiyong", mode = "shiyong", classic = true, jie = false, label = "恃勇", text = "锁定技，当你成为【杀】或单体非延时锦囊的目标后，若此牌为黑色，你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_shiyong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_shiyong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 颜良 常规
@@ -2060,8 +2069,8 @@ do
     translations["nuyan_yanliang"] = "颜良"
     translations["#nuyan_yanliang"] = "怒焰·常规"
     if not skills["nuyan_langxing"] then register({id = "nuyan_langxing", mode = "langxing", classic = false, jie = false, label = "狼行", text = "出牌阶段，你可以将1张基本牌当做【决斗】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_langxing"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_langxing")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 颜良 经典
@@ -2070,8 +2079,8 @@ do
     translations["nuyan_jd_yanliang"] = "颜良"
     translations["#nuyan_jd_yanliang"] = "怒焰·经典"
     if not skills["nuyan_jd_langxing"] then register({id = "nuyan_jd_langxing", mode = "langxing", classic = true, jie = false, label = "狼行", text = "出牌阶段，你可以将1张基本牌当做【决斗】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_langxing"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_langxing")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 文丑 常规
@@ -2080,8 +2089,8 @@ do
     translations["nuyan_wenchou"] = "文丑"
     translations["#nuyan_wenchou"] = "怒焰·常规"
     if not skills["nuyan_hubu"] then register({id = "nuyan_hubu", mode = "hubu", classic = false, jie = false, label = "虎步", text = "出牌阶段，你可以失去1点怒气并指定一名角色，视为你对其使用1张普通【决斗】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_hubu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_hubu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 文丑 经典
@@ -2090,8 +2099,8 @@ do
     translations["nuyan_jd_wenchou"] = "文丑"
     translations["#nuyan_jd_wenchou"] = "怒焰·经典"
     if not skills["nuyan_jd_hubu"] then register({id = "nuyan_jd_hubu", mode = "hubu", classic = true, jie = false, label = "虎步", text = "出牌阶段，你可以失去1点怒气并指定一名角色，视为你对其使用1张普通【决斗】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_hubu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_hubu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 司马懿 常规
@@ -2100,8 +2109,8 @@ do
     translations["nuyan_simayi"] = "司马懿"
     translations["#nuyan_simayi"] = "怒焰·常规"
     if not skills["nuyan_fankui"] then register({id = "nuyan_fankui", mode = "fankui", classic = false, jie = false, label = "反馈", text = "当你受到1次伤害后，你可以获得伤害来源的X张牌（X为伤害量）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_fankui"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fankui")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 司马懿 经典
@@ -2110,8 +2119,8 @@ do
     translations["nuyan_jd_simayi"] = "司马懿"
     translations["#nuyan_jd_simayi"] = "怒焰·经典"
     if not skills["nuyan_jd_fankui"] then register({id = "nuyan_jd_fankui", mode = "fankui", classic = true, jie = false, label = "反馈", text = "当你受到1次伤害后，你可以获得伤害来源的X张牌（X为伤害量）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_fankui"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fankui")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹仁 常规
@@ -2120,8 +2129,8 @@ do
     translations["nuyan_caoren"] = "曹仁"
     translations["#nuyan_caoren"] = "怒焰·常规"
     if not skills["nuyan_jushou"] then register({id = "nuyan_jushou", mode = "jushou", classic = false, jie = false, label = "据守", text = "回合结束时，若你有怒气，你可以选择消耗所有怒气，然后你摸X张牌（X为消耗的怒气的2倍，且最多为4）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jushou"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jushou")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹仁 经典
@@ -2130,8 +2139,8 @@ do
     translations["nuyan_jd_caoren"] = "曹仁"
     translations["#nuyan_jd_caoren"] = "怒焰·经典"
     if not skills["nuyan_jd_jushou"] then register({id = "nuyan_jd_jushou", mode = "jushou", classic = true, jie = false, label = "据守", text = "回合结束时，若你有怒气，你可以选择消耗所有怒气，然后你摸X张牌（X为消耗的怒气的2倍，且最多为4）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jushou"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jushou")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹操 常规
@@ -2140,8 +2149,8 @@ do
     translations["nuyan_caocao"] = "曹操"
     translations["#nuyan_caocao"] = "怒焰·常规"
     if not skills["nuyan_jianxiong"] then register({id = "nuyan_jianxiong", mode = "jianxiong", classic = false, jie = false, label = "奸雄", text = "锁定技，当你受到伤害后，你获得造成此伤害的牌并获得双倍怒气。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jianxiong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jianxiong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹操 常规·界限突破
@@ -2150,8 +2159,8 @@ do
     translations["nuyan_jie_caocao"] = "曹操"
     translations["#nuyan_jie_caocao"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_jianxiong"] then register({id = "nuyan_jie_jianxiong", mode = "jianxiong", classic = false, jie = true, label = "奸雄", text = "锁定技，当你受到伤害后，你获得造成此伤害的牌并获得双倍怒气，若此时你的怒气溢出，则随机弃置伤害来源的1张牌，若其没有牌则改为对其造成1点伤害。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jie_jianxiong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_jianxiong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹操 经典
@@ -2160,8 +2169,8 @@ do
     translations["nuyan_jd_caocao"] = "曹操"
     translations["#nuyan_jd_caocao"] = "怒焰·经典"
     if not skills["nuyan_jd_jianxiong"] then register({id = "nuyan_jd_jianxiong", mode = "jianxiong", classic = true, jie = false, label = "奸雄", text = "锁定技，当你受到伤害后，你获得造成此伤害的牌并获得双倍怒气。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jianxiong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jianxiong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹操 经典·界限突破
@@ -2170,8 +2179,8 @@ do
     translations["nuyan_jd_jie_caocao"] = "曹操"
     translations["#nuyan_jd_jie_caocao"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_jianxiong"] then register({id = "nuyan_jd_jie_jianxiong", mode = "jianxiong", classic = true, jie = true, label = "奸雄", text = "锁定技，当你受到伤害后，你获得造成此伤害的牌并获得双倍怒气，若此时你的怒气溢出，则随机弃置伤害来源的1张牌，若其没有牌则改为对其造成1点伤害。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jie_jianxiong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_jianxiong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张辽 常规
@@ -2180,8 +2189,8 @@ do
     translations["nuyan_zhangliao"] = "张辽"
     translations["#nuyan_zhangliao"] = "怒焰·常规"
     if not skills["nuyan_tuxi"] then register({id = "nuyan_tuxi", mode = "tuxi", classic = false, jie = false, label = "突袭", text = "摸牌阶段，你可以少摸任意张牌改为获得等量名其他角色各1张手牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_tuxi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_tuxi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张辽 经典
@@ -2190,8 +2199,8 @@ do
     translations["nuyan_jd_zhangliao"] = "张辽"
     translations["#nuyan_jd_zhangliao"] = "怒焰·经典"
     if not skills["nuyan_jd_tuxi"] then register({id = "nuyan_jd_tuxi", mode = "tuxi", classic = true, jie = false, label = "突袭", text = "摸牌阶段，你可以少摸任意张牌改为获得等量名其他角色各1张手牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_tuxi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_tuxi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张春华 常规
@@ -2200,8 +2209,8 @@ do
     translations["nuyan_zhangchunhua"] = "张春华"
     translations["#nuyan_zhangchunhua"] = "怒焰·常规"
     if not skills["nuyan_shangshi"] then register({id = "nuyan_shangshi", mode = "shangshi", classic = false, jie = false, label = "伤逝", text = "锁定技，当你的手牌数小于X时，你将手牌摸至X张（X为你的星级）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_shangshi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_shangshi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张春华 常规·界限突破
@@ -2210,8 +2219,8 @@ do
     translations["nuyan_jie_zhangchunhua"] = "张春华"
     translations["#nuyan_jie_zhangchunhua"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_shangshi"] then register({id = "nuyan_jie_shangshi", mode = "shangshi", classic = false, jie = true, label = "伤逝", text = "锁定技，当你的手牌数小于X+1时，你将手牌摸至X+1张（X为你的星级）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jie_shangshi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_shangshi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张春华 经典
@@ -2220,8 +2229,8 @@ do
     translations["nuyan_jd_zhangchunhua"] = "张春华"
     translations["#nuyan_jd_zhangchunhua"] = "怒焰·经典"
     if not skills["nuyan_jd_shangshi"] then register({id = "nuyan_jd_shangshi", mode = "shangshi", classic = true, jie = false, label = "伤逝", text = "当你的手牌数小于3时，你将手牌摸至3张。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_shangshi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_shangshi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张春华 经典·界限突破
@@ -2230,8 +2239,8 @@ do
     translations["nuyan_jd_jie_zhangchunhua"] = "张春华"
     translations["#nuyan_jd_jie_zhangchunhua"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_shangshi"] then register({id = "nuyan_jd_jie_shangshi", mode = "shangshi", classic = true, jie = true, label = "伤逝", text = "锁定技，当你的手牌数小于4时，你将手牌摸至4张。出牌阶段，你首次使用【杀】造成的伤害视为体力流失。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jie_shangshi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_shangshi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹彰 常规
@@ -2240,8 +2249,8 @@ do
     translations["nuyan_caozhang"] = "曹彰"
     translations["#nuyan_caozhang"] = "怒焰·常规"
     if not skills["nuyan_jiangchi"] then register({id = "nuyan_jiangchi", mode = "jiangchi", classic = false, jie = false, label = "将驰", text = "锁定技，摸牌阶段，你选择一项：1.多摸2张牌；2.此回合你使用【杀】无距离限制，且出杀次数+2。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jiangchi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jiangchi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹彰 经典
@@ -2250,8 +2259,8 @@ do
     translations["nuyan_jd_caozhang"] = "曹彰"
     translations["#nuyan_jd_caozhang"] = "怒焰·经典"
     if not skills["nuyan_jd_jiangchi"] then register({id = "nuyan_jd_jiangchi", mode = "jiangchi", classic = true, jie = false, label = "将驰", text = "锁定技，摸牌阶段，你选择一项：1.多摸2张牌；2.此回合你使用【杀】无距离限制，且出杀次数+2。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jiangchi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jiangchi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 王异 常规
@@ -2260,8 +2269,8 @@ do
     translations["nuyan_wangyi"] = "王异"
     translations["#nuyan_wangyi"] = "怒焰·常规"
     if not skills["nuyan_miji"] then register({id = "nuyan_miji", mode = "miji", classic = false, jie = false, label = "秘计", text = "当你成为其他角色的【杀】或单体非延时锦囊牌的目标后，你可以失去1点体力使此牌失效，然后你弃置其2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_miji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_miji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 王异 经典
@@ -2270,8 +2279,8 @@ do
     translations["nuyan_jd_wangyi"] = "王异"
     translations["#nuyan_jd_wangyi"] = "怒焰·经典"
     if not skills["nuyan_jd_miji"] then register({id = "nuyan_jd_miji", mode = "miji", classic = true, jie = false, label = "秘计", text = "当你成为其他角色的【杀】或单体非延时锦囊牌的目标后，你可以失去1点体力使此牌失效，然后你弃置其2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_miji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_miji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 荀彧 常规
@@ -2280,8 +2289,8 @@ do
     translations["nuyan_xunyu"] = "荀彧"
     translations["#nuyan_xunyu"] = "怒焰·常规"
     if not skills["nuyan_quhu"] then register({id = "nuyan_quhu", mode = "quhu", classic = false, jie = false, label = "驱虎", text = "出牌阶段限X+1次（X为你的星级），你可以令一名其他角色与你进行拼点，若你赢则对方受到1点伤害，若你没赢则对方不受伤害。", compulsory = false}) end
-    general:addSkill(skills["nuyan_quhu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_quhu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 荀彧 经典
@@ -2290,8 +2299,8 @@ do
     translations["nuyan_jd_xunyu"] = "荀彧"
     translations["#nuyan_jd_xunyu"] = "怒焰·经典"
     if not skills["nuyan_jd_quhu"] then register({id = "nuyan_jd_quhu", mode = "quhu", classic = true, jie = false, label = "驱虎", text = "出牌阶段限两次，你可以令一名其他角色与你进行拼点，若你赢则对方受到1点伤害，若你没赢则对方不受伤害。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_quhu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_quhu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 徐晃 常规
@@ -2300,8 +2309,8 @@ do
     translations["nuyan_xuhuang"] = "徐晃"
     translations["#nuyan_xuhuang"] = "怒焰·常规"
     if not skills["nuyan_duanliang"] then register({id = "nuyan_duanliang", mode = "duanliang", classic = false, jie = false, label = "断粮", text = "出牌阶段，你可以消耗1点怒气，将1张黑色基本牌或黑色装备牌当做【乐不思蜀】强化使用。若一名角色跳过摸牌阶段，则你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_duanliang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_duanliang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 徐晃 经典
@@ -2310,8 +2319,8 @@ do
     translations["nuyan_jd_xuhuang"] = "徐晃"
     translations["#nuyan_jd_xuhuang"] = "怒焰·经典"
     if not skills["nuyan_jd_duanliang"] then register({id = "nuyan_jd_duanliang", mode = "duanliang", classic = true, jie = false, label = "断粮", text = "出牌阶段，你可以消耗1点怒气，将1张黑色基本牌或黑色装备牌当做【乐不思蜀】强化使用。若一名角色跳过摸牌阶段，则你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_duanliang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_duanliang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 荀攸 常规
@@ -2320,8 +2329,8 @@ do
     translations["nuyan_xunyou"] = "荀攸"
     translations["#nuyan_xunyou"] = "怒焰·常规"
     if not skills["nuyan_qice"] then register({id = "nuyan_qice", mode = "qice", classic = false, jie = false, label = "奇策", text = "出牌阶段限一次，你可以将任意张手牌当1张非延时锦囊牌使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_qice"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_qice")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 荀攸 常规·界限突破
@@ -2330,8 +2339,8 @@ do
     translations["nuyan_jie_xunyou"] = "荀攸"
     translations["#nuyan_jie_xunyou"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_qice"] then register({id = "nuyan_jie_qice", mode = "qice", classic = false, jie = true, label = "奇策", text = "出牌阶段限一次，你可以将任意张手牌当1张非延时锦囊牌使用，然后摸等同于这些手牌花色数量的牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jie_qice"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_qice")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 荀攸 经典
@@ -2340,8 +2349,8 @@ do
     translations["nuyan_jd_xunyou"] = "荀攸"
     translations["#nuyan_jd_xunyou"] = "怒焰·经典"
     if not skills["nuyan_jd_qice"] then register({id = "nuyan_jd_qice", mode = "qice", classic = true, jie = false, label = "奇策", text = "出牌阶段限一次，你可以将任意张手牌当1张非延时锦囊牌使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_qice"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_qice")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 荀攸 经典·界限突破
@@ -2350,8 +2359,8 @@ do
     translations["nuyan_jd_jie_xunyou"] = "荀攸"
     translations["#nuyan_jd_jie_xunyou"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_qice"] then register({id = "nuyan_jd_jie_qice", mode = "qice", classic = true, jie = true, label = "奇策", text = "出牌阶段限一次，你可以将任意张手牌当1张非延时锦囊牌使用，然后摸等同于这些手牌花色数量的牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jie_qice"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_qice")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 于禁 常规
@@ -2360,8 +2369,8 @@ do
     translations["nuyan_yujin"] = "于禁"
     translations["#nuyan_yujin"] = "怒焰·常规"
     if not skills["nuyan_zhenjun"] then register({id = "nuyan_zhenjun", mode = "zhenjun", classic = false, jie = false, label = "镇军", text = "出牌阶段限一次，你可以将1张牌交给一名其他角色，令其使用1张不为黑色的【杀】。若其执行，此【杀】结算后你摸1张牌；若其不执行，你可以对其或其攻击范围内的一名角色造成1点伤害。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhenjun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhenjun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 于禁 经典
@@ -2370,8 +2379,8 @@ do
     translations["nuyan_jd_yujin"] = "于禁"
     translations["#nuyan_jd_yujin"] = "怒焰·经典"
     if not skills["nuyan_jd_zhenjun"] then register({id = "nuyan_jd_zhenjun", mode = "zhenjun", classic = true, jie = false, label = "镇军", text = "出牌阶段限一次，你可以将1张牌交给一名其他角色，令其使用1张不为黑色的【杀】。若其执行，此【杀】结算后你摸1张牌；若其不执行，你可以对其或其攻击范围内的一名角色造成1点伤害。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhenjun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhenjun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张郃 常规
@@ -2380,8 +2389,8 @@ do
     translations["nuyan_zhanghe"] = "张郃"
     translations["#nuyan_zhanghe"] = "怒焰·常规"
     if not skills["nuyan_zhilue"] then register({id = "nuyan_zhilue", mode = "zhilue", classic = false, jie = false, label = "知略", text = "出牌阶段，你可以消耗1点怒气并选择一项：1.你移动场上1张牌；2.你摸2张牌并视为使用1张无距离限制且不计入次数限制的【杀】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhilue"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhilue")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张郃 经典
@@ -2390,8 +2399,8 @@ do
     translations["nuyan_jd_zhanghe"] = "张郃"
     translations["#nuyan_jd_zhanghe"] = "怒焰·经典"
     if not skills["nuyan_jd_zhilue"] then register({id = "nuyan_jd_zhilue", mode = "zhilue", classic = true, jie = false, label = "知略", text = "出牌阶段，你可以消耗1点怒气并选择一项：1.你移动场上1张牌；2.你摸2张牌并视为使用1张无距离限制且不计入次数限制的【杀】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhilue"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhilue")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 钟会 常规
@@ -2400,8 +2409,8 @@ do
     translations["nuyan_zhonghui"] = "钟会"
     translations["#nuyan_zhonghui"] = "怒焰·常规"
     if not skills["nuyan_quanji"] then register({id = "nuyan_quanji", mode = "quanji", classic = false, jie = false, label = "权计", text = "出牌阶段限一次，你可以消耗所有的'权'，摸2倍'权'数量的牌（'权'来源：当你受到伤害或进入摸牌阶段时，你获得1枚'权'），'权'的上限为你的怒气上限。", compulsory = false}) end
-    general:addSkill(skills["nuyan_quanji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_quanji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 钟会 经典
@@ -2410,8 +2419,8 @@ do
     translations["nuyan_jd_zhonghui"] = "钟会"
     translations["#nuyan_jd_zhonghui"] = "怒焰·经典"
     if not skills["nuyan_jd_quanji"] then register({id = "nuyan_jd_quanji", mode = "quanji", classic = true, jie = false, label = "权计", text = "出牌阶段限一次，你可以消耗所有的'权'，摸2倍'权'数量的牌（'权'来源：当你受到伤害或进入摸牌阶段时，你获得1枚'权'），'权'的上限为你的怒气上限。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_quanji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_quanji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹昂 常规
@@ -2420,8 +2429,8 @@ do
     translations["nuyan_caoang"] = "曹昂"
     translations["#nuyan_caoang"] = "怒焰·常规"
     if not skills["nuyan_kangkai"] then register({id = "nuyan_kangkai", mode = "kangkai", classic = false, jie = false, label = "慷忾", text = "当一名角色成为【杀】的目标后，若你与其距离不大于1，则你可以摸1张牌，然后交给其1张牌并展示之。若此牌为装备牌，该角色可以使用此牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_kangkai"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_kangkai")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹昂 经典
@@ -2430,8 +2439,8 @@ do
     translations["nuyan_jd_caoang"] = "曹昂"
     translations["#nuyan_jd_caoang"] = "怒焰·经典"
     if not skills["nuyan_jd_kangkai"] then register({id = "nuyan_jd_kangkai", mode = "kangkai", classic = true, jie = false, label = "慷忾", text = "当一名角色成为【杀】的目标后，若你与其距离不大于1，则你可以摸1张牌，然后交给其1张牌并展示之。若此牌为装备牌，该角色可以使用此牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_kangkai"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_kangkai")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 王基 常规
@@ -2440,8 +2449,8 @@ do
     translations["nuyan_wangji"] = "王基"
     translations["#nuyan_wangji"] = "怒焰·常规"
     if not skills["nuyan_qizhi"] then register({id = "nuyan_qizhi", mode = "qizhi", classic = false, jie = false, label = "奇制", text = "当你于回合内使用基本牌或锦囊牌指定目标后，你可以弃置非目标角色的1张牌。若如此做，其增加1点怒气。若弃置的目标是你自己，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_qizhi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_qizhi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 王基 经典
@@ -2450,8 +2459,8 @@ do
     translations["nuyan_jd_wangji"] = "王基"
     translations["#nuyan_jd_wangji"] = "怒焰·经典"
     if not skills["nuyan_jd_qizhi"] then register({id = "nuyan_jd_qizhi", mode = "qizhi", classic = true, jie = false, label = "奇制", text = "当你于回合内使用基本牌或锦囊牌指定目标后，你可以弃置非目标角色的1张牌。若如此做，其增加1点怒气。若弃置的目标是你自己，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_qizhi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_qizhi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘备 常规
@@ -2460,8 +2469,8 @@ do
     translations["nuyan_liubei"] = "刘备"
     translations["#nuyan_liubei"] = "怒焰·常规"
     if not skills["nuyan_renwang"] then register({id = "nuyan_renwang", mode = "renwang", classic = false, jie = false, label = "仁望", text = "锁定技，当你成为其他角色使用【杀】或单体非延时锦囊的目标后，该角色失去1点怒气，且弃置1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_renwang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_renwang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘备 经典
@@ -2470,8 +2479,8 @@ do
     translations["nuyan_jd_liubei"] = "刘备"
     translations["#nuyan_jd_liubei"] = "怒焰·经典"
     if not skills["nuyan_jd_renwang"] then register({id = "nuyan_jd_renwang", mode = "renwang", classic = true, jie = false, label = "仁望", text = "锁定技，当你成为其他角色使用【杀】或单体非延时锦囊的目标后，该角色失去1点怒气，且弃置1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_renwang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_renwang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关羽 常规
@@ -2480,8 +2489,8 @@ do
     translations["nuyan_guanyu"] = "关羽"
     translations["#nuyan_guanyu"] = "怒焰·常规"
     if not skills["nuyan_wusheng"] then register({id = "nuyan_wusheng", mode = "wusheng", classic = false, jie = false, label = "武圣", text = "你可以将任意1张手牌当做【杀】使用或打出。若此牌为红桃，则转化的【杀】强化使用时不消耗怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_wusheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_wusheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关羽 常规·界限突破
@@ -2490,8 +2499,8 @@ do
     translations["nuyan_jie_guanyu"] = "关羽"
     translations["#nuyan_jie_guanyu"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_wusheng"] then register({id = "nuyan_jie_wusheng", mode = "wusheng", classic = false, jie = true, label = "武圣", text = "你可以将任意1张手牌当做【杀】使用或打出。若此牌为方块，其不计入使用次数限制；若此牌为红桃，转化的【杀】强化使用时不消耗怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jie_wusheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_wusheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关羽 经典
@@ -2500,8 +2509,8 @@ do
     translations["nuyan_jd_guanyu"] = "关羽"
     translations["#nuyan_jd_guanyu"] = "怒焰·经典"
     if not skills["nuyan_jd_wusheng"] then register({id = "nuyan_jd_wusheng", mode = "wusheng", classic = true, jie = false, label = "武圣", text = "你可以将任意1张手牌当做【杀】使用或打出。若此牌为红桃，则转化的【杀】强化使用时不消耗怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_wusheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_wusheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关羽 经典·界限突破
@@ -2510,8 +2519,8 @@ do
     translations["nuyan_jd_jie_guanyu"] = "关羽"
     translations["#nuyan_jd_jie_guanyu"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_wusheng"] then register({id = "nuyan_jd_jie_wusheng", mode = "wusheng", classic = true, jie = true, label = "武圣", text = "你可以将任意1张手牌当做【杀】使用或打出。若此牌为方块，其不计入使用次数限制；若此牌为红桃，转化的【杀】强化使用时不消耗怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jie_wusheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_wusheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄月英 常规
@@ -2520,8 +2529,8 @@ do
     translations["nuyan_huangyueying"] = "黄月英"
     translations["#nuyan_huangyueying"] = "怒焰·常规"
     if not skills["nuyan_jizhi"] then register({id = "nuyan_jizhi", mode = "jizhi", classic = false, jie = false, label = "集智", text = "锁定技，当你使用1张非延时锦囊牌时，你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jizhi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jizhi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄月英 常规·界限突破
@@ -2530,8 +2539,8 @@ do
     translations["nuyan_jie_huangyueying"] = "黄月英"
     translations["#nuyan_jie_huangyueying"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_jizhi"] then register({id = "nuyan_jie_jizhi", mode = "jizhi", classic = false, jie = true, label = "集智", text = "锁定技，当你使用1张锦囊牌时，你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jie_jizhi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_jizhi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄月英 经典
@@ -2540,8 +2549,8 @@ do
     translations["nuyan_jd_huangyueying"] = "黄月英"
     translations["#nuyan_jd_huangyueying"] = "怒焰·经典"
     if not skills["nuyan_jd_jizhi"] then register({id = "nuyan_jd_jizhi", mode = "jizhi", classic = true, jie = false, label = "集智", text = "锁定技，当你使用1张非延时锦囊牌时，你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jizhi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jizhi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 黄月英 经典·界限突破
@@ -2550,8 +2559,8 @@ do
     translations["nuyan_jd_jie_huangyueying"] = "黄月英"
     translations["#nuyan_jd_jie_huangyueying"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_jizhi"] then register({id = "nuyan_jd_jie_jizhi", mode = "jizhi", classic = true, jie = true, label = "集智", text = "锁定技，当你使用1张锦囊牌时，你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jie_jizhi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_jizhi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马超 常规
@@ -2560,8 +2569,8 @@ do
     translations["nuyan_machao"] = "马超"
     translations["#nuyan_machao"] = "怒焰·常规"
     if not skills["nuyan_tieqi"] then register({id = "nuyan_tieqi", mode = "tieqi", classic = false, jie = false, label = "铁骑", text = "锁定技，当你使用【杀】指定一个目标后，你的【杀】无视其防具和防御系符石，然后你进行判定，除非该角色弃置1张与判定结果花色相同的牌，否则其不能使用【闪】响应此【杀】。", compulsory = true}) end
-    general:addSkill(skills["nuyan_tieqi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_tieqi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马超 常规·界限突破
@@ -2570,8 +2579,8 @@ do
     translations["nuyan_jie_machao"] = "马超"
     translations["#nuyan_jie_machao"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_tieqi"] then register({id = "nuyan_jie_tieqi", mode = "tieqi", classic = false, jie = true, label = "铁骑", text = "锁定技，当你使用【杀】指定一个目标后，你的【杀】无视其防具和防御系符石，然后你进行判定，若结果为黑色，该角色不能使用【闪】，若结果为红色，除非该角色弃置1张与判定结果花色相同的牌，否则其不能使用【闪】响应此【杀】。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jie_tieqi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_tieqi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马超 经典
@@ -2580,8 +2589,8 @@ do
     translations["nuyan_jd_machao"] = "马超"
     translations["#nuyan_jd_machao"] = "怒焰·经典"
     if not skills["nuyan_jd_tieqi"] then register({id = "nuyan_jd_tieqi", mode = "tieqi", classic = true, jie = false, label = "铁骑", text = "锁定技，当你使用【杀】指定一个目标后，你的【杀】无视其防具，然后你进行判定，除非该角色弃置1张与判定结果花色相同的牌，否则其不能使用【闪】响应此【杀】。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_tieqi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_tieqi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马超 经典·界限突破
@@ -2590,8 +2599,8 @@ do
     translations["nuyan_jd_jie_machao"] = "马超"
     translations["#nuyan_jd_jie_machao"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_tieqi"] then register({id = "nuyan_jd_jie_tieqi", mode = "tieqi", classic = true, jie = true, label = "铁骑", text = "锁定技，当你使用【杀】指定一个目标后，你的【杀】无视其防具，然后你进行判定，若结果为黑色，该角色不能使用【闪】，若结果为红色，除非该角色弃置1张与判定结果花色相同的牌，否则其不能使用【闪】响应此【杀】。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jie_tieqi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_tieqi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 姜维 常规
@@ -2600,8 +2609,8 @@ do
     translations["nuyan_jiangwei"] = "姜维"
     translations["#nuyan_jiangwei"] = "怒焰·常规"
     if not skills["nuyan_jizhen"] then register({id = "nuyan_jizhen", mode = "jizhen", classic = false, jie = false, label = "激阵", text = "回合开始时或出牌阶段共限一次，你可以弃置一名角色任意区域内的1张牌：若是装备牌，则你的怒气+1；若是基本牌，则你可以获得之；若是锦囊牌，则你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jizhen"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jizhen")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 姜维 经典
@@ -2610,8 +2619,8 @@ do
     translations["nuyan_jd_jiangwei"] = "姜维"
     translations["#nuyan_jd_jiangwei"] = "怒焰·经典"
     if not skills["nuyan_jd_jizhen"] then register({id = "nuyan_jd_jizhen", mode = "jizhen", classic = true, jie = false, label = "激阵", text = "回合开始时或出牌阶段共限一次，你可以弃置一名角色任意区域内的1张牌：若是装备牌，则你的怒气+1；若是基本牌，则你可以获得之；若是锦囊牌，则你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jizhen"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jizhen")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张星彩 常规
@@ -2620,8 +2629,8 @@ do
     translations["nuyan_zhangxingcai"] = "张星彩"
     translations["#nuyan_zhangxingcai"] = "怒焰·常规"
     if not skills["nuyan_qiangwu"] then register({id = "nuyan_qiangwu", mode = "qiangwu", classic = false, jie = false, label = "枪舞", text = "出牌阶段限一次，你可以弃置一名角色手牌区或装备区内的1张牌，若如此做，本回合你使用【杀】无距离与次数限制。", compulsory = false}) end
-    general:addSkill(skills["nuyan_qiangwu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_qiangwu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张星彩 经典
@@ -2630,8 +2639,8 @@ do
     translations["nuyan_jd_zhangxingcai"] = "张星彩"
     translations["#nuyan_jd_zhangxingcai"] = "怒焰·经典"
     if not skills["nuyan_jd_qiangwu"] then register({id = "nuyan_jd_qiangwu", mode = "qiangwu", classic = true, jie = false, label = "枪舞", text = "出牌阶段限一次，你可以弃置一名角色手牌区或装备区内的1张牌，若如此做，本回合你使用【杀】无距离与次数限制。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_qiangwu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_qiangwu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马云禄 常规
@@ -2640,8 +2649,8 @@ do
     translations["nuyan_mayunlu"] = "马云禄"
     translations["#nuyan_mayunlu"] = "怒焰·常规"
     if not skills["nuyan_fengpo"] then register({id = "nuyan_fengpo", mode = "fengpo", classic = false, jie = false, label = "凤魄", text = "出牌阶段，你可以将1张红桃手牌当做强化【怒发冲冠】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_fengpo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fengpo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马云禄 经典
@@ -2650,8 +2659,8 @@ do
     translations["nuyan_jd_mayunlu"] = "马云禄"
     translations["#nuyan_jd_mayunlu"] = "怒焰·经典"
     if not skills["nuyan_jd_fengpo"] then register({id = "nuyan_jd_fengpo", mode = "fengpo", classic = true, jie = false, label = "凤魄", text = "出牌阶段，你可以将1张红桃手牌当做强化【怒发冲冠】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_fengpo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fengpo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 庞统 常规
@@ -2660,8 +2669,8 @@ do
     translations["nuyan_pangtong"] = "庞统"
     translations["#nuyan_pangtong"] = "怒焰·常规"
     if not skills["nuyan_zhanji"] then register({id = "nuyan_zhanji", mode = "zhanji", classic = false, jie = false, label = "展骥", text = "出牌阶段，你可以将1张黑色手牌当做普通【釜底抽薪】使用，若如此做，你立即获得其他角色因【釜底抽薪】所失去的全部怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhanji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhanji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 庞统 经典
@@ -2670,8 +2679,8 @@ do
     translations["nuyan_jd_pangtong"] = "庞统"
     translations["#nuyan_jd_pangtong"] = "怒焰·经典"
     if not skills["nuyan_jd_zhanji"] then register({id = "nuyan_jd_zhanji", mode = "zhanji", classic = true, jie = false, label = "展骥", text = "出牌阶段，你可以将1张黑色手牌当做普通【釜底抽薪】使用，若如此做，你立即获得其他角色因【釜底抽薪】所失去的全部怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhanji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhanji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 徐庶 常规
@@ -2680,8 +2689,8 @@ do
     translations["nuyan_xushu"] = "徐庶"
     translations["#nuyan_xushu"] = "怒焰·常规"
     if not skills["nuyan_zhuhai"] then register({id = "nuyan_zhuhai", mode = "zhuhai", classic = false, jie = false, label = "诛害", text = "其他角色于其回合内怒气增加时，你可以弃置1张牌，令其流失1点体力。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhuhai"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhuhai")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 徐庶 经典
@@ -2690,8 +2699,8 @@ do
     translations["nuyan_jd_xushu"] = "徐庶"
     translations["#nuyan_jd_xushu"] = "怒焰·经典"
     if not skills["nuyan_jd_zhuhai"] then register({id = "nuyan_jd_zhuhai", mode = "zhuhai", classic = true, jie = false, label = "诛害", text = "其他角色于其回合内怒气增加时，你可以弃置1张牌，令其流失1点体力。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhuhai"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhuhai")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 廖化 常规
@@ -2700,8 +2709,8 @@ do
     translations["nuyan_liaohua"] = "廖化"
     translations["#nuyan_liaohua"] = "怒焰·常规"
     if not skills["nuyan_dangxian"] then register({id = "nuyan_dangxian", mode = "dangxian", classic = false, jie = false, label = "当先", text = "锁定技，回合开始时，你获得1张牌并执行一个额外的出牌阶段。", compulsory = true}) end
-    general:addSkill(skills["nuyan_dangxian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_dangxian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 廖化 经典
@@ -2710,8 +2719,8 @@ do
     translations["nuyan_jd_liaohua"] = "廖化"
     translations["#nuyan_jd_liaohua"] = "怒焰·经典"
     if not skills["nuyan_jd_dangxian"] then register({id = "nuyan_jd_dangxian", mode = "dangxian", classic = true, jie = false, label = "当先", text = "锁定技，回合开始时，你获得1张牌并执行一个额外的出牌阶段。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_dangxian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_dangxian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关银屏 常规
@@ -2720,8 +2729,8 @@ do
     translations["nuyan_guanyinping"] = "关银屏"
     translations["#nuyan_guanyinping"] = "怒焰·常规"
     if not skills["nuyan_xuehen"] then register({id = "nuyan_xuehen", mode = "xuehen", classic = false, jie = false, label = "雪恨", text = "出牌阶段限X次（X为你的星级），你可以弃置1张红桃牌，对一名其他角色造成1点伤害，然后本回合你对其使用【杀】无次数限制。", compulsory = false}) end
-    general:addSkill(skills["nuyan_xuehen"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xuehen")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关银屏 经典
@@ -2730,8 +2739,8 @@ do
     translations["nuyan_jd_guanyinping"] = "关银屏"
     translations["#nuyan_jd_guanyinping"] = "怒焰·经典"
     if not skills["nuyan_jd_xuehen"] then register({id = "nuyan_jd_xuehen", mode = "xuehen", classic = true, jie = false, label = "雪恨", text = "出牌阶段限X次（X为回合开始前你已损失的体力值且至少为1），你可以弃置1张红桃牌，对一名其他角色造成1点伤害，然后本回合你对其使用【杀】无次数限制。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_xuehen"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xuehen")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马良 常规
@@ -2740,8 +2749,8 @@ do
     translations["nuyan_maliang"] = "马良"
     translations["#nuyan_maliang"] = "怒焰·常规"
     if not skills["nuyan_yingyuan"] then register({id = "nuyan_yingyuan", mode = "yingyuan", classic = false, jie = false, label = "应援", text = "当你于回合内使用的牌置入弃牌堆时，你可以将之交给一名其他角色（装备牌无法触发'应援'，相同牌名的牌每回合限一次）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_yingyuan"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_yingyuan")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 马良 经典
@@ -2750,8 +2759,8 @@ do
     translations["nuyan_jd_maliang"] = "马良"
     translations["#nuyan_jd_maliang"] = "怒焰·经典"
     if not skills["nuyan_jd_yingyuan"] then register({id = "nuyan_jd_yingyuan", mode = "yingyuan", classic = true, jie = false, label = "应援", text = "当你于回合内使用的牌置入弃牌堆时，你可以将之交给一名其他角色（装备牌无法触发'应援'，相同牌名的牌每回合限一次）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_yingyuan"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_yingyuan")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 周瑜 常规
@@ -2760,8 +2769,8 @@ do
     translations["nuyan_zhouyu"] = "周瑜"
     translations["#nuyan_zhouyu"] = "怒焰·常规"
     if not skills["nuyan_fanjian"] then register({id = "nuyan_fanjian", mode = "fanjian", classic = false, jie = false, label = "反间", text = "出牌阶段，你可以将1张黑桃手牌当做【水淹七军】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_fanjian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fanjian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 周瑜 经典
@@ -2770,8 +2779,8 @@ do
     translations["nuyan_jd_zhouyu"] = "周瑜"
     translations["#nuyan_jd_zhouyu"] = "怒焰·经典"
     if not skills["nuyan_jd_fanjian"] then register({id = "nuyan_jd_fanjian", mode = "fanjian", classic = true, jie = false, label = "反间", text = "出牌阶段，你可以将1张黑桃手牌当做【水淹七军】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_fanjian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fanjian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙尚香 常规
@@ -2780,8 +2789,8 @@ do
     translations["nuyan_sunshangxiang"] = "孙尚香"
     translations["#nuyan_sunshangxiang"] = "怒焰·常规"
     if not skills["nuyan_xiaoji"] then register({id = "nuyan_xiaoji", mode = "xiaoji", classic = false, jie = false, label = "枭姬", text = "当你失去装备区里的1张牌时，你可以选择一项：1.摸2张牌；2.回复1点体力。", compulsory = false}) end
-    general:addSkill(skills["nuyan_xiaoji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xiaoji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙尚香 经典
@@ -2790,8 +2799,8 @@ do
     translations["nuyan_jd_sunshangxiang"] = "孙尚香"
     translations["#nuyan_jd_sunshangxiang"] = "怒焰·经典"
     if not skills["nuyan_jd_xiaoji"] then register({id = "nuyan_jd_xiaoji", mode = "xiaoji", classic = true, jie = false, label = "枭姬", text = "当你失去装备区里的1张牌时，你可以选择一项：1.摸2张牌；2.回复1点体力。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_xiaoji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xiaoji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 大乔 常规
@@ -2800,8 +2809,8 @@ do
     translations["nuyan_daqiao"] = "大乔"
     translations["#nuyan_daqiao"] = "怒焰·常规"
     if not skills["nuyan_guose"] then register({id = "nuyan_guose", mode = "guose", classic = false, jie = false, label = "国色", text = "出牌阶段，你可以将1张方块手牌当做【乐不思蜀】普通使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_guose"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_guose")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 大乔 经典
@@ -2810,8 +2819,8 @@ do
     translations["nuyan_jd_daqiao"] = "大乔"
     translations["#nuyan_jd_daqiao"] = "怒焰·经典"
     if not skills["nuyan_jd_guose"] then register({id = "nuyan_jd_guose", mode = "guose", classic = true, jie = false, label = "国色", text = "出牌阶段，你可以将1张方块手牌当做【乐不思蜀】普通使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_guose"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_guose")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙权 常规
@@ -2820,8 +2829,8 @@ do
     translations["nuyan_sunquan"] = "孙权"
     translations["#nuyan_sunquan"] = "怒焰·常规"
     if not skills["nuyan_zhiheng"] then register({id = "nuyan_zhiheng", mode = "zhiheng", classic = false, jie = false, label = "制衡", text = "出牌阶段限一次，你可以弃置至多4张牌，然后摸等量的牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhiheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhiheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙权 常规·界限突破
@@ -2830,8 +2839,8 @@ do
     translations["nuyan_jie_sunquan"] = "孙权"
     translations["#nuyan_jie_sunquan"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_zhiheng"] then register({id = "nuyan_jie_zhiheng", mode = "zhiheng", classic = false, jie = true, label = "制衡", text = "出牌阶段限一次，你可以弃置任意张牌，然后摸等量的牌。若你以此法弃置的牌中包括所有手牌或所有装备区的牌，你多摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jie_zhiheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_zhiheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙权 经典
@@ -2840,8 +2849,8 @@ do
     translations["nuyan_jd_sunquan"] = "孙权"
     translations["#nuyan_jd_sunquan"] = "怒焰·经典"
     if not skills["nuyan_jd_zhiheng"] then register({id = "nuyan_jd_zhiheng", mode = "zhiheng", classic = true, jie = false, label = "制衡", text = "出牌阶段限一次，你可以弃置任意张牌，然后摸等量的牌。若你以此法弃置的牌中包括所有手牌，你多摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhiheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhiheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙权 经典·界限突破
@@ -2850,8 +2859,8 @@ do
     translations["nuyan_jd_jie_sunquan"] = "孙权"
     translations["#nuyan_jd_jie_sunquan"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_zhiheng"] then register({id = "nuyan_jd_jie_zhiheng", mode = "zhiheng", classic = true, jie = true, label = "制衡", text = "出牌阶段限一次，你可以弃置任意张牌，然后摸等量的牌。若你以此法弃置的牌中包括所有手牌或所有装备区的牌，你多摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jie_zhiheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_zhiheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 凌操 常规
@@ -2860,8 +2869,8 @@ do
     translations["nuyan_lingcao"] = "凌操"
     translations["#nuyan_lingcao"] = "怒焰·常规"
     if not skills["nuyan_dujin"] then register({id = "nuyan_dujin", mode = "dujin", classic = false, jie = false, label = "独进", text = "锁定技，摸牌阶段，摸牌数+X（X为你装备区牌数）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_dujin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_dujin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 凌操 经典
@@ -2870,8 +2879,8 @@ do
     translations["nuyan_jd_lingcao"] = "凌操"
     translations["#nuyan_jd_lingcao"] = "怒焰·经典"
     if not skills["nuyan_jd_dujin"] then register({id = "nuyan_jd_dujin", mode = "dujin", classic = true, jie = false, label = "独进", text = "锁定技，摸牌阶段，摸牌数+X（X为你装备区牌数）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_dujin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_dujin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙坚 常规
@@ -2880,8 +2889,8 @@ do
     translations["nuyan_sunjian"] = "孙坚"
     translations["#nuyan_sunjian"] = "怒焰·常规"
     if not skills["nuyan_yinghun"] then register({id = "nuyan_yinghun", mode = "yinghun", classic = false, jie = false, label = "英魂", text = "当你的体力值减少时，你可以选择一名其他角色，令其选择一项：1.令你摸2张牌；2.其随机弃置2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_yinghun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_yinghun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙坚 经典
@@ -2890,8 +2899,8 @@ do
     translations["nuyan_jd_sunjian"] = "孙坚"
     translations["#nuyan_jd_sunjian"] = "怒焰·经典"
     if not skills["nuyan_jd_yinghun"] then register({id = "nuyan_jd_yinghun", mode = "yinghun", classic = true, jie = false, label = "英魂", text = "当你的体力值减少时，你可以选择一名其他角色，令其选择一项：1.令你摸2张牌；2.其随机弃置2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_yinghun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_yinghun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 周泰 常规
@@ -2900,8 +2909,8 @@ do
     translations["nuyan_zhoutai"] = "周泰"
     translations["#nuyan_zhoutai"] = "怒焰·常规"
     if not skills["nuyan_fenji"] then register({id = "nuyan_fenji", mode = "fenji", classic = false, jie = false, label = "奋激", text = "当一名角色于回合外失去手牌后，你可以失去1点体力，然后进行判定：若为黑色，则失去手牌的角色摸1张牌；若为红色，则其摸2张牌。此时，若你的体力小于该角色的体力，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_fenji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fenji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 周泰 经典
@@ -2910,8 +2919,8 @@ do
     translations["nuyan_jd_zhoutai"] = "周泰"
     translations["#nuyan_jd_zhoutai"] = "怒焰·经典"
     if not skills["nuyan_jd_fenji"] then register({id = "nuyan_jd_fenji", mode = "fenji", classic = true, jie = false, label = "奋激", text = "当一名角色于回合外失去手牌后，你可以失去1点体力，然后进行判定：若为黑色，则失去手牌的角色摸1张牌；若为红色，则其摸2张牌。此时，若你的体力小于该角色的体力，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_fenji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fenji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 鲁肃 常规
@@ -2920,8 +2929,8 @@ do
     translations["nuyan_lusu"] = "鲁肃"
     translations["#nuyan_lusu"] = "怒焰·常规"
     if not skills["nuyan_haoshi"] then register({id = "nuyan_haoshi", mode = "haoshi", classic = false, jie = false, label = "好施", text = "锁定技，摸牌阶段，你多摸2张牌，然后若你的手牌数大于6，则你可以将一半手牌交给手牌少于你的一名其他角色（向下取整）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_haoshi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_haoshi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 鲁肃 经典
@@ -2930,8 +2939,8 @@ do
     translations["nuyan_jd_lusu"] = "鲁肃"
     translations["#nuyan_jd_lusu"] = "怒焰·经典"
     if not skills["nuyan_jd_haoshi"] then register({id = "nuyan_jd_haoshi", mode = "haoshi", classic = true, jie = false, label = "好施", text = "锁定技，摸牌阶段，你多摸2张牌，然后若你的手牌数大于6，则你可以将一半手牌交给手牌少于你的一名其他角色（向下取整）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_haoshi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_haoshi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 徐盛 常规
@@ -2940,8 +2949,8 @@ do
     translations["nuyan_xusheng"] = "徐盛"
     translations["#nuyan_xusheng"] = "怒焰·常规"
     if not skills["nuyan_pojun"] then register({id = "nuyan_pojun", mode = "pojun", classic = false, jie = false, label = "破军", text = "当你使用【杀】指定一个目标后，你可以将其至多X+1张手牌扣置于该角色的武将牌旁（X为你的星级）。当前回合结束后，该角色获得这些牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_pojun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_pojun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 徐盛 经典
@@ -2950,8 +2959,8 @@ do
     translations["nuyan_jd_xusheng"] = "徐盛"
     translations["#nuyan_jd_xusheng"] = "怒焰·经典"
     if not skills["nuyan_jd_pojun"] then register({id = "nuyan_jd_pojun", mode = "pojun", classic = true, jie = false, label = "破军", text = "当你使用【杀】指定一个目标后，你可以将其至多4张手牌扣置于该角色的武将牌旁：若其中有装备牌，随机弃置其中1张；若其中有锦囊牌，你摸1张牌。当前回合结束后，该角色获得这些牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_pojun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_pojun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 诸葛恪 常规
@@ -2960,8 +2969,8 @@ do
     translations["nuyan_zhugeke"] = "诸葛恪"
     translations["#nuyan_zhugeke"] = "怒焰·常规"
     if not skills["nuyan_duwu"] then register({id = "nuyan_duwu", mode = "duwu", classic = false, jie = false, label = "黩武", text = "出牌阶段，你可以选择任意一名其他角色并弃置X张牌（X为该角色体力值的一半向上取整），然后对其造成1点伤害。若其因受到此伤害而进入濒死状态，当此濒死结算结束后，若其存活，你失去1点体力，此技能于此回合内不可再次使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_duwu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_duwu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 诸葛恪 常规·界限突破
@@ -2970,8 +2979,8 @@ do
     translations["nuyan_jie_zhugeke"] = "诸葛恪"
     translations["#nuyan_jie_zhugeke"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_duwu"] then register({id = "nuyan_jie_duwu", mode = "duwu", classic = false, jie = true, label = "黩武", text = "出牌阶段，你可以弃置1张牌，然后对一名其他角色造成1点伤害。若其因'黩武'而进入濒死状态，当此濒死结算结束后，若其存活，你失去1点体力，此技能于此回合内不可再次使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jie_duwu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_duwu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 诸葛恪 经典
@@ -2980,8 +2989,8 @@ do
     translations["nuyan_jd_zhugeke"] = "诸葛恪"
     translations["#nuyan_jd_zhugeke"] = "怒焰·经典"
     if not skills["nuyan_jd_duwu"] then register({id = "nuyan_jd_duwu", mode = "duwu", classic = true, jie = false, label = "黩武", text = "出牌阶段，你可以选择任意一名其他角色并弃置X张牌（X为该角色体力值的一半向上取整），然后对其造成1点伤害。若其因受到此伤害而进入濒死状态，当此濒死结算结束后，若其存活，你失去1点体力，此技能于此回合内不可再次使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_duwu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_duwu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 诸葛恪 经典·界限突破
@@ -2990,8 +2999,8 @@ do
     translations["nuyan_jd_jie_zhugeke"] = "诸葛恪"
     translations["#nuyan_jd_jie_zhugeke"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_duwu"] then register({id = "nuyan_jd_jie_duwu", mode = "duwu", classic = true, jie = true, label = "黩武", text = "出牌阶段，你可以弃置1张牌，然后对一名其他角色造成1点伤害。若其因'黩武'而进入濒死状态，当此濒死结算结束后，若其存活，你失去1点体力，此技能于此回合内不可再次使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jie_duwu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_duwu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吴国太 常规
@@ -3000,8 +3009,8 @@ do
     translations["nuyan_wuguotai"] = "吴国太"
     translations["#nuyan_wuguotai"] = "怒焰·常规"
     if not skills["nuyan_ganlu"] then register({id = "nuyan_ganlu", mode = "ganlu", classic = false, jie = false, label = "甘露", text = "其他角色的结束阶段，若你于此回合失去的牌不大于你的怒气上限，你可以摸等同于失去数量的牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_ganlu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_ganlu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吴国太 经典
@@ -3010,8 +3019,8 @@ do
     translations["nuyan_jd_wuguotai"] = "吴国太"
     translations["#nuyan_jd_wuguotai"] = "怒焰·经典"
     if not skills["nuyan_jd_ganlu"] then register({id = "nuyan_jd_ganlu", mode = "ganlu", classic = true, jie = false, label = "甘露", text = "其他角色的结束阶段，若你于此回合失去的牌不大于你的怒气上限，你可以摸等同于失去数量的牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_ganlu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_ganlu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张昭 常规
@@ -3020,8 +3029,8 @@ do
     translations["nuyan_zhangzhao"] = "张昭"
     translations["#nuyan_zhangzhao"] = "怒焰·常规"
     if not skills["nuyan_zhijian"] then register({id = "nuyan_zhijian", mode = "zhijian", classic = false, jie = false, label = "直谏", text = "出牌阶段限X次，你可以弃置1张手牌并选择一名其他角色，然后随机将牌堆或弃牌堆中的1张装备牌置于其装备区，然后你摸1张牌（X为你的星级）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhijian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhijian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张昭 经典
@@ -3030,8 +3039,8 @@ do
     translations["nuyan_jd_zhangzhao"] = "张昭"
     translations["#nuyan_jd_zhangzhao"] = "怒焰·经典"
     if not skills["nuyan_jd_zhijian"] then register({id = "nuyan_jd_zhijian", mode = "zhijian", classic = true, jie = false, label = "直谏", text = "出牌阶段限4次，你可以弃置1张手牌并选择一名其他角色，然后随机将牌堆或弃牌堆中的1张装备牌置于其装备区，然后你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhijian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhijian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 貂蝉 常规
@@ -3040,8 +3049,8 @@ do
     translations["nuyan_diaochan"] = "貂蝉"
     translations["#nuyan_diaochan"] = "怒焰·常规"
     if not skills["nuyan_lihun"] then register({id = "nuyan_lihun", mode = "lihun", classic = false, jie = false, label = "离魂", text = "出牌阶段限一次，你可以失去1点怒气，然后获得一名其他角色的X张手牌（X为你的星级），若如此做本回合内你不能换将。出牌阶段结束时，你交给该角色Y张手牌（Y为其怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_lihun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_lihun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 貂蝉 经典
@@ -3050,8 +3059,8 @@ do
     translations["nuyan_jd_diaochan"] = "貂蝉"
     translations["#nuyan_jd_diaochan"] = "怒焰·经典"
     if not skills["nuyan_jd_lihun"] then register({id = "nuyan_jd_lihun", mode = "lihun", classic = true, jie = false, label = "离魂", text = "出牌阶段限一次，你可以失去1点怒气，然后获得一名其他角色的所有手牌。出牌阶段结束时，你交给该角色X张手牌（X为其怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_lihun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_lihun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张角 常规
@@ -3060,8 +3069,8 @@ do
     translations["nuyan_zhangjiao"] = "张角"
     translations["#nuyan_zhangjiao"] = "怒焰·常规"
     if not skills["nuyan_leifa"] then register({id = "nuyan_leifa", mode = "leifa", classic = false, jie = false, label = "雷罚", text = "你的方块手牌可以当做【闪】使用或打出。你使用或打出【闪】后，可以令一名角色流失1点体力。", compulsory = false}) end
-    general:addSkill(skills["nuyan_leifa"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_leifa")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张角 常规·界限突破
@@ -3070,8 +3079,8 @@ do
     translations["nuyan_jie_zhangjiao"] = "张角"
     translations["#nuyan_jie_zhangjiao"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_leifa"] then register({id = "nuyan_jie_leifa", mode = "leifa", classic = false, jie = true, label = "雷罚", text = "你的方块手牌可以当做【闪】使用或打出。你使用或打出【闪】后，选择一名角色流失1点体力且你获得1点怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jie_leifa"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_leifa")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张角 经典
@@ -3080,8 +3089,8 @@ do
     translations["nuyan_jd_zhangjiao"] = "张角"
     translations["#nuyan_jd_zhangjiao"] = "怒焰·经典"
     if not skills["nuyan_jd_leifa"] then register({id = "nuyan_jd_leifa", mode = "leifa", classic = true, jie = false, label = "雷罚", text = "你的方块手牌可以当做【闪】使用或打出。你使用或打出【闪】后，可以令一名角色流失1点体力。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_leifa"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_leifa")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 张角 经典·界限突破
@@ -3090,8 +3099,8 @@ do
     translations["nuyan_jd_jie_zhangjiao"] = "张角"
     translations["#nuyan_jd_jie_zhangjiao"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_leifa"] then register({id = "nuyan_jd_jie_leifa", mode = "leifa", classic = true, jie = true, label = "雷罚", text = "你的方块手牌可以当做【闪】使用或打出。你使用或打出【闪】后，选择一名角色流失1点体力且你获得1点怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jie_leifa"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_leifa")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 祝融 常规
@@ -3100,8 +3109,8 @@ do
     translations["nuyan_zhurong"] = "祝融"
     translations["#nuyan_zhurong"] = "怒焰·常规"
     if not skills["nuyan_lieren"] then register({id = "nuyan_lieren", mode = "lieren", classic = false, jie = false, label = "烈刃", text = "出牌阶段，当你造成伤害后，你可以获得受伤角色的1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_lieren"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_lieren")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 祝融 常规·界限突破
@@ -3110,8 +3119,8 @@ do
     translations["nuyan_jie_zhurong"] = "祝融"
     translations["#nuyan_jie_zhurong"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_lieren"] then register({id = "nuyan_jie_lieren", mode = "lieren", classic = false, jie = true, label = "烈刃", text = "出牌阶段，当你造成伤害后，你可以获得受伤角色的1张牌，若该伤害值大于1，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jie_lieren"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_lieren")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 祝融 经典
@@ -3120,8 +3129,8 @@ do
     translations["nuyan_jd_zhurong"] = "祝融"
     translations["#nuyan_jd_zhurong"] = "怒焰·经典"
     if not skills["nuyan_jd_lieren"] then register({id = "nuyan_jd_lieren", mode = "lieren", classic = true, jie = false, label = "烈刃", text = "出牌阶段，当你造成伤害后，你可以获得受伤角色的1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_lieren"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_lieren")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 祝融 经典·界限突破
@@ -3130,8 +3139,8 @@ do
     translations["nuyan_jd_jie_zhurong"] = "祝融"
     translations["#nuyan_jd_jie_zhurong"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_lieren"] then register({id = "nuyan_jd_jie_lieren", mode = "lieren", classic = true, jie = true, label = "烈刃", text = "出牌阶段，当你造成伤害后，你可以获得受伤角色的1张牌，若该伤害值大于1，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jie_lieren"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_lieren")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孟获 常规
@@ -3140,8 +3149,8 @@ do
     translations["nuyan_menghuo"] = "孟获"
     translations["#nuyan_menghuo"] = "怒焰·常规"
     if not skills["nuyan_manyi"] then register({id = "nuyan_manyi", mode = "manyi", classic = false, jie = false, label = "蛮裔", text = "出牌阶段限3次，你可以消耗1点怒气，视为使用1张普通【南蛮入侵】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_manyi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_manyi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孟获 经典
@@ -3150,8 +3159,8 @@ do
     translations["nuyan_jd_menghuo"] = "孟获"
     translations["#nuyan_jd_menghuo"] = "怒焰·经典"
     if not skills["nuyan_jd_manyi"] then register({id = "nuyan_jd_manyi", mode = "manyi", classic = true, jie = false, label = "蛮裔", text = "出牌阶段限3次，你可以消耗1点怒气，视为使用1张普通【南蛮入侵】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_manyi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_manyi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 华佗 常规
@@ -3160,8 +3169,8 @@ do
     translations["nuyan_huatuo"] = "华佗"
     translations["#nuyan_huatuo"] = "怒焰·常规"
     if not skills["nuyan_jijiu"] then register({id = "nuyan_jijiu", mode = "jijiu", classic = false, jie = false, label = "急救", text = "你可以将1张红桃手牌当做【桃】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jijiu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jijiu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 华佗 经典
@@ -3170,8 +3179,8 @@ do
     translations["nuyan_jd_huatuo"] = "华佗"
     translations["#nuyan_jd_huatuo"] = "怒焰·经典"
     if not skills["nuyan_jd_jijiu"] then register({id = "nuyan_jd_jijiu", mode = "jijiu", classic = true, jie = false, label = "急救", text = "你可以将1张红桃手牌当做【桃】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jijiu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jijiu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹节 常规
@@ -3180,8 +3189,8 @@ do
     translations["nuyan_caojie"] = "曹节"
     translations["#nuyan_caojie"] = "怒焰·常规"
     if not skills["nuyan_shouxi"] then register({id = "nuyan_shouxi", mode = "shouxi", classic = false, jie = false, label = "守玺", text = "当你的怒气溢出时，你可以消耗2点怒气，令一名其他角色流失X+1点体力（X为你当前的怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_shouxi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_shouxi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹节 经典
@@ -3190,8 +3199,8 @@ do
     translations["nuyan_jd_caojie"] = "曹节"
     translations["#nuyan_jd_caojie"] = "怒焰·经典"
     if not skills["nuyan_jd_shouxi"] then register({id = "nuyan_jd_shouxi", mode = "shouxi", classic = true, jie = false, label = "守玺", text = "当你的怒气溢出时，你可以消耗2点怒气，令一名其他角色流失X+1点体力（X为你当前的怒气值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_shouxi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_shouxi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘协 常规
@@ -3200,8 +3209,8 @@ do
     translations["nuyan_liuxie"] = "刘协"
     translations["#nuyan_liuxie"] = "怒焰·常规"
     if not skills["nuyan_tianming"] then register({id = "nuyan_tianming", mode = "tianming", classic = false, jie = false, label = "天命", text = "当你成为【杀】的目标后，你可以弃置2张牌再摸2张牌。然后，你可以将自己的1张手牌交给一名其他角色。", compulsory = false}) end
-    general:addSkill(skills["nuyan_tianming"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_tianming")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘协 经典
@@ -3210,8 +3219,8 @@ do
     translations["nuyan_jd_liuxie"] = "刘协"
     translations["#nuyan_jd_liuxie"] = "怒焰·经典"
     if not skills["nuyan_jd_tianming"] then register({id = "nuyan_jd_tianming", mode = "tianming", classic = true, jie = false, label = "天命", text = "当你成为【杀】的目标后，你可以弃置2张牌再摸2张牌。然后，你可以令一名角色摸1张牌，若此角色不是你，你获得1点怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_tianming"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_tianming")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 陈宫 常规
@@ -3220,8 +3229,8 @@ do
     translations["nuyan_chengong"] = "陈宫"
     translations["#nuyan_chengong"] = "怒焰·常规"
     if not skills["nuyan_zhichi"] then register({id = "nuyan_zhichi", mode = "zhichi", classic = false, jie = false, label = "智迟", text = "锁定技，其他角色的回合，若你的怒气值变化过，当你受到大于1的伤害时，伤害-1。", compulsory = true}) end
-    general:addSkill(skills["nuyan_zhichi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhichi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 陈宫 经典
@@ -3230,8 +3239,8 @@ do
     translations["nuyan_jd_chengong"] = "陈宫"
     translations["#nuyan_jd_chengong"] = "怒焰·经典"
     if not skills["nuyan_jd_zhichi"] then register({id = "nuyan_jd_zhichi", mode = "zhichi", classic = true, jie = false, label = "智迟", text = "锁定技，其他角色的回合，若你的怒气值变化过，当你受到大于1的伤害时，伤害-1。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_zhichi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhichi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 公孙瓒 常规
@@ -3240,8 +3249,8 @@ do
     translations["nuyan_gongsunzan"] = "公孙瓒"
     translations["#nuyan_gongsunzan"] = "怒焰·常规"
     if not skills["nuyan_yicong"] then register({id = "nuyan_yicong", mode = "yicong", classic = false, jie = false, label = "义从", text = "锁定技，若你的体力值不大于你的星级，你免疫体力流失，且你造成伤害时，伤害+1。", compulsory = true}) end
-    general:addSkill(skills["nuyan_yicong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_yicong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 公孙瓒 常规·界限突破
@@ -3250,8 +3259,8 @@ do
     translations["nuyan_jie_gongsunzan"] = "公孙瓒"
     translations["#nuyan_jie_gongsunzan"] = "怒焰·常规·界限突破"
     if not skills["nuyan_jie_yicong"] then register({id = "nuyan_jie_yicong", mode = "yicong", classic = false, jie = true, label = "义从", text = "锁定技，若你的体力值不大于你的星级，你免疫体力流失；若你的体力值大于你的星级，你造成的伤害均改为体力流失。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jie_yicong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jie_yicong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 公孙瓒 经典
@@ -3260,8 +3269,8 @@ do
     translations["nuyan_jd_gongsunzan"] = "公孙瓒"
     translations["#nuyan_jd_gongsunzan"] = "怒焰·经典"
     if not skills["nuyan_jd_yicong"] then register({id = "nuyan_jd_yicong", mode = "yicong", classic = true, jie = false, label = "义从", text = "锁定技，若你的体力值不大于3，你免疫体力流失，且你造成伤害时，伤害+1。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_yicong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_yicong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 公孙瓒 经典·界限突破
@@ -3270,8 +3279,8 @@ do
     translations["nuyan_jd_jie_gongsunzan"] = "公孙瓒"
     translations["#nuyan_jd_jie_gongsunzan"] = "怒焰·经典·界限突破"
     if not skills["nuyan_jd_jie_yicong"] then register({id = "nuyan_jd_jie_yicong", mode = "yicong", classic = true, jie = true, label = "义从", text = "锁定技，若你的体力值不大于3，你免疫体力流失；若你的体力值大于3，你造成的伤害均改为体力流失。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jie_yicong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jie_yicong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 高顺 常规
@@ -3280,8 +3289,8 @@ do
     translations["nuyan_gaoshun"] = "高顺"
     translations["#nuyan_gaoshun"] = "怒焰·常规"
     if not skills["nuyan_xianzhen"] then register({id = "nuyan_xianzhen", mode = "xianzhen", classic = false, jie = false, label = "陷阵", text = "出牌阶段限一次，你可以与一名其他角色拼点：若你赢，此出牌阶段你无视该角色的防具，对其使用黑色【杀】无距离和次数限制；若你没赢，此出牌阶段你不能使用【杀】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_xianzhen"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xianzhen")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 高顺 经典
@@ -3290,8 +3299,8 @@ do
     translations["nuyan_jd_gaoshun"] = "高顺"
     translations["#nuyan_jd_gaoshun"] = "怒焰·经典"
     if not skills["nuyan_jd_xianzhen"] then register({id = "nuyan_jd_xianzhen", mode = "xianzhen", classic = true, jie = false, label = "陷阵", text = "出牌阶段限一次，你可以与一名其他角色拼点：若你赢，此出牌阶段你无视该角色的防具，对其使用【杀】无距离和次数限制；若你没赢，此出牌阶段你不能使用【杀】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_xianzhen"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xianzhen")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 蔡夫人 常规
@@ -3300,8 +3309,8 @@ do
     translations["nuyan_caifuren"] = "蔡夫人"
     translations["#nuyan_caifuren"] = "怒焰·常规"
     if not skills["nuyan_xianzhou"] then register({id = "nuyan_xianzhou", mode = "xianzhou", classic = false, jie = false, label = "献州", text = "出牌阶段限一次，你可以将装备区里的所有牌与一名有装备的其他角色交换：若你得到的装备多，你此回合出【杀】次数+1；若你送出的装备多，你回复1点体力；若双方交换的装备一样多，你摸1张牌且怒气+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_xianzhou"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xianzhou")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 蔡夫人 经典
@@ -3310,8 +3319,8 @@ do
     translations["nuyan_jd_caifuren"] = "蔡夫人"
     translations["#nuyan_jd_caifuren"] = "怒焰·经典"
     if not skills["nuyan_jd_xianzhou"] then register({id = "nuyan_jd_xianzhou", mode = "xianzhou", classic = true, jie = false, label = "献州", text = "出牌阶段限一次，你可以将装备区里的所有牌与一名有装备的其他角色交换：若你得到的装备多，你此回合出【杀】次数+1；若你送出的装备多，你回复1点体力；若双方交换的装备一样多，你摸1张牌且怒气+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_xianzhou"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xianzhou")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 袁术 常规
@@ -3320,8 +3329,8 @@ do
     translations["nuyan_yuanshu"] = "袁术"
     translations["#nuyan_yuanshu"] = "怒焰·常规"
     if not skills["nuyan_yongsi"] then register({id = "nuyan_yongsi", mode = "yongsi", classic = false, jie = false, label = "庸肆", text = "锁定技，摸牌阶段，你多摸X+1张牌（X为场上的势力数）；弃牌阶段开始时，你选择一项：1.多弃置1张牌；2.失去1点体力。", compulsory = true}) end
-    general:addSkill(skills["nuyan_yongsi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_yongsi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 袁术 经典
@@ -3330,8 +3339,8 @@ do
     translations["nuyan_jd_yuanshu"] = "袁术"
     translations["#nuyan_jd_yuanshu"] = "怒焰·经典"
     if not skills["nuyan_jd_yongsi"] then register({id = "nuyan_jd_yongsi", mode = "yongsi", classic = true, jie = false, label = "庸肆", text = "锁定技，摸牌阶段，你多摸X+1张牌（X为场上的势力数）；弃牌阶段开始时，你选择一项：1.多弃置1张牌；2.失去1点体力。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_yongsi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_yongsi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 董白 常规
@@ -3340,8 +3349,8 @@ do
     translations["nuyan_dongbai"] = "董白"
     translations["#nuyan_dongbai"] = "怒焰·常规"
     if not skills["nuyan_xiahui"] then register({id = "nuyan_xiahui", mode = "xiahui", classic = false, jie = false, label = "黠慧", text = "锁定技，你的黑色牌不占用手牌上限；其他角色获得你的黑色牌时，其不能使用、打出、弃置这些牌直至其体力值减少为止。", compulsory = true}) end
-    general:addSkill(skills["nuyan_xiahui"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xiahui")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 董白 经典
@@ -3350,8 +3359,8 @@ do
     translations["nuyan_jd_dongbai"] = "董白"
     translations["#nuyan_jd_dongbai"] = "怒焰·经典"
     if not skills["nuyan_jd_xiahui"] then register({id = "nuyan_jd_xiahui", mode = "xiahui", classic = true, jie = false, label = "黠慧", text = "锁定技，你的黑色牌不占用手牌上限；其他角色获得你的黑色牌时，其不能使用、打出、弃置这些牌直至其体力值减少为止。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_xiahui"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xiahui")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 沮授 常规
@@ -3360,8 +3369,8 @@ do
     translations["nuyan_jushou"] = "沮授"
     translations["#nuyan_jushou"] = "怒焰·常规"
     if not skills["nuyan_jianying"] then register({id = "nuyan_jianying", mode = "jianying", classic = false, jie = false, label = "渐营", text = "锁定技，当你于出牌阶段内使用牌时，若此牌与你使用的上一张牌点数或花色相同，则你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jianying"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jianying")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 沮授 经典
@@ -3370,8 +3379,8 @@ do
     translations["nuyan_jd_jushou"] = "沮授"
     translations["#nuyan_jd_jushou"] = "怒焰·经典"
     if not skills["nuyan_jd_jianying"] then register({id = "nuyan_jd_jianying", mode = "jianying", classic = true, jie = false, label = "渐营", text = "锁定技，当你于出牌阶段内使用牌时，若此牌与你使用的上一张牌点数或花色相同，则你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jianying"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jianying")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 甄姬 常规
@@ -3380,8 +3389,8 @@ do
     translations["nuyan_zhenji"] = "甄姬"
     translations["#nuyan_zhenji"] = "怒焰·常规"
     if not skills["nuyan_luoshen"] then register({id = "nuyan_luoshen", mode = "luoshen", classic = false, jie = false, label = "洛神", text = "回合开始时，你进行判定并获得判定牌，若判定牌为黑色，重复此流程。你可以将1张黑色手牌当做【闪】使用或打出。", compulsory = false}) end
-    general:addSkill(skills["nuyan_luoshen"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_luoshen")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 甄姬 经典
@@ -3390,8 +3399,8 @@ do
     translations["nuyan_jd_zhenji"] = "甄姬"
     translations["#nuyan_jd_zhenji"] = "怒焰·经典"
     if not skills["nuyan_jd_luoshen"] then register({id = "nuyan_jd_luoshen", mode = "luoshen", classic = true, jie = false, label = "洛神", text = "回合开始时，你进行判定并获得判定牌，若判定牌为黑色，重复此流程。你可以将1张黑色手牌当做【闪】使用或打出。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_luoshen"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_luoshen")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹丕 常规
@@ -3400,8 +3409,8 @@ do
     translations["nuyan_caopi"] = "曹丕"
     translations["#nuyan_caopi"] = "怒焰·常规"
     if not skills["nuyan_fangzhu"] then register({id = "nuyan_fangzhu", mode = "fangzhu", classic = false, jie = false, label = "放逐", text = "当你的体力减少后，你可以令一名其他角色失去1点怒气，并随机失去2张手牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_fangzhu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fangzhu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹丕 经典
@@ -3410,8 +3419,8 @@ do
     translations["nuyan_jd_caopi"] = "曹丕"
     translations["#nuyan_jd_caopi"] = "怒焰·经典"
     if not skills["nuyan_jd_fangzhu"] then register({id = "nuyan_jd_fangzhu", mode = "fangzhu", classic = true, jie = false, label = "放逐", text = "当你的体力减少后，你可以令一名其他角色失去1点怒气，并随机失去2张手牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_fangzhu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fangzhu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 辛宪英 常规
@@ -3420,8 +3429,8 @@ do
     translations["nuyan_xinxianying"] = "辛宪英"
     translations["#nuyan_xinxianying"] = "怒焰·常规"
     if not skills["nuyan_zhongjian"] then register({id = "nuyan_zhongjian", mode = "zhongjian", classic = false, jie = false, label = "忠鉴", text = "出牌阶段限一次，你可以展示1张手牌并弃置之，选择一名其他角色随机展示其X张手牌（X为你的星级），弃置其中花色相同的手牌；若没有花色相同的牌，则你选择获得其中2张。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhongjian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhongjian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 辛宪英 经典
@@ -3430,8 +3439,8 @@ do
     translations["nuyan_jd_xinxianying"] = "辛宪英"
     translations["#nuyan_jd_xinxianying"] = "怒焰·经典"
     if not skills["nuyan_jd_zhongjian"] then register({id = "nuyan_jd_zhongjian", mode = "zhongjian", classic = true, jie = false, label = "忠鉴", text = "出牌阶段限一次，你可以展示1张手牌并弃置之，选择一名其他角色随机展示其至多4张手牌，弃置其中颜色相同的手牌；若没有颜色相同的牌，则你选择获得其中2张。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhongjian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhongjian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 戏志才 常规
@@ -3440,8 +3449,8 @@ do
     translations["nuyan_xizhicai"] = "戏志才"
     translations["#nuyan_xizhicai"] = "怒焰·常规"
     if not skills["nuyan_chouce"] then register({id = "nuyan_chouce", mode = "chouce", classic = false, jie = false, label = "筹策", text = "当你体力减少时，你可以进行判定，若结果为：黑色，你弃置一名其他角色区域里的X+1张牌；红色，你令一名角色摸2X张牌，先辅的角色摸X张（X为你体力减少值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_chouce"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_chouce")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 戏志才 经典
@@ -3450,8 +3459,8 @@ do
     translations["nuyan_jd_xizhicai"] = "戏志才"
     translations["#nuyan_jd_xizhicai"] = "怒焰·经典"
     if not skills["nuyan_jd_chouce"] then register({id = "nuyan_jd_chouce", mode = "chouce", classic = true, jie = false, label = "筹策", text = "当你体力变化时，你可以进行判定，若结果为：黑色，你弃置一名其他角色区域里的X+1张牌；红色，你令一名角色摸2X张牌（X为你体力变化值）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_chouce"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_chouce")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 程昱 常规
@@ -3460,8 +3469,8 @@ do
     translations["nuyan_chengyu"] = "程昱"
     translations["#nuyan_chengyu"] = "怒焰·常规"
     if not skills["nuyan_shefu"] then register({id = "nuyan_shefu", mode = "shefu", classic = false, jie = false, label = "设伏", text = "结束阶段，你可以弃置1张手牌并记录2个基本牌或锦囊牌的名称，称为'伏兵'。当其他角色于你的回合外使用或打出牌时，你可以移去1个记录名称相同的'伏兵'，然后此牌无效。直至使用者的回合结束，其触发的技能符石失效。", compulsory = false}) end
-    general:addSkill(skills["nuyan_shefu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_shefu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 程昱 经典
@@ -3470,8 +3479,8 @@ do
     translations["nuyan_jd_chengyu"] = "程昱"
     translations["#nuyan_jd_chengyu"] = "怒焰·经典"
     if not skills["nuyan_jd_shefu"] then register({id = "nuyan_jd_shefu", mode = "shefu", classic = true, jie = false, label = "设伏", text = "结束阶段，你可以弃置1张手牌并记录2个基本牌或锦囊牌的名称，称为'伏兵'。当其他角色于你的回合外使用或打出牌时，你可以移去1个记录名称相同的'伏兵'，然后此牌无效。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_shefu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_shefu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 郭照 常规
@@ -3480,8 +3489,8 @@ do
     translations["nuyan_guozhao"] = "郭照"
     translations["#nuyan_guozhao"] = "怒焰·常规"
     if not skills["nuyan_pianchong"] then register({id = "nuyan_pianchong", mode = "pianchong", classic = false, jie = false, label = "偏宠", text = "出牌阶段限一次，你选择一项直到你的下回合开始：1.你每失去1张红色手牌时摸1张黑色牌；2.你每失去1张黑色手牌时摸1张红色牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_pianchong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_pianchong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 郭照 经典
@@ -3490,8 +3499,8 @@ do
     translations["nuyan_jd_guozhao"] = "郭照"
     translations["#nuyan_jd_guozhao"] = "怒焰·经典"
     if not skills["nuyan_jd_pianchong"] then register({id = "nuyan_jd_pianchong", mode = "pianchong", classic = true, jie = false, label = "偏宠", text = "出牌阶段限一次，你选择一项直到你的下回合开始：1.你每失去1张红色手牌时摸1张黑色牌；2.你每失去1张黑色手牌时摸1张红色牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_pianchong"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_pianchong")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 赵云 常规
@@ -3500,8 +3509,8 @@ do
     translations["nuyan_zhaoyun"] = "赵云"
     translations["#nuyan_zhaoyun"] = "怒焰·常规"
     if not skills["nuyan_juejing"] then register({id = "nuyan_juejing", mode = "juejing", classic = false, jie = false, label = "绝境", text = "锁定技，摸牌阶段，你多摸等同于你已损失的体力值数的牌；你的手牌上限始终+X（X为你的星级）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_juejing"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_juejing")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 赵云 经典
@@ -3510,8 +3519,8 @@ do
     translations["nuyan_jd_zhaoyun"] = "赵云"
     translations["#nuyan_jd_zhaoyun"] = "怒焰·经典"
     if not skills["nuyan_jd_juejing"] then register({id = "nuyan_jd_juejing", mode = "juejing", classic = true, jie = false, label = "绝境", text = "锁定技，摸牌阶段，你多摸等同于你已损失的体力值数的牌；你的手牌上限始终+5。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_juejing"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_juejing")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 诸葛亮 常规
@@ -3520,8 +3529,8 @@ do
     translations["nuyan_zhugeliang"] = "诸葛亮"
     translations["#nuyan_zhugeliang"] = "怒焰·常规"
     if not skills["nuyan_jitian"] then register({id = "nuyan_jitian", mode = "jitian", classic = false, jie = false, label = "祭天", text = "出牌阶段，你可以弃置1张牌，令一名角色获得1点怒气，然后其相邻角色失去1点怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jitian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jitian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 诸葛亮 经典
@@ -3530,8 +3539,8 @@ do
     translations["nuyan_jd_zhugeliang"] = "诸葛亮"
     translations["#nuyan_jd_zhugeliang"] = "怒焰·经典"
     if not skills["nuyan_jd_jitian"] then register({id = "nuyan_jd_jitian", mode = "jitian", classic = true, jie = false, label = "祭天", text = "出牌阶段，你可以弃置1张牌，令一名角色获得1点怒气，然后其相邻角色失去1点怒气。若失去怒气的目标是自己，则免于失去怒气。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_jitian"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jitian")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 董允 常规
@@ -3540,8 +3549,8 @@ do
     translations["nuyan_dongyun"] = "董允"
     translations["#nuyan_dongyun"] = "怒焰·常规"
     if not skills["nuyan_bingzheng"] then register({id = "nuyan_bingzheng", mode = "bingzheng", classic = false, jie = false, label = "秉正", text = "你的回合内，当你使用单体非延时锦囊时，可以增加一个额外的目标，若不增加则该锦囊牌效果+1，相同锦囊牌每回合限一次。", compulsory = false}) end
-    general:addSkill(skills["nuyan_bingzheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_bingzheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 董允 经典
@@ -3550,8 +3559,8 @@ do
     translations["nuyan_jd_dongyun"] = "董允"
     translations["#nuyan_jd_dongyun"] = "怒焰·经典"
     if not skills["nuyan_jd_bingzheng"] then register({id = "nuyan_jd_bingzheng", mode = "bingzheng", classic = true, jie = false, label = "秉正", text = "你的回合内，当你使用单体非延时锦囊时，可以增加一个额外的目标，若不增加则该锦囊牌效果+1，相同锦囊牌每回合限一次。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_bingzheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_bingzheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关索 常规
@@ -3560,8 +3569,8 @@ do
     translations["nuyan_guansuo"] = "关索"
     translations["#nuyan_guansuo"] = "怒焰·常规"
     if not skills["nuyan_zhengnan"] then register({id = "nuyan_zhengnan", mode = "zhengnan", classic = false, jie = false, label = "征南", text = "锁定技，每名角色限一次，当一名角色体力值降低至X及以下时（X为你的星级），你摸1张牌并选择获得其中一个技能：武圣、当先、心战（若技能均已获得则改为摸3张牌）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_zhengnan"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhengnan")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关索 经典
@@ -3570,8 +3579,8 @@ do
     translations["nuyan_jd_guansuo"] = "关索"
     translations["#nuyan_jd_guansuo"] = "怒焰·经典"
     if not skills["nuyan_jd_zhengnan"] then register({id = "nuyan_jd_zhengnan", mode = "zhengnan", classic = true, jie = false, label = "征南", text = "锁定技，每名角色限一次，当一名角色体力值降低至2及以下时，你摸1张牌并选择获得其中一个技能：武圣、当先、心战（若技能均已获得则改为摸3张牌）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_zhengnan"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhengnan")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 鲍三娘 常规
@@ -3580,8 +3589,8 @@ do
     translations["nuyan_baosanniang"] = "鲍三娘"
     translations["#nuyan_baosanniang"] = "怒焰·常规"
     if not skills["nuyan_wuniang"] then register({id = "nuyan_wuniang", mode = "wuniang", classic = false, jie = false, label = "武娘", text = "每当你于回合内对一名其他角色使用1张【杀】结算后，你可令其对你使用1张【杀】。若其出【杀】，你摸1张牌且本回合你的【杀】的使用次数+1；若其不出【杀】，你摸2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_wuniang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_wuniang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 鲍三娘 经典
@@ -3590,8 +3599,8 @@ do
     translations["nuyan_jd_baosanniang"] = "鲍三娘"
     translations["#nuyan_jd_baosanniang"] = "怒焰·经典"
     if not skills["nuyan_jd_wuniang"] then register({id = "nuyan_jd_wuniang", mode = "wuniang", classic = true, jie = false, label = "武娘", text = "每当你于回合内对一名其他角色使用1张【杀】结算后，你可令其对你使用1张【杀】。若其出【杀】，你摸1张牌且本回合你的【杀】的使用次数+1；若其不出【杀】，你摸2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_wuniang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_wuniang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 赵襄 常规
@@ -3600,8 +3609,8 @@ do
     translations["nuyan_zhaoxiang"] = "赵襄"
     translations["#nuyan_zhaoxiang"] = "怒焰·常规"
     if not skills["nuyan_fanghun"] then register({id = "nuyan_fanghun", mode = "fanghun", classic = false, jie = false, label = "芳魂", text = "锁定技，当你使用【杀】指定目标后或当你成为【杀】的目标后，你获得1点怒气，若怒气已满，则改为摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_fanghun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fanghun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 赵襄 经典
@@ -3610,8 +3619,8 @@ do
     translations["nuyan_jd_zhaoxiang"] = "赵襄"
     translations["#nuyan_jd_zhaoxiang"] = "怒焰·经典"
     if not skills["nuyan_jd_fanghun"] then register({id = "nuyan_jd_fanghun", mode = "fanghun", classic = true, jie = false, label = "芳魂", text = "锁定技，当你使用【杀】指定目标后或当你成为【杀】的目标后，你获得1点怒气，若怒气已满，则改为摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_fanghun"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fanghun")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙策 常规
@@ -3620,8 +3629,8 @@ do
     translations["nuyan_sunce"] = "孙策"
     translations["#nuyan_sunce"] = "怒焰·常规"
     if not skills["nuyan_jiangang"] then register({id = "nuyan_jiangang", mode = "jiangang", classic = false, jie = false, label = "激昂", text = "锁定技，当你使用或打出【杀】、【决斗】，或者当你成为【杀】、【决斗】的目标后，你获得1点怒气。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jiangang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jiangang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙策 经典
@@ -3630,8 +3639,8 @@ do
     translations["nuyan_jd_sunce"] = "孙策"
     translations["#nuyan_jd_sunce"] = "怒焰·经典"
     if not skills["nuyan_jd_jiangang"] then register({id = "nuyan_jd_jiangang", mode = "jiangang", classic = true, jie = false, label = "激昂", text = "锁定技，当你使用或打出【杀】、【决斗】，或者当你成为【杀】、【决斗】的目标后，你获得1点怒气。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_jiangang"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_jiangang")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 步练师 常规
@@ -3640,8 +3649,8 @@ do
     translations["nuyan_bulianshi"] = "步练师"
     translations["#nuyan_bulianshi"] = "怒焰·常规"
     if not skills["nuyan_anxu"] then register({id = "nuyan_anxu", mode = "anxu", classic = false, jie = false, label = "安恤", text = "你或相邻角色体力减少时，你可以随机弃置1张牌，令一名角色怒气-2。", compulsory = false}) end
-    general:addSkill(skills["nuyan_anxu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_anxu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 步练师 经典
@@ -3650,8 +3659,8 @@ do
     translations["nuyan_jd_bulianshi"] = "步练师"
     translations["#nuyan_jd_bulianshi"] = "怒焰·经典"
     if not skills["nuyan_jd_anxu"] then register({id = "nuyan_jd_anxu", mode = "anxu", classic = true, jie = false, label = "安恤", text = "你或相邻角色体力减少时，你可以随机弃置1张牌，令一名角色怒气-2。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_anxu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_anxu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 太史慈 常规
@@ -3660,8 +3669,8 @@ do
     translations["nuyan_taishici"] = "太史慈"
     translations["#nuyan_taishici"] = "怒焰·常规"
     if not skills["nuyan_dulie"] then register({id = "nuyan_dulie", mode = "dulie", classic = false, jie = false, label = "笃烈", text = "出牌阶段限一次，你可以令一名角色将任意1张手牌当做强化【无中生有】使用，然后该角色出杀次数增加至X+1次，直至其换将或者其回合结束（X为你的星级）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_dulie"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_dulie")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 太史慈 经典
@@ -3670,8 +3679,8 @@ do
     translations["nuyan_jd_taishici"] = "太史慈"
     translations["#nuyan_jd_taishici"] = "怒焰·经典"
     if not skills["nuyan_jd_dulie"] then register({id = "nuyan_jd_dulie", mode = "dulie", classic = true, jie = false, label = "笃烈", text = "出牌阶段限一次，你可以令一名角色将任意1张手牌当做【无中生有】使用，然后该角色出杀次数+2，直至其换将或者其回合结束。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_dulie"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_dulie")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙皓 常规
@@ -3680,8 +3689,8 @@ do
     translations["nuyan_sunhao"] = "孙皓"
     translations["#nuyan_sunhao"] = "怒焰·常规"
     if not skills["nuyan_canshi"] then register({id = "nuyan_canshi", mode = "canshi", classic = false, jie = false, label = "残蚀", text = "出牌阶段限一次，你可以将所有'仇'标记转化为等量伤害，对其他角色各造成至多2点伤害（'仇'标记来源：当你使用【杀】或非延时锦囊时，以及当你受到伤害大于1时，你获得1枚'仇'标记）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_canshi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_canshi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙皓 经典
@@ -3690,8 +3699,8 @@ do
     translations["nuyan_jd_sunhao"] = "孙皓"
     translations["#nuyan_jd_sunhao"] = "怒焰·经典"
     if not skills["nuyan_jd_canshi"] then register({id = "nuyan_jd_canshi", mode = "canshi", classic = true, jie = false, label = "残蚀", text = "出牌阶段限一次，你可以将所有'仇'标记转化为等量伤害，对其他角色各造成至多2点伤害（'仇'标记来源：当你使用【杀】或非延时锦囊时，以及当你受到伤害大于1时，你获得1枚'仇'标记）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_canshi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_canshi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 留赞 常规
@@ -3700,8 +3709,8 @@ do
     translations["nuyan_liuzan"] = "留赞"
     translations["#nuyan_liuzan"] = "怒焰·常规"
     if not skills["nuyan_fenyin"] then register({id = "nuyan_fenyin", mode = "fenyin", classic = false, jie = false, label = "奋音", text = "锁定技，你的回合内，当你使用1张与上一张颜色不同的牌时，你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_fenyin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fenyin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 留赞 经典
@@ -3710,8 +3719,8 @@ do
     translations["nuyan_jd_liuzan"] = "留赞"
     translations["#nuyan_jd_liuzan"] = "怒焰·经典"
     if not skills["nuyan_jd_fenyin"] then register({id = "nuyan_jd_fenyin", mode = "fenyin", classic = true, jie = false, label = "奋音", text = "锁定技，你的回合内，当你使用1张与上一张颜色不同的牌时，你摸1张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_fenyin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fenyin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 诸葛瑾 常规
@@ -3720,8 +3729,8 @@ do
     translations["nuyan_zhugejin"] = "诸葛瑾"
     translations["#nuyan_zhugejin"] = "怒焰·常规"
     if not skills["nuyan_hongyuan"] then register({id = "nuyan_hongyuan", mode = "hongyuan", classic = false, jie = false, label = "弘援", text = "当你不因'弘援'效果获得红色牌后，你令一名其他角色摸2张牌或者你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_hongyuan"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_hongyuan")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 诸葛瑾 经典
@@ -3730,8 +3739,8 @@ do
     translations["nuyan_jd_zhugejin"] = "诸葛瑾"
     translations["#nuyan_jd_zhugejin"] = "怒焰·经典"
     if not skills["nuyan_jd_hongyuan"] then register({id = "nuyan_jd_hongyuan", mode = "hongyuan", classic = true, jie = false, label = "弘援", text = "当你不因'弘援'效果获得红色牌后，你令一名其他角色摸2张牌或者你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_hongyuan"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_hongyuan")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吕布 常规
@@ -3740,8 +3749,8 @@ do
     translations["nuyan_lvbu"] = "吕布"
     translations["#nuyan_lvbu"] = "怒焰·常规"
     if not skills["nuyan_shenwei"] then register({id = "nuyan_shenwei", mode = "shenwei", classic = false, jie = false, label = "神威", text = "锁定技，你使用的【杀】不能被强化【闪】响应，你的【杀】造成伤害时，若你的怒气值大于目标角色的怒气值，此【杀】伤害+X（X为你与其的怒气差值）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_shenwei"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_shenwei")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吕布 经典
@@ -3750,8 +3759,8 @@ do
     translations["nuyan_jd_lvbu"] = "吕布"
     translations["#nuyan_jd_lvbu"] = "怒焰·经典"
     if not skills["nuyan_jd_shenwei"] then register({id = "nuyan_jd_shenwei", mode = "shenwei", classic = true, jie = false, label = "神威", text = "锁定技，你使用的【杀】不能被强化【闪】响应，你的【杀】造成伤害时，此【杀】伤害+X（X为你的怒气值）。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_shenwei"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_shenwei")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 蔡文姬 常规
@@ -3760,8 +3769,8 @@ do
     translations["nuyan_caiwenji"] = "蔡文姬"
     translations["#nuyan_caiwenji"] = "怒焰·常规"
     if not skills["nuyan_beige"] then register({id = "nuyan_beige", mode = "beige", classic = false, jie = false, label = "悲歌", text = "其他角色对你造成伤害后，你可以弃置1张牌，若此牌：为红色，你摸3张牌；为黑色，你弃置该角色任意区域2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_beige"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_beige")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 蔡文姬 经典
@@ -3770,8 +3779,8 @@ do
     translations["nuyan_jd_caiwenji"] = "蔡文姬"
     translations["#nuyan_jd_caiwenji"] = "怒焰·经典"
     if not skills["nuyan_jd_beige"] then register({id = "nuyan_jd_beige", mode = "beige", classic = true, jie = false, label = "悲歌", text = "其他角色对你造成伤害后，你可以弃置1张牌，若此牌：为红色，你摸3张牌；为黑色，你弃置该角色任意区域2张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_beige"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_beige")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 贾诩 常规
@@ -3780,8 +3789,8 @@ do
     translations["nuyan_jiaxu"] = "贾诩"
     translations["#nuyan_jiaxu"] = "怒焰·常规"
     if not skills["nuyan_luanwu"] then register({id = "nuyan_luanwu", mode = "luanwu", classic = false, jie = false, label = "乱武", text = "出牌阶段限X+1次（X为你的星级），你可以消耗1点怒气，令场上其他角色依次弃置1张【杀】，否则流失1点体力。", compulsory = false}) end
-    general:addSkill(skills["nuyan_luanwu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_luanwu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 贾诩 经典
@@ -3790,9 +3799,9 @@ do
     translations["nuyan_jd_jiaxu"] = "贾诩"
     translations["#nuyan_jd_jiaxu"] = "怒焰·经典"
     if not skills["nuyan_jd_luanwu"] then register({id = "nuyan_jd_luanwu", mode = "luanwu", classic = true, jie = false, label = "乱武", text = "出牌阶段限2次，你可以消耗1点怒气，令场上其他角色依次弃置1张【杀】，否则流失1点体力。你可以将黑色【杀】当做【看破】使用。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_luanwu"])
-    general:addSkill(skills["nuyan_jd_kanpo_card"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_luanwu")
+    attach(general, "nuyan_jd_kanpo_card")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 于吉 常规
@@ -3801,8 +3810,8 @@ do
     translations["nuyan_yuji"] = "于吉"
     translations["#nuyan_yuji"] = "怒焰·常规"
     if not skills["nuyan_guhuo"] then register({id = "nuyan_guhuo", mode = "guhuo", classic = false, jie = false, label = "蛊惑", text = "锁定技，你使用的单体非延时锦囊牌需要相同花色的牌才能响应；你使用的【杀】指定目标后，若其没有使用花色相同的【闪】响应，则此伤害+1。", compulsory = true}) end
-    general:addSkill(skills["nuyan_guhuo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_guhuo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 于吉 经典
@@ -3811,8 +3820,8 @@ do
     translations["nuyan_jd_yuji"] = "于吉"
     translations["#nuyan_jd_yuji"] = "怒焰·经典"
     if not skills["nuyan_jd_guhuo"] then register({id = "nuyan_jd_guhuo", mode = "guhuo", classic = true, jie = false, label = "蛊惑", text = "锁定技，你使用的单体非延时锦囊牌需要相同花色的牌才能响应；你使用的【杀】指定目标后，若其没有使用花色相同的【闪】响应，则此伤害+1。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_guhuo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_guhuo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 李儒 常规
@@ -3821,8 +3830,8 @@ do
     translations["nuyan_liru"] = "李儒"
     translations["#nuyan_liru"] = "怒焰·常规"
     if not skills["nuyan_fencheng"] then register({id = "nuyan_fencheng", mode = "fencheng", classic = false, jie = false, label = "焚城", text = "出牌阶段，你可以令所有角色依次选择一项：1.弃置至少X张牌（若上一名进行选择的角色以此法弃置过牌，X为其以此法弃置的牌数+1，否则X为1）；2.受到你造成的2点体力流失（对你自己无效）。此技能每回合首次发动时不消耗怒气，同一回合再次发动时怒气消耗+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_fencheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fencheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 李儒 经典
@@ -3831,8 +3840,8 @@ do
     translations["nuyan_jd_liru"] = "李儒"
     translations["#nuyan_jd_liru"] = "怒焰·经典"
     if not skills["nuyan_jd_fencheng"] then register({id = "nuyan_jd_fencheng", mode = "fencheng", classic = true, jie = false, label = "焚城", text = "出牌阶段，你可以令所有角色依次选择一项：1.弃置至少X张牌（若上一名进行选择的角色以此法弃置过牌，X为其以此法弃置的牌数+1，否则X为1）；2.受到你造成的1点体力流失（对你自己无效）。此技能每回合首次发动时不消耗怒气，同一回合再次发动时怒气消耗+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_fencheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fencheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 灵雎 常规
@@ -3841,8 +3850,8 @@ do
     translations["nuyan_lingju"] = "灵雎"
     translations["#nuyan_lingju"] = "怒焰·常规"
     if not skills["nuyan_fenxin"] then register({id = "nuyan_fenxin", mode = "fenxin", classic = false, jie = false, label = "焚心", text = "出牌阶段限X次（X为你的怒气上限），你可以消耗1点怒气并选择一名角色，令其在回合内下一次使用【杀】造成伤害+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_fenxin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_fenxin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 灵雎 经典
@@ -3851,8 +3860,8 @@ do
     translations["nuyan_jd_lingju"] = "灵雎"
     translations["#nuyan_jd_lingju"] = "怒焰·经典"
     if not skills["nuyan_jd_fenxin"] then register({id = "nuyan_jd_fenxin", mode = "fenxin", classic = true, jie = false, label = "焚心", text = "出牌阶段限X次（X为你的怒气上限），你可以消耗1点怒气并选择一名角色，令其在回合内下一次使用【杀】造成伤害+1。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_fenxin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_fenxin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吕玲绮 常规
@@ -3861,8 +3870,8 @@ do
     translations["nuyan_lvlingqi"] = "吕玲绮"
     translations["#nuyan_lvlingqi"] = "怒焰·常规"
     if not skills["nuyan_guowu"] then register({id = "nuyan_guowu", mode = "guowu", classic = false, jie = false, label = "帼武", text = "出牌阶段开始时，你可以展示所有手牌，若展示牌的类型数大于等于：1.你使用的【杀】不能被强化【闪】响应；2.此阶段你可以额外使用X张【杀】（X为你的星级）；3.你从牌堆或弃牌堆中获得Y张【杀】（Y为你已损失的体力值且至少为1）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_guowu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_guowu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吕玲绮 经典
@@ -3871,8 +3880,8 @@ do
     translations["nuyan_jd_lvlingqi"] = "吕玲绮"
     translations["#nuyan_jd_lvlingqi"] = "怒焰·经典"
     if not skills["nuyan_jd_guowu"] then register({id = "nuyan_jd_guowu", mode = "guowu", classic = true, jie = false, label = "帼武", text = "出牌阶段开始时，你可以展示所有手牌，若展示牌的类型数大于等于：1.你使用的【杀】不能被强化【闪】响应；2.此阶段你可以额外使用5张【杀】；3.你从牌堆或弃牌堆中获得X张【杀】（X为你已损失的体力值且至少为1）。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_guowu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_guowu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙鲁班 常规
@@ -3881,8 +3890,8 @@ do
     translations["nuyan_sunluban"] = "孙鲁班"
     translations["#nuyan_sunluban"] = "怒焰·常规"
     if not skills["nuyan_zenhui"] then register({id = "nuyan_zenhui", mode = "zenhui", classic = false, jie = false, label = "谮毁", text = "出牌阶段限X次（X为你的星级），当你使用【杀】或单体非延时锦囊牌指定一个目标时，你可以令此目标以外的一名其他角色选择一项：1.随机交给你1张手牌，然后代替你成为此牌的使用者；2.也成为此牌的目标。若没有适合执行选择的目标时，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zenhui"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zenhui")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙鲁班 经典
@@ -3891,8 +3900,8 @@ do
     translations["nuyan_jd_sunluban"] = "孙鲁班"
     translations["#nuyan_jd_sunluban"] = "怒焰·经典"
     if not skills["nuyan_jd_zenhui"] then register({id = "nuyan_jd_zenhui", mode = "zenhui", classic = true, jie = false, label = "谮毁", text = "出牌阶段限X次（X为你的怒气上限），当你使用【杀】或单体非延时锦囊牌指定一个目标时，你可以令此目标以外的一名其他角色选择一项：1.随机交给你1张手牌，然后代替你成为此牌的使用者；2.也成为此牌的目标。若没有适合执行选择的目标时，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zenhui"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zenhui")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙鲁育 常规
@@ -3901,8 +3910,8 @@ do
     translations["nuyan_sunluyu"] = "孙鲁育"
     translations["#nuyan_sunluyu"] = "怒焰·常规"
     if not skills["nuyan_meibu"] then register({id = "nuyan_meibu", mode = "meibu", classic = false, jie = false, label = "魅步", text = "其他角色的出牌阶段开始时，你可以弃置1张牌，令该角色于其本阶段内使用【杀】或单体非延时锦囊牌时随机弃置1张手牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_meibu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_meibu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙鲁育 经典
@@ -3911,8 +3920,8 @@ do
     translations["nuyan_jd_sunluyu"] = "孙鲁育"
     translations["#nuyan_jd_sunluyu"] = "怒焰·经典"
     if not skills["nuyan_jd_meibu"] then register({id = "nuyan_jd_meibu", mode = "meibu", classic = true, jie = false, label = "魅步", text = "其他角色的出牌阶段开始时，你可以弃置1张牌，令该角色于其本阶段内使用【杀】或单体非延时锦囊牌时随机弃置1张手牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_meibu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_meibu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关平 常规
@@ -3921,8 +3930,8 @@ do
     translations["nuyan_guanping"] = "关平"
     translations["#nuyan_guanping"] = "怒焰·常规"
     if not skills["nuyan_longyin"] then register({id = "nuyan_longyin", mode = "longyin", classic = false, jie = false, label = "龙吟", text = "当一名角色于其出牌阶段内使用【杀】时，你可以弃置1张牌，令此【杀】不计入出牌阶段的使用次数，然后若此【杀】为红色，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_longyin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_longyin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 关平 经典
@@ -3931,8 +3940,8 @@ do
     translations["nuyan_jd_guanping"] = "关平"
     translations["#nuyan_jd_guanping"] = "怒焰·经典"
     if not skills["nuyan_jd_longyin"] then register({id = "nuyan_jd_longyin", mode = "longyin", classic = true, jie = false, label = "龙吟", text = "当一名角色于其出牌阶段内使用【杀】时，你可以弃置1张牌，令此【杀】不计入出牌阶段的使用次数，然后若此【杀】为红色，你摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_longyin"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_longyin")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 秦宓 常规
@@ -3941,8 +3950,8 @@ do
     translations["nuyan_qinmi"] = "秦宓"
     translations["#nuyan_qinmi"] = "怒焰·常规"
     if not skills["nuyan_zhuandui"] then register({id = "nuyan_zhuandui", mode = "zhuandui", classic = false, jie = false, label = "专对", text = "当你使用【杀】指定目标后，你可以摸1张牌并与其拼点，若你赢，其不能响应此【杀】；当你成为【杀】的目标后，你可以摸1张牌并与其拼点，若你赢，此【杀】对你无效。", compulsory = false}) end
-    general:addSkill(skills["nuyan_zhuandui"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_zhuandui")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 秦宓 经典
@@ -3951,8 +3960,8 @@ do
     translations["nuyan_jd_qinmi"] = "秦宓"
     translations["#nuyan_jd_qinmi"] = "怒焰·经典"
     if not skills["nuyan_jd_zhuandui"] then register({id = "nuyan_jd_zhuandui", mode = "zhuandui", classic = true, jie = false, label = "专对", text = "当你使用【杀】指定目标后，你可以摸1张牌并与其拼点，若你赢，其不能响应此【杀】；当你成为【杀】的目标后，你可以摸1张牌并与其拼点，若你赢，此【杀】对你无效。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_zhuandui"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_zhuandui")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 夏侯氏 常规
@@ -3961,8 +3970,8 @@ do
     translations["nuyan_xiahoushi"] = "夏侯氏"
     translations["#nuyan_xiahoushi"] = "怒焰·常规"
     if not skills["nuyan_yanyu"] then register({id = "nuyan_yanyu", mode = "yanyu", classic = false, jie = false, label = "燕语", text = "出牌阶段，你可以弃置【杀】；你的回合内，有【杀】进入弃牌堆后，你可以选择一名角色，其获得1点怒气，你摸1张牌，然后若该角色不是你，则你与其再各摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_yanyu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_yanyu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 夏侯氏 经典
@@ -3971,8 +3980,8 @@ do
     translations["nuyan_jd_xiahoushi"] = "夏侯氏"
     translations["#nuyan_jd_xiahoushi"] = "怒焰·经典"
     if not skills["nuyan_jd_yanyu"] then register({id = "nuyan_jd_yanyu", mode = "yanyu", classic = true, jie = false, label = "燕语", text = "出牌阶段，你可以弃置【杀】；你的回合内，有【杀】进入弃牌堆后，你可以选择一名角色，其获得1点怒气，你摸1张牌，然后若该角色不是你，则你与其再各摸1张牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_yanyu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_yanyu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 许攸 常规
@@ -3981,8 +3990,8 @@ do
     translations["nuyan_xuyou"] = "许攸"
     translations["#nuyan_xuyou"] = "怒焰·常规"
     if not skills["nuyan_shicai"] then register({id = "nuyan_shicai", mode = "shicai", classic = false, jie = false, label = "恃才", text = "当你使用或打出1张牌后，若你本回合未使用或打出过与此牌相同类型的牌（包括装备牌），则你可以将此牌置于牌堆顶，然后摸1张牌。你摸牌时，改为从牌堆底摸牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_shicai"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_shicai")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 许攸 经典
@@ -3991,8 +4000,8 @@ do
     translations["nuyan_jd_xuyou"] = "许攸"
     translations["#nuyan_jd_xuyou"] = "怒焰·经典"
     if not skills["nuyan_jd_shicai"] then register({id = "nuyan_jd_shicai", mode = "shicai", classic = true, jie = false, label = "恃才", text = "当你使用或打出1张牌后，若你本回合未使用或打出过与此牌相同类型的牌（包括装备牌），则你可以将此牌置于牌堆顶，然后摸1张牌。你摸牌时，改为从牌堆底摸牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_shicai"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_shicai")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 周妃 常规
@@ -4001,8 +4010,8 @@ do
     translations["nuyan_zhoufei"] = "周妃"
     translations["#nuyan_zhoufei"] = "怒焰·常规"
     if not skills["nuyan_kongsheng"] then register({id = "nuyan_kongsheng", mode = "kongsheng", classic = false, jie = false, label = "箜声", text = "准备阶段，你可以将任意张牌置于你的武将牌旁，称为'箜'，然后你可以选择一名其他角色，随机将其等量的牌置入'箜'。结束阶段，你从'箜'中选择X张牌交给其（X为其置入'箜'的牌数）。你的回合结束时，你获得所有的'箜'。", compulsory = false}) end
-    general:addSkill(skills["nuyan_kongsheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_kongsheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 周妃 经典
@@ -4011,8 +4020,8 @@ do
     translations["nuyan_jd_zhoufei"] = "周妃"
     translations["#nuyan_jd_zhoufei"] = "怒焰·经典"
     if not skills["nuyan_jd_kongsheng"] then register({id = "nuyan_jd_kongsheng", mode = "kongsheng", classic = true, jie = false, label = "箜声", text = "准备阶段，你可以将任意张牌置于你的武将牌旁，称为'箜'，然后你可以选择一名其他角色，随机将其等量的牌置入'箜'。结束阶段，你从'箜'中选择X张牌交给其（X为其置入'箜'的牌数）。你的回合结束时，你获得所有的'箜'。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_kongsheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_kongsheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹叡 常规
@@ -4021,8 +4030,8 @@ do
     translations["nuyan_caorui"] = "曹叡"
     translations["#nuyan_caorui"] = "怒焰·常规"
     if not skills["nuyan_huituo"] then register({id = "nuyan_huituo", mode = "huituo", classic = false, jie = false, label = "恢拓", text = "每当你受到伤害后，你可以令一名角色进行一次判定。若结果为：红色，其摸1张牌并回复X点体力；黑色，其摸X张牌并回复1点体力。（X为此次伤害的伤害值）", compulsory = false}) end
-    general:addSkill(skills["nuyan_huituo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_huituo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 曹叡 经典
@@ -4031,8 +4040,8 @@ do
     translations["nuyan_jd_caorui"] = "曹叡"
     translations["#nuyan_jd_caorui"] = "怒焰·经典"
     if not skills["nuyan_jd_huituo"] then register({id = "nuyan_jd_huituo", mode = "huituo", classic = true, jie = false, label = "恢拓", text = "每当你受到伤害后，你可以令一名角色进行一次判定。若结果为：红色，其摸1张牌并回复X点体力；黑色，其摸X张牌并回复1点体力。（X为此次伤害的伤害值）", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_huituo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_huituo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 南华老仙 常规
@@ -4041,8 +4050,8 @@ do
     translations["nuyan_nanhualaoxian"] = "南华老仙"
     translations["#nuyan_nanhualaoxian"] = "怒焰·常规"
     if not skills["nuyan_tianshu"] then register({id = "nuyan_tianshu", mode = "tianshu", classic = false, jie = false, label = "天书", text = "你首次登场时，从以下'天书技能'中选择至多X个令任意角色获得之（X为你的星级数的一半+1，向上取整）：长生，阴兵，仙授，鬼咒。准备阶段或当你的体力值减少后，你可以令一名角色获得一个其未拥有的'天书技能'。", compulsory = false}) end
-    general:addSkill(skills["nuyan_tianshu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_tianshu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 南华老仙 经典
@@ -4051,8 +4060,8 @@ do
     translations["nuyan_jd_nanhualaoxian"] = "南华老仙"
     translations["#nuyan_jd_nanhualaoxian"] = "怒焰·经典"
     if not skills["nuyan_jd_tianshu"] then register({id = "nuyan_jd_tianshu", mode = "tianshu", classic = true, jie = false, label = "天书", text = "你首次登场时，从以下'天书技能'中选择至多3个令任意角色获得之：长生，阴兵，仙授，鬼咒。准备阶段或当你的体力值减少后，你可以令一名角色获得一个其未拥有的'天书技能'。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_tianshu"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_tianshu")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 乐进 常规
@@ -4061,8 +4070,8 @@ do
     translations["nuyan_yuejin"] = "乐进"
     translations["#nuyan_yuejin"] = "怒焰·常规"
     if not skills["nuyan_xiaoguo"] then register({id = "nuyan_xiaoguo", mode = "xiaoguo", classic = false, jie = false, label = "骁果", text = "其他角色的结束阶段，你可以至多弃置X张基本牌，然后该角色选择一项：1.受到你造成的弃置牌数量的伤害；2.弃置等量的牌。（X为你的星级）", compulsory = false}) end
-    general:addSkill(skills["nuyan_xiaoguo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xiaoguo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 乐进 经典
@@ -4071,8 +4080,8 @@ do
     translations["nuyan_jd_yuejin"] = "乐进"
     translations["#nuyan_jd_yuejin"] = "怒焰·经典"
     if not skills["nuyan_jd_xiaoguo"] then register({id = "nuyan_jd_xiaoguo", mode = "xiaoguo", classic = true, jie = false, label = "骁果", text = "其他角色的结束阶段，你可以至多弃置3张基本牌，然后该角色选择一项：1.受到你造成的弃置牌数量的伤害；2.弃置等量的牌。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_xiaoguo"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xiaoguo")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘琦 常规
@@ -4081,8 +4090,8 @@ do
     translations["nuyan_liuqi"] = "刘琦"
     translations["#nuyan_liuqi"] = "怒焰·常规"
     if not skills["nuyan_wenji"] then register({id = "nuyan_wenji", mode = "wenji", classic = false, jie = false, label = "问计", text = "出牌阶段每名其他角色限一次，你可以令一名其他角色交给你一张牌。你于本回合内使用或打出与通过此法获得的同类型的牌无次数限制。", compulsory = false}) end
-    general:addSkill(skills["nuyan_wenji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_wenji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 刘琦 经典
@@ -4091,8 +4100,8 @@ do
     translations["nuyan_jd_liuqi"] = "刘琦"
     translations["#nuyan_jd_liuqi"] = "怒焰·经典"
     if not skills["nuyan_jd_wenji"] then register({id = "nuyan_jd_wenji", mode = "wenji", classic = true, jie = false, label = "问计", text = "出牌阶段每名其他角色限一次，你可以令一名其他角色交给你一张牌。你于本回合内使用或打出与通过此法获得的同类型的牌无次数限制。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_wenji"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_wenji")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吴懿 常规
@@ -4101,8 +4110,8 @@ do
     translations["nuyan_wuyi"] = "吴懿"
     translations["#nuyan_wuyi"] = "怒焰·常规"
     if not skills["nuyan_benxi"] then register({id = "nuyan_benxi", mode = "benxi", classic = false, jie = false, label = "奔袭", text = "锁定技，当你于回合内使用或打出牌时，本回合你计算与其他角色的距离-1。你使用仅指定一个目标的【杀】或非延时锦囊牌时，此牌无视其他角色的防具且可以额外指定一个目标，若你未额外指定目标，则你获得此牌的目标一张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_benxi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_benxi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 吴懿 经典
@@ -4111,8 +4120,8 @@ do
     translations["nuyan_jd_wuyi"] = "吴懿"
     translations["#nuyan_jd_wuyi"] = "怒焰·经典"
     if not skills["nuyan_jd_benxi"] then register({id = "nuyan_jd_benxi", mode = "benxi", classic = true, jie = false, label = "奔袭", text = "锁定技，当你于回合内使用或打出牌时，本回合你计算与其他角色的距离-1。你使用仅指定一个目标的【杀】或非延时锦囊牌时，此牌无视其他角色的防具且可以额外指定一个目标，若你未额外指定目标，则你获得此牌的目标一张牌。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_benxi"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_benxi")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 骆统 常规
@@ -4121,8 +4130,8 @@ do
     translations["nuyan_luotong"] = "骆统"
     translations["#nuyan_luotong"] = "怒焰·常规"
     if not skills["nuyan_qinzheng"] then register({id = "nuyan_qinzheng", mode = "qinzheng", classic = false, jie = false, label = "勤政", text = "锁定技，你每使用或打出：3张牌时，你从牌堆或弃牌堆随机获得一张【杀】或【闪】；5张牌时，你从牌堆或弃牌堆随机获得一张【桃】或【酒】；8张牌时，你从牌堆或弃牌堆随机获得一张【无中生有】。其他内容不变。", compulsory = true}) end
-    general:addSkill(skills["nuyan_qinzheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_qinzheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 骆统 经典
@@ -4131,8 +4140,8 @@ do
     translations["nuyan_jd_luotong"] = "骆统"
     translations["#nuyan_jd_luotong"] = "怒焰·经典"
     if not skills["nuyan_jd_qinzheng"] then register({id = "nuyan_jd_qinzheng", mode = "qinzheng", classic = true, jie = false, label = "勤政", text = "锁定技，你每使用或打出：3张牌时，你从牌堆或弃牌堆随机获得一张【杀】或【闪】；5张牌时，你从牌堆或弃牌堆随机获得一张【桃】或【酒】；8张牌时，你从牌堆或弃牌堆随机获得一张【无中生有】。其他内容不变。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_qinzheng"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_qinzheng")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙寒华 常规
@@ -4141,8 +4150,8 @@ do
     translations["nuyan_sunhanhua"] = "孙寒华"
     translations["#nuyan_sunhanhua"] = "怒焰·常规"
     if not skills["nuyan_huiling"] then register({id = "nuyan_huiling", mode = "huiling", classic = false, jie = false, label = "汇灵", text = "锁定技，当弃牌堆中的：红色牌数量多于黑色牌数量时，你使用或打出牌时回复1点体力；黑色牌数量多于红色牌数量时，你使用或打出牌时获得1点怒气。你使用或打出牌结算结束后，若其颜色在弃牌堆中不为最多，你获得一个'灵'标记。你每获得3个'灵'，将'莲华熠熠'或'妙剑宣威'升至2级。", compulsory = true}) end
-    general:addSkill(skills["nuyan_huiling"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_huiling")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 孙寒华 经典
@@ -4151,8 +4160,8 @@ do
     translations["nuyan_jd_sunhanhua"] = "孙寒华"
     translations["#nuyan_jd_sunhanhua"] = "怒焰·经典"
     if not skills["nuyan_jd_huiling"] then register({id = "nuyan_jd_huiling", mode = "huiling", classic = true, jie = false, label = "汇灵", text = "锁定技，当弃牌堆中的：红色牌数量多于黑色牌数量时，你使用或打出牌时摸1张牌并回复1点体力；黑色牌数量多于红色牌数量时，你使用或打出牌时摸1张牌并获得1点怒气。", compulsory = true}) end
-    general:addSkill(skills["nuyan_jd_huiling"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_huiling")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 花鬘 常规
@@ -4161,8 +4170,8 @@ do
     translations["nuyan_huaman"] = "花鬘"
     translations["#nuyan_huaman"] = "怒焰·常规"
     if not skills["nuyan_xizhan"] then register({id = "nuyan_xizhan", mode = "xizhan", classic = false, jie = false, label = "嬉战", text = "你于你的回合内无法使用伤害牌。其他角色回合开始时，你可以弃置一张手牌并执行相应效果：黑桃，视为你强化使用一张【南蛮入侵】；红桃，你从牌堆获得三张不同花色的牌；梅花，你随机弃置其两张手牌；方块，视为你对其强化使用一张【杀】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_xizhan"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_xizhan")
+    attach(general, "#nuyan_runtime")
 end
 
 -- 花鬘 经典
@@ -4171,8 +4180,8 @@ do
     translations["nuyan_jd_huaman"] = "花鬘"
     translations["#nuyan_jd_huaman"] = "怒焰·经典"
     if not skills["nuyan_jd_xizhan"] then register({id = "nuyan_jd_xizhan", mode = "xizhan", classic = true, jie = false, label = "嬉战", text = "你于你的回合内无法使用伤害牌。其他角色回合开始时，你可以弃置一张手牌并执行相应效果：黑桃，视为你强化使用一张【南蛮入侵】；红桃，你从牌堆获得三张不同花色的牌；梅花，你随机弃置其两张手牌；方块，视为你对其强化使用一张【杀】。", compulsory = false}) end
-    general:addSkill(skills["nuyan_jd_xizhan"])
-    general:addSkill(runtime)
+    attach(general, "nuyan_jd_xizhan")
+    attach(general, "#nuyan_runtime")
 end
 
 if not skills["nuyan_xinzhan"] then register({id = "nuyan_xinzhan", mode = "xinzhan", label = "心战", text = "当你对其他角色造成伤害时，你可以防止此伤害，然后获得其区域里的1张牌。"}) end
@@ -4518,11 +4527,12 @@ end
 extension:insertRelatedSkills("nuyan_huiling","nuyan_lianhua")
 extension:insertRelatedSkills("nuyan_huiling","nuyan_miaojian")
 add_correct_skills()
-local pending = sgs.SkillList()
+-- General-owned definitions are registered when the loader walks this package;
+-- only the definitions no general holds join the package list, so every skill is
+-- registered exactly once.
 for id, skill in pairs(skills) do
-    if not sgs.Sanguosha:getSkill(id) then pending:append(skill) end
+    if not owned[id] then extension:addSkills(skill) end
 end
-sgs.Sanguosha:addSkills(pending)
 for _, general in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
     for _,id in ipairs(global_names) do if not general:hasSkill(id) then general:addSkill(id) end end
 end

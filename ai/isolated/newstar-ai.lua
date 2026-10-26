@@ -1,5 +1,4 @@
--- Fixed donor newstar-ai.lua, b6025acc983331337614289d8cac79b078c003af.
--- Source ordering is retained. Native authority is bound only after cost selection.
+-- Source: b6025acc ai/newstar-ai.lua.
 local known = AIValue.requireKnown
 
 local function visible_card(self,id)
@@ -65,26 +64,29 @@ local function fanjian_skill(self,card)
 end
 
 --星曹操
-sgs.ai_skill_choice["LuaJianxiong"] = function(self, choices, data)
+ai_skill_choice["LuaJianxiong"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local obtain = getChoice(choices, "LuaJianxiongobtain")
 	local draw = getChoice(choices, "LuaJianxiongdraw")
 	local damage = data:toDamage()
-	if not damage.card then return draw end
-	if damage.card:isKindOf("Slash") and not self:hasCrossbowEffect() and self:getCardsNum("Slash") > 0 then return draw end
+	if not damage.card then return ai_choice_result((draw), options) end
+	if damage.card:isKindOf("Slash") and not self:hasCrossbowEffect() and self:getCardsNum("Slash") > 0 then return ai_choice_result((draw), options) end
 	if self:isWeak() and (self:getCardsNum("Slash") > 0 or not damage.card:isKindOf("Slash") or self.player:getHandcardNum() <= self.player:getHp()) then
 		return
-			draw
+			ai_choice_result((draw), options)
 	end
 	if damage.card and damage.card:isKindOf("AOE") and obtain then
-		return obtain
+		return ai_choice_result((obtain), options)
 	end
 	if self.player:getLostHp() > 1 then
-		return draw
+		return ai_choice_result((draw), options)
 	end
 	if obtain then
-		return obtain
+		return ai_choice_result((obtain), options)
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.ai_target_revises.LuaJianxiong = function(to, card, self)
@@ -109,7 +111,9 @@ sgs.ai_can_damagehp.LuaJianxiong = function(self, from, card, to)
 	end
 end
 
-sgs.ai_fill_skill.LuaNengchen = function(self, inclusive, request)
+ai_fill_skill.LuaNengchen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:getStrategyFlag("jx") then return end
 	local usable_cards = sgs.QList2Table(self.player:getCards("h"))
 	if self.player:getPile("wooden_ox"):length() > 0 then
@@ -128,12 +132,13 @@ sgs.ai_fill_skill.LuaNengchen = function(self, inclusive, request)
 end
 
 --星郭嘉
-sgs.ai_skill_invoke.LuaXinyiji = function(self, data)
-	return true
+ai_skill_invoke.LuaXinyiji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
-sgs.ai_skill_use["@@LuaXinyiji"] = function(self, prompt)
+ai_skill_use["@@LuaXinyiji"] = function(self, prompt, request)
 	self:updatePlayers()
 	local cards = self.player:getHandcards()
 	cards = sgs.QList2Table(cards)
@@ -177,7 +182,7 @@ end
 
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|LuaXinyiji"
 
-sgs.ai_skill_use["@@LuaJuece"] = function(self, prompt)
+ai_skill_use["@@LuaJuece"] = function(self, prompt, request)
 	local damage = context_damage(self,"juece_damage")
 	self:updatePlayers()
 	local cards = {}
@@ -276,19 +281,20 @@ sgs.LuaGuizha_suit_value = {
 sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .. "|LuaGuizha"
 sgs.wizard_harm_skill = sgs.wizard_harm_skill .."|LuaGuizha"
 
-sgs.ai_skill_invoke.LuaQuanbian = function(self, data)
+ai_skill_invoke.LuaQuanbian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	local damage = context_damage(self,"current_damage")
-	if sgs.ai_need_damaged.LuaQuanbian(self, target) then return true end
+	if sgs.ai_need_damaged.LuaQuanbian(self, target) then return (true) or false end
 
 	if self:isFriend(target) then
-		if self:getOverflow(target) > 2 then return true end
-		return self.player:objectName() == damage.to:objectName() and self:doDisCard(target,"he", true) or self:doDisCard(target,"e", true)
+		if self:getOverflow(target) > 2 then return (true) or false end
+		return (self.player:objectName() == damage.to:objectName() and self:doDisCard(target,"he", true) or self:doDisCard(target,"e", true)) or false
 	end
 	if self:isEnemy(target) then
-		return self.player:objectName() == damage.to:objectName() and self:doDisCard(target,"he", true) or self:doDisCard(target,"e", true)
+		return (self.player:objectName() == damage.to:objectName() and self:doDisCard(target,"he", true) or self:doDisCard(target,"e", true)) or false
 	end
-	return true
+	return (true) or false
 end
 sgs.ai_skill_cardchosen.LuaQuanbian = function(self, who, flags)
 	local suit = sgs.ai_need_damaged.LuaQuanbian(self, who)
@@ -394,8 +400,9 @@ sgs.LuaDongcha_suit_value = {
 	spade = 3.9
 }
 
-sgs.ai_skill_invoke.LuaNixing = function(self, data)
-	return true
+ai_skill_invoke.LuaNixing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_use_revises.LuaDongcha = function(self, card, use)
@@ -412,7 +419,9 @@ end
 
 
 --星赵云
-sgs.ai_fill_skill.LuaLongzhen = function(self, inclusive, request)
+ai_fill_skill.LuaLongzhen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
 
@@ -459,16 +468,19 @@ sgs.LuaLongzhen_keep_value = {
 	ExNihilo = 4.7
 }
 
-sgs.ai_skill_invoke["#LuaChongzhen"] = function(self, data)
+ai_skill_invoke["#LuaChongzhen"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isFriend(target) then
-		if hasManjuanEffect(self.player) then return false end
-		if self:needKongcheng(target) and target:getHandcardNum() == 1 then return true end
-		if self:getOverflow(target) > 2 then return true end
-		return false
+		if hasManjuanEffect(self.player) then return (false) or false end
+		if self:needKongcheng(target) and target:getHandcardNum() == 1 then return (true) or false end
+		if self:getOverflow(target) > 2 then return (true) or false end
+		return (false) or false
 	else
-		return not (self:needKongcheng(target) and target:getHandcardNum() == 1)
+		return (not (self:needKongcheng(target) and target:getHandcardNum() == 1)) or false
 	end
+	return false
+
 end
 
 sgs.ai_choicemade_filter.skillInvoke.LuaLongzhen = function(self, player, promptlist)
@@ -512,11 +524,14 @@ end
 
 
 --星周瑜
-sgs.ai_skill_invoke.LuaYingcai = function(self, data)
-	return true
+ai_skill_invoke.LuaYingcai = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_fill_skill.LuaFanjian = function(self, inclusive, request)
+ai_fill_skill.LuaFanjian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return nil end
 	if self.player:getStrategyHasUsed("#LuaFanjianCard") then return nil end
 	local cards = self.player:getCards("h")
@@ -526,7 +541,7 @@ sgs.ai_fill_skill.LuaFanjian = function(self, inclusive, request)
 end
 
 
-sgs.ai_skill_use_func["#LuaFanjianCard"] = function(card, use, self)
+ai_card_use["#LuaFanjianCard"] = function(self, card, use, request)
 	local room = self.player:getRoom()
 	card = fanjian_skill(self,card)
 	self:sort(self.enemies, "defense")
@@ -583,7 +598,9 @@ sgs.ai_view_as.LuaGuishen = function(card, player, card_place)
 	end
 end
 
-sgs.ai_fill_skill.LuaGuishen = function(self, inclusive, request)
+ai_fill_skill.LuaGuishen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
 
@@ -610,19 +627,24 @@ end
 
 sgs.hit_skill = sgs.hit_skill .."|LuaGuishen"
 
-sgs.ai_skill_invoke["#LuaXDuojian"] = function(self, data)
-	return true
+ai_skill_invoke["#LuaXDuojian"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.LuaShenyong = function(self, data)
+ai_skill_invoke.LuaShenyong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
 	if effect.to and self:isEnemy(effect.to) and self:doDisCard(effect.to, "he") and self:isTiaoxinTarget(effect.to) then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.LuaJuejing = function(self, data)
-	return true
+ai_skill_invoke.LuaJuejing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
@@ -633,17 +655,18 @@ sgs.ai_card_priority.LuaLongzhen_o = function(self, card)
 	end
 end
 
-sgs.ai_skill_invoke.LuaLongzhen_o = function(self, data)
+ai_skill_invoke.LuaLongzhen_o = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isFriend(target) then
-		if hasManjuanEffect(self.player) then return false end
-		if self:needKongcheng(target) and target:getHandcardNum() == 1 then return true end
-		if self:getOverflow(target) > 2 then return true end
-		return false
+		if hasManjuanEffect(self.player) then return (false) or false end
+		if self:needKongcheng(target) and target:getHandcardNum() == 1 then return (true) or false end
+		if self:getOverflow(target) > 2 then return (true) or false end
+		return (false) or false
 	else
-		return not (self:needKongcheng(target) and target:getHandcardNum() == 1)
+		return (not (self:needKongcheng(target) and target:getHandcardNum() == 1)) or false
 	end
-	return true
+	return (true) or false
 end
 
 
@@ -652,7 +675,9 @@ end
 
 
 
-sgs.ai_fill_skill.LuaLongzhen_o = function(self, inclusive, request)
+ai_fill_skill.LuaLongzhen_o = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
 
@@ -704,7 +729,7 @@ sgs.LuaLongzhen_o_keep_value = {
 }
 
 
-sgs.ai_skill_invoke.LuaLongwei = function(self)
+ai_skill_invoke.LuaLongwei = function(self, options, request)
 	if self.player:getStrategyFlag("DimengTarget") then
 		local another
 		for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
@@ -713,9 +738,9 @@ sgs.ai_skill_invoke.LuaLongwei = function(self)
 				break
 			end
 		end
-		if not another or not self:isFriend(another) then return false end
+		if not another or not self:isFriend(another) then return (false) or false end
 	end
-	return not self:needKongcheng(self.player, true)
+	return (not self:needKongcheng(self.player, true)) or false
 end
 
 sgs.ai_skill_askforag.LuaLongwei = function(self, card_ids)
@@ -733,16 +758,17 @@ sgs.hit_skill = sgs.hit_skill .. "|os_chitu"
 -- The donor's literal alias captures whichever slash body this VM has loaded.
 sgs.ai_cardneed.os_chitu = sgs.ai_cardneed.slash
 
-sgs.ai_skill_invoke.LuaHuaji = function(self, data)
+ai_skill_invoke.LuaHuaji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
 	local juece_effect = (current and current:isAlive() and current:getPhase() ~= sgs.Player_NotActive and self:isEnemy(current) and current:hasSkill("juece"))
 	local manjuan_effect = hasManjuanEffect(self.player)
 	if self.player:isKongcheng() then
-		if manjuan_effect or juece_effect then return false end
+		if manjuan_effect or juece_effect then return (false) or false end
 	elseif self.player:getHandcardNum() == 1 then
-		if manjuan_effect and juece_effect then return false end
+		if manjuan_effect and juece_effect then return (false) or false end
 	end
-	return true
+	return (true) or false
 end
 
 sgs.ai_skill_discard.LuaHuaji = function(self)
@@ -767,3 +793,23 @@ sgs.ai_getBestHp_skill.xingLuashenji = function(owner)
 	end
 end
 
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, player, preferred, query, context)
+        if query(player, "hasSkill", "LuaJuejing") and query(player, "getMark", "LuaJuejing") < 1 then return true, true end
+        return preferred
+    end
+    local previous_1 = sgs.ai_need_kongcheng["LuaJuejing"]
+    sgs.ai_need_kongcheng["LuaJuejing"] = function(self, player, keep, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "after_loss" and context.rule == "LuaJuejing" then
+                return policy_1(self, player, context.value, context.query, context)
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, player, keep) end
+    end
+    sgs.declareValueHookStages("ai_need_kongcheng", "LuaJuejing", {
+        {phase="after_loss", rule="LuaJuejing", order=1400},
+    })
+end)()

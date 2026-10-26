@@ -1,9 +1,6 @@
--- Fixed b6025acc bei source bodies, including legacy-native ABI differences.
--- State stores only primitive IDs/names and disclosed value descriptors.
+-- Source: b6025acc ai/bei-ai.lua.
 local known = AIValue.requireKnown
 
--- The donor reads the viewer's own tags/properties; an absent one reads as the
--- QVariant default (nil player, "" string, empty list).
 local function tag_player(self,key)
     local name=self.player:getTag(key)
     if name==nil then return nil end
@@ -65,8 +62,9 @@ local function tousui_proposal(self,ids,request)
 end
 
 --宝箧
-sgs.ai_skill_invoke.jinbaoqie = function(self,data)
-	return not self.player:getTreasure()
+ai_skill_invoke.jinbaoqie = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (not self.player:getTreasure()) or false
 end
 
 sgs.ai_can_damagehp.jinbaoqie = function(self,from,card,to)
@@ -74,7 +72,8 @@ sgs.ai_can_damagehp.jinbaoqie = function(self,from,card,to)
 end
 
 --宜室
-sgs.ai_skill_use["@@jinyishi"] = function(self,data)
+ai_skill_use["@@jinyishi"] = function(self, prompt, request)
+	local data = prompt
 	local card_ids = self.player:getTag("jinyishiForAI") or {}
 	if not AIValue.isList(card_ids) then ai_unsupported("owner id-list tag malformed","jinyishiForAI") end
 	card_ids = sgs.QList2Table(card_ids)
@@ -232,11 +231,13 @@ sgs.ai_skill_use["@@jinyishi"] = function(self,data)
 end
 
 --识度
-sgs.ai_fill_skill.jinshidu = function(self,inclusive,request)
+ai_fill_skill.jinshidu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("jinshidu","JinShiduCard",request)
 end
 
-sgs.ai_skill_use_func.JinShiduCard = function(card,use,self)
+ai_card_use.JinShiduCard = function(self, card, use, request)
 	local max_card = self:getMaxCard()
 	if max_card then
 		local number = max_card:getNumber()
@@ -271,7 +272,6 @@ sgs.ai_skill_use_func.JinShiduCard = function(card,use,self)
 			for _,p in sgs.list(self.friends_noself)do
 				if not self.player:canPindian(p) then continue end
 				if math.floor((p:getHandcardNum()+self.player:getHandcardNum())/2)<p:getHandcardNum() then continue end
-				--if self:needKongcheng(p,true) then continue end
 				if p:hasSkill("kongcheng") and p:getHandcardNum()==1 then continue end
 				self:setPriorityValue("JinShiduCard",5,"bei")
 				use.card = self:bindSkillCard("jinshidu",{},nil,nil,"JinShiduCard")
@@ -345,9 +345,10 @@ sgs.ai_skill_discard.jinshidu = function(self,discard_num,min_num,optional,inclu
 end
 
 --韬隐
-sgs.ai_skill_invoke.jintaoyin = function(self,data)
+ai_skill_invoke.jintaoyin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local current = data:toPlayer()
-	return self:isEnemy(current)
+	return (self:isEnemy(current)) or false
 end
 
 sgs.ai_can_damagehp.jintaoyin = function(self,from,card,to)
@@ -356,21 +357,24 @@ sgs.ai_can_damagehp.jintaoyin = function(self,from,card,to)
 end
 
 --夷灭
-sgs.ai_skill_invoke.jinyimie = function(self,data)
+ai_skill_invoke.jinyimie = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local str = data:toString():split(":")
 	local to = self.room:findPlayerByObjectName(str[2])
-	if not to or to:isDead() or not self:isEnemy(to) or tonumber(str[4])<1 then return false end
-	if self:cantDamageMore(self.player,to) then return false end
-	return true
+	if not to or to:isDead() or not self:isEnemy(to) or tonumber(str[4])<1 then return (false) or false end
+	if self:cantDamageMore(self.player,to) then return (false) or false end
+	return (true) or false
 end
 
 --睿略
-sgs.ai_fill_skill.jinruilve_give = function(self,inclusive,request)
+ai_fill_skill.jinruilve_give = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:getOverflow(self.player,true)<=0 then return end
 	return self:legacySkillSeed("jinruilve_give","JinRuilveGiveCard",request)
 end
 
-sgs.ai_skill_use_func.JinRuilveGiveCard = function(card,use,self)
+ai_card_use.JinRuilveGiveCard = function(self, card, use, request)
 	local cards = {}
 	for _,c in sgs.qlist(self.player:getCards("h"))do
 		if c:isKindOf("Slash") or (c:isDamageCard() and c:isKindOf("TrickCard")) then
@@ -457,11 +461,15 @@ sgs.ai_skill_cardask["@jinciwei-discard"] = function(self,data)
 	return "."
 end
 
-sgs.ai_skill_invoke.jinzhuosheng = function(self,data)
-	return true
+ai_skill_invoke.jinzhuosheng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_choice.jinzhuosheng = function(self,choices,data)
+ai_skill_choice.jinzhuosheng = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local use = data:toCardUse()
 	save_use(self,"bei.js_use",use)
@@ -469,17 +477,17 @@ sgs.ai_skill_choice.jinzhuosheng = function(self,choices,data)
 	then
 		if use.card:isDamageCard()
 		or #self.friends_noself>0 and use.to:contains(self.player)
-		then return "add" end
+		then return ai_choice_result(("add"), options) end
 	end
 	if table.contains(items,"remove")
 	and use.card:isDamageCard()
 	then
 		for _,to in sgs.list(use.to)do
 			if self:isFriend(to)
-			then return "remove" end
+			then return ai_choice_result(("remove"), options) end
 		end
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.ai_skill_playerchosen.jinzhuosheng = function(self,players)
@@ -509,14 +517,16 @@ sgs.ai_skill_playerchosen.jinzhuosheng = function(self,players)
 	return destlist[1]
 end
 
-sgs.ai_fill_skill.tousui = function(self,inclusive,request)
+ai_fill_skill.tousui = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("he")
 	local dc = known(self:evaluateSkillCard("tousui","slash",{}),"tousui Slash")
 	if dc:isAvailable(self.player) then
 		local d = self:aiUseCard(dc)
 		if d.card then
 			save_targets(self,"bei.tousuiUse",d.to)
-			cards = self:sortByKeepValue(cards) -- 按保留值排序
+			cards = self:sortByKeepValue(cards)
 			local ids = {}
 			for i,c in sgs.list(cards)do
 				if self:wasPreviouslyPlannedCard(c) and not c:isKindOf("Slash")
@@ -529,7 +539,7 @@ sgs.ai_fill_skill.tousui = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["TousuiCard"] = function(card,use,self)
+ai_card_use["TousuiCard"] = function(self, card, use, request)
 	use.card = card
 	use.to = load_targets(self,"bei.tousuiUse")
 end
@@ -539,13 +549,15 @@ sgs.ai_use_priority.TousuiCard = 6.2
 
 function sgs.ai_cardsview.tousui(self,class_name,player)
     local cards = player:getCards("he")
-	cards = self:sortByKeepValue(cards) -- 按保留值排序
+	cards = self:sortByKeepValue(cards)
 	if #cards>0 then
 		return {skill="tousui",legacy_class="TousuiCard",subcards={cards[1]:getKnownId()}}
 	end
 end
 
-sgs.ai_skill_choice.chuming = function(self,choices)
+ai_skill_choice.chuming = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	self:setStrategyMemory("bei.chumingUse",false)
 	local subcards = property(self,"chumingSubcard"):split("+");
@@ -554,12 +566,14 @@ sgs.ai_skill_choice.chuming = function(self,choices)
 		local d = self:aiUseCard(dc)
 		if d.card then
 			save_use(self,"bei.chumingUse",d)
-			return pc
+			return ai_choice_result((pc), options)
 		end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_use["@@chuming!"] = function(self,prompt)
+ai_skill_use["@@chuming!"] = function(self, prompt, request)
     local d = load_use(self,"bei.chumingUse",true)
    	if d and d.card then
       	local tos = {}
@@ -571,10 +585,29 @@ sgs.ai_skill_use["@@chuming!"] = function(self,prompt)
     end
 end
 
-
-
-
-
-
-
-
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["jinyimie"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(from, "getMark", "jinyimie-Clear") < 1
+                    and damage_call(from, "hasSkill", "jinyimie") then return nil, true end
+        return value
+    end
+    sgs.ai_need_damaged["jinyimie"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "can_lose_hostile" and context.rule == "jinyimie_Clear" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "jinyimie", {
+        {phase="can_lose_hostile", order=1, rule="jinyimie_Clear"},
+    })
+end)()
+end

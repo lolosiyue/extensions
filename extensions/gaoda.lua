@@ -439,14 +439,14 @@ gdsbgm = sgs.CreateRuleSkillV2{
 			if room:getTag("gdsbgm"):toBool() then return false end
 			room:setTag("gdsbgm", sgs.QVariant(true))
 			local name
-			if room:getOwner():getGameMode() == "_mini_1" then
+			if room:getOwner() and room:getOwner():getGameMode() == "_mini_1" then
 				name = generalName2BGM(room:getOwner():getGeneralName()) --扭蛋BGM
 			else
 				local lord = room:getLord()
-				name = generalName2BGM((lord or room:getOwner()):getGeneralName())
+				name = generalName2BGM((lord or room:getOwner() or player):getGeneralName())
 			end
 			changeBGM(name)
-			local ip = room:getOwner():getIp()
+			local ip = room:getOwner() and room:getOwner():getIp() or ""
 			if ip ~= "" and string.find(ip, "127.0.0.1") then --联机状态时切换BGM无效
 				if name == "background" then name = "BGM0" end
 				local log = sgs.LogMessage()
@@ -714,8 +714,8 @@ gdsrecord = sgs.CreateRuleSkillV2{
 			local draw = data:toDraw()
 			if draw.reason ~= "InitialHandCards" then return false end
 			if player:getMark("@coin") > 0 then return false end
-			if player:objectName() == room:getOwner():objectName() then
-				local ip = room:getOwner():getIp()
+			if room:getOwner() and player:objectName() == room:getOwner():objectName() then
+				local ip = room:getOwner() and room:getOwner():getIp() or ""
 				if ip ~= "" and string.find(ip, "127.0.0.1") then
 					saveRecord(room:getOwner(), --[[t,]] 0)
 				end
@@ -736,7 +736,7 @@ gdsrecord = sgs.CreateRuleSkillV2{
 			local winner = getWinner(player) -- player is victim
 			if winner ~= "" then
 				local owner = room:getOwner()
-				local ip = owner:getIp()
+				local ip = owner and owner:getIp() or "" --无房主（如掉线后无人在线）时不崩，按联机分支处理
 				if ip ~= "" and string.find(ip, "127.0.0.1") then
 					if string.find(winner, owner:getRole()) or string.find(winner, owner:objectName()) then
 						saveRecord(owner, --[[t,]] 1)
@@ -1813,8 +1813,8 @@ if lucky_card then
 			if lucky_card == false then return false end
 			if event == sgs.GameStart then
 				room:writeToConsole("gdsbgm")
-				local ip = room:getOwner():getIp()
-				if ip ~= "" and string.find(ip, "127.0.0.1") and player:objectName() == room:getOwner():objectName() then
+				local ip = room:getOwner() and room:getOwner():getIp() or ""
+				if room:getOwner() and ip ~= "" and string.find(ip, "127.0.0.1") and player:objectName() == room:getOwner():objectName() then
 					local t = readData("Item")
 					room:setPlayerMark(player, "@coin", t["Item"]["Coin"] or 0)
 					room:setPlayerMark(player, "@fragment", t["Item"]["fragment"] or 0)
@@ -1996,8 +1996,8 @@ gainItems = function(player, item_list)
 	local room = player:getRoom()
 	
 	local standalone = false
-	local ip = room:getOwner():getIp()
-	if ip ~= "" and string.find(ip, "127.0.0.1") and player:objectName() == room:getOwner():objectName() then
+	local ip = room:getOwner() and room:getOwner():getIp() or ""
+	if room:getOwner() and ip ~= "" and string.find(ip, "127.0.0.1") and player:objectName() == room:getOwner():objectName() then
 		standalone = true
 	end
 	
@@ -2107,7 +2107,7 @@ luckyrecord = sgs.CreateRuleSkillV2{
 		if event == sgs.AfterDrawNCards then
 			local draw = data:toDraw()
 			if draw.reason ~= "InitialHandCards" then return false end
-			if room:getTag("lucky_card_on"):toBool() or room:getOwner():getMark("@coin") > 0 then return false end
+			if room:getTag("lucky_card_on"):toBool() or (room:getOwner() and room:getOwner():getMark("@coin") > 0) then return false end
 			room:setTag("lucky_card_on", sgs.QVariant(true))
 			local id = sgs.Sanguosha:getRandomCards():first()
 			room:setTag("lucky_card", sgs.QVariant(id))
@@ -7814,7 +7814,7 @@ mingjingzhishui = sgs.CreateTriggerSkillV2{
 --“奥义”动态描述
 AoyiTranslate = function(player, skillname)
 	local room = player:getRoom()
-	local ip = room:getOwner():getIp()
+	local ip = room:getOwner() and room:getOwner():getIp() or ""
 	if ip ~= "" and string.find(ip, "127.0.0.1") then --ZY奆神说：联机状态时动态描述无效
 		local value = sgs.Sanguosha:translate(":" .. skillname)
 		if skillname == "aoyi" then
@@ -20251,7 +20251,7 @@ function ChangeSkill(self, room, player, wrong_number, max_number)
 	if wrong_number == nil then wrong_number = 1 end
 	room:addPlayerMark(player, self:objectName())
 	room:setPlayerMark(player, self:objectName(), ChangeNumber(player:getMark(self:objectName()), max_number))
-	local ip = room:getOwner():getIp()
+	local ip = room:getOwner() and room:getOwner():getIp() or ""
 	if ip ~= "" and string.find(ip, "127.0.0.1") then --ZY奆神说：联机状态时动态描述无效
 		--sgs.Sanguosha:addTranslationEntry(":"..self:objectName(), ""..string.gsub(sgs.Sanguosha:translate(":"..self:objectName()), sgs.Sanguosha:translate(":"..self:objectName()), sgs.Sanguosha:translate(":"..self:objectName()..ChangeNumber(player:getMark(self:objectName()) + wrong_number, max_number))))
 		sgs.Sanguosha:addTranslationEntry(":"..self:objectName(), sgs.Sanguosha:translate(":"..self:objectName()..ChangeNumber(player:getMark(self:objectName()) + wrong_number, max_number)))

@@ -1,8 +1,6 @@
--- Effective Dan callbacks at b6025acc. Read the skill's disclosed owner property;
--- never recompute its aggregate from the hidden draw pile.
+-- Source: b6025acc ai/Dan-ai.lua.
 
 local function allowedSuits(player)
-    -- Viewer-only property; an absent one reads as the donor's empty QVariant string.
     local value=player:getPropertyValue("LuaYanjiu") or ""
     if type(value)~="string" then
         ai_unsupported("owner LuaYanjiu property is not projected", "LuaYanjiu.property")
@@ -21,7 +19,9 @@ local function proposal(card)
     if numeric<=0 then numeric=card:getNumber() end
     return {name="analeptic",skill="LuaYanjiu",suit=card:getSuit(),number=numeric,subcards={id}}
 end
-sgs.ai_fill_skill.LuaYanjiu=function(self,inclusive,request)
+ai_fill_skill.LuaYanjiu=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards=sgs.QList2Table(self.player:getCards("h"))
     if #self.player:getPile("wooden_ox")>0 then
         for _,id in ipairs(self.player:getPile("wooden_ox")) do table.insert(cards,self:getRequiredKnownCardById(id)) end

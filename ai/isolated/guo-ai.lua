@@ -1,4 +1,4 @@
--- Fixed b6025acc guo effective callbacks. Earlier same-key definitions are superseded.
+-- Source: b6025acc ai/guo-ai.lua.
 local known = AIValue.requireKnown
 
 -- The viewer's own player tag; an absent tag is no player.
@@ -76,11 +76,13 @@ sgs.ai_can_damagehp.jintuishi = function(self,from,card,to)
 end
 
 --筹伐
-sgs.ai_fill_skill.jinchoufa = function(self,inclusive,request)
+ai_fill_skill.jinchoufa = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("jinchoufa","JinChoufaCard",request)
 end
 
-sgs.ai_skill_use_func.JinChoufaCard = function(card,use,self)
+ai_card_use.JinChoufaCard = function(self, card, use, request)
 	self.friends_noself = self:sort(self.friends_noself,"handcard")
 	self.friends_noself = sgs.reverse(self.friends_noself)
 	for _,p in sgs.list(self.friends_noself)do
@@ -104,24 +106,25 @@ end
 sgs.ai_use_value.JinChoufaCard = 10
 
 --昭然
-sgs.ai_skill_invoke.jinzhaoran = true
+ai_skill_invoke.jinzhaoran = true
 
 sgs.ai_skill_playerchosen.jinzhaoran = function(self,targets)
 	return self:findPlayerToDiscard("he",false,true,targets)[1]
 end
 
 --识人
-sgs.ai_skill_invoke.jinshiren = function(self,data)
+ai_skill_invoke.jinshiren = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local current = data:toPlayer()
 	if self:isFriend(current) then
-		return self:doDisCard(current,"h",true)
+		return (self:doDisCard(current,"h",true)
 		or self:needToThrowLastHandcard(current)
-		or self:getOverflow(current)>2
+		or self:getOverflow(current)>2) or false
 	elseif self:isEnemy(current) then
-		return self:doDisCard(current,"h",true)
-		or not self:needToThrowLastHandcard(current)
+		return (self:doDisCard(current,"h",true)
+		or not self:needToThrowLastHandcard(current)) or false
 	end
-	return true
+	return (true) or false
 end
 
 sgs.ai_can_damagehp.jinshiren = function(self,from,card,to)
@@ -130,12 +133,14 @@ sgs.ai_can_damagehp.jinshiren = function(self,from,card,to)
 end
 
 --宴戏
-sgs.ai_fill_skill.jinyanxi = function(self,inclusive,request)
+ai_fill_skill.jinyanxi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies<=0 then return end
 	return self:legacySkillSeed("jinyanxi","JinYanxiCard",request)
 end
 
-sgs.ai_skill_use_func.JinYanxiCard = function(card,use,self)
+ai_card_use.JinYanxiCard = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	for _,p in sgs.list(self.enemies)do
 		if self:doDisCard(p,"h",true) then
@@ -150,11 +155,13 @@ sgs.ai_use_value.JinYanxiCard = 10
 sgs.ai_card_intention.JinYanxiCard = 50
 
 --三陈
-sgs.ai_fill_skill.jinsanchen = function(self,inclusive,request)
+ai_fill_skill.jinsanchen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("jinsanchen","JinSanchenCard",request)
 end
 
-sgs.ai_skill_use_func.JinSanchenCard = function(card,use,self)
+ai_card_use.JinSanchenCard = function(self, card, use, request)
 	self.friends = self:sort(self.friends,"handcard")
 	self.friends = sgs.reverse(self.friends)
 	for _,p in sgs.list(self.friends)do
@@ -180,7 +187,9 @@ sgs.ai_skill_discard.jinsanchen = function(self,discard_num,min_num,optional,inc
 end
 
 --破竹
-sgs.ai_fill_skill.jinpozhu = function(self,inclusive,request)
+ai_fill_skill.jinpozhu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile()
 	cards = self:sortByUseValue(cards,true,"l")
 	if #cards<1 then return end
@@ -210,17 +219,21 @@ sgs.ai_skill_cardask["@jinshenpin-card"] = function(self,data)
     return "."
 end
 
-sgs.ai_skill_choice.jinzhongyun = function(self,choices)
+ai_skill_choice.jinzhongyun = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"discard")
 	then
 		for _,ep in sgs.list(self.enemies)do
 			if self:isWeak(ep) or ep:hasEquip()
-			then return "discard" end
+			then return ai_choice_result(("discard"), options) end
 		end
 	end
 	if table.contains(items,"draw")
-	then return "draw" end
+	then return ai_choice_result(("draw"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 sgs.ai_skill_playerchosen.jinzhongyun = function(self,players)
@@ -251,7 +264,6 @@ sgs.ai_skill_playerchosen.jingaoling = function(self,players)
 		and target:isWounded()
 		then return target end
 	end
---	return destlist[1]
 end
 
 sgs.ai_can_damagehp.jingaoling = function(self,from,card,to)
@@ -274,22 +286,24 @@ sgs.ai_skill_playerchosen.jinqimei = function(self,players)
 		and target:isWounded()
 		then return target end
 	end
---	return destlist[1]
 end
 
-sgs.ai_skill_invoke.jinzhuiji = function(self,data)
-    return self:isWeak() or self.player:getHandcardNum()<5 and not self:isWeak()
+ai_skill_invoke.jinzhuiji = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (self:isWeak() or self.player:getHandcardNum()<5 and not self:isWeak()) or false
 end
 
-sgs.ai_skill_choice.jinzhuiji = function(self,choices)
+ai_skill_choice.jinzhuiji = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"draw")
 	and self.player:getHandcardNum()<4 and not self:isWeak()
-	then return "draw" end
+	then return ai_choice_result(("draw"), options) end
 	if table.contains(items,"recover")
 	and self:isWeak()
-	then return "recover" end
-	return "recover"
+	then return ai_choice_result(("recover"), options) end
+	return ai_choice_result(("recover"), options)
 end
 
 

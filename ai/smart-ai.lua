@@ -5637,7 +5637,9 @@ function getSkillViewCard(class_name,card,player,place)
 			local card_name = patterns(class_name)
 			if (class_name=="Peach" or class_name=="Analeptic")
 			and global_room:getCurrentDyingPlayer()==player then card_name = "peach+analeptic" end
-			if vs:isEnabledAtResponse(player,card_name) then
+			-- V2 轉化技不覆寫 isEnabledAtResponse；改以 canActivate 發出的 request 判斷。
+			if vs:isEnabledAtResponse(player,card_name)
+			or getCardsViewAIRequest({room=global_room,player=player},s:objectName(),card_name) then
 				place = place or global_room:getCardPlace(card:getId())
 				if place==sgs.Player_PlaceSpecial and player:getHandPile():contains(card:getId()) then
 					if sgs.Sanguosha:getCurrentCardUseReason()==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE

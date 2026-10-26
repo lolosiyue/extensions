@@ -1,5 +1,4 @@
--- Fixed ck-ai.lua b6025acc983331337614289d8cac79b078c003af.
--- Decisions preserve donor loop/short-circuit order; native scopes own authority.
+-- Source: b6025acc ai/ck-ai.lua.
 local package_skills={}
 local known = AIValue.requireKnown
 local function action_request(self,request)
@@ -43,12 +42,14 @@ end
 local ckdianji_skill = {}
 ckdianji_skill.name= "ckdianji"
 table.insert(package_skills,ckdianji_skill)
-ckdianji_skill.getTurnUseCard=function(self,inclusive,request)
+ckdianji_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if not (self.player:canDiscard(self.player,"he")) then return end
 	return seed(self,"ckdianji","#ckdianjicard",request)
 end
 
-sgs.ai_skill_use_func["#ckdianjicard"] = function(card,use,self,request)
+ai_card_use["#ckdianjicard"] = function(self, card, use, request)
 	local cards = AIList.new((self.player:getCards("he")))
 	self:sortByKeepValueInPlace(cards)
     self:sortInPlace(self.enemies)
@@ -80,7 +81,9 @@ sgs.dynamic_value.damage_card["ckdianjicard"] = true
 local ckluolei_skill = {}
 ckluolei_skill.name = "ckluolei"
 table.insert(package_skills, ckluolei_skill)
-ckluolei_skill.getTurnUseCard = function(self,inclusive,request)
+ckluolei_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self.player:getMark("@thunder")) <= 0 then return end
 	if (self.room:getMode()) == "_mini_13" then return nil -- Fixed Card_Parse has no ck luolei prototype (no alias repair).
     end
@@ -117,7 +120,7 @@ ckluolei_skill.getTurnUseCard = function(self,inclusive,request)
 	if good > bad and (self:isWeak()) and self:getHandcardNum() < 4 then return seed(self,"ckluolei","#ckluoleicard",request) end
 end
 
-sgs.ai_skill_use_func["#ckluoleicard"]=function(card,use,self,request)
+ai_card_use["#ckluoleicard"]=function(self, card, use, request)
 	use.card = (self:inheritLegacyCardIdentity(bind(self,"ckluolei","#ckluoleicard",{},request),card))
 end
 
@@ -126,12 +129,14 @@ sgs.dynamic_value.damage_card["#ckluoleicard"] = true
 local cksilie_skill = {}
 cksilie_skill.name = "cksilie"
 table.insert(package_skills,cksilie_skill)
-cksilie_skill.getTurnUseCard = function(self,inclusive,request)
+cksilie_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self.player:isKongcheng()) then return nil end
 	return seed(self,"cksilie","#cksiliecard",request)
 end
 
-sgs.ai_skill_use_func["#cksiliecard"] = function(card,use,self,request)
+ai_card_use["#cksiliecard"] = function(self, card, use, request)
 	local cards = AIList.new((self.player:getHandcards()))
 	self:sortByUseValueInPlace(cards, true)
 	self:sortInPlace(self.enemies, "defense")
@@ -209,7 +214,7 @@ sgs.ai_card_intention["cksiliecard"] = 60
 
 sgs.ai_use_priority["cksiliecard"] = 0.2
 
-sgs.ai_skill_use["@@ckbaihe"] = function(self,prompt)
+ai_skill_use["@@ckbaihe"] = function(self, prompt, request)
     self:sortInPlace(self.friends, "defense")
     for _,friend in ipairs(self.friends)do
         if (self:doDisCard(friend,"e")) then
@@ -229,10 +234,11 @@ sgs.ai_ajustdamage_from.ckdalian = function(self,from,to,card,nature)
 	then return 1 end
 end
 
-sgs.ai_skill_invoke.ckdalian = function(self, data)
+ai_skill_invoke.ckdalian = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if target and (self:isFriend(target)) then return false end
-	return true
+    if target and (self:isFriend(target)) then return (false) or false end
+	return (true) or false
 end
 
 sgs.ai_target_revises.ckhuansha = function(to,card)
@@ -244,7 +250,7 @@ sgs.ai_target_revises.ckshiliang = function(to,card)
 	then return true end
 end
 
-sgs.ai_skill_use["@@ckshiliang"] = function(self,prompt)
+ai_skill_use["@@ckshiliang"] = function(self, prompt, request)
     local parsed = (prompt:split(":"))
     local use = context(self,"use")
     if parsed[1]=="@ckshiliangCard" then
@@ -267,36 +273,38 @@ sgs.ai_skill_use["@@ckshiliang"] = function(self,prompt)
 	return "."
 end
 
-sgs.ai_skill_invoke.ckxueni = function(self, data)
+ai_skill_invoke.ckxueni = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if target  then 
         if (self:isEnemy(target)) then
-			return true
+			return (true) or false
 		end
         if (self:isFriend(target)) and visible_role(self,target) == "rebel" then
 			for _, friend in ipairs(self.friends) do
-				if getKnownCard(friend, self.player, "Peach", true, "h") > 0 then return false end
-				if (friend:getHandcardNum()) > 3 then return false end
+				if getKnownCard(friend, self.player, "Peach", true, "h") > 0 then return (false) or false end
+				if (friend:getHandcardNum()) > 3 then return (false) or false end
 			end
-            return true
+            return (true) or false
 		end
     end
-    return false
+    return (false) or false
 end
 
-sgs.ai_skill_invoke.ckyongchang = function(self, data)
+ai_skill_invoke.ckyongchang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = context(self,"effect")
     local dest = effect.to
-    if dest and (self:isEnemy(dest)) then return false end
-	if effect.card and (effect.card:hasFlag("NosJiefanUsed")) then return false  end
+    if dest and (self:isEnemy(dest)) then return (false) or false end
+	if effect.card and (effect.card:hasFlag("NosJiefanUsed")) then return (false) or false  end
 
 	if not effect.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,effect.from)
 		or (effect.card:isKindOf("NatureSlash")) and (self.player:isChained()) and (self:isGoodChainTarget(dest,effect.card,effect.from))
-		or (self:needToLoseHp(dest,effect.from,effect.card)) and (self:ajustDamage(effect.from,dest,1,effect.card))==1 then return false end
-	if (self:needToLoseHp(dest,effect.from,effect.card,true,true)) then return false end
-	if (self:getCardsNum("Jink")) == 0 then return true end
+		or (self:needToLoseHp(dest,effect.from,effect.card)) and (self:ajustDamage(effect.from,dest,1,effect.card))==1 then return (false) or false end
+	if (self:needToLoseHp(dest,effect.from,effect.card,true,true)) then return (false) or false end
+	if (self:getCardsNum("Jink")) == 0 then return (true) or false end
 	
-	return true
+	return (true) or false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.ckyongchang = function(self,player,promptlist)
@@ -309,11 +317,13 @@ end
 local cklongxi_skill = {}
 cklongxi_skill.name= "cklongxi"
 table.insert(package_skills,cklongxi_skill)
-cklongxi_skill.getTurnUseCard=function(self,inclusive,request)
+cklongxi_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return seed(self,"cklongxi","#cklongxicard",request)
 end
 
-sgs.ai_skill_use_func["#cklongxicard"] = function(card,use,self,request)
+ai_card_use["#cklongxicard"] = function(self, card, use, request)
 	local cards = AIList.new((self.player:getCards("he")))
 	self:sortByKeepValueInPlace(cards)
     self:sortInPlace(self.enemies)
@@ -345,11 +355,13 @@ end
 local ckweishan_skill = {}
 ckweishan_skill.name= "ckweishan"
 table.insert(package_skills,ckweishan_skill)
-ckweishan_skill.getTurnUseCard=function(self,inclusive,request)
+ckweishan_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return seed(self,"ckweishan","#ckweishancard",request)
 end
 
-sgs.ai_skill_use_func["#ckweishancard"] = function(card,use,self,request)
+ai_card_use["#ckweishancard"] = function(self, card, use, request)
 	local cards = AIList.new((self.player:getCards("he")))
 	self:sortByKeepValueInPlace(cards)
     self:sortInPlace(self.enemies)
@@ -383,7 +395,7 @@ sgs.ai_use_value["ckweishancard"] = 2.5
 sgs.ai_card_intention["ckweishancard"] = 80
 sgs.dynamic_value.damage_card["ckweishancard"] = true
 
-sgs.ai_skill_use["@@ckjinjie"] = function(self,prompt)
+ai_skill_use["@@ckjinjie"] = function(self, prompt, request)
     local targets = {}
     table.insert(targets, (self.player:objectName()))
     self:sortInPlace(self.friends_noself, "handcard")
@@ -409,4 +421,32 @@ sgs.ai_skill_use["@@ckjinjie"] = function(self,prompt)
     end
     return "."
 end
-for _,skill in ipairs(package_skills)do sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end
+for _,skill in ipairs(package_skills)do ai_fill_skill[skill.name]=skill.getTurnUseCard end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["ckhuansha"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(from,"hasSkill","ckhuansha") then
+        		return nil, true
+        	end
+        return value
+    end
+    sgs.ai_need_damaged["ckhuansha"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_before_damage" and context.rule == "ckhuansha" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "ckhuansha", {
+        {phase="need_hp_before_damage", order=1, rule="ckhuansha"},
+    })
+end)()
+end

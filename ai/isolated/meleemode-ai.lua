@@ -1,7 +1,9 @@
 -- Fixed source: same-clone availability precedes any selected-only payment.
 
 local function spec(card,name)return{name=name,skill='melee_peach',suit=card:getSuit(),number=card:getNumber(),subcards={card:getKnownEffectiveId()}}end
-sgs.ai_fill_skill.melee_peach=function(self,player,request)
+ai_fill_skill.melee_peach=function(self, options, request)
+    local player = options and options.inclusive
+
     local cards=self:sortByUseValue(sgs.QList2Table(self.player:getCards('h')),true)
     for _,card in ipairs(cards)do
         if card:isKindOf('Peach')then

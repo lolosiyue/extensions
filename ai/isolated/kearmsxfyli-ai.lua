@@ -1,4 +1,4 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/kearmsxfyli-ai.lua.
 
 local function package_known(object,method,...)
     local values=table.pack(AIValue.callOptional(object, method, ...))
@@ -17,8 +17,6 @@ local function turn(self,skill,name,cards,request)
  return package_known(self,"evaluateTurnConversion",skill,package_known(proto,"getClassName"),{name=name,skill=skill,suit=sgs.Card_NoSuit,number=0,subcards=ids(cards)},request)
 end
 local dummy = AIUsePlan.dummy
--- The donor reads the viewer's own tags/properties; an absent one reads as the
--- QVariant default (nil player, empty CardUseStruct).
 local function tag_player(self,key)local n=self.player:getTag(key);if n==nil then return nil end;return package_known(self.room,"findPlayerByObjectName",n,true)end
 local function tag_use(self,key)
  local d=self.player:getTag(key);if d==nil then return{to=AIList.new({})}end
@@ -30,9 +28,9 @@ end
 local function pattern_names(self)
  local names=AICardCatalog.patternNames();if not AIValue.isList(names)then ai_unsupported("ordered source patterns unavailable","pattern_names")end;return names
 end
-local function peiqi(self,data)
- local fn=sgs.ai_skill_invoke.peiqi;if type(fn)~="function"then ai_unsupported("source peiqi callback unavailable","kearmsxfyli.peiqi")end
- local value=fn(self,data);if AIUnsupported.is(value)then error(value,0)end
+local function peiqi(self,options,request)
+ local fn=ai_skill_invoke.peiqi;if type(fn)~="function"then ai_unsupported("source peiqi callback unavailable","kearmsxfyli.peiqi")end
+ local value=fn(self, options, request);if AIUnsupported.is(value)then error(value,0)end
  if self.peiqiData then local d=self.peiqiData;self:setStrategyMemory("kearmsxfyli.peiqi", {from=d.from and package_known(d.from,"objectName"),to=d.to and package_known(d.to,"objectName"),cid=d.cid})end;return value
 end
 local function peiqi_state(self)
@@ -87,10 +85,12 @@ sgs.ai_skill_playerschosen.kesxhehe = function(self,players)
 	return tos
 end
 
-sgs.ai_fill_skill.kesxquedi = function(self,inclusive,request)
+ai_fill_skill.kesxquedi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = package_known(self.player,"getCards","he")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do
 		if package_known(c,"isKindOf","Slash") then
 			local can=turn(self,"kesxquedi","duel",{c},request)
@@ -127,12 +127,15 @@ sgs.ai_skill_playerchosen.kesxchunlao = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.kesxchunlao = function(self,data)
+ai_skill_invoke.kesxchunlao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local srt = package_known(data,"toString"):split(":")
 	local to = self.room:findPlayerByObjectName(srt[2], true)
 	if to then
-		return package_known(self,"isFriend",to) or not package_known(self,"isEnemy",to) and #self.enemies>0
+		return (package_known(self,"isFriend",to) or not package_known(self,"isEnemy",to) and #self.enemies>0) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_playerschosen.kesxxiongsuan = function(self,players)
@@ -154,11 +157,13 @@ sgs.ai_skill_playerschosen.kesxxiongsuan = function(self,players)
 	return tos
 end
 
-sgs.ai_fill_skill.kesxtiaohe = function(self,inclusive,request)
+ai_fill_skill.kesxtiaohe = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","kesxtiaohe","#kesxtiaoheCard",{},request)
 end
 
-sgs.ai_skill_use_func["#kesxtiaoheCard"] = function(card,use,self,request)
+ai_card_use["#kesxtiaoheCard"] = function(self, card, use, request)
 	self:sort(self.friends)
 	for _,ep in sgs.list(self.friends)do do
 		if package_known(use.to,"isEmpty") then
@@ -244,14 +249,17 @@ end
 sgs.ai_use_value.kesxtiaoheCard = 7.4
 sgs.ai_use_priority.kesxtiaoheCard = 6.2
 
-sgs.ai_skill_invoke.kesxqiansu = function(self,data)
-	return package_known(self,"canDraw")
+ai_skill_invoke.kesxqiansu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (package_known(self,"canDraw")) or false
 end
 
-sgs.ai_fill_skill.kesxbazhan = function(self,inclusive,request)
+ai_fill_skill.kesxbazhan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = package_known(self.player,"getCards","h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	self:sort(self.enemies)
 	for _,c in sgs.list(cards)do do
 	   	if table.contains(self.toUse,c) then goto package_continue_6 end
@@ -291,7 +299,7 @@ sgs.ai_fill_skill.kesxbazhan = function(self,inclusive,request)
 	end ::package_continue_9:: end
 end
 
-sgs.ai_skill_use_func["#kesxbazhanCard"] = function(card,use,self,request)
+ai_card_use["#kesxbazhanCard"] = function(self, card, use, request)
 	use.card = card
 	use.to:append(self.ht_to)
 end
@@ -299,12 +307,15 @@ end
 sgs.ai_use_value.kesxbazhanCard = 7.4
 sgs.ai_use_priority.kesxbazhanCard = 2.2
 
-sgs.ai_skill_invoke.kesxyibing = function(self,data)
+ai_skill_invoke.kesxyibing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		if package_known(self,"isFriend",target) then return package_known(self,"doDisCard",target,"e",true)
-		else return package_known(self,"doDisCard",target,"he",true) end
+		if package_known(self,"isFriend",target) then return (package_known(self,"doDisCard",target,"e",true)) or false
+		else return (package_known(self,"doDisCard",target,"he",true)) or false end
 	end
+	return false
+
 end
 
 ai_skill_use["@@kesxzhiyi"]=function(self,prompt,request)
@@ -410,11 +421,13 @@ end
 
 
 
-sgs.ai_fill_skill.kesxxiongyi = function(self,inclusive,request)
+ai_fill_skill.kesxxiongyi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","kesxxiongyi","#kesxxiongyiCard",{},request)
 end
 
-sgs.ai_skill_use_func["#kesxxiongyiCard"] = function(card,use,self,request)
+ai_card_use["#kesxxiongyiCard"] = function(self, card, use, request)
 	self:sort(self.friends, nil, true)
 	for _,p in sgs.list(self.friends)do
 		if getKnownCard(p,self.player,"Slash")>0 then
@@ -527,11 +540,13 @@ sgs.ai_skill_cardchosen.kesxfenghun = function(self,who,flags,method)
 end
 
 
-sgs.ai_fill_skill.kesxmingfa = function(self,inclusive,request)
+ai_fill_skill.kesxmingfa = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","kesxmingfa","#kesxmingfaCard",{},request)
 end
 
-sgs.ai_skill_use_func["#kesxmingfaCard"] = function(card,use,self,request)
+ai_card_use["#kesxmingfaCard"] = function(self, card, use, request)
 	self:sort(self.enemies)
 	for _,p in sgs.list(self.enemies)do
 		if package_known(p,"getHp")>1 and package_known(self,"damageIsEffective",p,"N") then
@@ -559,12 +574,15 @@ sgs.ai_skill_playerschosen.kesxhuiji = function(self,players)
 	return tos
 end
 
-sgs.ai_skill_invoke.kesxhuiji = function(self,data)
+ai_skill_invoke.kesxhuiji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	for _,p in sgs.list(self.friends_noself)do
 		if package_known(p,"getStrategyMark","&kesxhuiji-Clear")>0 and getCardsNum("Jink",p,self.player)>0 then
-			return true
+			return (true) or false
 		end
 	end
+	return false
+
 end
 
 ai_skill_use["kesxhuiji-help"]=function(self,prompt,request)
@@ -577,10 +595,12 @@ ai_skill_use["kesxhuiji-help"]=function(self,prompt,request)
 	return "."
 end
 
-sgs.ai_fill_skill.kesxxiongxia = function(self,inclusive,request)
+ai_fill_skill.kesxxiongxia = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = package_known(self.player,"getCards","he")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,c1 in sgs.list(cards)do
 		for _,c2 in sgs.list(cards)do do
 			if AIValue.sameLegacyIdentity(c1,c2) then goto package_continue_10 end
@@ -597,7 +617,7 @@ sgs.ai_fill_skill.kesxxiongxia = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#kesxxiongxiaCard"] = function(card,use,self,request)
+ai_card_use["#kesxxiongxiaCard"] = function(self, card, use, request)
 	if self.kesxxiongxia_to then
 		use.card = card
 		use.to = self.kesxxiongxia_to
@@ -609,15 +629,18 @@ sgs.ai_use_priority.kesxxiongxiaCard = 2.2
 sgs.ai_card_intention.kesxxiongxiaCard = 77
 
 
-sgs.ai_skill_invoke.kesxjinjian = function(self,data)
+ai_skill_invoke.kesxjinjian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local str = package_known(data,"toString"):split(":")
 	if str[1]=="kesxjinjian0" then
 		local to = self.room:findPlayerByObjectName(str[2], true)
-		return package_known(self,"isFriend",to)
+		return (package_known(self,"isFriend",to)) or false
 	else
 		local to = self.room:findPlayerByObjectName(str[2], true)
-		return package_known(self,"isEnemy",to) or not package_known(self,"isFriend",to) and #self.enemies<1
+		return (package_known(self,"isEnemy",to) or not package_known(self,"isFriend",to) and #self.enemies<1) or false
 	end
+	return false
+
 end
 
 
@@ -627,11 +650,13 @@ end
 
 
 
-sgs.ai_fill_skill.sxwuyou = function(self,inclusive,request)
+ai_fill_skill.sxwuyou = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxwuyou","#sxwuyouCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxwuyouCard"] = function(card,use,self,request)
+ai_card_use["#sxwuyouCard"] = function(self, card, use, request)
 	local dc = package_known(self,"getEvaluationCard","duel")
 	for _,p in sgs.list(package_known(self,"aiUseCard",dc,dummy(nil,99)).to)do
 		if package_known(self.player,"canPindian",p) then
@@ -646,10 +671,12 @@ sgs.ai_use_value.sxwuyouCard = 3.4
 sgs.ai_use_priority.sxwuyouCard = 3.2
 sgs.ai_card_intention.sxwuyouCard = 44
 
-sgs.ai_fill_skill.sxbeiwu = function(self,inclusive,request)
+ai_fill_skill.sxbeiwu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = package_known(self.player,"getCards","e")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	local pts = {"ex_nihilo","duel"}
 	for _,c in sgs.list(cards)do
 		if package_known(self.player,"getStrategyMark",package_known(c,"getLegacyStringKey").."sxbeiwu-Clear")<1 then
@@ -661,17 +688,22 @@ sgs.ai_fill_skill.sxbeiwu = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_invoke.sxchengshi = function(self,data)
+ai_skill_invoke.sxchengshi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return package_known(target,"getEquips"):length()-#package_known(self,"poisonCards","e",target)>package_known(self.player,"getEquips"):length()-#package_known(self,"poisonCards","e")
+		return (package_known(target,"getEquips"):length()-#package_known(self,"poisonCards","e",target)>package_known(self.player,"getEquips"):length()-#package_known(self,"poisonCards","e")) or false
 	end
+	return false
+
 end
 
-sgs.ai_fill_skill.sxxiemuvs = function(self,inclusive,request)
+ai_fill_skill.sxxiemuvs = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = package_known(self.player,"getCards","h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do
 		if package_known(c,"getTypeId")==1 then
 			return package_known(self,"evaluateTurnSkillCard","sxxiemuvs","#sxxiemuCard",{package_known(c,"getEffectiveId")},request)
@@ -679,7 +711,7 @@ sgs.ai_fill_skill.sxxiemuvs = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#sxxiemuCard"] = function(card,use,self,request)
+ai_card_use["#sxxiemuCard"] = function(self, card, use, request)
 	self:sort(self.enemies)
 	local has = false
 	for i,p in sgs.list(self.enemies)do
@@ -701,14 +733,16 @@ sgs.ai_use_value.sxxiemuCard = 5.4
 sgs.ai_use_priority.sxxiemuCard = 3.2
 sgs.ai_card_intention.sxxiemuCard = -33
 
-sgs.ai_fill_skill.sxnaman = function(self,inclusive,request)
+ai_fill_skill.sxnaman = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxnaman","#sxnamanCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxnamanCard"] = function(card,use,self,request)
+ai_card_use["#sxnamanCard"] = function(self, card, use, request)
     local cards = package_known(self.player,"getCards","h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	local bs = {}
 	for _,c in sgs.list(cards)do
 		if package_known(c,"getTypeId")==1 then
@@ -762,18 +796,24 @@ sgs.ai_skill_playerchosen.sxxingfa = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.sxshangjian = function(self,data)
+ai_skill_invoke.sxshangjian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local ids = package_known(data,"toIntList")
 	if package_known(self,"canDraw") then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.sxfunan = function(self,data)
+ai_skill_invoke.sxfunan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = package_known(data,"toCardEffect")
 	if package_known(self,"canDraw") then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_playerchosen.sxjiexun = function(self,players)
@@ -800,10 +840,13 @@ sgs.ai_skill_discard.sxjiexun = function(self,x,n)
 	end ::package_continue_11:: end
 end
 
-sgs.ai_skill_invoke.sxdingyi = function(self,data)
+ai_skill_invoke.sxdingyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_playerchosen.sxzuici = function(self,players)
@@ -823,11 +866,13 @@ sgs.ai_skill_playerchosen.sxzuici = function(self,players)
 end
 
 
-sgs.ai_fill_skill.sxyinge = function(self,inclusive,request)
+ai_fill_skill.sxyinge = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxyinge","#sxyingeCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxyingeCard"] = function(card,use,self,request)
+ai_card_use["#sxyingeCard"] = function(self, card, use, request)
 	self:sort(self.friends_noself, nil, true)
 	for _,p in sgs.list(self.enemies)do
 		if package_known(self.player,"inMyAttackRange",p) then
@@ -857,7 +902,6 @@ end
 
 sgs.ai_use_value.sxyingeCard = 3.4
 sgs.ai_use_priority.sxyingeCard = 4.2
---sgs.ai_card_intention.sxwuyouCard = 44
 
 sgs.ai_skill_playerchosen.sxyinge = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
@@ -872,23 +916,32 @@ sgs.ai_skill_playerchosen.sxyinge = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.sxshiren = function(self,data)
+ai_skill_invoke.sxshiren = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.sxjuyi = function(self,data)
+ai_skill_invoke.sxjuyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return package_known(self,"isFriend",target)
+		return (package_known(self,"isFriend",target)) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.sxzishou = function(self,data)
+ai_skill_invoke.sxzishou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return #self.enemies<1 or package_known(self,"getOverflow")<0
+		return (#self.enemies<1 or package_known(self,"getOverflow")<0) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_discard.sxjujing = function(self,x,n)
@@ -901,11 +954,14 @@ sgs.ai_skill_discard.sxjujing = function(self,x,n)
 	end ::package_continue_12:: end
 end
 
-sgs.ai_skill_invoke.sxfengbai = function(self,data)
+ai_skill_invoke.sxfengbai = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and package_known(self,"canDraw",target) then
-		return package_known(self,"isFriend",target)
+		return (package_known(self,"isFriend",target)) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_discard.sxhuaiyi = function(self,x,n)
@@ -947,7 +1003,7 @@ end
 sgs.ai_skill_cardask["sxzhuikong0"] = function(self,data,pattern)
 	local cards = package_known(self.player,"getCards","h")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	local target = data:toPlayer()
    	for _,c in sgs.list(cards)do
     	if package_known(c,"isKindOf","Slash") and package_known(c,"getNumber")>9
@@ -996,20 +1052,25 @@ sgs.ai_skill_discard.sxqiuyuan = function(self,x,n)
 	end
 end
 
-sgs.ai_skill_invoke.sxwudu = function(self,data)
+ai_skill_invoke.sxwudu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and package_known(self,"isWeak",target) then
-		return package_known(self,"isFriend",target)
+		return (package_known(self,"isFriend",target)) or false
 	end
+	return false
+
 end
 
-sgs.ai_fill_skill.sxgushe = function(self,inclusive,request)
+ai_fill_skill.sxgushe = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local mc = self:getMaxCard()
 	return mc and package_known(mc,"getNumber")>9
 	and package_known(self,"evaluateTurnSkillCard","sxgushe","#sxgusheCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxgusheCard"] = function(card,use,self,request)
+ai_card_use["#sxgusheCard"] = function(self, card, use, request)
 	self:sort(self.enemies)
 	for _,p in sgs.list(self.enemies)do
 		if package_known(self.player,"canPindian",p) then
@@ -1024,32 +1085,41 @@ sgs.ai_use_value.sxgusheCard = 3.4
 sgs.ai_use_priority.sxgusheCard = 4.2
 sgs.ai_card_intention.sxgusheCard = 44
 
-sgs.ai_skill_invoke.sxgushe = function(self,data)
+ai_skill_invoke.sxgushe = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and package_known(self,"isEnemy",target) and package_known(self,"canDraw") then
 		local mc = self:getMaxCard()
-		return mc and package_known(mc,"getNumber")>6
+		return (mc and package_known(mc,"getNumber")>6) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.sxjici = function(self,data)
+ai_skill_invoke.sxjici = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local pindian = package_known(data,"toPindian")
 	if pindian.to==self.player then
-		return package_known(self,"isEnemy",pindian.from) and not package_known(self,"isWeak")
+		return (package_known(self,"isEnemy",pindian.from) and not package_known(self,"isWeak")
 		and pindian.from_number>pindian.to_number
-		and pindian.to_number<13
+		and pindian.to_number<13) or false
 	else
-		return package_known(self,"isEnemy",pindian.to) and not package_known(self,"isWeak")
+		return (package_known(self,"isEnemy",pindian.to) and not package_known(self,"isWeak")
 		and pindian.to_number>=pindian.from_number
 		and pindian.from_number<13
-		and pindian.to_number<13
+		and pindian.to_number<13) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.sxyuanqing = function(self,data)
+ai_skill_invoke.sxyuanqing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
 function sgs.ai_cardsview.sxshuchen(self,class_name,player)
@@ -1071,13 +1141,18 @@ sgs.ai_skill_discard.sxjinglve = function(self,x,n)
 	end
 end
 
-sgs.ai_skill_invoke.sxjinglve = function(self,data)
+ai_skill_invoke.sxjinglve = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
-sgs.ai_fill_skill.sxchengji = function(self,inclusive,request)
+ai_fill_skill.sxchengji = function(self, options, request)
+    local inclusive = options and options.inclusive
+
    	local cards = sgs.QList2Table(package_known(self.player,"getCards","he"))
     self:sortByKeepValue(cards)
 	for _,c1 in sgs.list(cards)do
@@ -1120,12 +1195,14 @@ ai_skill_use["@@sxzhengnan"]=function(self,prompt,request)
 	end ::package_continue_16:: end
 end
 
-sgs.ai_fill_skill.sxzhanjue = function(self,inclusive,request)
+ai_fill_skill.sxzhanjue = function(self, options, request)
+    local inclusive = options and options.inclusive
+
    	local ids = sgs.QList2Table(package_known(self.player,"handCards"))
 	return package_known(self,"evaluateTurnSkillCard","sxzhanjue","#sxzhanjueCard",ids,request)
 end
 
-sgs.ai_skill_use_func["#sxzhanjueCard"] = function(card,use,self,request)
+ai_card_use["#sxzhanjueCard"] = function(self, card, use, request)
 	local dc=package_known(self,"evaluateSkillCard","sxzhanjue","duel",ids(package_known(self.player,"getCards","h")))
 	if package_known(dc,"isAvailable",self.player) then
 		local d = package_known(self,"aiUseCard",dc)
@@ -1143,16 +1220,19 @@ sgs.ai_use_value.sxzhanjueCard = 3.4
 sgs.ai_use_priority.sxzhanjueCard = -1.2
 sgs.ai_card_intention.sxzhanjueCard = 66
 
-sgs.ai_skill_invoke.sxqinwang = function(self,data)
+ai_skill_invoke.sxqinwang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if #self.friends_noself>0 then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_cardask["sxzhengnan0"] = function(self,data,pattern)
 	local cards = package_known(self.player,"getCards","h")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	local target = data:toPlayer()
    	for _,c in sgs.list(cards)do
     	if package_known(c,"getTypeId")==1 and getCardsNum("Slash",target,self.player)<1
@@ -1162,16 +1242,19 @@ sgs.ai_skill_cardask["sxzhengnan0"] = function(self,data,pattern)
     return "."
 end
 
-sgs.ai_skill_invoke.sxhuituo = function(self,data)
+ai_skill_invoke.sxhuituo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
 ai_skill_use["@@sxhuituo"]=function(self,prompt,request)
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	local ids = {}
     for _,id in sgs.list(package_known(self,"getNotifiedTag","sxhuituoForAI"))do
       	local c = package_known(self,"getKnownCardById",tonumber(id))
@@ -1189,10 +1272,12 @@ ai_skill_use["@@sxhuituo"]=function(self,prompt,request)
 	end
 end
 
-sgs.ai_fill_skill.sxmingjian = function(self,inclusive,request)
+ai_fill_skill.sxmingjian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByUseValue(cards) -- 按保留值排序
+    self:sortByUseValue(cards)
 	for _,c in sgs.list(cards)do do
 		if not package_known(c,"isDamageCard") then goto package_continue_18 end
 		for _,p in sgs.list(self.friends_noself)do
@@ -1212,7 +1297,7 @@ sgs.ai_fill_skill.sxmingjian = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#sxmingjianCard"] = function(card,use,self,request)
+ai_card_use["#sxmingjianCard"] = function(self, card, use, request)
 	if self.sxmingjianTo then
 		use.to:append(self.sxmingjianTo)
 		use.card = card
@@ -1237,17 +1322,24 @@ sgs.ai_skill_playerchosen.sxbaobian = function(self,players)
 	end
 end
 
-sgs.ai_skill_choice.sxzaoli = function(self,choices)
+ai_skill_choice.sxzaoli = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = package_known(choices,"split","+")
 	if table.contains(items,"sxzaoli1")
 	and package_known(self.player,"getHandcardNum")/2<=package_known(self.player,"getEquips"):length()
-	then return "sxzaoli1" end
+	then return ai_choice_result(("sxzaoli1"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_invoke.sxfenyin = function(self,data)
+ai_skill_invoke.sxfenyin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return not package_known(self.player,"isSkipped",sgs.Player_Play)
+		return (not package_known(self.player,"isSkipped",sgs.Player_Play)) or false
 	end
+	return false
+
 end
 
 sgs.ai_used_revises.sxfenyin = function(self,use)
@@ -1301,10 +1393,12 @@ sgs.ai_skill_playerschosen.sxshuangren = function(self,players)
 	return tos
 end
 
-sgs.ai_fill_skill.sxmieji = function(self,inclusive,request)
+ai_fill_skill.sxmieji = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByUseValue(cards) -- 按保留值排序
+    self:sortByUseValue(cards)
 	for _,c in sgs.list(cards)do
 		if package_known(c,"getTypeId")==2 and package_known(c,"isBlack") then
 			return package_known(self,"evaluateTurnSkillCard","sxmieji","#sxmiejiCard",{package_known(c,"getEffectiveId")},request)
@@ -1312,7 +1406,7 @@ sgs.ai_fill_skill.sxmieji = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#sxmiejiCard"] = function(card,use,self,request)
+ai_card_use["#sxmiejiCard"] = function(self, card, use, request)
 	self:sort(self.enemies)
 	for _,p in sgs.list(self.enemies)do
 		if package_known(self,"doDisCard",p,"he",false,2) then
@@ -1341,10 +1435,12 @@ sgs.ai_skill_playerchosen.sxjuece = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill.sxlianji = function(self,inclusive,request)
+ai_fill_skill.sxlianji = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByUseValue(cards) -- 按保留值排序
+    self:sortByUseValue(cards)
 	for _,c in sgs.list(cards)do
 		if package_known(c,"getTypeId")==3 then
 			local dc=turn(self,"sxlianji","collateral",{c},request)
@@ -1355,9 +1451,10 @@ sgs.ai_fill_skill.sxlianji = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_invoke.sxzongji = function(self,data)
+ai_skill_invoke.sxzongji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = package_known(data,"toDamage")
-	return package_known(self,"doDisCard",damage.to,"he") or package_known(self,"doDisCard",damage.from,"he")
+	return (package_known(self,"doDisCard",damage.to,"he") or package_known(self,"doDisCard",damage.from,"he")) or false
 end
 
 sgs.ai_skill_playerchosen.sxyirang = function(self,players)
@@ -1370,11 +1467,13 @@ sgs.ai_skill_playerchosen.sxyirang = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill.sxjiaozhao = function(self,inclusive,request)
+ai_fill_skill.sxjiaozhao = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxjiaozhao","#sxjiaozhaoCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxjiaozhaoCard"] = function(card,use,self,request)
+ai_card_use["#sxjiaozhaoCard"] = function(self, card, use, request)
 	self:sort(self.enemies, nil, true)
 	for _,p in sgs.list(self.enemies)do
 		if package_known(p,"getHandcardNum")>1 then
@@ -1416,15 +1515,18 @@ ai_skill_use["@@sxjiaozhao"]=function(self,prompt,request)
 	end
 end
 
-sgs.ai_skill_invoke.sxpolu = function(self,data)
+ai_skill_invoke.sxpolu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return package_known(self,"doDisCard",to,"e")
+	return (package_known(self,"doDisCard",to,"e")) or false
 end
 
-sgs.ai_fill_skill.sxchoulve = function(self,inclusive,request)
+ai_fill_skill.sxchoulve = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = package_known(self.player,"getCards","h")
 	cards = sgs.QList2Table(cards)
-    self:sortByUseValue(cards) -- 按保留值排序
+    self:sortByUseValue(cards)
 	for _,h in sgs.list(cards)do
 		local c,p = self:getCardNeedPlayer({h}, false)
 		if c and p then
@@ -1434,7 +1536,7 @@ sgs.ai_fill_skill.sxchoulve = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#sxchoulveCard"] = function(card,use,self,request)
+ai_card_use["#sxchoulveCard"] = function(self, card, use, request)
 	if self.sxchoulveTo then
 		use.to:append(self.sxchoulveTo)
 		use.card = card
@@ -1452,10 +1554,12 @@ sgs.ai_skill_discard.sxchoulve = function(self,x,n)
 	end
 end
 
-sgs.ai_fill_skill.sxfenxun = function(self,inclusive,request)
+ai_fill_skill.sxfenxun = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByUseValue(cards) -- 按保留值排序
+    self:sortByUseValue(cards)
 	for _,c in sgs.list(cards)do
 		if package_known(c,"isKindOf","Armor") then
 			return package_known(self,"evaluateTurnSkillCard","sxfenxun","#sxfenxunCard",{package_known(c,"getEffectiveId")},request)
@@ -1463,7 +1567,7 @@ sgs.ai_fill_skill.sxfenxun = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#sxfenxunCard"] = function(card,use,self,request)
+ai_card_use["#sxfenxunCard"] = function(self, card, use, request)
 	self:sort(self.enemies)
 	for _,p in sgs.list(self.enemies)do
 		if package_known(self,"isWeak",p) and not package_known(self.player,"inMyAttackRange",p)
@@ -1490,9 +1594,10 @@ sgs.ai_skill_playerchosen.sxzenhui = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.sxchuyi = function(self,data)
+ai_skill_invoke.sxchuyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return package_known(self,"isEnemy",to)
+	return (package_known(self,"isEnemy",to)) or false
 end
 
 sgs.ai_skill_playerchosen.sxzhaoxin = function(self,players)
@@ -1510,11 +1615,13 @@ sgs.ai_skill_playerchosen.sxzhaoxin = function(self,players)
 end
 
 
-sgs.ai_fill_skill.sxxianlu = function(self,inclusive,request)
+ai_fill_skill.sxxianlu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxxianlu","#sxxianluCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxxianluCard"] = function(card,use,self,request)
+ai_card_use["#sxxianluCard"] = function(self, card, use, request)
 	if package_known(self.player,"containsTrick","indulgence") then
 		self:sort(self.enemies)
 		for _,p in sgs.list(self.enemies)do
@@ -1580,11 +1687,13 @@ sgs.ai_skill_playerchosen.sxcansi = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill.sxmingshi = function(self,inclusive,request)
+ai_fill_skill.sxmingshi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxmingshi","#sxmingshiCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxmingshiCard"] = function(card,use,self,request)
+ai_card_use["#sxmingshiCard"] = function(self, card, use, request)
 	if #self.enemies>0 then
 		use.card = card
 	end
@@ -1593,23 +1702,28 @@ end
 sgs.ai_use_value.sxmingshiCard = 3.4
 sgs.ai_use_priority.sxmingshiCard = 7.2
 
-sgs.ai_skill_choice.sxmingshi = function(self,choices,data)
+ai_skill_choice.sxmingshi = function(self, native_options, native_request)
+    local choices = native_options and native_options.choices ~= nil and table.concat(native_options.choices, "+") or native_options and (native_options.inquiry_scope == "ordinary_top_level" or native_options.inquiry_scope == "original_top_level") and "" or nil
+    local data = native_request and self:getDecisionData(native_request) or nil
+
 	local items = package_known(choices,"split","+")
 	if table.contains(items,"sxmingshi2") and package_known(self,"isWeak")
-	then return "sxmingshi2" end
+	then return ai_choice_result(("sxmingshi2"), native_options) end
 	if table.contains(items,"sxmingshi3") then
 		for _,p in sgs.list(self.enemies)do
 			if package_known(self,"isWeak",p) and package_known(self,"damageIsEffective",p) then
-				return "sxmingshi3"
+				return ai_choice_result(("sxmingshi3"), native_options)
 			end
 		end
 	end
 	if table.contains(items,"sxmingshi1") and package_known(self,"canDraw") and package_known(self,"getOverflow")<1
-	then return "sxmingshi1" end
-	if table.contains(items,"sxmingshi4") and peiqi(self,data)
-	then return "sxmingshi4" end
+	then return ai_choice_result(("sxmingshi1"), native_options) end
+	if table.contains(items,"sxmingshi4") and peiqi(self,self.request.options,self.request)
+	then return ai_choice_result(("sxmingshi4"), native_options) end
 	if table.contains(items,"sxmingshi1")
-	then return "sxmingshi1" end
+	then return ai_choice_result(("sxmingshi1"), native_options) end
+
+    return ai_choice_result(nil, native_options)
 end
 
 sgs.ai_skill_playerchosen.sxmingshi3 = function(self,players)
@@ -1663,7 +1777,7 @@ sgs.ai_skill_playerchosen.sxyizheng = function(self,players)
 end
 
 sgs.ai_skill_playerchosen["sxrangjie"] = function(self,players)
-	if peiqi(self) then
+	if peiqi(self,{},nil) then
 		for _,target in sgs.list(players)do
 			if target==peiqi_state(self).from
 			then return target end
@@ -1686,10 +1800,12 @@ sgs.ai_skill_cardchosen.sxrangjie = function(self,who,flags,method)
 	end
 end
 
-sgs.ai_fill_skill.sxzhitu = function(self,inclusive,request)
+ai_fill_skill.sxzhitu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do do
 		if table.contains(self.toUse,c) then goto package_continue_19 end
 		for _,a in sgs.list(cards)do do
@@ -1711,7 +1827,7 @@ end
 function sgs.ai_cardsview.sxzhitu(self,class_name,player)
 	local cards = package_known(player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do
 		for _,a in sgs.list(cards)do do
 			if AIValue.sameLegacyIdentity(c,a) then goto package_continue_21 end
@@ -1754,7 +1870,7 @@ sgs.ai_skill_askforyiji.sxtaoluan = function(self,card_ids,tos)
     if package_known(self,"isEnemy",package_known(tos,"last")) and getCardsNum("Jink",package_known(tos,"last"),self.player)>0 then
 		local cards = package_known(self.player,"getCards","he")
 		cards = sgs.QList2Table(cards)
-		self:sortByKeepValue(cards) -- 按保留值排序
+		self:sortByKeepValue(cards)
 		return package_known(tos,"last"),cards[1]:getId()
 	end
 end
@@ -1762,7 +1878,7 @@ end
 sgs.ai_skill_cardask["sxtaoluan0"] = function(self,data,pattern)
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	local tp = self.room:getCurrent()
    	if #cards>0 and package_known(self,"isEnemy",tp)
 	and getCardsNum("Jink",tp,self.player)>0
@@ -1789,9 +1905,10 @@ sgs.ai_skill_playerchosen._zc_xuanhuafu = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.zcjieji = function(self,data)
+ai_skill_invoke.zcjieji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return package_known(self,"doDisCard",to,"he",false) and package_known(self,"getCardsNum","Jink")>0
+	return (package_known(self,"doDisCard",to,"he",false) and package_known(self,"getCardsNum","Jink")>0) or false
 end
 
 ai_skill_use["@@zcruixi"]=function(self,prompt,request)
@@ -1810,14 +1927,17 @@ ai_skill_use["@@zcruixi"]=function(self,prompt,request)
 	end
 end
 
-sgs.ai_skill_invoke.zclianrong = function(self,data)
-	return package_known(self,"canDraw")
+ai_skill_invoke.zclianrong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (package_known(self,"canDraw")) or false
 end
 
-sgs.ai_fill_skill.zcbizun = function(self,inclusive,request)
+ai_fill_skill.zcbizun = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do do
 		if table.contains(self.toUse,c) or package_known(c,"getTypeId")~=3 then goto package_continue_22 end
 		local dc=turn(self,"zcbizun","slash",{c},request)
@@ -1852,11 +1972,13 @@ sgs.ai_skill_discard.zcdechong = function(self,x,n)
 	end
 end
 
-sgs.ai_fill_skill.zcyuanzhuo = function(self,inclusive,request)
+ai_fill_skill.zcyuanzhuo = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","zcyuanzhuo","#zcyuanzhuoCard",{},request)
 end
 
-sgs.ai_skill_use_func["#zcyuanzhuoCard"] = function(card,use,self,request)
+ai_card_use["#zcyuanzhuoCard"] = function(self, card, use, request)
 	local destlist = sgs.QList2Table(package_known(self.room,"getAlivePlayers")) -- 将列表转换为表
 	self:sort(destlist)
 	for _,p in sgs.list(destlist)do
@@ -1871,15 +1993,16 @@ end
 sgs.ai_use_value.zcyuanzhuoCard = 3.4
 sgs.ai_use_priority.zcyuanzhuoCard = 7.2
 
-sgs.ai_skill_invoke.zcyuanzhuo = function(self,data)
+ai_skill_invoke.zcyuanzhuo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local tp = data:toPlayer()
-	return not package_known(self,"isFriend",tp)
+	return (not package_known(self,"isFriend",tp)) or false
 end
 
 ai_skill_use["@@zcwuwei"]=function(self,prompt,request)
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	self:sort(self.friends_noself)
 	for _,h in sgs.list(cards)do
 		if package_known(h,"getTypeId")==3 then
@@ -1904,9 +2027,10 @@ sgs.ai_skill_playerchosen.zcleiruo = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.zcleiruo = function(self,data)
+ai_skill_invoke.zcleiruo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local tp = data:toPlayer()
-	return not package_known(self,"isFriend",tp)
+	return (not package_known(self,"isFriend",tp)) or false
 end
 
 sgs.ai_skill_playerschosen.zclijun = function(self,players,x)
@@ -1919,16 +2043,19 @@ sgs.ai_skill_playerschosen.zclijun = function(self,players,x)
 	return tps
 end
 
-sgs.ai_skill_invoke.zczhuying = function(self,data)
+ai_skill_invoke.zczhuying = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local tp = data:toPlayer()
-	return not package_known(self,"isFriend",tp)
+	return (not package_known(self,"isFriend",tp)) or false
 end
 
-sgs.ai_fill_skill.sxgongqiao = function(self,inclusive,request)
+ai_fill_skill.sxgongqiao = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxgongqiao","#sxgongqiaoCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxgongqiaoCard"] = function(card,use,self,request)
+ai_card_use["#sxgongqiaoCard"] = function(self, card, use, request)
 	local destlist = sgs.QList2Table(package_known(self.room,"getAlivePlayers")) -- 将列表转换为表
 	self:sort(destlist)
 	for _,p in sgs.list(destlist)do
@@ -1943,11 +2070,13 @@ end
 sgs.ai_use_value.sxgongqiaoCard = 3.4
 sgs.ai_use_priority.sxgongqiaoCard = 7.2
 
-sgs.ai_fill_skill.sxwanglu = function(self,inclusive,request)
+ai_fill_skill.sxwanglu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxwanglu","#sxwangluCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxwangluCard"] = function(card,use,self,request)
+ai_card_use["#sxwangluCard"] = function(self, card, use, request)
 	local destlist = sgs.QList2Table(package_known(self.room,"getAlivePlayers")) -- 将列表转换为表
 	self:sort(destlist)
 	for _,p in sgs.list(destlist)do
@@ -1962,8 +2091,9 @@ end
 sgs.ai_use_value.sxwangluCard = 3.4
 sgs.ai_use_priority.sxwangluCard = 7.2
 
-sgs.ai_skill_invoke.sxjinhui = function(self,data)
-	return true
+ai_skill_invoke.sxjinhui = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen.sxjinhui = function(self,players)
@@ -2077,8 +2207,9 @@ ai_skill_use["@@sxjianjie"]=function(self,prompt,request)
 	end
 end
 
-sgs.ai_skill_invoke.sxchenghao = function(self,data)
-	return true
+ai_skill_invoke.sxchenghao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen.sxchenghao = function(self,players)
@@ -2107,7 +2238,9 @@ sgs.ai_skill_discard.sxshejian = function(self,x,n)
 	return ids
 end
 
-sgs.ai_fill_skill.sxfuli = function(self,inclusive,request)
+ai_fill_skill.sxfuli = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	for i,h in sgs.qlist(package_known(self.player,"getHandcards"))do
 		if package_known(h,"isDamageCard") and package_known(self.player,"canDiscard",package_known(h,"getId")) and package_known(self,"aiUseCard",h).card
 		then return end
@@ -2115,7 +2248,7 @@ sgs.ai_fill_skill.sxfuli = function(self,inclusive,request)
 	return package_known(self,"evaluateTurnSkillCard","sxfuli","#sxfuliCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxfuliCard"] = function(card,use,self,request)
+ai_card_use["#sxfuliCard"] = function(self, card, use, request)
 	self:sort(self.friends_noself)
 	for _,p in sgs.list(self.friends_noself)do
 		if package_known(self,"isWeak",p) and package_known(p,"isWounded") then
@@ -2164,11 +2297,13 @@ ai_skill_use["@@sxdehua"]=function(self,prompt,request)
 	end
 end
 
-sgs.ai_fill_skill.sxzengou = function(self,inclusive,request)
+ai_fill_skill.sxzengou = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxzengou","#sxzengouCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxzengouCard"] = function(card,use,self,request)
+ai_card_use["#sxzengouCard"] = function(self, card, use, request)
 	for _,p in sgs.list(self:sort(package_known(self.room,"getAlivePlayers"), nil, true))do
 		if self.player~=p and package_known(p,"getHandcardNum")>2 then
 			use.to:append(p)
@@ -2258,40 +2393,48 @@ ai_skill_use["@@sxshuangrui"]=function(self,prompt,request)
 	end
 end
 
-sgs.ai_skill_invoke.sxkengqiang = function(self,data)
-	return package_known(self,"canDraw") or #self.enemies>0
+ai_skill_invoke.sxkengqiang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (package_known(self,"canDraw") or #self.enemies>0) or false
 end
 
-sgs.ai_skill_choice.sxkengqiang = function(self,choices,data)
+ai_skill_choice.sxkengqiang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = package_known(choices,"split","+")
 	local use = package_known(data,"toCardUse")
 	for _,p in sgs.list(use.to)do
 		if package_known(self,"isFriend",p) then
-			return items[1]
+			return ai_choice_result((items[1]), options)
 		end
 	end
 	if package_known(self,"isWeak") then
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	else
 		for _,p in sgs.list(use.to)do
 			if getCardsNum(sgs.aiResponse[package_known(use.card,"getClassName")],p,self.player)<1 then
-				return items[2]
+				return ai_choice_result((items[2]), options)
 			end
 		end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_invoke.sxshangjue = function(self,data)
-	return package_known(self,"getAllPeachNum")+package_known(self.player,"getHp")<1
+ai_skill_invoke.sxshangjue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (package_known(self,"getAllPeachNum")+package_known(self.player,"getHp")<1) or false
 end
 
-sgs.ai_skill_invoke.sxshangjue0 = function(self,data)
-	return #self.enemies/2>=#self.friends
+ai_skill_invoke.sxshangjue0 = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.enemies/2>=#self.friends) or false
 end
 
 sgs.ai_skill_playerchosen.sxjianying = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
-	if peiqi(self) then
+	if peiqi(self,{},nil) then
 		for _,p in sgs.list(destlist)do
 			if peiqi_state(self).from==p
 			then return p end
@@ -2314,17 +2457,20 @@ sgs.ai_skill_playerchosen.sxjianying1 = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.sxshibei = function(self,data)
-	return package_known(self,"getAllPeachNum")+package_known(self.player,"getHp")<1
+ai_skill_invoke.sxshibei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (package_known(self,"getAllPeachNum")+package_known(self.player,"getHp")<1) or false
 end
 
-sgs.ai_skill_invoke.sxtongli = function(self,data)
-	return true
+ai_skill_invoke.sxtongli = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.sxshezang = function(self,data)
+ai_skill_invoke.sxshezang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local f,c,t = self:moveField(self.player, "e", nil, {self.player})
-	return f and c and t
+	return (f and c and t) or false
 end
 
 sgs.ai_skill_playerchosen.sxshezang = function(self,players)
@@ -2344,18 +2490,22 @@ sgs.ai_skill_cardchosen.sxjianying = function(self,who,flags,method)
 	end
 end
 
-sgs.ai_fill_skill.sxyingmen = function(self,inclusive,request)
+ai_fill_skill.sxyingmen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return package_known(self,"evaluateTurnSkillCard","sxyingmen","#sxyingmenCard",{},request)
 end
 
-sgs.ai_skill_use_func["#sxyingmenCard"] = function(card,use,self,request)
+ai_card_use["#sxyingmenCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 sgs.ai_use_value.sxyingmenCard = 3.4
 sgs.ai_use_priority.sxyingmenCard = 7.2
 
-sgs.ai_fill_skill.sxpingjian = function(self,inclusive,request)
+ai_fill_skill.sxpingjian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cs = {}
 	local hs = self:sortByKeepValue(package_known(self.player,"getCards","h"))
 	for _,id in sgs.qlist(package_known(self.player,"getPile","sxfangke"))do

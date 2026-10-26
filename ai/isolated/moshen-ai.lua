@@ -1,5 +1,4 @@
--- Fixed moshen-ai.lua at b6025acc983331337614289d8cac79b078c003af.
--- Policy seeds carry no action authority; each selected action binds native costs.
+-- Source: b6025acc ai/moshen-ai.lua.
 
 local function action_request(self,request)
     -- Common callbacks receive an AILegacyRequest; direct Activate adapters may
@@ -25,12 +24,14 @@ sgs.ai_skill_playerchosen.ms_huangwei=function(self,targets)
     end
     if #ts>0 then self:sortInPlace(ts, "defense");return ts[1] end
 end
-sgs.ai_fill_skill.ms_mimou=function(self,inclusive,request)
+ai_fill_skill.ms_mimou=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if not self.player:getStrategyHasUsed("#ms_mimou") then
         return seed(self,"ms_mimou","#ms_mimou",request)
     end
 end
-sgs.ai_skill_use_func["#ms_mimou"]=function(card,use,self,request)
+ai_card_use["#ms_mimou"]=function(self, card, use, request)
     if #self.enemies<=0 and self.player:hasSkill("sy_canlue") then return nil end
     local cards=AIList.new(self.player:getHandcards())
     self:sortByKeepValueInPlace(cards)
@@ -60,26 +61,34 @@ sgs.ai_skill_use_func["#ms_mimou"]=function(card,use,self,request)
         if target then select_for(target,"isEnemy");return end
     end
 end
-sgs.ai_skill_choice.ms_mimou=function(self,choices,data)
+ai_skill_choice.ms_mimou=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local source=data:toPlayer()
     if not source:hasSkill("sy_canlue") then
-        if self:isFriend(source) then return "selfdraw3" end
+        if self:isFriend(source) then return ai_choice_result(("selfdraw3"), options) end
     end
     local chs=choices:split("+")
-    return chs[math.random(1,#chs)]
+    return ai_choice_result((chs[math.random(1,#chs)]), options)
 end
 sgs.ai_use_value.ms_mimou=6
 sgs.ai_use_priority.ms_mimou=0
-sgs.ai_skill_invoke.ms_shawei=function(self,data)
+ai_skill_invoke.ms_shawei=function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local use=data:toCardUse()
-    if use.from then return self:isEnemy(use.from) end
+    if use.from then return (self:isEnemy(use.from)) or false end
+    return false
+
 end
-sgs.ai_fill_skill.ms_yongheng=function(self,inclusive,request)
+ai_fill_skill.ms_yongheng=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if not self.player:getStrategyHasUsed("#ms_yonghengCard") then
         return seed(self,"ms_yongheng","#ms_yonghengCard",request)
     end
 end
-sgs.ai_skill_use_func["#ms_yonghengCard"]=function(card,use,self,request)
+ai_card_use["#ms_yonghengCard"]=function(self, card, use, request)
     -- Source updatePlayers must precede sorting and every role/target observation.
     self:updatePlayers()
     self:sortInPlace(self.friends, "hp")
@@ -95,8 +104,10 @@ end
 sgs.ai_use_priority.ms_yonghengCard=10
 sgs.ai_use_value.ms_yonghengCard=10
 sgs.ai_card_intention.ms_yonghengCard=-100
-sgs.ai_skill_invoke.ms_yuedong=true
-sgs.ai_fill_skill.ms_guimou=function(self,inclusive,request)
+ai_skill_invoke.ms_yuedong=true
+ai_fill_skill.ms_guimou=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:isKongcheng() then return nil end
     if self.player:getMark("@guimou")<=0 then return nil end
     local suits={}
@@ -108,7 +119,7 @@ sgs.ai_fill_skill.ms_guimou=function(self,inclusive,request)
     end
     if #suits>3 then return seed(self,"ms_guimou","#ms_guimou",request) end
 end
-sgs.ai_skill_use_func["#ms_guimou"]=function(card,use,self,request)
+ai_card_use["#ms_guimou"]=function(self, card, use, request)
     local cards=AIList.new(self.player:getCards("he"))
     self:sortByKeepValueInPlace(cards, false, true)
     local costs={};local spade,club,heart,diamond

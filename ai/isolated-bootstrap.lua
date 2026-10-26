@@ -10,6 +10,8 @@ ai_isolated_core = {
     "decision-core.lua",
     "retrial.lua",
     "strategy-hooks.lua",
+    "hook-defaults.lua",
+    "target-recommendation.lua",
     "speech.lua",
     "event-intention.lua",
     "smart-ai-functions.lua",
@@ -263,6 +265,9 @@ local uncovered_limit = 64
 
 function ai_coverage.notCovered(kind, reason, key)
     if type(kind) ~= "string" or type(reason) ~= "string" then return end
+    -- One current diagnostic survives a full bounded history. Never retain a
+    -- request, facade, card or target payload for native failure reporting.
+    ai_last_decision_failure = {reason = reason, key = type(key) == "string" and key or nil}
     if #uncovered >= uncovered_limit then
         uncovered_dropped = uncovered_dropped + 1
         return
@@ -351,6 +356,7 @@ end
 
 function ai_decide(request)
     ai_last_decision_outcome = "unhandled"
+    ai_last_decision_failure = nil
     if type(request) ~= "table" then
         return nil
     end

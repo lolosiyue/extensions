@@ -190,7 +190,9 @@ local function restore_targets(self,key)
 end
 
 --矫诏
-sgs.ai_fill_skill.jiaozhao = function(self,inclusive,request)
+ai_fill_skill.jiaozhao = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local id = self.player:getMark("jiaozhao_id-Clear")-1
 	if not self.player:isKongcheng()
 	and id<0
@@ -233,7 +235,7 @@ sgs.ai_fill_skill.jiaozhao = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.JiaozhaoCard = function(card,use,self,request)
+ai_card_use.JiaozhaoCard = function(self, card, use, request)
 	local cards = AIList.new(self.player:getCards("h"))
 	cards = self:sortByUseValue(cards,true)
 	use.card = source_card(self,"@JiaozhaoCard="..cards[1]:getEffectiveId(),request)
@@ -301,21 +303,24 @@ end
 sgs.ai_use_priority.JiaozhaoCard = 10
 
 --殚心
-sgs.ai_skill_invoke.danxin = function(self,data)
+ai_skill_invoke.danxin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local level = level(self,self.player)
 	if level>1 then
-		if not self:canDraw(self.player) then return false end
+		if not self:canDraw(self.player) then return (false) or false end
 	end
-	return true
+	return (true) or false
 end
 
-sgs.ai_skill_choice.danxin = function(self,choices)
-	if not skill(self,self.player,"jiaozhao") then return "draw" end
+ai_skill_choice.danxin = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	if not skill(self,self.player,"jiaozhao") then return ai_choice_result(("draw"), options) end
 	local items = choices:split("+")
-	if self:isWeak() and self.player:getHp()<2 and not self:canDraw(self.player) then return "up" end
-	if self:isWeak() and self.player:getHp()<2 then return "draw" end
-	if table.contains(items,"up") then return "up" end
-	return "draw"
+	if self:isWeak() and self.player:getHp()<2 and not self:canDraw(self.player) then return ai_choice_result(("up"), options) end
+	if self:isWeak() and self.player:getHp()<2 then return ai_choice_result(("draw"), options) end
+	if table.contains(items,"up") then return ai_choice_result(("up"), options) end
+	return ai_choice_result(("draw"), options)
 end
 
 sgs.ai_need_damaged.danxin = function(self,attacker,player)
@@ -325,27 +330,32 @@ sgs.ai_need_damaged.danxin = function(self,attacker,player)
 end
 
 --瑰藻
-sgs.ai_skill_invoke.guizao = function(self,data)
-	if self.player:getLostHp()<=0 and not self:canDraw(self.player) then return false end
-	return true
+ai_skill_invoke.guizao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:getLostHp()<=0 and not self:canDraw(self.player) then return (false) or false end
+	return (true) or false
 end
 
-sgs.ai_skill_choice.guizao = function(self,choices)
+ai_skill_choice.guizao = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"recover") and self.player:getLostHp()>0 and self:isWeak() then 
-		return "recover"
+		return ai_choice_result(("recover"), options)
 	end
 	if table.contains(items,"draw") and self:needBear() then 
-		return "draw"
+		return ai_choice_result(("draw"), options)
 	end
 	if table.contains(items,"recover") and self.player:getLostHp()>0 then 
-		return "recover"
+		return ai_choice_result(("recover"), options)
 	end
-	return "draw"
+	return ai_choice_result(("draw"), options)
 end
 
 --讥谀
-sgs.ai_fill_skill.jiyu = function(self,inclusive,request)
+ai_fill_skill.jiyu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	for _,card in ipairs(self.player:getHandcards())do
 		if card:isAvailable(self.player) then
 			return self:legacySkillSeed("jiyu","JiyuCard",request)
@@ -353,7 +363,7 @@ sgs.ai_fill_skill.jiyu = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.JiyuCard = function(card,use,self,request)
+ai_card_use.JiyuCard = function(self, card, use, request)
 	self:sortInPlace(self.friends, "handcard")
 	self.friends = reversed(self.friends)
 	self:sortInPlace(self.enemies, "handcard")
@@ -470,11 +480,13 @@ sgs.ai_card_intention.jiyu = function(self,card,from,tos)
 end
 
 --督粮
-sgs.ai_fill_skill.duliang = function(self,inclusive,request)
+ai_fill_skill.duliang = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("duliang","DuliangCard",request)
 end
 
-sgs.ai_skill_use_func.DuliangCard = function(card,use,self,request)
+ai_card_use.DuliangCard = function(self, card, use, request)
 	local friends,enemies,others = {},{},{}
 	for _,player in ipairs(self.room:getOtherPlayers(self.player))do		
 		if not player:isKongcheng() and self:isFriend(player) then
@@ -551,19 +563,21 @@ sgs.ai_skill_use_func.DuliangCard = function(card,use,self,request)
 	self:setStrategyMemory("yczh2016.duliang",target:objectName())
 end
 
-sgs.ai_skill_choice.duliang = function(self,choices)
+ai_skill_choice.duliang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local target = remembered_player(self,"duliang")
 	if target and self:isFriend(target) then
-		if self:hasManjuanEffect(target) or skill(self,target,"tuxi") or self:needKongcheng(target) then return "draw" end
-		if self:isWeak() or self:isWeak(target) then return "watch" end
+		if self:hasManjuanEffect(target) or skill(self,target,"tuxi") or self:needKongcheng(target) then return ai_choice_result(("draw"), options) end
+		if self:isWeak() or self:isWeak(target) then return ai_choice_result(("watch"), options) end
 	end
 	if target and not self:isFriend(target) then
-		if self:hasManjuanEffect(target) or skill(self,target,"tuxi") or self:needKongcheng(target) then return "watch" end
-		if skill(self,target,sgs.notActive_cardneed_skill) then return "draw" end
-		if skill(self,target,"nostuxi|biluan|shuangxiong|nosfuhun|mobileshuangxiong") then return "draw" end
-		if self:isWeak(target) then return "draw" end
+		if self:hasManjuanEffect(target) or skill(self,target,"tuxi") or self:needKongcheng(target) then return ai_choice_result(("watch"), options) end
+		if skill(self,target,sgs.notActive_cardneed_skill) then return ai_choice_result(("draw"), options) end
+		if skill(self,target,"nostuxi|biluan|shuangxiong|nosfuhun|mobileshuangxiong") then return ai_choice_result(("draw"), options) end
+		if self:isWeak(target) then return ai_choice_result(("draw"), options) end
 	end
-    return "draw"
+    return ai_choice_result(("draw"), options)
 end
 
 sgs.ai_use_priority.DuliangCard = 7
@@ -703,11 +717,13 @@ sgs.ai_skill_discard.huisheng = function(self,discard_num,min_num,optional,inclu
 end
 
 --匡弼
-sgs.ai_fill_skill.kuangbi = function(self,inclusive,request)
+ai_fill_skill.kuangbi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("kuangbi","KuangbiCard",request)
 end
 
-sgs.ai_skill_use_func.KuangbiCard = function(card,use,self,request)
+ai_card_use.KuangbiCard = function(self, card, use, request)
 	local friends,enemies,others = {},{},{}
 	for _,player in ipairs(self.room:getOtherPlayers(self.player))do		
 		if not player:isNude() and self:isFriend(player) and not self:hasManjuanEffect(player) then
@@ -859,11 +875,13 @@ end
 sgs.ai_use_priority.KuangbiCard = 7
 
 --极奢
-sgs.ai_fill_skill.jishe = function(self,inclusive,request)
+ai_fill_skill.jishe = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("jishe","JisheDrawCard",request)
 end
 
-sgs.ai_skill_use_func.JisheDrawCard = function(card,use,self,request)
+ai_card_use.JisheDrawCard = function(self, card, use, request)
 	if self.player:getHandcardNum()<self.player:getMaxCards() then use.card = policy_card(self,"jishe","JisheDrawCard",{},request) end
 	self:sortInPlace(self.enemies, "defense")
 	local num = 0
@@ -919,12 +937,14 @@ sgs.ai_use_priority.JisheDrawCard = 9
 sgs.ai_use_value.JisheDrawCard = 1
 
 --止戈
-sgs.ai_fill_skill.zhige = function(self,inclusive,request)
+ai_fill_skill.zhige = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getHandcardNum()<=self.player:getHp() then return end
 	return self:legacySkillSeed("zhige","ZhigeCard",request)
 end
 
-sgs.ai_skill_use_func.ZhigeCard = function(card,use,self,request)
+ai_card_use.ZhigeCard = function(self, card, use, request)
 	local targets = {}
 	local best_enemy = nil
 	for _,friend in ipairs(self.friends_noself)do
@@ -1017,9 +1037,7 @@ end
 sgs.ai_use_value.ZhigeCard = 2
 sgs.ai_use_priority.ZhigeCard = 9.2
 
------------------------------------
 -- 武将自身的选将策略
------------------------------------
 
 -- 岑昏：内奸推荐；忠臣在火焰体系主公下推荐
 sgs.ai_general_choice["cenhun"] = function(ai, lord, role)
@@ -1060,9 +1078,11 @@ ai_skill_use["@@jishe"]=function(self,prompt,request)
  return source_action(self,result,request)
 end
 
-sgs.ai_fill_skill.taoluan = function(self,inclusive,request)
+ai_fill_skill.taoluan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self:addHandPile("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	if #cards<2 then return end
 	self:sortInPlace(self.friends_noself, "card", true)
     for _,name in ipairs(known(AICardCatalog.patternNames(),"yczh2016.patterns"))do
@@ -1101,7 +1121,7 @@ sgs.ai_fill_skill.taoluan = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.TaoluanCard = function(card,use,self)
+ai_card_use.TaoluanCard = function(self, card, use, request)
 	use.card = card
 	use.to = restore_targets(self,"taoluan_targets")
 end
@@ -1125,7 +1145,7 @@ end
 
 sgs.ai_guhuo_card.taoluan = function(self,toname,class_name)
     local cards = self:addHandPile("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	if #cards>0 and self.player:getMark("taoluan_"..toname)<1
 	and self.player:getMark("TaoluanInvalid-Clear")<1
 	and (#self.friends_noself>0 or not self:isWeak())
@@ -1147,9 +1167,11 @@ sgs.ai_skill_cardask["@taoluan-give"] = function(self,data,pattern,prompt)
 end
 
 
-sgs.ai_fill_skill.tenyeartaoluan = function(self,inclusive,request)
+ai_fill_skill.tenyeartaoluan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self:addHandPile("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	local cid
 	for _,c in ipairs(cards)do
 		if self.player:getMark("tenyeartaoluan_"..c:getSuitString().."-Clear")<1
@@ -1200,7 +1222,7 @@ sgs.ai_fill_skill.tenyeartaoluan = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.TenyearTaoluanCard = function(card,use,self)
+ai_card_use.TenyearTaoluanCard = function(self, card, use, request)
 	use.card = card
 	use.to = restore_targets(self,"tenyeartaoluan_targets")
 end
@@ -1224,7 +1246,7 @@ end
 
 sgs.ai_guhuo_card.tenyeartaoluan = function(self,toname,class_name)
     local cards = self:addHandPile("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	local cid
 	for _,c in ipairs(cards)do
 		if self.player:getMark("tenyeartaoluan_"..c:getSuitString().."-Clear")<1

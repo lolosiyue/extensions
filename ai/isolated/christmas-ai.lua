@@ -1,11 +1,12 @@
--- Christmas AI at b6025acc. Source policy is preserved; its removed LuaSkillCard
--- serialization is explicitly repaired through the current RLiwa V2 authority.
+-- Source: b6025acc ai/christmas-ai.lua.
 local known = AIValue.requireKnown
 
-sgs.ai_skill_invoke.RLiwa = function(self)
-    return not (self.player:isKongcheng() and self:needKongcheng(self.player))
+ai_skill_invoke.RLiwa = function(self, options, request)
+    return (not (self.player:isKongcheng() and self:needKongcheng(self.player))) or false
 end
-sgs.ai_fill_skill.RLiwa = function(self, inclusive, request)
+ai_fill_skill.RLiwa = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getStrategyHasUsed("#RLiwaCard") then return end
     if type(self.getLijianCard) ~= "function" then ai_unsupported("Lijian cost policy is unavailable", "getLijianCard") end
     local cost = self:getLijianCard()
@@ -23,7 +24,7 @@ sgs.ai_fill_skill.RLiwa = function(self, inclusive, request)
         viewer=self.player:objectName()}, "christmas.RLiwa.serialization")
     return receipt
 end
-local function useRLiwa(card, use, self)
+local function useRLiwa(self, card, use, request)
     local friends = known(self.friends_noself, "friends_noself")
     if #friends == 0 then return false end
     local sorted = self:sort(friends, "threat")
@@ -37,8 +38,8 @@ local function useRLiwa(card, use, self)
     if target then use.card = card end
     if use.to and target then use.to:append(target) end
 end
-sgs.ai_skill_use_func["#RLiwaCard"] = useRLiwa
-sgs.ai_skill_use_func.RLiwa = useRLiwa -- native V2 dispatch identity
+ai_card_use["#RLiwaCard"] = useRLiwa
+ai_card_use.RLiwa = useRLiwa -- native V2 dispatch identity
 sgs.ai_use_value.RLiwaCard = 2.0
 sgs.ai_use_priority.RLiwaCard = 5.9
 -- Current V2 valuation dispatches on the exact activation skill name.

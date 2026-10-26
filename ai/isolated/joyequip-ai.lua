@@ -31,7 +31,7 @@ end
 --[[
     卡牌：屎（基本牌）
     效果：当此牌在你的回合内从你的手牌进入弃牌堆时，你将受到自己对自己的1点伤害（黑桃为流失1点体力），其中方块为无属性伤害、梅花为雷电伤害、红桃为火焰伤害。造成伤害的牌为此牌。在你的回合内，你可多次食用。
-]]--
+]]
 local function useShit_LoseHp(self,card,use)
     local lose = 1
     local hp = self.player:getHp()
@@ -257,15 +257,16 @@ sgs.ai_keep_value["Shit"] = 10
     卡牌：猴子（装备牌·坐骑牌）
     效果：1、当场上有其他角色使用【桃】时，你可以弃置【猴子】，阻止【桃】的结算并将其收为手牌；
         2、你计算与其他角色的距离时，始终-1
-]]--
-sgs.ai_skill_invoke.grab_peach = function(self,data)
+]]
+ai_skill_invoke.grab_peach = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local from = data:toCardUse().from
-    return self:isEnemy(from)
+    return (self:isEnemy(from)) or false
 end
 --[[
     卡牌：杨修剑
     技能：当你的【杀】造成伤害时，可以指定攻击范围内的一名其他角色为伤害来源，杨修剑归该角色所有
-]]--
+]]
 sgs.weapon_range.YxSword = 3
 --room->askForPlayerChosen(player,players,objectName(),"@yxsword-select",true,true)
 sgs.ai_skill_playerchosen["yx_sword"] = function(self,targets)
@@ -392,7 +393,7 @@ end
     卡牌：狂风甲
     技能：1、锁定技，每次受到火焰伤害时，该伤害+1；
         2、你可以将狂风甲装备和你距离为1以内的一名角色的装备区内
-]]--
+]]
 sgs.ai_card_intention.GaleShell = 80
 sgs.ai_use_priority.GaleShell = 0.9
 sgs.dynamic_value.control_card.GaleShell = true
@@ -400,6 +401,7 @@ sgs.ai_armor_value["gale_shell"] = function(player,self)
     return -10
 end
 function SmartAIView:useCardGaleShell(card,use)
+    local recommend = self:targetRecommendScorer(card)
     self:sort(self.enemies,"threat")
     local targets = {}
     for _,enemy in sgs.list(self.enemies)do
@@ -447,7 +449,7 @@ function SmartAIView:useCardGaleShell(card,use)
         end
         local values = {}
         for _,enemy in sgs.list(targets)do
-            values[enemy:objectName()] = getArmorUseValue(enemy)
+            values[enemy:objectName()] = recommend(enemy, getArmorUseValue(enemy)) or -math.huge
         end
         local compare_func = function(a,b)
             local valueA = values[a:objectName()] or 0
@@ -463,10 +465,11 @@ function SmartAIView:useCardGaleShell(card,use)
         end
     end
 end
+sgs.registerSkillCardType("GaleShell", "debuff")
 --[[
     卡牌：地震
     效果：将【地震】放置于你的判定区里，回合判定阶段进行判定：若判定结果为♣2~9之间，与当前角色距离为1以内的角色(无视+1马)弃置装备区里的所有牌，将【地震】置入弃牌堆。若判定结果不为♣2~9之间，将【地震】移动到当前角色下家的判定区里
-]]--
+]]
 function SmartAIView:useCardEarthquake(card,use)
     if self.player:containsTrick("earthquake") then return
     elseif self.player:isProhibited(self.player, card) then return
@@ -578,7 +581,7 @@ end
 --[[
     卡牌：台风
     效果：将【台风】放置于你的判定区里，回合判定阶段进行判定：若判定结果为♦2~9之间，与当前角色距离为1的角色弃置6张手牌，将【台风】置入弃牌堆。若判定结果不为♦2~9之间，将【台风】移动到当前角色下家的判定区里
-]]--
+]]
 function SmartAIView:useCardTyphoon(card,use)
     if self.player:containsTrick("typhoon") then return
     elseif self.player:isProhibited(self.player, card)
@@ -682,7 +685,7 @@ end
 --[[
     卡牌：火山
     效果：将【火山】放置于你的判定区里，回合判定阶段进行判定：若判定结果为♥2~9之间，当前角色受到2点火焰伤害，与当前角色距离为1的角色(无视+1马)受到1点火焰伤害，【火山】生效后即置入弃牌堆。若判定结果不为♥2~9之间，将【火山】移动到当前角色下家的判定区里
-]]--
+]]
 function SmartAIView:useCardVolcano(card,use)
     if self.player:containsTrick("volcano")  then return
     elseif self.player:isProhibited(self.player, card)  then return
@@ -785,7 +788,7 @@ end
 --[[
     卡牌：洪水
     效果：将【洪水】放置于你的判定区里，回合判定阶段进行判定：若判定结果为 A,K，从当前角色的牌随机取出和场上存活人数相等的数量置于桌前，从下家开始，每人选一张收为手牌，将【洪水】置入弃牌堆。若判定结果不为AK，将【洪水】移到当前角色下家的判定区里
-]]--
+]]
 function SmartAIView:useCardDeluge(card,use)
     if self.player:containsTrick("deluge") then return
     elseif self.player:isProhibited(self.player, card) then return
@@ -872,7 +875,7 @@ end
 --[[
     卡牌：泥石流
     效果：将【泥石流】放置于你的判定区里，回合判定阶段进行判定：若判定结果为黑桃或梅花A,K,4,7，从当前角色开始，每名角色依次按顺序弃置武器、防具、+1马、-1马，无装备者受到1点无属性伤害，当总共被弃置的装备达到4件或你上家结算完成时，【泥石流】停止结算并置入弃牌堆。若判定牌不为黑色AK47，将【泥石流】移动到下家的判定区里
-]]--
+]]
 function SmartAIView:useCardMudslide(card,use)
     if self.player:containsTrick("mudslide") then return
     elseif self.player:isProhibited(self.player, card) then return

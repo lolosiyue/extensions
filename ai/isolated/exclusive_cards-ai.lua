@@ -1,12 +1,14 @@
--- Pure counterparts of exclusive_cards-ai.lua. Native receipts authorize every
--- response action; pending strategies retain only names and ordered players.
+-- Exclusive card policies; pending selections retain only names and player order.
 local known = AIValue.requireKnown
-local function query(object, method, ...)
-    if type(object) ~= "table" or type(object[method]) ~= "function" then
-        ai_unsupported("exclusive card requires " .. method,"exclusive_cards")
-    end
-    return known(object[method](object,...),method)
-end
+local query = AIValue.bindQuery {
+    resolve = function(object, method)
+        if type(object) ~= "table" then ai_unsupported("exclusive card requires " .. method, "exclusive_cards") end
+        return method
+    end,
+    missing = function(method) ai_unsupported("exclusive card requires " .. method, "exclusive_cards") end,
+    known = known,
+}
+
 local function same_card(self,a,b)
     if a==b then return true end
     if not a or not b then return false end
@@ -25,9 +27,9 @@ sgs.weapon_range.Shuibojian=2
 sgs.weapon_range.Hunduwanbi=1
 sgs.weapon_range.Piliche=9
 sgs.weapon_range.SecondPiliche=9
-sgs.ai_skill_invoke._hongduanqiang=function()return true end
+ai_skill_invoke._hongduanqiang=function(self, options, request)return (true) or false end
 
-sgs.ai_skill_use["@@_liecuidao"]=function(self,prompt)
+ai_skill_use["@@_liecuidao"]=function(self, prompt, request)
     local name=prompt:split(":")[2]
     local to=self.room:findPlayerByObjectName(name)
     local cards=query(self,"sortByKeepValue",query(self.player,"getCards","he"))
@@ -38,7 +40,7 @@ sgs.ai_skill_use["@@_liecuidao"]=function(self,prompt)
     end
 end
 
-sgs.ai_skill_use["@@_shuibojian"]=function(self)
+ai_skill_use["@@_shuibojian"]=function(self, prompt, request)
     local targets=query(self,"sort",query(self.player,"getAliveSiblings"),"hp")
     local use=query(self,"getShuibojianUse")
     local owner_target=false
@@ -56,22 +58,29 @@ sgs.ai_skill_use["@@_shuibojian"]=function(self)
     end
 end
 
-sgs.ai_skill_invoke._hunduwanbi=function(self,data)
+ai_skill_invoke._hunduwanbi=function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target=self.room:findPlayerByObjectName(query(data,"toString"):split(":")[2])
-    if target then return not query(self,"isFriend",target) end
+    if target then return (not query(self,"isFriend",target)) or false end
+    return false
+
 end
 for _,name in ipairs({"_tianleiren","_piliche","_secondpiliche"}) do
-    sgs.ai_skill_invoke[name]=function(self,data)
+    ai_skill_invoke[name]=function(self, options, request)
+        local data = request and self:getDecisionData(request) or nil
         local target=data:toPlayer()
-        if target then return not query(self,"isFriend",target) end
+        if target then return (not query(self,"isFriend",target)) or false end
+        return false
+
     end
 end
-sgs.ai_skill_invoke._feilunzhanyu=function(self,data)return not query(self,"isFriend",data:toPlayer())end
-sgs.ai_skill_invoke._tiejixuanyu=function(self,data)
+ai_skill_invoke._feilunzhanyu=function(self, options, request)local data = request and self:getDecisionData(request) or nil; return (not query(self,"isFriend",data:toPlayer())) or false end
+ai_skill_invoke._tiejixuanyu=function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target=data:toPlayer()
-    return query(self,"isEnemy",target) and (query(target,"getHandcardNum")>1 or query(target,"hasEquip"))
+    return (query(self,"isEnemy",target) and (query(target,"getHandcardNum")>1 or query(target,"hasEquip"))) or false
 end
-sgs.ai_skill_invoke._sichengliangyu=function()return true end
+ai_skill_invoke._sichengliangyu=function(self, options, request)return (true) or false end
 sgs.ai_skill_discard._qiongshu=function(self,x,n)
     local hand=query(self,"sortByKeepValue",query(self.player,"getCards","he"))
     if type(sgs.getPlayerSkillList)~="function" then ai_unsupported("public player skill list unavailable","_qiongshu") end
@@ -87,13 +96,17 @@ sgs.ai_skill_discard._qiongshu=function(self,x,n)
     end
     return #selected>=n and selected or {}
 end
-sgs.ai_skill_invoke._qiongshu=function()return true end
-sgs.ai_skill_choice._xishu=function(self,choices)
+ai_skill_invoke._qiongshu=function(self, options, request)return (true) or false end
+ai_skill_choice._xishu=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
     local items=choices:split("+")
-    if table.contains(items,"judge") and query(self,"doDisCard",self.player,"j") then return "judge" end
-    if table.contains(items,"discard") then return "discard" end
+    if table.contains(items,"judge") and query(self,"doDisCard",self.player,"j") then return ai_choice_result(("judge"), options) end
+    if table.contains(items,"discard") then return ai_choice_result(("discard"), options) end
+
+    return ai_choice_result(nil, options)
 end
-sgs.ai_skill_invoke._bintieshuangji=function(self)return not query(self,"isWeak") and #self.enemies>0 end
+ai_skill_invoke._bintieshuangji=function(self, options, request)return (not query(self,"isWeak") and #self.enemies>0) or false end
 
 sgs.ai_use_revises._zhaogujing=function(self,card)
     local in_hand=false
@@ -138,7 +151,7 @@ sgs.ai_skill_cardask._zhaogujing0=function(self)
     end
     return "."
 end
-sgs.ai_skill_use["@@_zhaogujing"]=function(self)
+ai_skill_use["@@_zhaogujing"]=function(self, prompt, request)
     local saved,present=self:getStrategyMemory("exclusive.zhaogujing_use")
     if not present or type(saved)~="table" then ai_unsupported("Zhaogujing has no prior viewer plan","_zhaogujing") end
     local targets={}

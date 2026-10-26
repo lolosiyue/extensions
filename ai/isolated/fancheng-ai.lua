@@ -1,4 +1,4 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/fancheng-ai.lua.
 
 
 local function paid(self,skill,selector,request,old)
@@ -28,7 +28,9 @@ local function role(self,player)
     if value~=nil then return value end
     return self:useKnowledgeEstimate({value=self:getRoleEstimate(player),status="estimate",basis="fancheng.viewer_role_estimate_for_unrevealed_role",target=player:objectName()}, "fancheng.role")
 end
-sgs.ai_fill_skill.zhiyuan=function(self,inclusive,request)
+ai_fill_skill.zhiyuan=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards=sgs.QList2Table(cards)
 
@@ -52,7 +54,7 @@ sgs.ai_fill_skill.zhiyuan=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.ZhiyuanCard = function(card,use,self,request)
+ai_card_use.ZhiyuanCard = function(self, card, use, request)
 	if self.player:usedTimes("ZhiyuanCard")>1 then return end
 	self:sort(self.friends_noself, "handcard")
 	for _,friend in sgs.list(self.friends_noself)do
@@ -65,11 +67,13 @@ sgs.ai_skill_use_func.ZhiyuanCard = function(card,use,self,request)
 	end
 end
 
-sgs.ai_fill_skill.taichen_fight=function(self,inclusive,request)
+ai_fill_skill.taichen_fight=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("taichen_fight", "TaichenFightCard", request)
 end
 
-sgs.ai_skill_use_func.TaichenFightCard = function(card,use,self,request)
+ai_card_use.TaichenFightCard = function(self, card, use, request)
 	if self.player:usedTimes("TaichenFightCard")>0 then return end
 	local lord=self.room:getLord()
 	if lord and self.player:getHp()>=lord:getHp() then
@@ -78,7 +82,9 @@ sgs.ai_skill_use_func.TaichenFightCard = function(card,use,self,request)
 	end
 end
 
-sgs.ai_fill_skill.flood=function(self,inclusive,request)
+ai_fill_skill.flood=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards=self.player:getCards("h")
 	cards=sgs.QList2Table(cards)
 	self:sortByUseValue(cards, true)
@@ -93,7 +99,7 @@ sgs.ai_fill_skill.flood=function(self,inclusive,request)
 	return cost_seed(self,"flood","FloodCard",request,blacks)
 end
 
-sgs.ai_skill_use_func["FloodCard"]=function(card,use,self,request)
+ai_card_use["FloodCard"]=function(self, card, use, request)
 
 	local eqs=0
 
@@ -122,7 +128,7 @@ ai_skill_use["@@dujiang"] = function(self,prompt,request)
 	return answer(self,"dujiang","DujiangCard",{equips[1]:getKnownEffectiveId(),equips[2]:getKnownEffectiveId()},{},request)
 end
 
-sgs.ai_skill_invoke.xiansheng=function(self)
+ai_skill_invoke.xiansheng=function(self, options, request)
 	local players=self.room:getOtherPlayers(self.player)
 
 	local rebel=0
@@ -132,9 +138,9 @@ sgs.ai_skill_invoke.xiansheng=function(self)
 		end
 	end
 
-	if rebel*2+3>(#self.player:getEquips()*2+self.player:getHandcardNum()) then return true end
-	if self.player:getHp()==1 and self.player:getHandcardNum()<=1 then return true end
-	return false
+	if rebel*2+3>(#self.player:getEquips()*2+self.player:getHandcardNum()) then return (true) or false end
+	if self.player:getHp()==1 and self.player:getHandcardNum()<=1 then return (true) or false end
+	return (false) or false
 end
 
 ai_skill_use["@@smalltuxi"] = function(self,prompt,request)
@@ -155,6 +161,6 @@ end
 
 sgs.ai_card_intention.SmallTuxiCard = 80
 
-sgs.ai_skill_invoke.reselect = function(self)
-	return math.random(0,2)==0
+ai_skill_invoke.reselect = function(self, options, request)
+	return (math.random(0,2)==0) or false
 end

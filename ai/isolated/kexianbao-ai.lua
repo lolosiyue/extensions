@@ -1,6 +1,4 @@
--- 仙包隔離 AI。決策順序沿用 lua/ai/kexianbao-ai.lua。
--- 共用函式在 smart-ai-functions.lua；本檔只擴充技能名單與各技能 handler。
--- 快照沒有的旗標、拼點點數或忌雷回 unsupported，不把未知當成安全或敵人。
+-- Kexianbao package policies; shared queries are in smart-ai-functions.lua.
 
 sgs.append_skill_list("wizard_skill", "kexianhuiyan")
 sgs.append_skill_list("wizard_skill", "kejiexianhuiyan")
@@ -91,7 +89,8 @@ local function not_jilei(self, card, key)
     return not banned
 end
 
-ai_skill_invoke.xianchangetupo = function()
+ai_skill_invoke.xianchangetupo = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return false
 end
 
@@ -100,11 +99,15 @@ end
 rawset(ai_skill_choice, "kexianhuoqi", nil)
 rawset(ai_skill_invoke, "kexianhuoqi", nil)
 rawset(ai_skill_playerschosen, "kexianhuoqi", nil)
-sgs.ai_skill_invoke.kexianhuoqi = function(self, data)
-    return sgs.ai_skill_choice.kexianhuoqi(self, "recover+pindian+cancel", data) ~= "cancel"
+ai_skill_invoke.kexianhuoqi = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (ai_skill_choice.kexianhuoqi(self,{reason="kexianhuoqi",choices={"recover","pindian","cancel"},inquiry_scope="nested"},request) ~= "cancel") or false
 end
-sgs.ai_skill_choice.kexianhuoqi = function(self, choices, data)
-    if known(self:isWeak(), "kexianhuoqi") then return "recover" end
+ai_skill_choice.kexianhuoqi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+    if known(self:isWeak(), "kexianhuoqi") then return ai_choice_result(("recover"), options) end
     local players = AIList.new({})
     for _, pp in ipairs(known(self.room:getAllPlayers(), "kexianhuoqi.roster")) do
         -- The common adapter preserves owner exact capabilities and records
@@ -112,9 +115,9 @@ sgs.ai_skill_choice.kexianhuoqi = function(self, choices, data)
         if known(self:canPindian(pp), "kexianhuoqi.ready") then players:append(pp) end
     end
     if players:length() >= 2 and sgs.ai_skill_playerschosen.kexianhuoqi(self, players, 2, 2) ~= {} then
-        return "pindian"
+        return ai_choice_result(("pindian"), options)
     end
-    return "cancel"
+    return ai_choice_result(("cancel"), options)
 end
 sgs.ai_skill_playerschosen.kexianhuoqi = function(self, players, x, n)
     local destlist = sgs.QList2Table(players)
@@ -180,18 +183,23 @@ local function pindian_numbers(self, key)
     return from, to, pindian.from_number, pindian.to_number
 end
 
-ai_skill_invoke.kexianyuli = function()
+ai_skill_invoke.kexianyuli = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
 -- Full fixed source166-218; preserve callback evaluation and partial target order.
 rawset(ai_skill_invoke, "kejiexianhuoqi", nil)
-sgs.ai_skill_invoke.kejiexianhuoqi = function(self, data)
-	return sgs.ai_skill_choice.kejiexianhuoqi(self, "recover+pindian+cancel") ~= "cancel"
+ai_skill_invoke.kejiexianhuoqi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_choice.kejiexianhuoqi(self,{reason="kejiexianhuoqi",choices={"recover","pindian","cancel"},inquiry_scope="nested"},nil) ~= "cancel") or false
 end
 rawset(ai_skill_choice, "kejiexianhuoqi", nil)
-sgs.ai_skill_choice.kejiexianhuoqi = function(self, choices, data)
-	if known(self:isWeak(), "kejiexianhuoqi.weak") then return "recover" end
+ai_skill_choice.kejiexianhuoqi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	if known(self:isWeak(), "kejiexianhuoqi.weak") then return ai_choice_result(("recover"), options) end
 	local players = AIList.new({})
 	for _, pp in ipairs(known(self.room:getAllPlayers(), "kejiexianhuoqi.roster")) do
 		if known(self:canPindian(pp), "kejiexianhuoqi.ready") then
@@ -199,9 +207,9 @@ sgs.ai_skill_choice.kejiexianhuoqi = function(self, choices, data)
 		end
 	end
 	if players:length() >= 2 and sgs.ai_skill_playerschosen.kejiexianhuoqi(self, players, 2, 2) ~= {} then
-		return "pindian"
+		return ai_choice_result(("pindian"), options)
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 rawset(ai_skill_playerschosen, "kejiexianhuoqi", nil)
 sgs.ai_skill_playerschosen.kejiexianhuoqi = function(self, players, x, n)
@@ -231,16 +239,19 @@ sgs.ai_skill_playerschosen.kejiexianhuoqi = function(self, players, x, n)
 end
 
 rawset(ai_skill_choice,"jienhlxloser",nil)
-sgs.ai_skill_choice.jienhlxloser = function(self, choices, data)
+ai_skill_choice.jienhlxloser = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local pindian = data:toPindian()
 	if pindian.to and pindian.from then
 		if self:isFriend(pindian.to) and self:needToLoseHp(pindian.to, pindian.from, nil) then
-			return "damage"
+			return ai_choice_result(("damage"), options)
 		elseif self:isEnemy(pindian.to) and not self:needToLoseHp(pindian.to, pindian.from, nil) then
-			return "damage"
+			return ai_choice_result(("damage"), options)
 		end
 	end
-	return "qipai"
+	return ai_choice_result(("qipai"), options)
 end
 
 
@@ -253,7 +264,9 @@ local function chanxin_slash_available(self)
     return value
 end
 rawset(ai_skill_activate,"kexianchanxin",nil)
-sgs.ai_fill_skill.kexianchanxin = function(self,inclusive,request)
+ai_fill_skill.kexianchanxin = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self.player:hasUsed("#kexianchanxinCard"))
 		or (chanxin_slash_available(self)) then
 		return
@@ -276,7 +289,7 @@ sgs.ai_fill_skill.kexianchanxin = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#kexianchanxinCard"] = function(card, use, self)
+ai_card_use["#kexianchanxinCard"] = function(self, card, use, request)
 	if not (self.player:hasUsed("#kexianchanxinCard")) then
 		use.card = card
 		return
@@ -288,11 +301,13 @@ function sgs.ai_cardneed.kexianchanxin(to, card, self)
 	return true
 end
 
-ai_skill_invoke.xianhuiyanfadong = function()
+ai_skill_invoke.xianhuiyanfadong = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
-ai_skill_invoke.kejiexianhuiyan = function()
+ai_skill_invoke.kejiexianhuiyan = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
@@ -300,14 +315,15 @@ end
 
 rawset(ai_skill_invoke,"kexianguiyi",nil)
 rawset(ai_skill_playerchosen,"kexianguiyi",nil)
-sgs.ai_skill_invoke.kexianguiyi = function(self, data)
+ai_skill_invoke.kexianguiyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local players = AIList.new({})
 	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 		if known(self:canPindian(self.player,p),"kexianguiyi.canPindian") then
 			players:append(p)
 		end
 	end
-	return sgs.ai_skill_playerchosen.kexianguiyi(self, players) ~= nil
+	return (sgs.ai_skill_playerchosen.kexianguiyi(self, players) ~= nil) or false
 end
 sgs.ai_skill_playerchosen.kexianguiyi = function(self, targets)
 	targets = sgs.QList2Table(targets)
@@ -341,7 +357,6 @@ sgs.ai_skill_playerchosen.kexianguiyi = function(self, targets)
 	return nil
 end
 local function chanxin_wansha(self)
-    -- Own tag holds the granted skill name; QVariant::toBool reads absent as false.
     local value=self.player:getTag("JilveWansha")
     if value==nil then return false end
     if type(value)=="boolean" then return value end
@@ -349,10 +364,12 @@ local function chanxin_wansha(self)
     return value~="" and value~="0" and value:lower()~="false"
 end
 rawset(ai_skill_activate,"kejiexianchanxin",nil)
-sgs.ai_fill_skill.kejiexianchanxin=function(self,inclusive,request)
+ai_fill_skill.kejiexianchanxin=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:evaluateTurnSkillCard("kejiexianchanxin","#kejiexianchanxinCard",{},request)
 end
-sgs.ai_skill_use_func["#kejiexianchanxinCard"] = function(card, use, self)
+ai_card_use["#kejiexianchanxinCard"] = function(self, card, use, request)
 	local unpreferedCards = {}
 	local cards = sgs.QList2Table(self.player:getHandcards())
 
@@ -485,36 +502,43 @@ end
 
 rawset(ai_skill_invoke,"kejiexianguiyi",nil)
 rawset(ai_skill_choice,"kejiexianguiyi",nil)
-sgs.ai_skill_invoke.kejiexianguiyi = function(self, data)
+ai_skill_invoke.kejiexianguiyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target and self:isFriend(target) then return false end
-	return true
+	if target and self:isFriend(target) then return (false) or false end
+	return (true) or false
 end
 
-sgs.ai_skill_choice.kejiexianguiyi = function(self, choices, data)
+ai_skill_choice.kejiexianguiyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local target = data:toPlayer()
-	if target and self:isFriend(target) then return "have" end
+	if target and self:isFriend(target) then return ai_choice_result(("have"), options) end
 	local flag = string.format("%s_%s_%s", "visible", self.player:objectName(), target:objectName())
 	for _, card in sgs.qlist(known(target:getKnownCards(),"kejiexianguiyi.known_hand")) do
 		if known(card:hasFlag("visible"),"kejiexianguiyi.visibility") or known(card:hasFlag(flag),"kejiexianguiyi.visibility") then
 			if card:isDamageCard() then
-				return "have"
+				return ai_choice_result(("have"), options)
 			end
 		end
 	end
-	return "nothave"
+	return ai_choice_result(("nothave"), options)
 end
 
 
 
 
 
-ai_skill_invoke.kexianlunhui = function()
+ai_skill_invoke.kexianlunhui = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
 rawset(ai_skill_activate,"kexianfenshen",nil)
-sgs.ai_fill_skill.kexianfenshen = function(self,inclusive,request)
+ai_fill_skill.kexianfenshen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self.player:hasUsed("#kexianfenshenCard")) or (self.player:getMark("&xianzuociji") == 0) then return end
 	local card_id
 	local cards = self.player:getHandcards()
@@ -532,7 +556,7 @@ sgs.ai_fill_skill.kexianfenshen = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#kexianfenshenCard"] = function(card, use, self)
+ai_card_use["#kexianfenshenCard"] = function(self, card, use, request)
 	if (self.player:getMark("&xianzuociji") > 0) and not (self.player:hasUsed("#kexianfenshenCard")) then
 		use.card = card
 		return
@@ -545,12 +569,16 @@ sgs.ai_card_intention.kexianfenshenCard = -80
 
 -- kexianfeijian category registered once at module entry.
 
-ai_skill_invoke.kejiexianlunhui = function(self, data)
+ai_skill_invoke.kejiexianlunhui = function(self, options, request)
+	if options and options.inquiry_scope == "original_internal" then return nil end
+	local data = options
 	return true
 end
 
 rawset(ai_skill_activate,"kejiexianfenshen",nil)
-sgs.ai_fill_skill.kejiexianfenshen = function(self,inclusive,request)
+ai_fill_skill.kejiexianfenshen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self.player:hasUsed("#kejiexianfenshenCard"))
 		or (self.player:getMark("&kexianfenshen") >= 3)
 		or (self.player:getMark("&jiexianzuociji") == 0) then
@@ -572,7 +600,7 @@ sgs.ai_fill_skill.kejiexianfenshen = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#kejiexianfenshenCard"] = function(card, use, self)
+ai_card_use["#kejiexianfenshenCard"] = function(self, card, use, request)
 	if (self.player:getMark("&kexianfenshen") < 3) and (self.player:getMark("&jiexianzuociji") > 0) and not (self.player:hasUsed("#kejiexianfenshenCard")) then
 		use.card = card
 		return
@@ -588,7 +616,8 @@ sgs.ai_use_value.kejiexianfenshenCard = 8.5
 sgs.ai_use_priority.kejiexianfenshenCard = 9.5
 sgs.ai_card_intention.kejiexianfenshenCard = -80
 
-ai_skill_invoke.kejiexianfeijian = function()
+ai_skill_invoke.kejiexianfeijian = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
@@ -606,33 +635,37 @@ local function mabi_he_count(target)
     return known(target:getCardCount(),"mabi.he_count")
 end
 rawset(ai_skill_invoke,"kexianmabi",nil)
-sgs.ai_skill_invoke.kexianmabi = function(self, data)
+ai_skill_invoke.kexianmabi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local target = damage.to
-	if known(target:getStrategyMark("&kexianmabimopai"),"kexianmabi.mark") > 0 then return false end
+	if known(target:getStrategyMark("&kexianmabimopai"),"kexianmabi.mark") > 0 then return (false) or false end
 	if self:isFriend(target)
 	then
 		if self:needToLoseHp(target, self.player, damage.card) then
-			return false
+			return (false) or false
 		elseif target:isChained() and self:isGoodChainTarget(target, damage.card) then
-			return false
+			return (false) or false
 		elseif self:isWeak(target) or damage.damage > 1 then
-			return true
+			return (true) or false
 		elseif target:getLostHp() < 1 then
-			return false
+			return (false) or false
 		end
-		return true
+		return (true) or false
 	else
-		if self:isWeak(target) then return false end
-		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return false end
-		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return false end
-		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return true end
-		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return false end
-		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return true end
-		return false
+		if self:isWeak(target) then return (false) or false end
+		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return (false) or false end
+		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return (false) or false end
+		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return (true) or false end
+		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return (false) or false end
+		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return (true) or false end
+		return (false) or false
 	end
+	return false
+
 end
-ai_skill_invoke.kexianxiuzhen = function(self)
+ai_skill_invoke.kexianxiuzhen = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local damage = self:getDecisionContext().damage
     local target = type(damage) == "table" and damage.from or nil
     if target and relation_friend(self, target, "kexianxiuzhen") and known(self:isWeak(target), "kexianxiuzhen") then
@@ -650,35 +683,39 @@ sgs.ai_can_damagehp.kexianxiuzhen = function(self, from, card, to)
 end
 
 rawset(ai_skill_invoke,"kejiexianmabi",nil)
-sgs.ai_skill_invoke.kejiexianmabi = function(self, data)
+ai_skill_invoke.kejiexianmabi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local target = damage.to
-	if known(target:getStrategyMark("&kejiexianmabimp"),"kejiexianmabi.mark") > 0 then return false end
-	if known(target:getStrategyMark("&kejiexianmabicp"),"kejiexianmabi.mark") > 0 then return false end
+	if known(target:getStrategyMark("&kejiexianmabimp"),"kejiexianmabi.mark") > 0 then return (false) or false end
+	if known(target:getStrategyMark("&kejiexianmabicp"),"kejiexianmabi.mark") > 0 then return (false) or false end
 	if self:isFriend(target)
 	then
 		if self:needToLoseHp(target, self.player, damage.card) then
-			return false
+			return (false) or false
 		elseif target:isChained() and self:isGoodChainTarget(target, damage.card) then
-			return false
+			return (false) or false
 		elseif self:isWeak(target) or damage.damage > 1 then
-			return true
+			return (true) or false
 		elseif target:getLostHp() < 1 then
-			return false
+			return (false) or false
 		end
-		return true
+		return (true) or false
 	else
-		if self:isWeak(target) then return false end
-		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return false end
-		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return false end
-		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return true end
-		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return false end
-		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return true end
-		return false
+		if self:isWeak(target) then return (false) or false end
+		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return (false) or false end
+		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return (false) or false end
+		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return (true) or false end
+		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return (false) or false end
+		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return (true) or false end
+		return (false) or false
 	end
+	return false
+
 end
 
-ai_skill_invoke.kejiexianxiuzhenpd = function()
+ai_skill_invoke.kejiexianxiuzhenpd = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
@@ -739,10 +776,12 @@ sgs.ai_can_damagehp.kejiexianxiuzhen = function(self, from, card, to)
 end
 
 rawset(ai_skill_choice,"kejiexianxiuzhen",nil)
-sgs.ai_skill_choice.kejiexianxiuzhen = function(self, choices)
-	if self.room:getLord() and known(self.player:isYourFriend(self.room:getLord()),"kejiexianxiuzhen.public_role_relation") then return self.room:getLord():getKingdom() end
+ai_skill_choice.kejiexianxiuzhen = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	if self.room:getLord() and known(self.player:isYourFriend(self.room:getLord()),"kejiexianxiuzhen.public_role_relation") then return ai_choice_result((self.room:getLord():getKingdom()), options) end
 	choices = choices:split(":")
-	return choices[math.random(1, #choices)]
+	return ai_choice_result((choices[math.random(1, #choices)]), options)
 end
 
 
@@ -782,7 +821,8 @@ sgs.ai_skill_playerchosen.kexianhanyan = function(self, targets)
 end
 
 
-ai_skill_invoke.kexianxiaocai = function()
+ai_skill_invoke.kexianxiaocai = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
@@ -828,29 +868,30 @@ sgs.ai_skill_cardchosen.kejiexianliwei=function(self,who,flags)
 end
 
 rawset(ai_skill_invoke,"kejiexianaoce",nil)
-sgs.ai_skill_invoke.kejiexianaoce = function(self, data)
+ai_skill_invoke.kejiexianaoce = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toCardUse().from
-	if not target then return false end
-	if self:isFriend(target) then return false end
+	if not target then return (false) or false end
+	if self:isFriend(target) then return (false) or false end
 	if self.player:getHp() > 1 and not self:canHit(self.player, target)
 		and not (target:hasWeapon("double_sword") and self.player:getGender() ~= target:getGender())
 	then
-		return true
+		return (true) or false
 	end
 	if getCardsNum("Slash", target, self.player) < 1
 		or self:needLeiji(self.player, target)
 		or self:needToLoseHp(self.player, target, dummyCard())
 	then
-		return true
+		return (true) or false
 	end
-	if self:getOverflow() and self:getCardsNum("Jink") > 1 then return true end
+	if self:getOverflow() and self:getCardsNum("Jink") > 1 then return (true) or false end
 
 	for _, c in sgs.qlist(self.player:getCards("h")) do
 		if c:isKindOf("Jink") then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 
@@ -875,9 +916,10 @@ rawset(ai_skill_playerchosen,"kexianbenxi",nil)
 rawset(ai_skill_invoke,"kejiexianjibian",nil)
 rawset(ai_skill_playerchosen,"kejiexianjibian",nil)
 rawset(ai_skill_choice,"kejiexianjibian",nil)
-sgs.ai_skill_invoke.kexianbenxi = function(self, data)
-	if self.player:isSkipped(sgs.Player_Play) then return false end
-	if self:needBear() then return false end
+ai_skill_invoke.kexianbenxi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:isSkipped(sgs.Player_Play) then return (false) or false end
+	if self:needBear() then return (false) or false end
 	local cards = self.player:getHandcards()
 	cards = sgs.QList2Table(cards)
 	local slashtarget = 0
@@ -894,9 +936,9 @@ sgs.ai_skill_invoke.kexianbenxi = function(self, data)
 		end
 	end
 	if (slashtarget) > 0 then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_skill_playerchosen.kexianbenxi = function(self, targets)
 	self:sort(self.enemies, "handcard")
@@ -965,24 +1007,28 @@ sgs.kexianbenxi_keep_value = {
 }
 
 sgs.ai_cardneed.kejiexianjibian = sgs.ai_cardneed.slash
-sgs.ai_skill_invoke.kejiexianjibian = function(self, data)
-	return true
+ai_skill_invoke.kejiexianjibian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_choice.kejiexianjibian = function(self, choices, data)
+ai_skill_choice.kejiexianjibian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-	if table.contains(items, "benxione") then return "benxione" end
+	if table.contains(items, "benxione") then return ai_choice_result(("benxione"), options) end
 	if table.contains(items, "benxitwo") then
 		if sgs.ai_skill_playerchosen.kejiexianjibian(self, self.room:getOtherPlayers(self.player)) ~= nil then
-			return "benxitwo"
+			return ai_choice_result(("benxitwo"), options)
 		end
 	end
 	if table.contains(items, "benxithree") then
-		if sgs.ai_skill_invoke.kexianbenxi(self, nil --[[source empty QVariant unused by kexianbenxi body]]) then
-			return "benxithree"
+		if ai_skill_invoke.kexianbenxi(self, {}, nil) then
+			return ai_choice_result(("benxithree"), options)
 		end
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 sgs.ai_skill_playerchosen.kejiexianjibian = function(self, targets)
@@ -1003,12 +1049,15 @@ sgs.ai_ajustdamage_from.kejiexianjibian = function(self, from, to, card, nature)
 end
 
 
-ai_skill_invoke.kexianwuqin = function()
+ai_skill_invoke.kexianwuqin = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
 rawset(ai_skill_activate,"kexianjishi",nil)
-sgs.ai_fill_skill.kexianjishi = function(self,inclusive,request)
+ai_fill_skill.kexianjishi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getMark("@xianjishi") == 0 then return end
 	local deathplayer = {}
 	for _, p in sgs.qlist(self.room:getPlayers()) do
@@ -1037,7 +1086,7 @@ sgs.ai_fill_skill.kexianjishi = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#kexianjishiCard"] = function(card, use, self)
+ai_card_use["#kexianjishiCard"] = function(self, card, use, request)
 	local cards = self.player:getHandcards()
 	cards = sgs.QList2Table(cards)
 	self:sortByUseValue(cards, true)
@@ -1160,7 +1209,7 @@ local function kexiantianbian_policy(self, prompt)
 	return "."
 end
 rawset(ai_skill_use,"@kexiantianbian",nil)
-sgs.ai_skill_use["@kexiantianbian"] = function(self,prompt)
+ai_skill_use["@kexiantianbian"] = function(self, prompt, request)
     return tianbian_selected(self,"kexiantianbian",kexiantianbian_policy(self,prompt))
 end
 
@@ -1266,7 +1315,7 @@ local function kejiexiantianbian_policy(self, prompt)
 	return "."
 end
 rawset(ai_skill_use,"@kejiexiantianbian",nil)
-sgs.ai_skill_use["@kejiexiantianbian"] = function(self,prompt)
+ai_skill_use["@kejiexiantianbian"] = function(self, prompt, request)
     return tianbian_selected(self,"kejiexiantianbian",kejiexiantianbian_policy(self,prompt))
 end
 

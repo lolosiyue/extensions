@@ -1,13 +1,10 @@
--- Fixed donor: fire-ai.lua at b6025acc983331337614289d8cac79b078c003af.
--- Fire callback branches use pure views and native-issued conversion/action receipts.
--- Private-derived global priorities stay viewer-local with estimate provenance.
+-- Source: b6025acc ai/fire-ai.lua.
 local known = AIValue.requireKnown
-local function query(object, method, ...)
-    if not object or type(object[method]) ~= "function" then
-        ai_unsupported("fire strategy requires " .. method, "fire")
-    end
-    return known(object[method](object, ...), method)
-end
+local query = AIValue.bindQuery {
+    missing = function(method) ai_unsupported("fire strategy requires " .. method, "fire") end,
+    known = known,
+}
+
 local function dummy_use()
     local use = AIUsePlan.new()
     use.isDummy = true
@@ -23,7 +20,9 @@ local function convert(self, skill, class_name, name, material, request)
     return query(self,"bindTurnConversion",skill,class_name,spec,request)
 end
 
-sgs.ai_fill_skill.lianhuan = function(self, inclusive, request)
+ai_fill_skill.lianhuan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = query(self,"addHandPile")
     cards = query(self,"sortByUseValue",cards,true)
     local chosen
@@ -80,13 +79,16 @@ sgs.ai_armor_value.bazhen = function(player,self,card) if not card then return 4
 sgs.kanpo_suit_value = {spade=3.9,club=3.9}
 sgs.ai_suit_priority.lianhuan = "club|diamond|heart|spade"
 sgs.ai_suit_priority.kanpo = "diamond|heart|club|spade"
-sgs.ai_skill_invoke.niepan = function(self,data)
+ai_skill_invoke.niepan = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local dying = query(data,"toDying")
     local hp = query(known(dying.who,"dying player"),"getHp")
-    return query(self,"getCardsNum","Peach") + query(self,"getCardsNum","Analeptic") < 1-hp
+    return (query(self,"getCardsNum","Peach") + query(self,"getCardsNum","Analeptic") < 1-hp) or false
 end
 
-sgs.ai_fill_skill.huoji = function(self,inclusive,request)
+ai_fill_skill.huoji = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = query(self,"sortByUseValue",query(self,"addHandPile"),true)
     local selected
     for _, card in ipairs(cards) do
@@ -177,18 +179,24 @@ local function response_skill(self,skill,class,costs,targets)
     end
     return use:toAnswer()
 end
-sgs.ai_fill_skill.quhu=function(self,inclusive,request)
+ai_fill_skill.quhu=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if query(self,"needBear") then return end
     local max_card=known(self:getMaxCard(),"Quhu maximum card")
     return skill_card(self,"quhu","QuhuCard",{},request,{query(max_card,"getEffectiveId")})
 end
-sgs.ai_fill_skill.qiangxi=function(self,inclusive,request) return skill_card(self,"qiangxi","QiangxiCard",{},request) end
-sgs.ai_fill_skill.tianyi=function(self,inclusive,request)
+ai_fill_skill.qiangxi=function(self, options, request)
+    local inclusive = options and options.inclusive
+ return skill_card(self,"qiangxi","QiangxiCard",{},request) end
+ai_fill_skill.tianyi=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if query(self,"needBear") then return end
     return skill_card(self,"tianyi","TianyiCard",{},request)
 end
 
-sgs.ai_skill_use_func.QuhuCard = function(card,use,self,request)
+ai_card_use.QuhuCard = function(self, card, use, request)
 	local max_card = self:getMaxCard()
 	local max_point = query(max_card,"getNumber")
 
@@ -342,7 +350,7 @@ end
 table.insert(sgs.drawSkillsList, "jieming")
 
 
-sgs.ai_skill_use_func.QiangxiCard = function(card,use,self,request)
+ai_card_use.QiangxiCard = function(self, card, use, request)
 	local weapon = self.player:getWeapon()
 	if weapon then
 		local hand_weapon,cards
@@ -401,7 +409,7 @@ sgs.qiangxi_keep_value = {
 
 
 
-sgs.ai_skill_use_func.TianyiCard = function(card,use,self,request)
+ai_card_use.TianyiCard = function(self, card, use, request)
 	self:sortInPlace(self.enemies, "handcard")
 	local cards = AIList.new({})
 	local peach = 0
@@ -583,7 +591,9 @@ sgs.ai_use_value.TianyiCard = 8.5
 
 
 
-sgs.ai_fill_skill.luanji = function(self,inclusive,request)
+ai_fill_skill.luanji = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local first_found,second_found = false,false
 	local first_card,second_card
 	if query(self.player,"getHandcardNum")>=2
@@ -642,24 +652,27 @@ end
 
 
 
-sgs.ai_skill_invoke.shuangxiong=function(self,data)
-	if query(self,"needBear") then return false end
+ai_skill_invoke.shuangxiong=function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if query(self,"needBear") then return (false) or false end
 	if query(self.player,"isSkipped",sgs.Player_Play) or (query(self.player,"getHp")<2 and not (query(self,"getCardsNum","Slash")>1 and query(self.player,"getHandcardNum")>=3)) or #self.enemies==0 then
-		return false
+		return (false) or false
 	end
 	local duel = query(self,"getEvaluationCard","duel")
 
 	local dummy_use = dummy_use()
 	self:useTrickCard(duel,dummy_use)
 
-	return query(self.player,"getHandcardNum")>=3 and dummy_use.card
+	return (query(self.player,"getHandcardNum")>=3 and dummy_use.card) or false
 end
 
 sgs.ai_cardneed.shuangxiong=function(to,card,self)
 	return not query(self,"willSkipDrawPhase",to)
 end
 
-sgs.ai_fill_skill.shuangxiong=function(self,inclusive,request)
+ai_fill_skill.shuangxiong=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	-- All modes use the same accumulated judgment colors.
 	local colors = query(self.player,"getShuangxiongColors")
 
@@ -688,17 +701,18 @@ end
 
 
 
-sgs.ai_skill_invoke.mengjin = function(self,data)
+ai_skill_invoke.mengjin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = query(data,"toCardEffect")
 	if query(self,"isEnemy",effect.to) then
 		if query(self,"doDisCard",effect.to) then
-			return true
+			return (true) or false
 		end
 	end
 	if query(self,"isFriend",effect.to) then
-		return query(self,"needToThrowArmor",effect.to) or query(self,"doDisCard",effect.to)
+		return (query(self,"needToThrowArmor",effect.to) or query(self,"doDisCard",effect.to)) or false
 	end
-	return not query(self,"isFriend",effect.to)
+	return (not query(self,"isFriend",effect.to)) or false
 end
 
 sgs.ai_suit_priority.lianhuan= "club|diamond|heart|spade"
@@ -706,7 +720,8 @@ sgs.ai_suit_priority.kanpo= "diamond|heart|club|spade"
 
 
 
-sgs.ai_skill_invoke.qinyin = function(self,data)
+ai_skill_invoke.qinyin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	self:sortInPlace(self.friends, "hp")
 	self:sortInPlace(self.enemies, "hp")
 	local up = 0
@@ -752,22 +767,24 @@ sgs.ai_skill_invoke.qinyin = function(self,data)
 
 	if down>0 then
 		query(self,"setStrategyMemory","fire.qinyin_choice","down")
-		return true
+		return (true) or false
 	elseif up>0 then
 		query(self,"setStrategyMemory","fire.qinyin_choice","up")
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 
-sgs.ai_skill_choice.qinyin=function(self)
+ai_skill_choice.qinyin=function(self, options, request)
     local choice,present=self:getStrategyMemory("fire.qinyin_choice")
     if not present then ai_unsupported("Qinyin choice has no prior invocation","qinyin") end
-    return choice
+    return ai_choice_result((choice), options)
 end
 
-sgs.ai_fill_skill.yeyan=function(self,inclusive,request)
+ai_fill_skill.yeyan=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if query(self.player,"getHandcardNum")>=4 then
 		local spade,club,heart,diamond
 		for _,card in ipairs(query(self.player,"getHandcards"))do
@@ -820,7 +837,7 @@ sgs.ai_fill_skill.yeyan=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.GreatYeyanCard = function(card,use,self,request)
+ai_card_use.GreatYeyanCard = function(self, card, use, request)
 	if query(self.player,"getRole")=="lord" and (query(self.room,"getTurnCount")<=1 or query(self,"getRoleCountValue","rebel")>#query(self,"getChainedEnemies") or query(self,"getAllPeachNum")<4-query(self.player,"getHp")) then
 		return
 	end
@@ -896,7 +913,7 @@ sgs.ai_use_priority.GreatYeyanCard = 9
 
 sgs.ai_card_intention.GreatYeyanCard = 200
 
-sgs.ai_skill_use_func.SmallYeyanCard = function(card,use,self,request)
+ai_card_use.SmallYeyanCard = function(self, card, use, request)
 	if query(self.player,"getStrategyMark","@flame")==0 then return end
 	local targets = AIList.new({})
 	self:sortInPlace(self.enemies, "hp")
@@ -964,7 +981,7 @@ sgs.ai_skill_discard.qixing = function(self,discard_num,optional,include_equip)
 
 	return to_discard
 end
-sgs.ai_skill_use["@@qixing"] = function(self,prompt)
+ai_skill_use["@@qixing"] = function(self, prompt, request)
 	local pile = query(self.player,"getPile","stars")
 	local piles = {}
 	local cards = query(self.player,"getHandcards")
@@ -1004,7 +1021,7 @@ sgs.ai_skill_use["@@qixing"] = function(self,prompt)
 	return response_skill(self,"qixing","QixingCard",exchange)
 end
 
-sgs.ai_skill_use["@@kuangfeng"] = function(self,prompt)
+ai_skill_use["@@kuangfeng"] = function(self, prompt, request)
 	local friendly_fire
 	for _,friend in ipairs(self.friends_noself)do
                 if query(friend,"getStrategyMark","&kuangfeng")==0 and query(self,"damageIsEffective",friend,sgs.DamageStruct_Fire) and query(friend,"faceUp") and not query(self,"willSkipPlayPhase",friend)
@@ -1043,7 +1060,7 @@ end
 
 sgs.ai_card_intention.KuangfengCard = 80
 
-sgs.ai_skill_use["@@dawu"] = function(self,prompt)
+ai_skill_use["@@dawu"] = function(self, prompt, request)
 	self:sortInPlace(self.friends_noself, "hp")
 	local targets = {}
 	local lord = self.room:getLord()
@@ -1133,4 +1150,108 @@ end
 sgs.ai_general_choice_for_lord["xunyu"] = function(ai, generals, default_choice, lord)
 	local scores = known(hp_loss_lord_strategy_scores(ai, generals, lord, false),"Xun Yu general scores")
 	return select_best_general(scores, default_choice)
+end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_target_damage["jieming"]
+    local policy = function(self, to, context)
+        local value, good_query = context.value, context.query
+        local card, damageNum, apn, value_known = context.extra[1], context.extra[2], context.extra[3], context.extra[4]
+        if good_query(to, "hasSkill", "jieming") and good_query(self, "getJiemingChaofeng", to)>-4 then return nil, true end
+        return value
+    end
+    sgs.ai_target_damage["jieming"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "good_survival" and context.rule == "jieming" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "jieming", {
+        {phase="good_survival", order=1, rule="jieming"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_target_damage["kuangfeng"]
+    local policy = function(self, to, context)
+        local value, core_query = context.value, context.query
+        local attacker, nature = context.extra[1], context.extra[2]
+        if core_query(to,"getMark","&kuangfeng")>0 then value = value+1 end
+        return value
+    end
+    sgs.ai_target_damage["kuangfeng"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "attack_fire" and context.rule == "kuangfeng" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "kuangfeng", {
+        {phase="attack_fire", order=1, rule="kuangfeng"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_target_damage["jieming"]
+    local policy = function(self, to, context)
+        local value, allocation_query = context.value, context.query
+        local count, player, card, nature = context.extra[1], context.extra[2], context.extra[3], context.extra[4]
+        if allocation_query(to, "hasSkill","jieming") then
+        						local chaofeng = allocation_query(self, "getJiemingChaofeng",to)
+        						if chaofeng>0 then value = value-(5-chaofeng)*5
+        						else value = value+chaofeng*5 end
+        					end
+        return value
+    end
+    sgs.ai_target_damage["jieming"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "damage_benefit" and context.rule == "jieming" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "jieming", {
+        {phase="damage_benefit", order=3, rule="jieming"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["jieming"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if state.masochismEligible then
+            if call(to, "hasSkill", "jieming") then defense = defense + 4 end
+        end
+        return defense
+    end
+    sgs.ai_defense_slash["jieming"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "health" and context.rule == "slash_defense.jieming" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "jieming", {
+        {phase="health", order=30, rule="slash_defense.jieming"},
+    })
+end)()
 end

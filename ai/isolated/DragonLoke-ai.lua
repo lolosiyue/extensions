@@ -1,5 +1,4 @@
--- Fixed b6025acc DragonLoke policies. Old SkillCard parse failures remain nil;
--- selected response wires preserve the donor terminal failure; no V2 repair.
+-- Source: b6025acc ai/DragonLoke-ai.lua.
 local known = AIValue.requireKnown
 local function missing_prototype(self,selector)
     -- Whether the source's skill-card class is registered (Card_Parse) is engine
@@ -44,12 +43,14 @@ local function response(self,card,target,request)
     error(signal,0)
 end
 
-sgs.ai_fill_skill.dl_chaju = function(self, inclusive)
+ai_fill_skill.dl_chaju = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local card_str = ("#dl_chaju:%d:")
     return missing_prototype(self,"#dl_chaju")
 end
 
-sgs.ai_skill_use_func["#dl_chaju"] = function(card, use, self)
+ai_card_use["#dl_chaju"] = function(self, card, use, request)
     for _,friend in ipairs(self.friends_noself)do
         if (friend:getHandcardNum()) <= (self.player:getHandcardNum()) and (self:doDisCard(friend,"h",true)) and not (friend:isKongcheng()) then
             use.card = card
@@ -71,29 +72,34 @@ sgs.ai_skill_use_func["#dl_chaju"] = function(card, use, self)
 end
 sgs.ai_use_priority["dl_chaju"] = sgs.ai_use_priority.RendeCard
 
-sgs.ai_skill_choice.dl_chaju = function(self,choices,data)
+ai_skill_choice.dl_chaju = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local target = data:toPlayer()
     local x = (self.player:getMaxHp()) - (self.player:getHandcardNum())
     if target and (self:isFriend(target)) then
         x = x + target:getMaxHp() - target:getHandcardNum()
     end
     if x > 0 then
-        return "2"
+        return ai_choice_result(("2"), options)
     end
-    return "1"
+    return ai_choice_result(("1"), options)
 end
 
-sgs.ai_fill_skill.dl_pindi=function(self,inclusive)
+ai_fill_skill.dl_pindi=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return missing_prototype(self,"#dl_pindi")
 end
 
-sgs.ai_skill_use_func["#dl_pindi"]=function(card,use,self)
+ai_card_use["#dl_pindi"]=function(self, card, use, request)
 	use.card=card
 end
 sgs.ai_use_priority["dl_pindi"] = 6.8
 
 
-sgs.ai_fill_skill.dl_yanxiao = function(self)
+ai_fill_skill.dl_yanxiao = function(self, options, request)
 	local cards = (self.player:getCards("he"))
 	cards=sgs.QList2Table(cards)
 	local use_card
@@ -111,7 +117,7 @@ sgs.ai_fill_skill.dl_yanxiao = function(self)
         return missing_prototype(self,"#dl_yanxiao")
 	end
 end
-sgs.ai_skill_use_func["#dl_yanxiao"] = function(card,use,self)
+ai_card_use["#dl_yanxiao"] = function(self, card, use, request)
     if (self.player:hasSkill("dl_liuli")) then
         self:sortInPlace(self.friends_noself, "defense")
         if (self:getOverflow())>0 then

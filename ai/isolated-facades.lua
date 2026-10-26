@@ -41,6 +41,83 @@ function AIValue.requireKnownFor(key, reason_prefix)
     end
 end
 
+-- Nil permission belongs to the exact provider, never to a method name alone.
+function AIValue.isKnownNil(object, method, provider)
+    return type(SmartAIView) == "table"
+        and type(SmartAIView.isKnownNilStrategyResult) == "function"
+        and SmartAIView.isKnownNilStrategyResult(object, method, provider)
+end
+
+-- Only player queries use strategy priors in the shared observation/target layer.
+function AIValue.playerStrategyMethod(object, method)
+    if AIValue.isPlayer(object) then
+        if method == "getMark" and type(object.getStrategyMark) == "function" then return "getStrategyMark" end
+        if method == "hasFlag" and type(object.getStrategyFlag) == "function" then return "getStrategyFlag" end
+    end
+    return method
+end
+
+-- Bind a scalar query contract once. Custom readers retain their own optional
+-- receiver semantics; a missing callback explicitly requires the original method.
+-- Provider identity is captured before reading, even when the reader remaps it.
+function AIValue.bindQuery(contract)
+    local read, resolve = contract.read, contract.resolve
+    local known, known_nil = contract.known or AIValue.requireKnown, contract.known_nil
+    local missing = contract.missing
+    assert((read == nil or type(read) == "function")
+        and (resolve == nil or type(resolve) == "function")
+        and type(known) == "function"
+        and (known_nil == nil or type(known_nil) == "function")
+        and (missing == nil or type(missing) == "function"), "invalid scalar query contract")
+    return function(object, method, ...)
+        if resolve then method = resolve(object, method) end
+        local provider
+        if not read or missing or known_nil then provider = object and object[method] end
+        if type(provider) ~= "function" and (not read or missing) then
+            if missing then return missing(method, object) end
+            ai_unsupported("isolated AI method is unavailable", method)
+        end
+        local value
+        if read then value = read(object, method, ...)
+        else value = provider(object, ...) end
+        if AIUnsupported and AIUnsupported.is(value) then error(value, 0) end
+        if value == nil and known_nil and known_nil(object, method, provider) then return nil end
+        -- Domain guards may return an unsupported answer for nil; do not recheck
+        -- their output or collapse false. This preserves the inquiry ABI.
+        return known(value, method)
+    end
+end
+
+function AIValue.readStrategyValue(object, method, ...)
+    if not object then return nil end
+    if method == "getMark" then
+        local strategy_mark = object.getStrategyMark
+        if type(strategy_mark) == "function" then return strategy_mark(object, ...) end
+    end
+    if method == "hasFlag" then
+        local strategy_flag = object.getStrategyFlag
+        if type(strategy_flag) == "function" then return strategy_flag(object, ...) end
+    end
+    local getter = object[method]
+    if type(getter) ~= "function" then return nil end
+    local result = getter(object, ...)
+    if AIUnsupported.is(result) then error(result,0) end
+    if result == nil and method == "hasSkills" then
+        local names, players = ...
+        if AIValue.isList(players) and not (type(AIValue.isPlayer)=="function" and AIValue.isPlayer(players)) then
+            -- Legacy collection overload returns nil for known absence. Check
+            -- every facade so an unknown skill projection is not folded away.
+            for _, player in ipairs(players) do
+                local known = player:hasSkills(names)
+                if known == nil then return nil end
+                if known then return player end
+            end
+            return false
+        end
+    end
+    return result
+end
+
 local function call_values(object, method, ...)
     if object == nil then ai_unsupported("isolated AI receiver is unavailable", method) end
     local provider = object[method]
@@ -62,9 +139,7 @@ end
 function AIValue.callKnown(object, method, ...)
     local result, provider = call_values(object, method, ...)
     if result[1] == nil then
-        local known_nil = type(SmartAIView) == "table"
-            and type(SmartAIView.isKnownNilStrategyResult) == "function"
-            and SmartAIView.isKnownNilStrategyResult(object, method, provider)
+        local known_nil = AIValue.isKnownNil(object, method, provider)
         if not known_nil then ai_unsupported("isolated AI value is unknown", method) end
     end
     return table.unpack(result, 1, result.n)
@@ -1733,6 +1808,17 @@ function AIHegemony.facts(world)
     if hegemony_cache[world] then return hegemony_cache[world] end
     local enabled = world.enable_hegemony
     local players = {}
+    local facts = {}
+    if enabled then
+        -- General names are owner-visible even while concealed. Reveal and
+        -- public allegiance therefore come from the authority's explicit facts.
+        local projected = world.hegemony_facts
+        if type(projected) ~= "table" or type(projected.players) ~= "table" then
+            ai_unsupported("Hegemony public-state projection is unavailable", "hegemony_facts")
+        end
+        for key, value in pairs(projected) do facts[key] = value end
+        players = projected.players
+    end
     local function add(view)
         if type(view) ~= "table" or type(view.object_name) ~= "string" then return end
         local head = type(view.general) == "string" and view.general ~= "" and view.general ~= "anjiang"
@@ -1743,21 +1829,25 @@ function AIHegemony.facts(world)
             public_kingdom = kingdom or "",
             public_careerist = enabled and (head or deputy) and view.role == "careerist"}
     end
-    add(world.self)
-    for _, view in ipairs(type(world.players) == "table" and world.players or {}) do add(view) end
+    if not enabled then
+        add(world.self)
+        for _, view in ipairs(type(world.players) == "table" and world.players or {}) do add(view) end
+    end
     local trick_prohibit = {}
     for name, callback in pairs(type(sgs.ai_trick_prohibit) == "table" and sgs.ai_trick_prohibit or {}) do
         if type(name) == "string" and type(callback) == "function" then trick_prohibit[#trick_prohibit + 1] = name end
     end
     local own = world.self and world.self.kingdom
     if world.self and world.self.role == "careerist" then own = "careerist" end
-    local facts = {enabled = enabled, original_overrides_loaded = enabled, players = players,
-        own_kingdom = (type(own) == "string" and own ~= "") and own or "unknown",
-        view_as_presence = registry_presence("ai_view_as"),
-        cardsview_presence = registry_presence("ai_cardsview"),
-        need_damaged_presence = registry_presence("ai_need_damaged"),
-        armor_value_presence = registry_presence("ai_armor_value"),
-        trick_prohibit_functions = trick_prohibit}
+    facts.enabled = enabled
+    facts.original_overrides_loaded = enabled
+    facts.players = players
+    if not enabled then facts.own_kingdom = (type(own) == "string" and own ~= "") and own or "unknown" end
+    facts.view_as_presence = registry_presence("ai_view_as")
+    facts.cardsview_presence = registry_presence("ai_cardsview")
+    facts.need_damaged_presence = registry_presence("ai_need_damaged")
+    facts.armor_value_presence = registry_presence("ai_armor_value")
+    facts.trick_prohibit_functions = trick_prohibit
     hegemony_cache[world] = facts
     return facts
 end
@@ -1958,13 +2048,14 @@ function SmartAIView:getUseHistory(key)
     return copy_value(rows[key])
 end
 
-function SmartAIView:getDecisionContext()
-    local options = self.request.options
+function SmartAIView:getDecisionContext(request)
+    local options = (request or self.request).options
+    local supplied = type(options) == "table" and options.context_scope == "supplied"
     local raw = type(options) == "table" and options.context or nil
-    local context = copy_value(self.world.decision_context or {})
+    local context = supplied and {} or copy_value(self.world.decision_context or {})
     for key, value in pairs(raw or {}) do context[key] = copy_value(value) end
-    local last_effect = self:getLastCardEffect()
-    if context.effect == nil then
+    local last_effect = not supplied and self:getLastCardEffect() or nil
+    if not supplied and context.effect == nil then
         if last_effect then context.effect = last_effect else context.effect_present = false end
     end
     local function wrap_event(event)
@@ -2020,7 +2111,7 @@ function SmartAIView:getDecisionContext()
         end
       end
     end
-    if context.damage then context.damage.damage = context.damage.amount end
+    if context.damage and (not supplied or context.damage.amount ~= nil) then context.damage.damage = context.damage.amount end
     return context
 end
 
@@ -2029,8 +2120,9 @@ do
     local states=setmetatable({},{__mode='k'})
     local writes=setmetatable({},{__mode='k'})
     local originalContext=SmartAIView.getDecisionContext
-    function SmartAIView:getDecisionContext()
-        local context=originalContext(self)
+    function SmartAIView:getDecisionContext(request)
+        local context=originalContext(self,request)
+        if request and type(request.options)=="table" and request.options.context_scope=="supplied" then return context end
         local overlays={}
         for _,row in ipairs(writes[self] or {}) do overlays[#overlays+1]=row end
         for _,row in ipairs(states[self] or {}) do overlays[#overlays+1]=row end
@@ -2192,8 +2284,8 @@ function SmartAIView:withNestedDelegateUse(key,closure)
     end
 end
 
-function SmartAIView:getJudge()
-    local judge = self:getDecisionContext().judge
+function SmartAIView:getJudge(request)
+    local judge = self:getDecisionContext(request).judge
     if type(judge) ~= "table" then return nil end
     function judge:isGood(card)
         if card == nil then return self.good end
@@ -2213,10 +2305,10 @@ function SmartAIView:getJudge()
     return judge
 end
 
-function SmartAIView:getDecisionData()
-    local ai, context = self, self:getDecisionContext()
+function SmartAIView:getDecisionData(request)
+    local ai, context = self, self:getDecisionContext(request)
     local result = {
-        toJudge = function() return ai:getJudge() end,
+        toJudge = function() return ai:getJudge(request) end,
         toDamage = function() return context.damage end,
         toCardEffect = function() return context.effect end,
         toSlashEffect = function()
@@ -2250,10 +2342,10 @@ function SmartAIView:getDecisionData()
             end
             -- Finite original CardAsked input from the active Goddess writer.
             -- This does not expose arbitrary QVariant string lists or tags.
-            local request=ai.request
-            if type(request)=="table" and request.kind=="respond_card"
-                and request.pattern=="Kai" and request.prompt=="Kai-Jink"
-                and request.handling_method==sgs.Card_MethodResponse then
+            local inquiry=request or ai.request
+            if type(inquiry)=="table" and inquiry.kind=="respond_card"
+                and inquiry.pattern=="Kai" and inquiry.prompt=="Kai-Jink"
+                and inquiry.handling_method==sgs.Card_MethodResponse then
                 local goddess=context.goddess
                 local asked=type(goddess)=="table" and goddess.kai_asked
                 local fields=type(asked)=="table" and asked.fields
@@ -2270,8 +2362,8 @@ function SmartAIView:getDecisionData()
             end
             -- Actual Yitian CardAsked invocation only outside the finite Kai case.
             local invocation=context.lianli_slash_invoke
-            if type(request)~="table" or request.kind~="skill_invoke"
-                or type(request.options)~="table" or request.options.reason~="lianli-slash"
+            if type(inquiry)~="table" or inquiry.kind~="skill_invoke"
+                or type(inquiry.options)~="table" or inquiry.options.reason~="lianli-slash"
                 or type(invocation)~="table" or invocation.known~=true
                 or not AIValue.isList(invocation.asked) then
                 ai_unsupported("LianliSlash asked data is unavailable","lianli_slash.invoke")
@@ -2288,8 +2380,58 @@ function SmartAIView:getDecisionData()
         toPlayer = function() return context.player end,
         toDying = function() return context.dying end,
         isNull = function() return next(context) == nil end
-    }    facade_kinds[result] = 'decision_data'
+    }
+    -- Some source inquiries disclose only the IntList length, never its items.
+    if context.int_list_count ~= nil then
+        result.toIntList = function()
+            local count = context.int_list_count
+            if type(count) ~= "number" or count < 0 or count % 1 ~= 0 then
+                ai_unsupported("source list length is unknown", "toIntList")
+            end
+            return setmetatable({length=function() return count end}, {
+                __index=function() ai_unsupported("only source IntList length is disclosed", "toIntList") end})
+        end
+    end
+    facade_kinds[result] = 'decision_data'
     return result
+end
+
+do
+    local function context_value(value, active)
+        if AIUnsupported.is(value) then error(value, 0) end
+        if AIValue.isPlayer(value) then return value:objectName() end
+        if AIValue.isCard(value) or AIValue.isConversion(value) then value=rawget(value,"_view") end
+        local kind=type(value)
+        if kind=="nil" or kind=="boolean" or kind=="number" or kind=="string" then return value end
+        if kind~="table" or AIValue.kind(value) then
+            ai_unsupported("inquiry context requires typed value fields", "inquiryInput")
+        end
+        if active[value] then ai_unsupported("inquiry context is cyclic", "inquiryInput") end
+        active[value]=true
+        local result={}
+        for key,item in pairs(value) do
+            if type(key)~="string" and type(key)~="number" then
+                ai_unsupported("inquiry context has an invalid field", "inquiryInput")
+            end
+            -- Struct methods do not belong in the child request's value packet.
+            if type(item)~="function" then result[key]=context_value(item,active) end
+        end
+        active[value]=nil
+        return result
+    end
+
+    function SmartAIView:inquiryInput(kind, reason, context, options)
+        assert(type(kind)=="string" and type(reason)=="string", "invalid inquiry input")
+        local source=self.request or {}
+        local values=context_value(options or {},{})
+        values.reason=reason
+        values.context=context_value(context or {},{})
+        values.context_scope="supplied"
+        -- A delegated inquiry carries observation metadata, never action tickets.
+        local request={kind=kind,viewer=source.viewer,decision_id=source.decision_id,
+            state_revision=source.state_revision,options=values}
+        return values,request
+    end
 end
 
 -- 合法候選：全部由權威端在建立 request 時算好，這裡只查表。查不到就是「這次沒問到」，
@@ -2661,6 +2803,13 @@ function SmartAIView:legacyPolicyCard(authority, policy, evaluation)
     local registered = self:getConversion(authority:getConversionId())
     if not registered then error("legacyPolicyCard receipt was not issued to this decision") end
     local original = authority:toCardSpec()
+    local recipe = rawget(registered, "_view")
+    if type(recipe.cost_count) == "number" and recipe.cost_count >= 2 then
+        -- A cost-independent ticket authorizes an exact eligible selection,
+        -- rather than only the representative used to project its product.
+        registered = registered:withSubcards(original.subcards)
+        if not registered then error("legacyPolicyCard costs are outside the issued recipe") end
+    end
     local expected = registered:toCardSpec()
     for _, key in ipairs({"conversion_id", "name", "suit", "number", "skill"}) do
         if original[key] ~= expected[key] then error("legacyPolicyCard altered receipt") end
@@ -2788,7 +2937,8 @@ function SmartAIView:registerSkillActionReceipt(spec)
     local wire = prototype:sub(1, 1) == "#" and (prototype .. ":" .. ids .. ":" .. (spec.user_string or ""))
         or ("@" .. prototype .. "=" .. ids .. user)
     local answer = spec.identity and {skill_action = {skill = identity.activation_skill,
-        instance = identity.activation_instance, owner = identity.activation_owner},
+        instance = identity.activation_instance, owner = identity.activation_owner,
+        equipment = identity.equipment_activation == true or nil},
         cards = costs, user_string = spec.user_string} or nil
     local id = skill_action_receipt_base + #indexes.conversions + 1
     local row = {conversion_id = id, name = name, class_name = class_name,
@@ -2800,6 +2950,8 @@ function SmartAIView:registerSkillActionReceipt(spec)
         source_owner = identity.source_owner or self.player:objectName(),
         source_skill = identity.source_skill or spec.skill,
         source_instance = identity.source_instance,
+        equipment_activation = identity.equipment_activation,
+        physical_equipment = copy_value(identity.physical_equipment),
         available = true, declared_name = spec.user_string, can_recast = false, virtual_card = true,
         legacy_string_key = wire, legacy_sort_key = wire,
         legacy_identity_token = fresh_policy_identity(policy_identity_scope(self)),
@@ -3162,6 +3314,15 @@ function AIValue.isSkillAction(value) return AIValue.kind(value) == "skill_actio
 function SkillActionView:isValid()
     local view = rawget(self, "_view")
     if type(view) ~= "table" then return false end
+    if view.equipment_activation == true then
+        local physical = view.physical_equipment
+        local source = type(view.source_skill) == "string" and view.source_skill ~= ""
+            and type(view.source_instance) == "number" and view.source_instance > 0
+        return type(view.activation_skill) == "string" and view.activation_skill ~= ""
+            and view.activation_instance == 0 and (source or type(physical) == "table"
+                and type(physical.card_id) == "number" and physical.card_id >= 0
+                and physical.holder == view.activation_owner)
+    end
     return type(view.activation_skill) == "string" and view.activation_skill ~= ""
         and type(view.activation_instance) == "number" and view.activation_instance > 0
         and type(view.source_skill) == "string" and view.source_skill ~= ""
@@ -3203,7 +3364,8 @@ end
 function SkillActionView:toAnswer()
     return {skill = self:getActivationSkillName(),
         instance = self:getActivationInstanceId(),
-        owner = self:getActivationOwner()}
+        owner = self:getActivationOwner(),
+        equipment = self._view.equipment_activation == true or nil}
 end
 
 -- 事件上下文：權威端在事件發生當下轉成純值，照順序留一段有界紀錄。
@@ -3727,6 +3889,18 @@ function AILegacyRequest.new(request, room)
     return view
 end
 
+-- The native use-card boundary validates the offered identity without creating
+-- a positional request adapter. An absent or incomplete action is never valid.
+function AIValue.isSkillActionRequest(request)
+    if type(request) ~= "table" or type(request.skill_action) ~= "table" then return false end
+    local action = request.skill_action
+    return type(request.viewer) == "string" and request.viewer ~= ""
+        and valid_instance_ref(action.activation_owner, action.activation_skill,
+            action.activation_instance)
+        and valid_instance_ref(action.source_owner, action.source_skill,
+            action.source_instance)
+end
+
 function AILegacyRequest:isValid()
     local action = self._action
     return type(self._request.viewer) == "string" and self._request.viewer ~= ""
@@ -3892,9 +4066,12 @@ local function normalize_card_action(value)
         local action = value.skill_action
         assert(type(action) == "table" and type(action.skill) == "string"
             and action.skill ~= "" and type(action.instance) == "number"
-            and action.instance > 0
+            and action.instance % 1 == 0
+            and (action.equipment == nil or type(action.equipment) == "boolean")
+            and (action.instance > 0 and action.equipment ~= true
+                or action.instance == 0 and action.equipment == true)
             and (action.owner == nil or type(action.owner) == "string"),
-            "AI result skill_action needs {skill, instance[, owner]}")
+            "AI result skill_action needs an instance or a typed equipment receipt")
         result.skill_action = action
     end
     return result
@@ -5079,10 +5256,19 @@ local function turn_snapshot(ai)
 end
 local function turn_source(request)
     if request==nil then return nil end
+    local native = type(request)=="table" and type(request.getActivationSkillName)~="function"
+    local identity = native and request.skill_action or nil
+    -- A plain pattern request has no source identity; a present incomplete
+    -- action remains scoped and fails the existing per-field checks below.
+    if native and type(identity)~="table" then return nil end
     local result={}
     for key,method in pairs(turn_identity_methods) do
-        if type(request[method])~="function" then ai_unsupported("readonly turn source identity is missing",key) end
-        result[key]=turn_checked(request[method](request),key)
+        if native then
+            result[key]=turn_checked(identity[key],key)
+        else
+            if type(request[method])~="function" then ai_unsupported("readonly turn source identity is missing",key) end
+            result[key]=turn_checked(request[method](request),key)
+        end
     end
     return result
 end
@@ -5608,6 +5794,41 @@ function CardView:isNDTrick()
 end
 ConversionView.isNDTrick = CardView.isNDTrick
 
+function PlayerView:hasShownGeneral()
+    local facts = self._room and AIHegemony.facts(self._room._world)
+    local row = facts and facts.players[self:objectName()]
+    return row and row.shown_head
+end
+
+function PlayerView:hasShownGeneral2()
+    local facts = self._room and AIHegemony.facts(self._room._world)
+    local row = facts and facts.players[self:objectName()]
+    return row and row.shown_deputy
+end
+
+function PlayerView:hasShownSkill(name)
+    local facts = self._room and AIHegemony.facts(self._room._world)
+    if facts and not facts.enabled then return self:hasSkill(name) end
+    local row = facts and facts.players[self:objectName()]
+    if not row or type(row.shown_skills) ~= "table" then return nil end
+    return row.shown_skills[name] ~= nil
+end
+
+function PlayerView:canShowGeneral(position)
+    local facts = self._room and AIHegemony.facts(self._room._world)
+    local row = facts and facts.players[self:objectName()]
+    local values = row and row.can_show
+    if type(values) ~= "table" then return nil end
+    local value = values[position]
+    if type(value) == "boolean" then return value end
+end
+
+function PlayerView:getSeemingKingdom()
+    local facts = self._room and AIHegemony.facts(self._room._world)
+    local row = facts and facts.players[self:objectName()]
+    return row and row.public_kingdom
+end
+
 function PlayerView:hasShownOneGeneral()
     local room = self._room
     local hegemony = room and AIHegemony.facts(room._world)
@@ -5625,8 +5846,18 @@ function PlayerView:hasShownAllGenerals()
 end
 function PlayerView:isPublicHegemonyFriend(other)
     if not AIValue.isPlayer(other) then return nil end
-    -- Both shown and the same public kingdom; careerists befriend nobody.
     local hegemony = self._room and AIHegemony.facts(self._room._world)
+    if hegemony and hegemony.enabled then
+        -- Recruitment can publicly establish a careerist_* alliance while
+        -- generals remain concealed. Use the native public relationship query.
+        local rows = hegemony.public_friends
+        local row = type(rows) == "table" and rows[self:objectName()]
+        if type(row) ~= "table" then return nil end
+        local value = row[other:objectName()]
+        if type(value) == "boolean" then return value end
+        return nil
+    end
+    -- Ordinary modes retain their existing compatibility behaviour.
     local a = hegemony and hegemony.players[self:objectName()]
     local b = hegemony and hegemony.players[other:objectName()]
     if not a or not b then return nil end

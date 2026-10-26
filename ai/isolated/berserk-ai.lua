@@ -1,15 +1,14 @@
--- Five effective berserk callbacks, from b6025acc983331337614289d8cac79b078c003af.
--- Preserve the donor's policy domain and short-circuit order. Native inquiry
--- admission remains separate from these pure-value selections.
+-- Source: b6025acc ai/berserk-ai.lua.
 local known = AIValue.requireKnown
 
 
-sgs.ai_skill_invoke.berserk_jichang = function(self, data)
+ai_skill_invoke.berserk_jichang = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local dying = data:toDying()
     local who = known(dying.who, "berserk_jichang.who")
     local peaches = 1 - who:getHp()
-    return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
-        and who:getMark("@guiming") <= 0
+    return (self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
+        and who:getMark("@guiming") <= 0) or false
 end
 sgs.ai_canNiepan_skill.berserk_jichang = function(player)
     return player:getMark("@jichang") > 0
@@ -21,9 +20,10 @@ sgs.ai_skill_cardask["@jichang"] = function(self)
     -- donor semantics; do not invent a target or silently change that branch.
     if self:isFriend(miku) then return "." end
 end
-sgs.ai_skill_invoke.berserk_xinxian = function(self, data)
+ai_skill_invoke.berserk_xinxian = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
-    return not self:isFriend(damage.from)
+    return (not self:isFriend(damage.from)) or false
 end
 sgs.ai_skill_playerchosen["@menghuan-target2"] = function(self)
     local enemies = known(self.enemies, "berserk.enemies")

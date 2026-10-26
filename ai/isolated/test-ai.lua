@@ -1,7 +1,9 @@
 -- Fixed test package noslonghun; do not confuse this source with later variants.
 
 local function spec(card,name,id)return{name=name,skill='noslonghun',suit=card:getSuit(),number=card:getNumber(),subcards={id}}end
-sgs.ai_fill_skill.noslonghun=function(self,inclusive,request)
+ai_fill_skill.noslonghun=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getHp()>1 then return end
     local cards=self:sortByUseValue(self:addHandPile('he'),true)
     for _,card in ipairs(cards)do

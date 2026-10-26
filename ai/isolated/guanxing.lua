@@ -1,10 +1,15 @@
 -- Source Guanxing policies and their classical-control dependency.
 -- Only disclosed cards and viewer-local strategy memory cross inquiries.
 local known = AIValue.requireKnown
-local function query(object,method,...)
-    if type(object)~="table" or type(object[method])~="function" then ai_unsupported("guanxing requires "..method,"guanxing") end
-    return known(object[method](object,...),method)
-end
+local query = AIValue.bindQuery {
+    resolve = function(object, method)
+        if type(object) ~= "table" then ai_unsupported("guanxing requires " .. method, "guanxing") end
+        return method
+    end,
+    missing = function(method) ai_unsupported("guanxing requires " .. method, "guanxing") end,
+    known = known,
+}
+
 local function split(value,separator)
     local result,start={},1
     while true do

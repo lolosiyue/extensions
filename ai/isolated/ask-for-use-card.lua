@@ -1,54 +1,37 @@
--- Two registries, one per callback ABI. The argument lists never mix: a new handler
--- takes (self, prompt, request); a legacy-style handler takes
--- (self, prompt, method, pattern, request) exactly as SmartAI:askForUseCard calls it.
+-- Pattern and skill handlers share the native (self, prompt, request) contract.
+-- Method, pattern and skill-action identity remain fields of the same request.
 local pattern_handlers = {}
 local skill_handlers = {}
-local legacy_pattern_handlers = {}
-local legacy_skill_handlers = {}
 
--- One key belongs to one ABI. A key registered in both has no verifiable dispatch
--- rule, so the conflict is refused at registration instead of resolved silently.
-local function register_handler(registry, conflicting, key, handler)
+local function register_handler(registry, key, handler)
     if type(key) ~= "string" or key == "" or type(handler) ~= "function" then
         error("invalid isolated askForUseCard handler")
-    end
-    if conflicting[key] then
-        error("askForUseCard handler already registered with the other ABI: " .. key)
     end
     registry[key] = handler
 end
 
-local function registry_table(registry, conflicting)
+local function registry_table(registry)
     return setmetatable({}, {
         __index = registry,
         -- Package ownership snapshots and post-registration wrappers must see
-        -- the same callbacks as indexed reads, without changing either ABI.
+        -- the same callbacks as indexed reads.
         __pairs = function()
             return function(_, key) return next(registry, key) end, nil, nil
         end,
         __newindex = function(_, pattern, handler)
-            register_handler(registry, conflicting, pattern, handler)
+            register_handler(registry, pattern, handler)
         end
     })
 end
 
-ai_skill_use = registry_table(pattern_handlers, legacy_pattern_handlers)
-ai_skill_use_legacy = registry_table(legacy_pattern_handlers, pattern_handlers)
+ai_skill_use = registry_table(pattern_handlers)
 
 function ai_register_use_card_handler(pattern, handler)
     ai_skill_use[pattern] = handler
 end
 
 function ai_register_use_card_skill_handler(skill_name, handler)
-    register_handler(skill_handlers, legacy_skill_handlers, skill_name, handler)
-end
-
-function ai_register_use_card_legacy_handler(pattern, handler)
-    ai_skill_use_legacy[pattern] = handler
-end
-
-function ai_register_use_card_legacy_skill_handler(skill_name, handler)
-    register_handler(legacy_skill_handlers, skill_handlers, skill_name, handler)
+    register_handler(skill_handlers, skill_name, handler)
 end
 
 -- Normalization reports returned signals as (nil, "unsupported"). Preserve the
@@ -63,19 +46,13 @@ local function normalize_handler_result(value, kind)
     return AIResultValue.normalize(covered_value(value), kind)
 end
 
--- The legacy request view exists only for skill actions, like the native
--- AiLegacyRequestView legacy AI receives; a plain pattern request passes nil.
-local function call_handler(self, request, key, registry, legacy_registry, pattern)
+local function call_handler(self, request, key, registry, original)
     local handler = registry[key]
-    if handler then
-        return normalize_handler_result(handler(self, request.prompt, request), request.kind)
-    end
-    handler = legacy_registry[key]
     if not handler then return nil, "unhandled" end
-    local value = covered_value(handler(self, request.prompt, request.handling_method,
-        pattern, AILegacyRequest.new(request, self.room)))
-    -- Ordinary SmartAI ignores scalar non-string callback returns. Pure typed
-    -- action tables are the migration ABI for the donor's serialized answer.
+    local value = covered_value(handler(self, request.prompt, request))
+    -- Keep the two entry policies while using one callback ABI: Original treats
+    -- nil/false as pass; ordinary ignores scalar non-string callback returns.
+    if original then return normalize_handler_result(value or ".", request.kind) end
     if type(value) ~= "string" and type(value) ~= "table" then return nil, "unhandled" end
     local answer, status = normalize_handler_result(value, request.kind)
     if value == "" then status = "empty_string" end
@@ -95,8 +72,8 @@ local function registry_keys(...)
 end
 
 if type(ai_coverage) == "table" then
-    ai_coverage.declare("use_card", registry_keys(pattern_handlers, legacy_pattern_handlers))
-    ai_coverage.declare("use_card_skill", registry_keys(skill_handlers, legacy_skill_handlers))
+    ai_coverage.declare("use_card", registry_keys(pattern_handlers))
+    ai_coverage.declare("use_card_skill", registry_keys(skill_handlers))
 end
 
 -- ResponseUse has a different question from Play: the authority already offered
@@ -325,7 +302,7 @@ function SmartAIView:getConversionPolicy(class_name, context)
             seen[name] = true
             local hooks, keys, any = {}, {}, false
             for _, registry in ipairs(registries) do
-                local callbacks = sgs[registry]
+                local callbacks = (registry == "ai_fill_skill" and ai_fill_skill or sgs[registry])
                 hooks[registry] = type(callbacks) == "table" and type(callbacks[name]) == "function"
                 keys[registry] = name
                 any = any or hooks[registry]
@@ -376,7 +353,7 @@ local function policy_callback(row, registry, request)
         and (not request or key ~= request:getSourceSkillName())) then
         ai_unsupported("legacy response callback lookup key is unknown", row.skill_name .. ":" .. registry)
     end
-    local callbacks = sgs[registry]
+    local callbacks = (registry == "ai_fill_skill" and ai_fill_skill or sgs[registry])
     local callback = type(callbacks) == "table" and callbacks[key]
     if type(callback) ~= "function" then
         ai_unsupported("legacy response callback has no isolated policy", key .. ":" .. registry)
@@ -598,10 +575,7 @@ function SmartAIView:resolveResponseConversion(proposal, row)
     ai_unsupported("response policy proposal has no exact authorized source/cost ticket", row.skill_name)
 end
 
--- Ordinary cardsView constructs a policy card before rule admission. Spear's
--- donor intentionally does not filter the material's `using` flag: an unused
--- hypothesis must not abort a later strategy. Keep this audited provider's
--- descriptor separate from receipts until its caller selects it.
+-- Spear includes materials flagged using; select its unpaid policy before action admission.
 local function copy_response_policy(value)
     if type(value) ~= "table" then return value end
     local copied = {}
@@ -674,9 +648,7 @@ function SmartAIView:materializeResponseSelectedCard(card)
     return selected
 end
 
--- getCardId(class,true) exposes donor toString values, not paid actions. Keep
--- an additional explicit identity for callers that select a hypothetical
--- conversion later. Neither this token nor policy_key is an authority ticket.
+-- Card lookup returns unpaid policy identity; conversion tokens grant no payment authority.
 local function same_policy_value(left, right)
     if type(left) ~= type(right) then return false end
     if type(left) ~= "table" then return left == right end
@@ -927,9 +899,7 @@ local function append_policy_result(self, result, row, output, registry, hook_ke
             if card then remember_response_value(self,output,card,row,registry,hook_key,true,true) end
         else remember_response_value(self,output,value,row,registry,hook_key,false,false) end
     end
-    -- Source uses ipairs on any table; holes stop enumeration, dictionary keys
-    -- are ignored. Pure specifications/brand objects represent source strings/
-    -- userdata and are the only explicit migration exception to that shape.
+    -- Match ipairs: stop at holes and ignore dictionary keys, except branded card specifications.
     if type(result)=="table" and not source_spec(result)
         and not AIValue.isCard(result) and not AIValue.isConversion(result) then
         for _, value in ipairs(result) do append(value) end
@@ -950,10 +920,8 @@ local function direct_policy_row(row)
     return direct
 end
 
--- Original getters rank readonly view-as products before authorizing the one
--- selected result. Registry source and printed skill are separate (fan/Fan).
--- This adapter does not rank, retry another source, or manufacture a receipt.
-function SmartAIView:bindOriginalSelectedConversion(spec, class_name, source_key, readonly)
+-- Read only this request's finite native inventory; a policy face is not authority.
+local function original_selected_conversion(self, spec, class_name, source_key, readonly, match_only)
     local key = type(source_key) == "string" and source_key or "Original.getCard"
     if type(spec) ~= "table" or getmetatable(spec) ~= nil
         or type(class_name) ~= "string" or class_name == ""
@@ -1005,62 +973,104 @@ function SmartAIView:bindOriginalSelectedConversion(spec, class_name, source_key
         if adapter then return self:legacyPolicyCard(card, policy_identity, readonly) end
         return card
     end
-    local policy = self:getConversionPolicy(class_name)
-    local selected
-    for _, row in ipairs(policy.skills) do
-        if row.skill_name == source_key then
-            if selected then ai_unsupported("Original selected conversion source is ambiguous", key) end
-            selected = {}
-            for field, value in pairs(row) do selected[field] = value end
-        end
+    local request = self.request
+    local entry = self._original_selected_specs and self._original_selected_specs[readonly]
+    if type(request) ~= "table" or type(entry) ~= "table" or entry.request ~= request
+        or entry.spec ~= spec or entry.class_name ~= class_name or entry.source_key ~= source_key then
+        ai_unsupported("Original selected conversion lacks its current request provenance", key)
     end
-    if not selected then ai_unsupported("Original selected conversion has no native source scope", key) end
-    local play = self.request.kind == "activate" and self.request.reason == 0x01
-    if play then
-        selected.scope_id, selected.identity = selected.play_scope_id, selected.play_identity
-        selected.request = false
-        selected.lazy = true
-    elseif type(selected.request) == "table" and selected.direct_scope_id == nil then
-        -- V2 canActivate may issue an action scope even though the inherited
-        -- isEnabledAtResponse is false. It is usable here only in this exact
-        -- caller context; final printed-skill equality remains mandatory.
-        if selected.request.reason ~= self.request.reason or selected.request.pattern ~= self.request.pattern then
-            ai_unsupported("Original selected conversion action belongs to another context", key)
-        end
-        selected.identity = selected.request.skill_action
-        selected.request = false
-    else
-        selected = direct_policy_row(selected)
+    local face = type(readonly) == "table" and readonly._view
+    if not face or not readonly:isEvaluationOnly() or face.evaluation_owner ~= self.player:objectName()
+        or readonly:objectName() ~= exact.name or readonly:getClassName() ~= class_name
+        or readonly:getSkillName(false) ~= exact.skill or readonly:getSuit() ~= exact.suit
+        or readonly:getNumber() ~= exact.number or not same_costs(readonly:getSubcards(), exact.subcards) then
+        ai_unsupported("Original selected conversion changed its readonly product", key)
     end
-    local identity = selected.identity
-    if type(identity) ~= "table" or identity.activation_owner ~= self.player:objectName() then
-        ai_unsupported("Original selected conversion source belongs to another viewer", key)
+    if not AIValue.isList(request.card_conversions) or not AIValue.isList(request.skill_actions) then
+        ai_unsupported("Original selected conversion inventory is unknown", key)
     end
-    for _, field in ipairs(response_identity) do
-        policy_known(identity[field[1]], field[1])
-    end
-    if selected.lazy == true and (type(selected.scope_id) ~= "number"
-        or selected.scope_id % 1 ~= 0 or selected.scope_id < 0) then
-        ai_unsupported("Original selected conversion has no authorized context scope", key)
-    end
-    -- Reuse only an exact receipt from this same producer context. A response
-    -- receipt cannot authorize Play merely because its printed product matches.
-    for _, ticket in ipairs(policy_known(self:getConversions(), "issued conversion inventory")) do
-        local view = ticket._view
-        local matches = type(view) == "table" and view.producer_reason == self.request.reason
-            and view.producer_pattern == self.request.pattern and view.policy_class == class_name
-            and ticket:objectName() == exact.name and ticket:getSuit() == exact.suit
-            and ticket:getNumber() == exact.number and ticket:getSkillName(false) == authority_skill
-            and same_costs(ticket:getSubcards(), exact.subcards)
+    local function same_identity(left, right)
         for _, field in ipairs(response_identity) do
-            if matches and policy_scalar(ticket, field[2], field[1]) ~= identity[field[1]] then matches = false end
+            local name = field[1]
+            if left[name] == nil or left[name] ~= right[name] then return false end
         end
-        if matches then return finish(ticket) end
+        return true
     end
-    local authority_spec = {}
-    for field, value in pairs(exact) do authority_spec[field] = value end
-    authority_spec.skill = authority_skill
-    return finish(self:resolveResponseConversion(authority_spec, selected))
+    local actions = {}
+    for _, action in ipairs(request.skill_actions) do actions[#actions + 1] = action end
+    if type(request.skill_action) == "table" then actions[#actions + 1] = request.skill_action end
+    local selected
+    for _, ticket in ipairs(request.card_conversions) do
+        local matches = ticket.activation_owner == self.player:objectName()
+            and ticket.activation_skill == source_key and ticket.skill_name == authority_skill
+            and ticket.name == exact.name and ticket.class_name == class_name
+            and ticket.suit == exact.suit and ticket.number == exact.number
+        local source_matches = false
+        if matches then
+            for _, action in ipairs(actions) do
+                if same_identity(ticket, action) then source_matches = true; break end
+            end
+        end
+        local costs_match = false
+        if source_matches and type(ticket.cost_count) == "number" and ticket.cost_count % 1 == 0 then
+            if ticket.cost_count == 0 then
+                costs_match = same_costs(ticket.subcards, exact.subcards)
+            elseif ticket.cost_count >= 2 and #exact.subcards == ticket.cost_count
+                and AIValue.isList(ticket.eligible_subcards) then
+                -- Native uses cost_count >= 2 only for a cost-independent recipe.
+                -- Checking membership reads the recipe without binding or issuing a card.
+                local eligible = {}
+                for _, id in ipairs(ticket.eligible_subcards) do eligible[id] = true end
+                costs_match = true
+                for _, id in ipairs(exact.subcards) do
+                    if not eligible[id] then costs_match = false; break end
+                end
+            end
+        end
+        if costs_match then
+            if selected and (not same_identity(selected, ticket)
+                or selected.matches_response_pattern ~= ticket.matches_response_pattern) then
+                ai_unsupported("Original selected conversion source is ambiguous", key)
+            end
+            selected = selected or ticket
+        end
+    end
+    if not selected then ai_unsupported("Original selected conversion has no exact current native ticket", key) end
+    if match_only then
+        if type(selected.matches_response_pattern) ~= "boolean" then
+            ai_unsupported("Original response pattern match is unknown", key)
+        end
+        return selected.matches_response_pattern
+    end
+    -- Obtain the index's copy (and its legacy identity token), then recheck it
+    -- against the original request row before any cost recipe is bound.
+    local card = self:getConversion(selected.conversion_id)
+    local issued = card and card._view
+    if not issued or not same_identity(selected, issued)
+        or not same_costs(selected.subcards, issued.subcards)
+        or not same_costs(selected.eligible_subcards, issued.eligible_subcards) then
+        ai_unsupported("Original selected conversion no longer matches its issued ticket", key)
+    end
+    for field, value in pairs(selected) do
+        if type(value) ~= "table" and issued[field] ~= value then
+            ai_unsupported("Original selected conversion changed its issued metadata", key)
+        end
+    end
+    if selected.cost_count >= 2 then card = card:withSubcards(exact.subcards) end
+    return finish(card)
+end
+
+function SmartAIView:bindOriginalSelectedConversion(spec, class_name, source_key, readonly)
+    return original_selected_conversion(self, spec, class_name, source_key, readonly, false)
+end
+
+-- A predicate only: do not cache a receipt or promote the evaluation to authority.
+function SmartAIView:originalSelectedResponsePatternMatches(card)
+    local entry = self._original_selected_specs and self._original_selected_specs[card]
+    if type(entry) ~= "table" then
+        ai_unsupported("Original response evaluation has no request-local source", "Original.response_pattern")
+    end
+    return original_selected_conversion(self, entry.spec, entry.class_name, entry.source_key, card, true)
 end
 
 -- Legacy asks isEnabledAtResponse(player, patterns(class)) before it runs a V1
@@ -1188,9 +1198,7 @@ local function visit_skill_view_as(self, class_name, card, player, place, consum
                     end
                 end
                 local proposal = covered_value(callback(card, player, actual_place, class_name))
-                -- Unlike cardsView/getGuhuoCard, this donor skips only nil before
-                -- Card_Parse. SWIG rejects either boolean as an ordinary argument
-                -- error; false must not silently become a known absent conversion.
+                -- False is a Card_Parse argument error here; only nil means no conversion.
                 if type(proposal) == "boolean" then
                     error("getSkillViewCard: Card_Parse rejects a boolean callback result", 0)
                 end
@@ -1224,10 +1232,7 @@ function SmartAIView:getSkillViewCard(class_name, card, player, place)
     end)
 end
 
--- AG/Guanxing isCard asks what a disclosed card would be for this player, before they
--- acquire it. The donor only parses the callback product and checks its class;
--- it does not pay the offered card or require a legal view-as action here.
--- This deliberately returns only true/nil, never a Card or receipt.
+-- Before acquisition, Guanxing checks a disclosed card's view-as class without paying a conversion.
 function SmartAIView:classifyOfferedSkillViewCard(class_name, card, player, place)
     local key = "isCard.acquisition"
     local options = self.request.options
@@ -1354,9 +1359,7 @@ local function generic_response_use(self, request)
     local policy = request.conversion_policy
     if type(policy) == "table" and policy.class_order_complete == true
         and AIValue.isList(policy.class_order) then
-        -- Only an explicitly complete projection proves the donor's actual
-        -- patterns(true) discovery order. A reconstructed public catalogue is
-        -- not that proof, and must not cause additional sorts or RNG draws.
+        -- Require complete patterns(true) order; rebuilding it from the catalog changes sorting and RNG.
         for _, entry in ipairs(policy.class_order) do
             local class = type(entry) == "table" and entry.class_name or entry
             if type(class) ~= "string" then ai_unsupported("response class order is invalid", "getCard") end
@@ -1467,9 +1470,7 @@ shared_response = function(self, card, candidate, request, mode)
     use.isDummy = true
     local plan, status
     if type(card.isEvaluationOnly) == "function" and card:isEvaluationOnly() == true then
-        -- The native planning descriptor has its own target contract. Keep the
-        -- evaluation object out of serialization; response_plan submits only the
-        -- original authority conversion after checking these targets.
+        -- Validate targets with the planning descriptor; submit the original conversion only.
         local previous = self._evaluation_scope
         self._evaluation_scope = {card = card, candidate = candidate}
         local ok
@@ -1530,6 +1531,33 @@ end
 
 -- standard_cards-ai.lua:904 reads the last *original* CardEffect data, not
 -- SmartAI's separately cloned sgs.cardEffect used by the decline above.
+-- Bind a selected value while its request-local conversion receipt is current.
+function SmartAIView:useCardResponseAnswer(selected, key)
+    selected = covered_value(selected)
+    if AIValue.isCard(selected) and selected:isEvaluationOnly() then
+        local materializer
+        if self._response_selected_specs and self._response_selected_specs[selected] then
+            materializer = self.materializeResponseSelectedCard
+        elseif self._original_selected_specs and self._original_selected_specs[selected] then
+            materializer = self.materializeOriginalSelectedCard
+        end
+        if type(materializer) ~= "function" then
+            ai_unsupported("selected response hypothesis has no source mapping", key)
+        end
+        selected = covered_value(materializer(self, selected))
+        if not AIValue.isConversion(selected) then ai_unsupported("selected response has no receipt", key) end
+    end
+    if selected == "." then return {kind="pass"} end
+    if AIValue.isConversion(selected) then return {kind="use_card", card_spec=selected:toCardSpec()} end
+    if AIValue.isCard(selected) then
+        local id = selected:getEffectiveId()
+        if type(id) == "number" and id >= 0 and id % 1 == 0 then
+            return {kind="use_card", card_id=id}
+        end
+    end
+    ai_unsupported("response policy returned an invalid typed answer", key)
+end
+
 ai_skill_use["slash-jink"] = function(self, prompt, request)
     local effect = self:getLastCardEffect()
     if type(effect) ~= "table" then
@@ -1551,36 +1579,11 @@ ai_skill_use["slash-jink"] = function(self, prompt, request)
     local prior = self.request
     self.request = adapted -- getDecisionContext consumes this request-local DTO.
     local ok, answer = pcall(function()
-        local selected = covered_value(callback(self, options, adapted))
-        if AIValue.isCard(selected) and selected:isEvaluationOnly() then
-            local materializer
-            if self._response_selected_specs and self._response_selected_specs[selected] then
-                materializer = self.materializeResponseSelectedCard
-            elseif self._original_selected_specs and self._original_selected_specs[selected] then
-                materializer = self.materializeOriginalSelectedCard
-            end
-            if type(materializer) ~= "function" then
-                ai_unsupported("slash-jink selected hypothesis has no source mapping", "slash-jink")
-            end
-            -- The selection and its mapping belong to the adapted inquiry.
-            -- Restore the outer request after binding (also on failure).
-            selected = covered_value(materializer(self, selected))
-            if not AIValue.isConversion(selected) then
-                ai_unsupported("slash-jink selected hypothesis has no receipt", "slash-jink")
-            end
-        end
-        return selected
+        return self:useCardResponseAnswer(callback(self, options, adapted), "slash-jink")
     end)
     self.request = prior
     if not ok then error(answer, 0) end
-    if AIUnsupported.is(answer) then error(answer, 0) end
-    if answer == "." then return {kind="pass"} end
-    if AIValue.isConversion(answer) then return {kind="use_card", card_spec=answer:toCardSpec()} end
-    if AIValue.isCard(answer) then
-        local id = answer:getEffectiveId()
-        if type(id) == "number" and id >= 0 then return {kind="use_card", card_id=id} end
-    end
-    ai_unsupported("slash-jink cardask returned an invalid typed answer", "slash-jink")
+    return answer
 end
 
 -- Fixed SmartAI-generated ai_skill_use closures are real early hooks, not
@@ -1626,9 +1629,7 @@ local function generated_response_use(self, request, row)
             candidate = covered_value(self:getEvaluationCandidate(original))
         else candidate = covered_value(self:getCardCandidate(original:getEffectiveId())) end
         if card then
-            -- The source hook does not test the question pattern or native
-            -- MethodUse limits before aiUseCard. Those checks belong to final
-            -- admission of the first selected source result, never to a retry.
+            -- Use the first selected source result; pattern and MethodUse checks happen at final admission.
             response_candidate_ready(candidate, row.key, AIValue.isConversion(card), true, true)
             local answer = response_plan(self, card, candidate, request, original, row.kind)
             if answer then return answer end
@@ -1640,7 +1641,7 @@ end
 -- or class pattern and a physical card id also get the generated response handler.
 local function isolated_use_row(key)
     if type(key) ~= "string" or key == "" then return {known=true, key=key, present=false} end
-    if pattern_handlers[key] ~= nil or legacy_pattern_handlers[key] ~= nil then
+    if pattern_handlers[key] ~= nil then
         return {known=true, key=key, present=true, kind="callback"}
     end
     local classes = AICardCatalog.patternClassNames()
@@ -1662,8 +1663,7 @@ local function isolated_use_dispatch(self, request)
     local metadata = {known=true, entry_variant=variant,
         request_present=type(request.skill_action) == "table"}
     if metadata.request_present then
-        local legacy = AILegacyRequest.new(request, self.room)
-        metadata.request_valid = legacy ~= nil and legacy:isValid() == true
+        metadata.request_valid = AIValue.isSkillActionRequest(request)
     end
     metadata.raw = isolated_use_row(request.pattern)
     metadata.prompt = isolated_use_row(type(request.prompt) == "string"
@@ -1710,18 +1710,10 @@ ai_register_handler("use_card", function(self, request)
         if row.kind == "class" or row.kind == "physical" then
             answer, status = normalize_handler_result(generated_response_use(self, request, row), request.kind)
         elseif row.kind == "callback" then
-            if not pattern_handlers[expected_key] and not legacy_pattern_handlers[expected_key] then
+            if not pattern_handlers[expected_key] then
                 ai_unsupported("effective use-card callback has no isolated policy", expected_key)
             end
-            if original then
-                -- The Original override passes only self/prompt/method and
-                -- never supplies the ordinary pattern or legacy request args.
-                local callback = legacy_pattern_handlers[expected_key]
-                if callback then
-                    local value = covered_value(callback(self, request.prompt, request.handling_method))
-                    answer, status = normalize_handler_result(value or ".", request.kind)
-                else answer, status = call_handler(self, request, expected_key, pattern_handlers, legacy_pattern_handlers, pattern) end
-            else answer, status = call_handler(self, request, expected_key, pattern_handlers, legacy_pattern_handlers, pattern) end
+            answer, status = call_handler(self, request, expected_key, pattern_handlers, original)
         else ai_unsupported("effective use-card hook kind is unknown", expected_key) end
         if original then return answer or {kind="pass"}, true end
         local handled = status ~= "unhandled" and not (compulsory and (status == "declined" or status == "pass"))

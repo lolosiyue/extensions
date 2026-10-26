@@ -1,5 +1,4 @@
--- Fixed biaofengold-ai.lua b6025acc983331337614289d8cac79b078c003af.
--- Decisions preserve donor loop/short-circuit order; native scopes own authority.
+-- Source: b6025acc ai/biaofengold-ai.lua.
 local package_skills={}
 local known = AIValue.requireKnown
 
@@ -83,14 +82,16 @@ end
 local FiveFanjian_skill = {}
 FiveFanjian_skill.name = "FiveFanjian"
 table.insert(package_skills, FiveFanjian_skill)
-FiveFanjian_skill.getTurnUseCard=function(self,inclusive,request)
+FiveFanjian_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#FiveFanjian_Card") or self.player:isKongcheng() then return end
 	if self:needBear() then return end
 	local parsed_card = parse(self,request,"#FiveFanjian_Card:.:")
 	return parsed_card
 end
 
-sgs.ai_skill_use_func["#FiveFanjian_Card"] = function(card,use,self,request)
+ai_card_use["#FiveFanjian_Card"] = function(self, card, use, request)
     local use_card
     if not use_card then
 		local hcards = self.player:getCards("h")
@@ -220,7 +221,9 @@ end
 local FiveHuangtianA_Qun_skill = {}
 FiveHuangtianA_Qun_skill.name = "FiveHuangtianA_Qun"
 table.insert(package_skills, FiveHuangtianA_Qun_skill)
-FiveHuangtianA_Qun_skill.getTurnUseCard=function(self,inclusive,request)
+FiveHuangtianA_Qun_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasFlag("ForbidFiveHuangtianA") then return nil end
 	if self.player:getKnownKingdom() ~= "qun" then return nil end
 
@@ -244,7 +247,7 @@ FiveHuangtianA_Qun_skill.getTurnUseCard=function(self,inclusive,request)
 	return skillcard
 end
 
-sgs.ai_skill_use_func["#FiveHuangtianA_Card"] = function(card,use,self,request)
+ai_card_use["#FiveHuangtianA_Card"] = function(self, card, use, request)
 	if self:needBear() or self:getCardsNum("Jink", "h") <= 1 then
 		return
 	end
@@ -314,20 +317,23 @@ end
 sgs.ai_use_priority["#FiveHuangtianA_Card"] = 10
 sgs.ai_use_value["#FiveHuangtianA_Card"] = 8.5
 
-sgs.ai_skill_invoke.FiveGuidaoA = function(self, data)
-	return true
+ai_skill_invoke.FiveGuidaoA = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 local FiveGuidaoA_skill = {}
 FiveGuidaoA_skill.name= "FiveGuidaoA"
 table.insert(package_skills,FiveGuidaoA_skill)
-FiveGuidaoA_skill.getTurnUseCard=function(self,inclusive,request)
+FiveGuidaoA_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getPile("dao"):length() >= 3 then
 		return parse(self,request,"#FiveGuidaoA_Card:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#FiveGuidaoA_Card"] = function(card,use,self,request)
+ai_card_use["#FiveGuidaoA_Card"] = function(self, card, use, request)
     local to_use = {}
     local cards = {}
 	if self.player:getPile("dao"):length() > 0 then
@@ -380,37 +386,40 @@ sgs.ai_hasTuntianEffect_skill.FiveGuidaoA = function(to, need_zaoxian)
 	return to:getPhase() == sgs.Player_NotActive and to:getPile("dao"):length() < 5
 end
 
-sgs.ai_skill_invoke.FiveGuidaoB = function(self, data)
+ai_skill_invoke.FiveGuidaoB = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = self.room:getCurrent()
     if target:objectName() == self.player:objectName() then
         local zhangjiao = data:toPlayer()
         if zhangjiao and self:isFriend(zhangjiao) then
-            return self:doDisCard(zhangjiao, "h")
+            return (self:doDisCard(zhangjiao, "h")) or false
         else
-            return self:doDisCard(zhangjiao, "h")
+            return (self:doDisCard(zhangjiao, "h")) or false
         end
     else
         if (self:isEnemy(target) and not target:isChained()) or (self:isFriend(target) and target:isChained()) or (target:getKnownKingdom() == "qun" and not target:isChained() and self.player:hasLordSkill("FiveHuangtianB")) then
-            return true
+            return (true) or false
         end
     end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_choice.FiveGuidaoB = function(self, choices)
+ai_skill_choice.FiveGuidaoB = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 local items = choices:split("+")
 local target = self.room:getCurrent()
 	
 	if target and self:isFriend(target) and not self.player:hasLordSkill("FiveHuangtianB") and target:getKnownKingdom() == "qun" then
-		return "FiveGuidaoB_Reset"
+		return ai_choice_result(("FiveGuidaoB_Reset"), options)
 	end	
 	if target and self:isEnemy(target)  then
-		return "FiveGuidaoB_Chain"
+		return ai_choice_result(("FiveGuidaoB_Chain"), options)
 	end
-	return "FiveGuidaoB_Chain"
+	return ai_choice_result(("FiveGuidaoB_Chain"), options)
 end
 
-sgs.ai_skill_use["@FiveLeiji"]=function(self,prompt)
+ai_skill_use["@FiveLeiji"]=function(self, prompt, request)
 	local mode = self.room:getMode()
 	if mode:find("_mini_17") or mode:find("_mini_19") or mode:find("_mini_20") or mode:find("_mini_26") then
 		local players = self.room:getAllPlayers();
@@ -463,7 +472,7 @@ end
 
 sgs.ai_playerchosen_intention.FiveHuangtianB = -50
 
-sgs.ai_skill_use["@FourJianxiong"] = function(self, prompt)
+ai_skill_use["@FourJianxiong"] = function(self, prompt, request)
 	local damage = current_damage(self)
 	local dest = damage.to
 	if not self:isEnemy(dest) then return "." end
@@ -508,14 +517,17 @@ sgs.ai_skill_use["@FourJianxiong"] = function(self, prompt)
 	return "."
 end
 
-sgs.ai_skill_choice.FourJianxiong = function(self, choices, data)
+ai_skill_choice.FourJianxiong = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local damage = data:toDamage()
-	if not damage.card then return "FourJianxiong_choice2" end
-	if damage.card:isKindOf("Slash") and not self:hasCrossbowEffect() and self.player:getLostHp() > 1 and self:getCardsNum("Slash") > 0 then return "FourJianxiong_choice2" end
-	if self:isWeak() and (self:getCardsNum("Slash") > 0 or not damage.card:isKindOf("Slash") or self.player:getHandcardNum() <= self.player:getHp()) then return "FourJianxiong_choice2" end
+	if not damage.card then return ai_choice_result(("FourJianxiong_choice2"), options) end
+	if damage.card:isKindOf("Slash") and not self:hasCrossbowEffect() and self.player:getLostHp() > 1 and self:getCardsNum("Slash") > 0 then return ai_choice_result(("FourJianxiong_choice2"), options) end
+	if self:isWeak() and (self:getCardsNum("Slash") > 0 or not damage.card:isKindOf("Slash") or self.player:getHandcardNum() <= self.player:getHp()) then return ai_choice_result(("FourJianxiong_choice2"), options) end
 	local items = choices:split("+")
-	if table.contains(items, "FourJianxiong_choice1") then return "FourJianxiong_choice1" end
-	return items[1]
+	if table.contains(items, "FourJianxiong_choice1") then return ai_choice_result(("FourJianxiong_choice1"), options) end
+	return ai_choice_result((items[1]), options)
 end
 
 ai_audited_aliases.register{id="ai_target_revises.FourJianxiong",registry="ai_target_revises",path={"FourJianxiong"},canonical_registry="ai_target_revises",canonical_path={"jianxiong"},self_index=1,defer_canonical=true}
@@ -531,7 +543,9 @@ end
 local FourJiaozhao_skill = {}
 FourJiaozhao_skill.name = "FourJiaozhao"
 table.insert(package_skills, FourJiaozhao_skill)
-FourJiaozhao_skill.getTurnUseCard=function(self,inclusive,request)
+FourJiaozhao_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getMark("@jiaozhao") == 0 then return end
 
 	local card
@@ -554,7 +568,7 @@ FourJiaozhao_skill.getTurnUseCard=function(self,inclusive,request)
 	return nil
 end
 
-sgs.ai_skill_use_func["#FourJiaozhao_Card"] = function(card,use,self,request)
+ai_card_use["#FourJiaozhao_Card"] = function(self, card, use, request)
 	local lord = self.room:getLord()
 	if lord then
 		for _,skill in sgs.qlist(lord:getVisibleSkillList()) do
@@ -568,16 +582,17 @@ sgs.ai_skill_use_func["#FourJiaozhao_Card"] = function(card,use,self,request)
 	end
 end
 
-sgs.ai_skill_invoke.FourFenyong = function(self, data)
-	if self.room:getTurnCount() <= 1 and #self.enemies == 0 then return end
+ai_skill_invoke.FourFenyong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.room:getTurnCount() <= 1 and #self.enemies == 0 then return false end
 
 	local current = self.room:getCurrent()
-	if not current or current:getPhase() >= sgs.Player_Finish then return true end
+	if not current or current:getPhase() >= sgs.Player_Finish then return (true) or false end
 	if self:isFriend(current) then
-		return false
+		return (false) or false
 	end
 
-	return true
+	return (true) or false
 end
 
 function sgs.ai_slash_prohibit.FourFenyong(self, from, to)
@@ -594,7 +609,6 @@ sgs.ai_need_damaged.FourFenyong = function (self, attacker, player)
 		local def = self:getDefenseSlash(enemy)
 		local slash = self:getEvaluationCard("slash")
 		
-		-- local eff = q(self,"slashIsEffective",slash, enemy) and q(self,"isGoodTarget",enemy, self.enemies, slash)
 		local eff = self:slashIsEffective(slash, enemy)
 
 		if self.player:canSlash(enemy, nil, false) and not self:slashProhibit(nil, enemy) and eff and def < 6 then
@@ -609,7 +623,8 @@ sgs.ai_ajustdamage_to.FourFenyong = function(self, from, to, card, nature)
 	end
 end
 
-sgs.ai_skill_invoke.FourXuehen = function(self, data)
+ai_skill_invoke.FourXuehen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
     if self:isEnemy(current) then
         local def = self:getDefenseSlash(current)
@@ -617,10 +632,10 @@ sgs.ai_skill_invoke.FourXuehen = function(self, data)
         local eff = self:slashIsEffective(slash, current) and self:isGoodTarget(current, self.enemies, slash)
 
         if self.player:canSlash(current, nil, false) and not self:slashProhibit(nil, current) and eff and def < 6 then
-            return true
+            return (true) or false
         end
     end
-	return false
+	return (false) or false
 end
 
 sgs.ai_view_as.FourWusheng = function(card, player, card_place)
@@ -640,7 +655,9 @@ end
 local FourWusheng_skill = {}
 FourWusheng_skill.name = "FourWusheng"
 table.insert(package_skills, FourWusheng_skill)
-FourWusheng_skill.getTurnUseCard=function(self,inclusive,request)
+FourWusheng_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
 	if self.player:getPile("wooden_ox"):length() > 0 then
@@ -791,7 +808,9 @@ ai_audited_aliases.register{id="ai_choicemade_filter.cardChosen.FourYijue",regis
 local FourHuoji_skill={}
 FourHuoji_skill.name="FourHuoji"
 table.insert(package_skills,FourHuoji_skill)
-FourHuoji_skill.getTurnUseCard=function(self,inclusive,request)
+FourHuoji_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getStrategyHasUsed("#FourHuoji_Card") then return nil end
 	local cards = self.player:getCards("h")
 	cards=AIList.new(cards)
@@ -829,7 +848,7 @@ FourHuoji_skill.getTurnUseCard=function(self,inclusive,request)
     return parse(self,request,"#FourHuoji_Card:"..card:getKnownEffectiveId() ..":")
 end
 
-sgs.ai_skill_use_func["#FourHuoji_Card"] = function(card,use,self,request)
+ai_card_use["#FourHuoji_Card"] = function(self, card, use, request)
 	local fire_attack = self:evaluateOwnerViewAsCard({source_key="FourHuoji",skill="",name="fire_attack",suit=card:getSuit(),number=card:getNumber(),subcards={}})
 	local dummy_use = self:aiUseCard(fire_attack, dummy())
     if dummy_use.card and dummy_use.to:length() > 0 then
@@ -843,14 +862,15 @@ sgs.ai_cardneed.FourHuoji = function(to, card, self)
 	return to:getHandcardNum() >= 2 and card:isRed()
 end
 
-sgs.ai_skill_invoke.FourNiepan = function(self, data)
+ai_skill_invoke.FourNiepan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
 	local peaches = 1 - dying.who:getHp()
 
-	return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
+	return (self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches) or false
 end
 
-sgs.ai_skill_use["@FourNiepan"]=function(self,prompt)
+ai_skill_use["@FourNiepan"]=function(self, prompt, request)
 	self:updatePlayers()
 	self:sortInPlace(self.enemies, "hp")
 	for _,enemy in ipairs(self.enemies) do
@@ -876,13 +896,15 @@ end
 local FourFanjian_skill = {}
 FourFanjian_skill.name = "FourFanjian"
 table.insert(package_skills, FourFanjian_skill)
-FourFanjian_skill.getTurnUseCard=function(self,inclusive,request)
+FourFanjian_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return nil end
 	if self.player:getStrategyHasUsed("#FourFanjian_Card") then return nil end
 	return parse(self,request,"#FourFanjian_Card:.:")
 end
 
-sgs.ai_skill_use_func["#FourFanjian_Card"]=function(card,use,self,request)
+ai_card_use["#FourFanjian_Card"]=function(self, card, use, request)
 
 	local cards = AIList.new(self.player:getHandcards())
 	self:sortByUseValueInPlace(cards, true)
@@ -985,7 +1007,9 @@ sgs.dynamic_value.damage_card["#FourFanjian_Card"] = true
 local FourQixi_skill = {}
 FourQixi_skill.name = "FourQixi"
 table.insert(package_skills, FourQixi_skill)
-FourQixi_skill.getTurnUseCard=function(self,inclusive,request)
+FourQixi_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:hasFlag("FourQixi_used") then return end
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
@@ -1082,7 +1106,9 @@ end
 local FourQixiA_skill = {}
 FourQixiA_skill.name = "FourQixiA"
 table.insert(package_skills, FourQixiA_skill)
-FourQixiA_skill.getTurnUseCard=function(self,inclusive,request)
+FourQixiA_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getPile("horseA"):isEmpty() then
 		return
 	end
@@ -1115,8 +1141,9 @@ sgs.ai_view_as.FourQixiA = function(card, player, card_place)
 	end
 end
 
-sgs.ai_skill_invoke.FourQixiA = function(self, data)
-	return true
+ai_skill_invoke.FourQixiA = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_cardask["@FourQixiA_Exchange"] = function(self, data, pattern, target)
@@ -1139,7 +1166,9 @@ sgs.lose_equip_skill = sgs.lose_equip_skill .. "|FourQixiB"
 local FourQixiB_skill = {}
 FourQixiB_skill.name = "FourQixiB"
 table.insert(package_skills, FourQixiB_skill)
-FourQixiB_skill.getTurnUseCard=function(self,inclusive,request)
+FourQixiB_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getPile("horseB"):isEmpty() then
 		return
 	end
@@ -1173,8 +1202,9 @@ sgs.ai_view_as.FourQixiB = function(card, player, card_place)
 	end
 end
 
-sgs.ai_skill_invoke.FourQixiB = function(self, data)
-	return true
+ai_skill_invoke.FourQixiB = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_cardask["@FourQixiB_Exchange"] = function(self, data, pattern, target)
@@ -1191,13 +1221,15 @@ end
 local FourTianxiang_skill = {}
 FourTianxiang_skill.name= "FourTianxiang"
 table.insert(package_skills,FourTianxiang_skill)
-FourTianxiang_skill.getTurnUseCard=function(self,inclusive,request)
+FourTianxiang_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:getStrategyHasUsed("#FourTianxiang_Card") then
 		return parse(self,request,"#FourTianxiang_Card:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#FourTianxiang_Card"] = function(card,use,self,request)
+ai_card_use["#FourTianxiang_Card"] = function(self, card, use, request)
 
     local use_card, cards
     cards = self.player:getHandcards()
@@ -1249,17 +1281,20 @@ sgs.FourTianxiang_keep_value = {
 	Weapon = 5
 }
 
-sgs.ai_skill_choice.FourTianxiang = function(self, choices, data)
+ai_skill_choice.FourTianxiang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 local items = choices:split("+")
 local target = data:toPlayer()
 	
 	if target and self:isFriend(target)  then
-		return "FourTianxiang_Recover"
+		return ai_choice_result(("FourTianxiang_Recover"), options)
 	end	
 	if target and self:isEnemy(target)  then
-		return "FourTianxiang_Damage"
+		return ai_choice_result(("FourTianxiang_Damage"), options)
 	end
-	return "FourTianxiang_Damage"
+	return ai_choice_result(("FourTianxiang_Damage"), options)
 end
 
 sgs.ai_choicemade_filter.skillChoice["FourTianxiang"] = function(self, player, promptlist)
@@ -1347,17 +1382,21 @@ sgs.FourGuidao_keep_value = {
 	Jink = 9
 }
 
-sgs.ai_skill_invoke.FourGuidao = function(self, data)
-	return true
+ai_skill_invoke.FourGuidao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
-sgs.ai_skill_invoke.FourGuidaotake = function(self, data)
-	return not (self.player:hasSkill("FourDedao") and self.player:getMark("FourDedao") == 0 and self.player:getPile("symbol"):length() < 4 )
+ai_skill_invoke.FourGuidaotake = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (not (self.player:hasSkill("FourDedao") and self.player:getMark("FourDedao") == 0 and self.player:getPile("symbol"):length() < 4 )) or false
 end
 
 local FourTaiping_Others_skill = {}
 FourTaiping_Others_skill.name = "FourTaiping_Others"
 table.insert(package_skills, FourTaiping_Others_skill)
-FourTaiping_Others_skill.getTurnUseCard=function(self,inclusive,request)
+FourTaiping_Others_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasFlag("ForbidFourTaiping") then return nil end
 
 	local cards = self.player:getCards("h")
@@ -1380,7 +1419,7 @@ FourTaiping_Others_skill.getTurnUseCard=function(self,inclusive,request)
 	return skillcard
 end
 
-sgs.ai_skill_use_func["#FourTaiping_Card"] = function(card,use,self,request)
+ai_card_use["#FourTaiping_Card"] = function(self, card, use, request)
 	if self:needBear() then
 		return
 	end
@@ -1426,7 +1465,6 @@ sgs.ai_skill_use_func["#FourTaiping_Card"] = function(card,use,self,request)
 					for _,enemy in ipairs(targets) do
 						if self.player:canSlash(enemy, nil, false, 0) then --可以发动天义或陷阵
 								use.card = card
-								--call(self,"setStrategyPlayerFlag",enemy,"AI_HuangtianPindian",true)
 								if use.to then
 									use.to:append(enemy)
 								end
@@ -1453,7 +1491,9 @@ sgs.ai_use_value["#FourTaiping_Card"] = 8.5
 local DiyJisu_skill = {}
 DiyJisu_skill.name = "DiyJisu"
 table.insert(package_skills, DiyJisu_skill)
-DiyJisu_skill.getTurnUseCard=function(self,inclusive,request)
+DiyJisu_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self:getCardsNum("Slash") > 0 then
         for i = 0, self.player:getPile("turn"):length() - 1, 1 do
             local snatch = disclosed(self,self.player:getPile("turn"):at(i))
@@ -1481,12 +1521,14 @@ end
 local DiyXX_skill = {}
 DiyXX_skill.name = "DiyXX"
 table.insert(package_skills, DiyXX_skill)
-DiyXX_skill.getTurnUseCard=function(self,inclusive,request)
+DiyXX_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self:needBear() and not self.player:getStrategyHasUsed("#DiyXX_Card") then
 		return parse(self,request,"#DiyXX_Card:.:")
 	end
 end
-sgs.ai_skill_use_func["#DiyXX_Card"] = function(card,use,self,request)
+ai_card_use["#DiyXX_Card"] = function(self, card, use, request)
 	self:sortInPlace(self.enemies, "chaofeng")
 	local enemys = {}
 	for _, enemy in ipairs(self.enemies) do
@@ -1504,4 +1546,33 @@ end
 
 sgs.ai_use_priority["DiyXX_Card"] = 8
 
-for _,skill in ipairs(package_skills)do sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end
+for _,skill in ipairs(package_skills)do ai_fill_skill[skill.name]=skill.getTurnUseCard end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["FiveYingzhan"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if from and damage_call(from,"getMark","FiveYingzhan") == 0 and damage_call(self,"isFriend",from, to) and not damage_call(from,"hasFlag","FiveYingzhan_Damage")
+        		and card and sgs.card_damage_nature[damage_call(card,"getClassName")] == sgs.DamageStruct_Fire then
+        		return true, true
+        	end
+        return value
+    end
+    sgs.ai_need_damaged["FiveYingzhan"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_after_legacy" and context.rule == "FiveYingzhan" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "FiveYingzhan", {
+        {phase="need_hp_after_legacy", order=12, rule="FiveYingzhan"},
+    })
+end)()
+end

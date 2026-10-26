@@ -1,10 +1,10 @@
--- b6025acc basara: census-effective non-hegemony RevealGeneral body (line 40).
--- The alternate legacy global hegemony model is not installed into ordinary AI.
+-- Source: b6025acc ai/basara-ai.lua.
 local need = AIValue.requireKnown
-local function query(o,key,...)
-    if not o or type(o[key])~='function'then ai_unsupported('basara method unavailable',key)end
-    local v=o[key](o,...);if AIUnsupported.is(v)then error(v,0)end;return need(v,key)
-end
+local query = AIValue.bindQuery {
+    missing = function(method) ai_unsupported('basara method unavailable', method) end,
+    known = need,
+}
+
 local function player(self,name)
     if name==false or name==nil then return nil end
     return need(self.room:findPlayerByObjectName(name,true),'event player')
@@ -41,7 +41,9 @@ local function show(self,row)
     for _,general in ipairs(generals)do if has(general,skills)then return'yes'end end
     if self.player:getDefensiveHorse()and self.player:getArmor()and not self:isWeak()then return'yes'end
 end
-sgs.ai_skill_choice.RevealGeneral=function(self,choices)
+ai_skill_choice.RevealGeneral=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
     -- Ordinary RevealGeneral outside a trigger: no hegemony variant, no queued generals.
     local tagged=self.player:getTag("roles")~=nil or self.player:getTag("triggerEvent")~=nil
         or self.player:getTag("triggerEventData")~=nil
@@ -50,10 +52,12 @@ sgs.ai_skill_choice.RevealGeneral=function(self,choices)
     if need(row.hegemony_variant,'load-time RevealGeneral variant')~=false then
         ai_unsupported('alternate legacy hegemony model is not this effective callback','RevealGeneral')
     end
-    if show(self,row)=='yes'then return'yes'end
+    if show(self,row)=='yes'then returnai_choice_result(('yes'), options)end
     local anjiang=0
     for _,other in sgs.qlist(self.room:getOtherPlayers(self.player))do
         if query(other,'getGeneralName')=='anjiang'then anjiang=anjiang+1 end
     end
-    if math.random()>(anjiang+1)/(query(self.room,'alivePlayerCount')+1)then return'yes'else return'no'end
+    if math.random()>(anjiang+1)/(query(self.room,'alivePlayerCount')+1)then returnai_choice_result(('yes'), options)else returnai_choice_result(('no'), options)end
+
+    return ai_choice_result(nil, options)
 end

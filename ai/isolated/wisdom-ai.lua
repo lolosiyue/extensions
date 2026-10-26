@@ -44,8 +44,10 @@ end
 --[[
 	技能：倨傲
 	描述：出牌阶段，你可以选择两张手牌背面向上移出游戏，指定一名角色，被指定的角色到下个回合开始阶段时，跳过摸牌阶段，得到你所移出游戏的两张牌。每阶段限一次
-]]--
-sgs.ai_fill_skill.juao = function(self,inclusive,request)
+]]
+ai_fill_skill.juao = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:needBear() then return end
 	if self.player:getHandcardNum()>1 then
 		local card_id = own_first_keep(self)
@@ -53,7 +55,7 @@ sgs.ai_fill_skill.juao = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.JuaoCard = function(card,use,self,request)
+ai_card_use.JuaoCard = function(self, card, use, request)
 	local givecard = {}
 	local cards = self.player:getHandcards()
 	for _,friend in ipairs(self.friends_noself)do
@@ -210,26 +212,29 @@ end
 --[[
 	技能：贪婪
 	描述：每当你受到一次伤害，可与伤害来源进行拼点：若你赢，你获得两张拼点牌
-]]--
-sgs.ai_skill_invoke.tanlan = function(self,data)
+]]
+ai_skill_invoke.tanlan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local from = damage.from
 	local max_card = self:getMaxCard()
-	if not max_card then return end
+	if not max_card then return false end
 	if max_card:getNumber()>10 and self:isFriend(from) then
-		if from:getHandcardNum()==1 and self:needKongcheng(from) then return true end
-		if self:getOverflow(from)>2 then return true end
-		if not self:hasLoseHandcardEffective(from) then return true end
+		if from:getHandcardNum()==1 and self:needKongcheng(from) then return (true) or false end
+		if self:getOverflow(from)>2 then return (true) or false end
+		if not self:hasLoseHandcardEffective(from) then return (true) or false end
 	end
-	if self:isFriend(from) then return false end
+	if self:isFriend(from) then return (false) or false end
 	if max_card:getNumber()>10
 		or (self.player:getHp()>2 and self.player:getHandcardNum()>2 and max_card:getNumber()>4)
 		or (self.player:getHp()>1 and self.player:getHandcardNum()>1 and max_card:getNumber()>7)
 		or (from:getHandcardNum()<=2 and max_card:getNumber()>2)
 		or (from:getHandcardNum()==1 and self:hasLoseHandcardEffective(from) and not self:needKongcheng(from))
 		or self:getOverflow()>2 then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
 sgs.ai_choicemade_filter.skillInvoke.tanlan = function(self,player,promptlist)
@@ -254,21 +259,24 @@ sgs.ai_cardneed.tanlan = sgs.ai_cardneed.bignumber
 --[[
 	技能：异才
 	描述：每当你使用一张非延时类锦囊时(在它结算之前)，可立即对攻击范围内的角色使用一张【杀】
-]]--
-sgs.ai_skill_invoke.yicai = function(self,data)
-	if self:needBear() then return false end
+]]
+ai_skill_invoke.yicai = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self:needBear() then return (false) or false end
 	for _,enemy in ipairs(self.enemies)do
 		if self.player:canSlash(enemy, nil, true) then
 			if self:getCardsNum("Slash")>0 then
-				return true
+				return (true) or false
 			end
 		end
 	end
+	return false
+
 end
 --[[
 	技能：北伐（锁定技）
 	描述：当你失去最后一张手牌时，视为对攻击范围内的一名角色使用了一张【杀】
-]]--
+]]
 sgs.ai_skill_playerchosen.beifa = function(self,targets)
 	local slash = self:getEvaluationCard("slash")
 	local targetlist = {}
@@ -300,8 +308,10 @@ end
 --[[
 	技能：后援
 	描述：出牌阶段，你可以弃置两张手牌，指定一名其他角色摸两张牌，每阶段限一次
-]]--
-sgs.ai_fill_skill.houyuan = function(self,inclusive,request)
+]]
+ai_fill_skill.houyuan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:needBear() then return end
 	if self.player:getHandcardNum()>1 then
 		local givecard = {}
@@ -321,7 +331,7 @@ sgs.ai_fill_skill.houyuan = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.HouyuanCard = function(card,use,self,request)
+ai_card_use.HouyuanCard = function(self, card, use, request)
 	if #self.friends==1 then return end
 	local target
 	local AssistTarget = self:AssistTarget()
@@ -346,16 +356,19 @@ sgs.ai_card_intention.HouyuanCard = -70
 --[[
 	技能：霸王
 	描述：当你使用的【杀】被【闪】响应时，你可以和对方拼点：若你赢，可以选择最多两个目标角色，视为对其分别使用了一张【杀】
-]]--
-sgs.ai_skill_invoke.bawang = function(self,data)
+]]
+ai_skill_invoke.bawang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
 	local max_card = self:getMaxCard()
 	if max_card and max_card:getNumber()>10 then
-		return self:isEnemy(effect.to)
+		return (self:isEnemy(effect.to)) or false
 	end
 	if self:isEnemy(effect.to) then
-		if self:getOverflow()>0 then return true end
+		if self:getOverflow()>0 then return (true) or false end
 	end
+	return false
+
 end
 
 function sgs.ai_skill_pindian.bawang(minusecard,self,requestor,maxcard)
@@ -371,7 +384,7 @@ function sgs.ai_skill_pindian.bawang(minusecard,self,requestor,maxcard)
 	return cards[1]
 end
 
-sgs.ai_skill_use["@@bawang"] = function(self,prompt)
+ai_skill_use["@@bawang"] = function(self, prompt, request)
 	local first_index,second_index
 	self:sort(self.enemies,"defenseSlash")
 	local slash = self:getEvaluationCard("slash")
@@ -401,13 +414,13 @@ ai_audited_aliases.register{id="ai_card_intention.BawangCard",registry="ai_card_
 --[[
 	技能：危殆（主公技）
 	描述：当你需要使用一张【酒】时，所有吴势力角色按行动顺序依次选择是否打出一张黑桃2~9的手牌，视为你使用了一张【酒】，直到有一名角色或没有任何角色决定如此做时为止
-]]--
+]]
 
 function sgs.ai_cardsview.weidai(self,class_name,player)
 	return "@WeidaiCard=.->."
 end
 
-sgs.ai_skill_use_func.WeidaiCard = function(card,use,self,request)
+ai_card_use.WeidaiCard = function(self, card, use, request)
 	use.card = card
 end
 
@@ -447,7 +460,7 @@ end
 --[[
 	技能：笼络
 	描述：回合结束阶段开始时，你可以选择一名其他角色摸取与你弃牌阶段弃牌数量相同的牌
-]]--
+]]
 sgs.ai_skill_playerchosen.longluo = function(self,targets)
 	if #self.friends<=1 then return nil end
 	local n = self.player:getStrategyMark("longluo")
@@ -461,8 +474,9 @@ sgs.ai_playerchosen_intention.longluo = -60
 --[[
 	技能：辅佐
 	描述：当有角色拼点时，你可以打出一张点数小于8的手牌，让其中一名角色的拼点牌加上这张牌点数的二分之一（向下取整）
-]]--
-sgs.ai_skill_use["@@fuzuo"] = function(self,prompt,method)
+]]
+ai_skill_use["@@fuzuo"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	if self.player:isKongcheng() then return "." end
 
 	local function find_a_card(number)
@@ -564,7 +578,7 @@ end
 --[[
 	技能：尽瘁
 	描述：当你死亡时，可令一名角色摸取或者弃置三张牌
-]]--
+]]
 
 sgs.ai_skill_playerchosen.jincui = function(self,targets)
 	local AssistTarget = self:AssistTarget()
@@ -604,8 +618,12 @@ sgs.ai_skill_playerchosen.jincui = function(self,targets)
 end
 
 
-sgs.ai_skill_choice.jincui = function(self,choices)
-	if get_jincui(self) then return "throw" else return "draw" end
+ai_skill_choice.jincui = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	if get_jincui(self) then return ai_choice_result(("throw"), options) else return ai_choice_result(("draw"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
@@ -629,7 +647,7 @@ end
 --[[
 	技能：霸刀
 	描述：当你成为黑色的【杀】目标时，你可以对你攻击范围内的一名其他角色使用一张【杀】
-]]--
+]]
 
 sgs.ai_skill_cardask["@askforslash"] = function(self,data)
 	local slashes = self:getCards("Slash")
@@ -691,7 +709,7 @@ end
 --[[
 	技能：识破
 	描述：任意角色判定阶段判定前，你可以弃置两张牌，获得该角色判定区里的所有牌
-]]--
+]]
 
 sgs.ai_skill_discard.shipo = function(self)
 	local target = self.room:getCurrent()
@@ -719,8 +737,10 @@ end
 --[[
 	技能：授业
 	描述：出牌阶段，你可以弃置一张红色手牌，指定最多两名其他角色各摸一张牌
-]]--
-sgs.ai_fill_skill.shouye = function(self,inclusive,request)
+]]
+ai_fill_skill.shouye = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.friends_noself==0 then return end
 	if self.player:getHandcardNum()>0 then
 		local cards = self.player:getHandcards()
@@ -734,7 +754,7 @@ sgs.ai_fill_skill.shouye = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.ShouyeCard = function(card,use,self,request)
+ai_card_use.ShouyeCard = function(self, card, use, request)
 	self:sort(self.friends_noself,"defense")
 	local first
 	local second
@@ -804,13 +824,14 @@ end
 --[[
 	技能：师恩
 	描述：其他角色使用非延时锦囊时，可以让你摸一张牌
-]]--
-sgs.ai_skill_invoke.shien = function(self,data)
+]]
+ai_skill_invoke.shien = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and target:isAlive() then
-		return self:isFriend(target)
+		return (self:isFriend(target)) or false
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.shien = function(self,player,promptlist)
@@ -820,4 +841,140 @@ sgs.ai_choicemade_filter.skillInvoke.shien = function(self,player,promptlist)
 	end
 end
 
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, player, preferred, query, context)
+        if not (player:objectName() == self.player:objectName() and self._mountain_xiangle_guard == true
+            or query(player, "hasFlag", "stack_overflow_xiangle"))
+            and query(player, "getHandcardNum") > 0 and query(player, "hasSkill", "beifa") then
+            local opportunity
+            if player:objectName() == self.player:objectName() then
+                opportunity = query(self, "aiUseCard", query(self, "cloneEvaluationCard", "slash")).card
+            else
+                opportunity = query(self, "beifaSlashUseOpportunity", player)
+            end
+            if opportunity then return true, true end
+        end
+        return preferred
+    end
+    local previous_1 = sgs.ai_need_kongcheng["beifa"]
+    sgs.ai_need_kongcheng["beifa"] = function(self, player, keep, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "before_loss" and context.rule == "last_card_slash" then
+                return policy_1(self, player, context.value, context.query, context)
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, player, keep) end
+    end
+    sgs.declareValueHookStages("ai_need_kongcheng", "beifa", {
+        {phase="before_loss", rule="last_card_slash", order=900},
+    })
+end)()
 
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["need_hp_active_best.draw_or_awaken"]
+    local policy = function(self, from, to, card, context)
+        local bh, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(to,"hasSkills","longluo|miji|yinghun") and damage_call(self,"findFriendsByType",sgs.Friend_Draw,to)
+        		or damage_call(to,"hasSkills","nosrende|rende") and not damage_call(self,"willSkipPlayPhase",to) and damage_call(self,"findFriendsByType",sgs.Friend_Draw,to)
+        		or damage_call(to,"hasSkill","jspdanqi") and damage_call(self,"getOverflow")==0
+        		then bh = math.min(bh,damage_call(to,"getMaxHp")-1) end
+        return bh
+    end
+    sgs.ai_need_damaged["need_hp_active_best.draw_or_awaken"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_active_best" and context.rule == "draw_or_awaken" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "need_hp_active_best.draw_or_awaken", {
+        {phase="need_hp_active_best", order=1, rule="draw_or_awaken"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["gushou"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if state.diagram then
+            if call(to, "hasSkill", "gushou") then defense = defense + .4 end
+        end
+        return defense
+    end
+    sgs.ai_defense_slash["gushou"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "base" and context.rule == "slash_defense.diagram_gushou" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "gushou", {
+        {phase="base", order=21, rule="slash_defense.diagram_gushou"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["shouye"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if not state.diagram then
+            if call(to, "hasSkill", "shouye") then defense = defense - 2 end
+        end
+        return defense
+    end
+    sgs.ai_defense_slash["shouye"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "base" and context.rule == "slash_defense.base_shouye" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "shouye", {
+        {phase="base", order=48, rule="slash_defense.base_shouye"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["gushou"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if state.knownJink > 0 then
+            if call(to, "hasSkill", "gushou") then defense = defense + .2 end
+        end
+        return defense
+    end
+    sgs.ai_defense_slash["gushou"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "known_jink" and context.rule == "slash_defense.known_gushou" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "gushou", {
+        {phase="known_jink", order=11, rule="slash_defense.known_gushou"},
+    })
+end)()
+end

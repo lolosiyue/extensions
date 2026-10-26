@@ -1,4 +1,4 @@
--- new, fixed b6025acc. Exact source policies; no repair of removed legacy cards.
+-- Source: b6025acc ai/new-ai.lua.
 local known = AIValue.requireKnown
 local nullable={getLord=true,getCurrent=true,getSameEquip=true,getMaxCard=true,getArmor=true,getTreasure=true,getCard=true,findLeijiTarget=true,findPlayerBySkillName=true,findPlayerToDraw=true,updatePlayers=true,updateIntention=true,setStrategyPlayerFlag=true}
 
@@ -37,7 +37,7 @@ local function qiyi_spec(cards)
  return{name="jink",skill="luaqiyi",suit=red and sgs.Card_NoSuitRed or black and sgs.Card_NoSuitBlack or sgs.Card_NoSuit,number=0,subcards=ids}
 end
 local function invoke_registered_callback(reg,key,...)
- local f=sgs[reg]and sgs[reg][key];if type(f)~="function"then ai_unsupported("new shared callback unavailable",reg.."."..key)end
+ local f=(reg == "ai_skill_use" and ai_skill_use or (reg == "ai_card_use" and ai_card_use or (reg == "ai_skill_invoke" and ai_skill_invoke or (reg == "ai_fill_skill" and ai_fill_skill or (reg == "ai_skill_choice" and ai_skill_choice or sgs[reg])))))and (reg == "ai_skill_use" and ai_skill_use or (reg == "ai_card_use" and ai_card_use or (reg == "ai_skill_invoke" and ai_skill_invoke or (reg == "ai_fill_skill" and ai_fill_skill or (reg == "ai_skill_choice" and ai_skill_choice or sgs[reg])))))[key];if type(f)~="function"then ai_unsupported("new shared callback unavailable",reg.."."..key)end
  local result=f(...);if AIUnsupported.is(result)then error(result,0)end;return result
 end
 local function global_call(name,...)
@@ -62,9 +62,11 @@ local function source_friend(self,to,from)
 end
 local luajiejiang_policy
 
-sgs.ai_skill_choice.luajuemou = function(self, choice)
-	if self.player:getHp() < self.player:getMaxHp() - 1 then return "luajuemouHp" end
-	return "luajuemouCd"
+ai_skill_choice.luajuemou = function(self, options, request)
+    local choice = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	if self.player:getHp() < self.player:getMaxHp() - 1 then return ai_choice_result(("luajuemouHp"), options) end
+	return ai_choice_result(("luajuemouCd"), options)
 end
 
 sgs.ai_can_damagehp.luajuemou = function(self, from, card, to)
@@ -155,17 +157,21 @@ sgs.ai_need_damaged.lualilian = function(self, attacker, player)
 	return false
 end
 
-sgs.ai_skill_choice.lualilian = function(self, choice)
+ai_skill_choice.lualilian = function(self, options, request)
+    local choice = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local targets = self.room:getOtherPlayers(self.player)
-	if targets:length() == 0 then return false end
+	if targets:length() == 0 then return ai_choice_result((false), options) end
 	if invoke_registered_callback("ai_skill_playerchosen", "lualilian", self, targets) ~= nil then
-		return "luayihengturn"
+		return ai_choice_result(("luayihengturn"), options)
 	end
-	return "luayihengmopai"
+	return ai_choice_result(("luayihengmopai"), options)
 end
 
 
-sgs.ai_fill_skill.lualveji_vs = function(self,inclusive,request)
+ai_fill_skill.lualveji_vs = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lualveji") then return end
 	if #self.enemies == 0 then return end
 
@@ -257,7 +263,7 @@ sgs.ai_fill_skill.lualveji_vs = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lualveji"] = function(card, use, self)
+ai_card_use["#lualveji"] = function(self, card, use, request)
 	use.card = card
 end
 
@@ -281,19 +287,23 @@ sgs.ai_skill_askforag["lualveji"] = function(self, card_ids)
 	return card_ids[1]
 end
 
-sgs.ai_skill_choice.lualveji = function(self, choice)
+ai_skill_choice.lualveji = function(self, options, request)
+    local choice = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	if self.player:hasFlag("should_luawu") then
 		if self.player:hasFlag("lualveji_vsblack") and self.player:hasFlag("AI_doInvoke_luawu") then
-			return "lualvejiFZ"
+			return ai_choice_result(("lualvejiFZ"), options)
 		end
 	end
-	return "lualvejiQZ"
+	return ai_choice_result(("lualvejiQZ"), options)
 end
 
 
 
 
-sgs.ai_fill_skill.luawu_trs = function(self,inclusive,request)
+ai_fill_skill.luawu_trs = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyMark("@luawu_mark") <= 0 then return end
 	if self.room:getMode() == "_mini_13" then return old_parse(self,"#luawu",{}) end
 	local good, bad = 0, 0
@@ -339,7 +349,7 @@ sgs.ai_fill_skill.luawu_trs = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#luawu"] = function(card, use, self)
+ai_card_use["#luawu"] = function(self, card, use, request)
 	use.card = card
 end
 
@@ -580,16 +590,17 @@ sgs.wizard_skill =  sgs.wizard_skill .. "|luaguidao"
 sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .. "|luaguidao"
 
 
-sgs.ai_skill_invoke.luajiejiang = function(self, data)
+ai_skill_invoke.luajiejiang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if #self.enemies == 0 then
-		return false
+		return (false) or false
 	end
 	local targets = self.room:getOtherPlayers(self.player)
 	local cardstr = luajiejiang_policy(self, "@luajiejiang")
 	if (invoke_registered_callback("ai_skill_playerchosen", "luajiejiang", self, targets) ~= nil) or (cardstr:match("->")) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_playerchosen.luajiejiang = function(self, targets)
@@ -863,13 +874,15 @@ end
 
 
 
-sgs.ai_fill_skill.luamouce = function(self,inclusive,request)
+ai_fill_skill.luamouce = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:getStrategyHasUsed("#luamouce") then
 		return old_parse(self,"#luamouce",{})
 	end
 end
 
-sgs.ai_skill_use_func["#luamouce"] = function(card, use, self)
+ai_card_use["#luamouce"] = function(self, card, use, request)
 	self:updatePlayers()
 	self:sortInPlace(self.enemies, "defense")
 	self.enemies = sgs.reverse(self.enemies)
@@ -891,17 +904,18 @@ sgs.ai_card_intention["luamouce"] = 80
 
 
 
-sgs.ai_skill_invoke.luaJC = function(self, data)
-	if self.player:isLord() then return false end
+ai_skill_invoke.luaJC = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:isLord() then return (false) or false end
 	if self:getCardsNum("Peach") > 0 then
-		return false
+		return (false) or false
 	end
 	for _, friend in ipairs(self.friends_noself) do
 		if global_call("getCardsNum","Peach", friend) > 0 then
-			return false
+			return (false) or false
 		end
 	end
-	return true
+	return (true) or false
 end
 
 
@@ -953,23 +967,25 @@ sgs.ai_use_revises.luaqinglong = function(self, card, use)
 end
 
 
-sgs.ai_skill_invoke["@luaqibing"] = function(self, data)
+ai_skill_invoke["@luaqibing"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	local card = use.card
 	if card:isKindOf("EquipCard") then
-		return false
+		return (false) or false
 	end
-	return true
+	return (true) or false
 end
 
-sgs.ai_skill_invoke["luaqibing"] = function(self, data)
+ai_skill_invoke["luaqibing"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local target = damage.to
-	if not self:isEnemy(target) then return "." end
-	if target:hasArmorEffect("silver_lion") then return "." end
+	if not self:isEnemy(target) then return (".") or false end
+	if target:hasArmorEffect("silver_lion") then return (".") or false end
 
 
-	return true
+	return (true) or false
 end
 
 sgs.ai_ajustdamage_from.luaqibing = function(self, from, to, card, nature)
@@ -979,54 +995,59 @@ sgs.ai_ajustdamage_from.luaqibing = function(self, from, to, card, nature)
 	end
 end
 -- shared immutable alias ai_cardneed.luaqibing -> ai_cardneed.slash
-sgs.ai_skill_invoke["luazhenshe"] = function(self, data)
+ai_skill_invoke["luazhenshe"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local target = damage.to
-	if not self:isEnemy(target) then return "." end
-	if target:hasArmorEffect("silver_lion") then return "." end
+	if not self:isEnemy(target) then return (".") or false end
+	if target:hasArmorEffect("silver_lion") then return (".") or false end
 
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
 	local enemy_max_card = self:getMaxCard(target)
 	local enemy_max_point = enemy_max_card and enemy_max_card:getNumber() or 100
 	if (max_point > enemy_max_point) or target:isKongcheng() then
-		return true
+		return (true) or false
 	end
 	if self.player:getLostHp() + 1 >= 2 or not self.player:faceUp() then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 -- shared immutable alias ai_cardneed.luazhenshe -> ai_cardneed.bignumber
 -- shared immutable alias ai_need_damaged.luajilue -> ai_need_damaged.fangzhu
 -- shared immutable alias ai_can_damagehp.luajilue -> ai_can_damagehp.jieming
-sgs.ai_skill_choice.luajilue = function(self, choice)
+ai_skill_choice.luajilue = function(self, options, request)
+    local choice = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local context=self:getDecisionContext()
 	local targets = self.room:getOtherPlayers(self.player)
 	if (invoke_registered_callback("ai_skill_playerchosen", "fangzhu", self, targets) ~= nil) then
-		return "c3"
+		return ai_choice_result(("c3"), options)
 	end
 	if (invoke_registered_callback("ai_skill_playerchosen", "jieming", self, targets) ~= nil) then
-		return "c2"
+		return ai_choice_result(("c2"), options)
 	end
 
 	local damage=known(context.damage,"CurrentDamageStruct")
-	if (invoke_registered_callback("ai_skill_invoke", "fankui", self, {toPlayer=function()return damage.from end})) then
-		return "c1"
+	if (invoke_registered_callback("ai_skill_invoke", "fankui", self, self:inquiryInput("skill_invoke","fankui",{player=damage.from}))) then
+		return ai_choice_result(("c1"), options)
 	end
-	return "c4"
+	return ai_choice_result(("c4"), options)
 end
 
 
 
-sgs.ai_fill_skill.luahuntian = function(self,inclusive,request)
+ai_fill_skill.luahuntian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#luahuntian") then return end
 	if #self.enemies < 1 then return end
 	return old_parse(self,"#luahuntian",{})
 end
 
-sgs.ai_skill_use_func["#luahuntian"] = function(card, use, self)
+ai_card_use["#luahuntian"] = function(self, card, use, request)
 	local targets = sgs.SPlayerList()
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	for _, enemy in ipairs(self.enemies) do
@@ -1055,18 +1076,21 @@ sgs.ai_use_priority["luahuntian"]    = 9
 sgs.ai_card_intention["luahuntian"]  = 60
 
 
-sgs.ai_skill_invoke["luajiaodi"] = function(self, data)
-	return true
+ai_skill_invoke["luajiaodi"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_fill_skill.luafentian = function(self,inclusive,request)
+ai_fill_skill.luafentian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#luafentian") then return end
 	if #self.enemies < 1 then return end
 	if self.player:getStrategyMark("@fentian_mark") == 0 then return end
 	return old_parse(self,"#luafentian",{})
 end
 
-sgs.ai_skill_use_func["#luafentian"] = function(card, use, self)
+ai_card_use["#luafentian"] = function(self, card, use, request)
 	local targets = sgs.SPlayerList()
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	for _, enemy in ipairs(self.enemies) do
@@ -1100,13 +1124,15 @@ sgs.ai_skill_playerchosen["@luageipai2"] = function(self, targets)
 end
 
 
-sgs.ai_fill_skill.luajice = function(self,inclusive,request)
+ai_fill_skill.luajice = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:getStrategyHasUsed("#luajice") and not self.player:getPile("Plianji"):isEmpty() then
 		return old_parse(self,"#luajice",{})
 	end
 end
 
-sgs.ai_skill_use_func["#luajice"] = function(card, use, self)
+ai_card_use["#luajice"] = function(self, card, use, request)
 	self:updatePlayers()
 	self:sortInPlace(self.enemies, "defense")
 	self.enemies = sgs.reverse(self.enemies)
@@ -1132,11 +1158,12 @@ sgs.ai_use_priority["luajice"] = 7
 sgs.ai_use_value["luajice"] = 7
 sgs.ai_card_intention["luajice"] = 80
 
-sgs.ai_skill_invoke["lualianji"] = function(self, data)
-	return true
+ai_skill_invoke["lualianji"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_use["@@luajiejiang"]=function(self,prompt)return terminal(self,luajiejiang_policy(self,prompt))end
+ai_skill_use["@@luajiejiang"]=function(self, prompt, request)return terminal(self,luajiejiang_policy(self,prompt))end
 
 -- Same-closure aliases are admitted only by the native immutable identity snapshot.
 if ai_audited_aliases then

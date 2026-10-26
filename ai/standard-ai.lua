@@ -2834,6 +2834,7 @@ sgs.ai_can_damagehp.yiji = function(self,from,card,to)
 	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to)
 end
+sgs.ai_can_damagehp.nosyiji = sgs.ai_can_damagehp.yiji
 
 sgs.ai_view_as.qingguo = function(card,player,card_place)
 	local suit = card:getSuitString()

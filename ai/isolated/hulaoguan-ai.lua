@@ -1,21 +1,25 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/hulaoguan-ai.lua.
 
 
-sgs.ai_skill_invoke["weapon_recast"] = function(self,data)
-	if self:hasSkills(sgs.lose_equip_skill, self.player) then return false end
+ai_skill_invoke["weapon_recast"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self:hasSkills(sgs.lose_equip_skill, self.player) then return (false) or false end
 	if self.player:isLord() then
 		local card_use = data:toCardUse()
-		if card_use.card:objectName()~="Crossbow" then return true end
+		if card_use.card:objectName()~="Crossbow" then return (true) or false end
 	else
-		if self.player:getWeapon() then return true end
+		if self.player:getWeapon() then return (true) or false end
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke["draw_1v3"] = function(self,data)
-	return not self:needKongcheng(self.player, true)
+ai_skill_invoke["draw_1v3"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (not self:needKongcheng(self.player, true)) or false
 end
 
-sgs.ai_skill_choice.Hulaopass = "recover"
+ai_skill_choice.Hulaopass = "recover"
 
 sgs.ai_skill_cardask["@xiuluo"] = function(self,data,pattern)
 	if self.player:containsTrick("YanxiaoCard") then return "." end
@@ -61,15 +65,21 @@ sgs.ai_skill_askforag.xiuluo = function(self,card_ids)
 	return card_ids[1]
 end
 
-sgs.ai_skill_choice.hulaopass_shenlvbu = function(self,choices,data)  --待补充
+ai_skill_choice.hulaopass_shenlvbu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+  --待补充
 	local lvbus = choices:split("+")
-	return lvbus[math.random(1,#lvbus)]
+	return ai_choice_result((lvbus[math.random(1,#lvbus)]), options)
 end
 
 
 --神躯
-sgs.ai_skill_choice.shenqu = function(self,choices,data)
-	return true
+ai_skill_choice.shenqu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	return ai_choice_result((true), options)
 end
 
 --极武
@@ -111,12 +121,14 @@ local function CanUsejiwu(self)
 	return false
 end
 
-sgs.ai_fill_skill.jiwu = function(self,inclusive,request)
+ai_fill_skill.jiwu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not CanUsejiwu(self) then return end
 	return self:legacySkillSeed("jiwu", "JiwuCard", request)
 end
 
-sgs.ai_skill_use_func.JiwuCard = function(card,use,self,request)
+ai_card_use.JiwuCard = function(self, card, use, request)
 	local usable_cards = self.player:getCards("h")
 	local use_card = {}
 	for _,c in sgs.list(usable_cards)do
@@ -129,13 +141,16 @@ sgs.ai_skill_use_func.JiwuCard = function(card,use,self,request)
 	use.card = self:bindSkillCard("jiwu", {use_card[1]:getKnownEffectiveId()}, request, nil, "JiwuCard")
 end
 
-sgs.ai_skill_choice.jiwu = function(self,choices,data)
+ai_skill_choice.jiwu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	if self.player:getHandcardNum()-self:getCardsNum("Peach")>0 then
 		if not self.player:hasSkill("xuanfeng", true) and self.player:getEquips():length()>0 then
-			return "xuanfeng"
+			return ai_choice_result(("xuanfeng"), options)
 		end
 		if not self.player:hasSkill("lieren", true) and self:getCardsNum("Slash")>0 and (self.player:getHandcardNum()-self:getCardsNum("Peach")-self:getCardsNum("Slash")>0) then
-			return "lieren"
+			return ai_choice_result(("lieren"), options)
 		end
 		
 		local candis = false
@@ -146,45 +161,48 @@ sgs.ai_skill_choice.jiwu = function(self,choices,data)
 			end
 		end
 		if not self.player:hasSkill("qiangxi", true) and (self.player:getHp()>3 or self:getCardsNum("Peach")>0 or candis) then
-			return "qiangxi"
+			return ai_choice_result(("qiangxi"), options)
 		end
 		
 		self:sort(self.enemies, "hp")
 		if not self.player:hasSkill("wansha", true) then
 			for _,enemy in sgs.list(self.enemies)do
 				if not (enemy:hasSkill("kongcheng") and enemy:isKongcheng()) and self:isWeak(enemy) and self:damageMinusHp(enemy, 1)>0 and #self.enemies>1 then
-					return "wansha"
+					return ai_choice_result(("wansha"), options)
 				end
 				if self.player:hasSkill("qiangxi") and self:isWeak(enemy) and self:damageMinusHp(enemy, 1)>0 then
-					return "wansha"
+					return ai_choice_result(("wansha"), options)
 				end
 			end
 		end
 	else
 		if not self.player:hasSkill("xuanfeng", true) then
-			return "xuanfeng"
+			return ai_choice_result(("xuanfeng"), options)
 		end
 		if not self.player:hasSkill("lieren", true) then
-			return "lieren"
+			return ai_choice_result(("lieren"), options)
 		end
 		if not self.player:hasSkill("qiangxi", true) then
-			return "qiangxi"
+			return ai_choice_result(("qiangxi"), options)
 		end
 		if not self.player:hasSkill("wansha", true) then
-			return "wansha"
+			return ai_choice_result(("wansha"), options)
 		end
 	end
-	return choices:split("+")[1]
+	return ai_choice_result((choices:split("+")[1]), options)
 end
 
 sgs.ai_use_priority.JiwuCard = sgs.ai_use_priority.Slash+0.1
 sgs.ai_use_value.JiwuCard = 3
 
-sgs.ai_skill_invoke.wushuangji = function(self,data)
+ai_skill_invoke.wushuangji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return self:doDisCard(target, "he") or self:canDraw()
+		return (self:doDisCard(target, "he") or self:canDraw()) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_cardchosen.wushuangji = function(self,who,flags,method)
@@ -196,14 +214,15 @@ end
 sgs.ai_use_value.Wushuangji = 3
 sgs.ai_keep_value.Wushuangji = 3.9
 
-sgs.ai_skill_invoke.shimandai = function(self,data)
+ai_skill_invoke.shimandai = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use.card:isDamageCard() then
 		if self:canDamageHp(use.from, use.card) then
-			return false
+			return (false) or false
 		end
 	end
-	return not self:isFriend(use.from)
+	return (not self:isFriend(use.from)) or false
 end
 
 sgs.ai_use_value.Shimandai = 4.4

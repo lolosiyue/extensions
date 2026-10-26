@@ -58,9 +58,7 @@ local function pindianRoom(ctx, player)
 	return player:getRoom()
 end
 
---====================================================================
 -- 自動·覆寫類
---====================================================================
 
 -- 天辯：紅心拼點牌視為K
 sgs.addPindianEffect("tianbian", function(number, card, player, ctx)
@@ -84,9 +82,7 @@ sgs.addPindianEffect("mobilemoujinjiu", function(number, card, player, ctx)
 	if opponent and opponent:hasSkill("mobilemoujinjiu") and card:isKindOf("Analeptic") then return 1 end
 end, 3)
 
---====================================================================
 -- 自動·加點類
---====================================================================
 
 -- mobilexinmingfa 新命法：拼點點數+2
 sgs.addPindianEffect("mobilexinmingfa", function(number, card, player, ctx)
@@ -178,9 +174,7 @@ sgs.addPindianEffect("xin2chuhai", function(number, card, player, ctx)
 	if n > 0 then return number + n end
 end)
 
---====================================================================
 -- 可選·加減類（只喺 mode 為 "max"/"min" 時計入潛力）
---====================================================================
 
 -- yingyang 陰陽：可令自己點數+3或-3
 sgs.addPindianEffect("yingyang", function(number, card, player, ctx)
@@ -254,9 +248,7 @@ sgs.addPindianEffect("sxjici", function(number, card, player, ctx)
 	if ctx.mode == "max" and player:getHp() > 1 then return 13 end
 end, 2)
 
---====================================================================
 -- SmartAI 封装
---====================================================================
 
 -- 以有效點數揀出最大/最細嘅牌。mode: "max"（預設）或 "min"
 -- 可見性規則同 getMaxCard 一致：其他人只計已知嘅牌；自己跳過貴重牌（冇就用fallback）

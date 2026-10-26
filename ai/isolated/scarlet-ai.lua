@@ -1,30 +1,12 @@
-﻿-- Scarlet 隔離 AI。共用 SmartAI 相等函式在 smart-ai-functions.lua，
--- 本檔只擴充技能名單、決鬥點數與各 s4 handler，不改基礎層。
--- 藏拙／志繼的獨立參考 handler 見本檔中段。
--- 以下 s4_sunjian（備陣／伐逆）對應舊版 lua/ai/scarlet-ai.lua 的
--- sgs.ai_skill_invoke／ai_skill_choice／ai_skill_cardchosen 與 getTurnUseCard。
--- s4_cloud_zhangliao（突襲／勇前）對應同檔原版 invoke／choice／discard／
--- playerchosen／cardneed／choicemade_filter，決策順序不變。
--- s4_cloud_huangzhong（烈弓／勇毅）對應同檔原版 invoke／cardneed／card_value／
--- ajustdamage／canliegong／activate 視為酒／card_priority／skill_defense。
--- s4_cloud_sunquan（英姿）對應同檔原版 notActive_cardneed／need_equip 標籤，
--- 並讀取英姿實例 state／公開 correct_state.x；制衡與救援屬其他包，
--- 未覆蓋時交回 SmartAI。
--- s4_lubu（先鋒／戟舞）對應同檔原版 cardneed／card_value／double_slash／
--- discard／choice；缺投影（含牌旗）回 unsupported。
--- s4_zhaoyun（救主）對應同檔原版 askforag／playerchosen／discard／invoke
--- 與留牌標籤；AG 選中的給牌目標用 ai_memory 跨問。
--- s4_huanzhaoyun（龍心／截戰）對應同檔原版 activate／invoke／choice／
--- slash_prohibit／card_priority／cardneed。
--- s4_zhurong（烈刃／巨象）對應同檔原版 fire_slash 出牌、target_revises、
--- invoke／playerchosen／pindian／choice／ajustdamage。
--- s4_guanyu（武聖／奔襲）對應同檔原版 view-as 殺、invoke、cardneed、ajustdamage。
--- s4_zhangfei（咆哮）對應同檔原版 use_revises／cardneed。
--- s4_machao（鐵騎）對應同檔原版 invoke／askforag。
--- s4_huangzhong（烈弓）對應同檔原版 canliegong／ajustdamage。
--- s4_2_zhaoyun（龍膽）對應同檔原版 activate／playerchosen／invoke／cardneed。
--- 全部改用快照與值型答案；快照查不到的資料回 nil（NotCovered）交回 legacy，
--- 不在這層編預設答案。
+﻿-- Existing source default; the package may replace it below.
+if sgs.ai_ajustdamage_from.s4_s_jianta == nil then
+    sgs.ai_ajustdamage_from.s4_s_jianta = function(self,from,to,card,nature)
+        local damage_call, helpers = self:getDamageValueContext()
+        if card and card:isKindOf("Slash") and damage_call(from,"hasFlag","s4_s_jianta") then return 1 end
+    end
+end
+
+-- Scarlet package policies; shared queries are in smart-ai-functions.lua.
 
 -- 這些名單是基礎層的擴充點，對應舊版 scarlet-ai.lua 的字串拼接。
 sgs.append_skill_list("drawpeach_skill", "s4_cloud_tuxi")
@@ -120,6 +102,7 @@ end
 
 -- 備陣發動與否：有 hej 牌就能重鑄（技能的 isAllNude 已在詢問前擋掉空手）。
 ai_skill_invoke["s4_beizhen"] = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local cards = self.player:getCards("hej")
     if cards == nil then return nil end
     return #cards > 0
@@ -127,6 +110,8 @@ end
 
 -- 瀕死邊緣才選 damage（救不回來就換加傷害）；其餘在 cancel 以外隨機。
 ai_skill_choice["s4_beizhen"] = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local items = type(options) == "table" and options.choices or nil
     if type(items) ~= "table" then return nil end
     local pool, has_damage = {}, false
@@ -177,6 +162,8 @@ end
 -- 伐逆選項：discard=<objectName> 只在伺服器驗過 canDiscard 時才出現；
 -- 有背水機會一半機率直上，否則棄目標一牌，都不行就摸牌。
 ai_skill_choice["s4_fani"] = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local items = type(options) == "table" and options.choices or nil
     if type(items) ~= "table" then return nil end
     local discard_choice, has_bieshui, has_draw
@@ -283,6 +270,8 @@ sgs.registerSkillCardType("s4_cangzhuo", "draw")
 
 -- 志繼保留原版順序、短路及 RNG 次數：背水 40%/20%，看破 60%，觀星 70%。
 ai_skill_choice.s4_zhiji = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     if type(options) ~= "table" or not AIValue.isList(options.choices)
         or #options.choices == 0 then
         return ai_unsupported("s4_zhiji requires offered choices", "s4_zhiji")
@@ -335,7 +324,8 @@ end
 
 -- s4_cloud_zhangliao：原版 lua/ai/scarlet-ai.lua 的勇前／突襲。
 -- 勇前摸牌階段選人可取消；TargetConfirmed 的 invoke 原版恆 true。
-ai_skill_invoke.s4_cloud_yongqian = function()
+ai_skill_invoke.s4_cloud_yongqian = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
@@ -385,6 +375,8 @@ end
 
 -- 棄牌失敗後的失去體力；原版固定選 1。
 ai_skill_choice.s4_cloud_tuxi = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local items = type(options) == "table" and options.choices or nil
     if type(items) ~= "table" then
         return ai_unsupported("s4_cloud_tuxi choices are missing", "s4_cloud_tuxi")
@@ -397,6 +389,7 @@ end
 
 -- 原版 data:toPlayer() 是當前回合角色；投影在 context.player，缺則讀 getCurrent。
 ai_skill_invoke.s4_cloud_tuxi = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local context = self:getDecisionContext()
     local target = context and context.player or self.room:getCurrent()
     if not target then
@@ -551,7 +544,8 @@ local function s4_cloud_yongyi_ai_max_records(player)
     return max_records
 end
 
-ai_skill_invoke.s4_cloud_liegong = function(self)
+ai_skill_invoke.s4_cloud_liegong = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local context = self:getDecisionContext()
     local target = context and context.player
     if not target then
@@ -601,7 +595,8 @@ sgs.ai_canliegong_skill.s4_cloud_liegong = function(self, from, to)
     return to_hand >= from_hp or to_hand <= from_range
 end
 
-ai_skill_invoke.s4_cloud_yongyi = function(self)
+ai_skill_invoke.s4_cloud_yongyi = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local max_records = s4_cloud_yongyi_ai_max_records(self.player)
     if max_records == nil then
         return ai_unsupported("s4_cloud_yongyi records are unknown", "s4_cloud_yongyi")
@@ -811,7 +806,9 @@ local function s4_jiwu_has_choice(items, name)
     return false
 end
 
-ai_skill_choice.s4_jiwu = function(self, options)
+ai_skill_choice.s4_jiwu = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local key = "s4_jiwu"
     local items = type(options) == "table" and options.choices or nil
     if type(items) ~= "table" then
@@ -1068,7 +1065,8 @@ sgs.ai_skill_discard.s4_jiuzhu_invoke = function(self, discard_num, min_num, opt
     return {}
 end
 
-ai_skill_invoke.s4_jiuzhu = function(self)
+ai_skill_invoke.s4_jiuzhu = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local key = "s4_jiuzhu"
     local weak = self:isWeak()
     if weak == nil then
@@ -1157,7 +1155,8 @@ ai_skill_activate.s4_longxin = function(self)
     return nil
 end
 
-ai_skill_invoke.s4_longxin = function(self)
+ai_skill_invoke.s4_longxin = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local key = "s4_longxin"
     local context = self:getDecisionContext()
     local target = context and context.player
@@ -1252,7 +1251,8 @@ if type(sgs.ai_choicemade_filter.cardChosen.snatch) == "function" then
     sgs.ai_choicemade_filter.cardChosen.s4_longxin = sgs.ai_choicemade_filter.cardChosen.snatch
 end
 
-ai_skill_invoke.s4_jiezhan = function(self)
+ai_skill_invoke.s4_jiezhan = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local key = "s4_jiezhan"
     local context = self:getDecisionContext()
     local cp = context and context.player
@@ -1278,7 +1278,9 @@ ai_skill_invoke.s4_jiezhan = function(self)
     return draw and enemy and (jinks > 0 or not weak)
 end
 
-ai_skill_choice.s4_jiezhan = function(self, options)
+ai_skill_choice.s4_jiezhan = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local key = "s4_jiezhan"
     local items = type(options) == "table" and options.choices or nil
     if type(items) ~= "table" then
@@ -1415,7 +1417,8 @@ sgs.ai_target_revises.s4_juxiang = function(_, card)
     if card:isKindOf("SavageAssault") then return true end
 end
 
-ai_skill_invoke.s4_juxiang = function(self)
+ai_skill_invoke.s4_juxiang = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local key = "s4_juxiang"
     local context = self:getDecisionContext()
     local pindian = context and context.pindian
@@ -1543,7 +1546,9 @@ sgs.ai_skill_pindian.s4_juxiang = function(minusecard, self, requestor)
     return best:getId()
 end
 
-ai_skill_choice.s4_juxiang = function(self, options)
+ai_skill_choice.s4_juxiang = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local key = "s4_juxiang"
     local items = type(options) == "table" and options.choices or nil
     if type(items) ~= "table" then
@@ -1689,7 +1694,8 @@ ai_skill_activate.s4_wusheng = function(self)
     return nil
 end
 
-ai_skill_invoke.s4_wusheng = function(self)
+ai_skill_invoke.s4_wusheng = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local key = "s4_wusheng"
     local context = self:getDecisionContext()
     local use = context and context.use
@@ -1738,7 +1744,8 @@ sgs.ai_cardneed.s4_paoxiao = function(to, card)
 end
 
 -- s4_machao：原版 lua/ai/scarlet-ai.lua 的鐵騎。
-ai_skill_invoke.s4_tieji = function(self)
+ai_skill_invoke.s4_tieji = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local key = "s4_tieji"
     local context = self:getDecisionContext()
     local target = context and context.player
@@ -1841,7 +1848,8 @@ if type(sgs.ai_choicemade_filter.cardChosen.snatch) == "function" then
     sgs.ai_choicemade_filter.cardChosen.s4_longdan = sgs.ai_choicemade_filter.cardChosen.snatch
 end
 
-ai_skill_invoke.s4_longdan = function()
+ai_skill_invoke.s4_longdan = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     return true
 end
 
@@ -2182,10 +2190,11 @@ end
 
 -- Round21 fixed donor scarlet-ai.lua:2450-2460. This callback retains the
 -- flag-before-mark short circuit; an undisclosed card flag is not false.
-sgs.ai_skill_invoke.s4_wuhu_fuyong = function(self, data)
+ai_skill_invoke.s4_wuhu_fuyong = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return true end
-    return false
+    if not self:isFriend(target) then return (true) or false end
+    return (false) or false
 end
 sgs.ai_ajustdamage_from.s4_wuhu_fuyong = function(self, from, to, card, nature)
     if not card then return end
@@ -2198,3 +2207,45 @@ sgs.ai_ajustdamage_from.s4_wuhu_fuyong = function(self, from, to, card, nature)
     if mark == nil then ai_unsupported("source strategy mark is unknown", "s4_wuhu_fuyong-Clear") end
     if mark + 1 == 2 then return 1 end
 end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, to, value, damage_call, from, helpers, context)
+        if damage_call(to,"hasSkill","s4_s_gedang") then return true, true end
+        return value
+    end
+    local function policy_2(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if card and table.contains(damage_call(self, "cardSkillNamesKnowledge", card, "ajustDamage.skill_names"), "s4_s_yuanshe") then
+            nature = "T"
+        end
+        return dmg, nature
+    end
+    local previous_1 = sgs.ai_ajustdamage_to["s4_s_gedang"]
+    sgs.ai_ajustdamage_to["s4_s_gedang"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "cap" and context.rule == "s4_s_gedang" then
+                return policy_1(self, to, context.value, context.query, from, context.extra[3], context)
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "s4_s_gedang", {
+        {phase="cap", rule="s4_s_gedang", order=3801},
+    })
+    local previous_2 = sgs.ai_ajustdamage_from["s4_s_yuanshe"]
+    sgs.ai_ajustdamage_from["s4_s_yuanshe"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "before_from" and context.rule == "s4_s_yuanshe" then
+                local damage, next_nature, terminal = policy_2(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_2) == "function" then return previous_2(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_from", "s4_s_yuanshe", {
+        {phase="before_from", rule="s4_s_yuanshe", order=4800},
+    })
+end)()

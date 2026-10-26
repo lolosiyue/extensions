@@ -1,5 +1,4 @@
--- Complete fixed b6025acc animic callback bodies. Readonly planning is kept
--- separate from native activation receipts; public equipment/judges only.
+-- Source: b6025acc ai/animic-ai.lua.
 local known = AIValue.requireKnown
 
 local function copy(xs)local out={};for _,v in ipairs(known(xs,"card/player list"))do out[#out+1]=v end return out end
@@ -10,25 +9,29 @@ local function huayuan_answer(self,names)
     for _,name in ipairs(names)do use.to:append(known(self.room:findPlayerByObjectName(name),"huayuan target"))end
     return use:toAnswer()
 end
-sgs.ai_skill_invoke["modao"] = function(self, data)
-    if #self.enemies == 0 then return false end
-    return true
+ai_skill_invoke["modao"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    if #self.enemies == 0 then return (false) or false end
+    return (true) or false
 end
 
-sgs.ai_skill_choice["modao"] = function(self, choices, data)
+ai_skill_choice["modao"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
-    if self.player:isKongcheng() then return "1" end
+    if self.player:isKongcheng() then return ai_choice_result(("1"), options) end
     for _, c in ipairs(self.player:getHandcards()) do
             if c:isKindOf("Duel") then
                 local dummy_use = self:aiUseCard(c)
                 if not dummy_use.to:isEmpty() then
-                    return "2"
+                    return ai_choice_result(("2"), options)
                 end
             end
             if c:isKindOf("FireAttack") and self.player:getHandcardNum() > 2 then
                 local dummy_use = self:aiUseCard(c)
                 if not dummy_use.to:isEmpty() then
-                    return "2"
+                    return ai_choice_result(("2"), options)
                 end
             end
 
@@ -39,19 +42,17 @@ sgs.ai_skill_choice["modao"] = function(self, choices, data)
             x = self:getEvaluationCard("SavageAssault")
         else continue end
         if x then
-            -- Readonly evaluation lifetime is native-owned.
             local du = self:aiUseCard(x)
-            if (du.card) then return "3" end
+            if (du.card) then return ai_choice_result(("3"), options) end
         end
     end
-    return "1"
+    return ai_choice_result(("1"), options)
 end
 
 sgs.ai_skill_playerchosen.modao = function(self, targets)
     targets = copy(targets)
     targets = self:sort(targets, "handcard_defense")
     for _, target in ipairs(targets) do
-        -- Own tag; QVariant::toInt reads an absent or non-numeric choice as 0.
         if self:isEnemy(target) and self:doDisCard(target, "h", true, tonumber(self.player:getTag("modao")) or 0) then
             return target
         end
@@ -65,9 +66,10 @@ sgs.ai_skill_playerchosen.modao = function(self, targets)
     return targets[1]
 end
 
-sgs.ai_skill_invoke["cuisheng"] = function(self, data)
+ai_skill_invoke["cuisheng"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local current = self.room:getCurrent()
-    return current and self:isFriend(current)
+    return (current and self:isFriend(current)) or false
 end
 sgs.ai_choicemade_filter.skillInvoke.cuisheng = function(self, player, promptlist)
     if promptlist[#promptlist] == "yes" then
@@ -77,7 +79,8 @@ sgs.ai_choicemade_filter.skillInvoke.cuisheng = function(self, player, promptlis
 end
 
 
-sgs.ai_skill_use["@@huayuan"]=function(self,prompt,method)
+ai_skill_use["@@huayuan"]=function(self, prompt, request)
+    local method = request and request.handling_method
     self:updatePlayers()
     local enemytargets = {}
         for _, enemy in ipairs(self.enemies) do
@@ -258,7 +261,9 @@ sgs.need_kongcheng = sgs.need_kongcheng .. "|luafenwei"
 
 
 
-sgs.ai_fill_skill.guihao=function(self,inclusive,request)
+ai_fill_skill.guihao=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("h")
     cards=copy(cards)
 
@@ -284,7 +289,6 @@ sgs.ai_fill_skill.guihao=function(self,inclusive,request)
     local suit = card:getSuitString()
     local number = card:getNumberString()
     local card_id = card:getKnownEffectiveId()
-    -- Source declaration metadata is retained by the material DTO.
     local analeptic = self:evaluateOwnerViewAsCard({source_key="guihao",skill="guihao",name="analeptic",suit=card:getSuit(),number=card:getNumber(),subcards={card_id}})
 
     if analeptic:isAvailable(self.player) then
@@ -310,22 +314,23 @@ end
 
 
 
-sgs.ai_skill_invoke.guihao = function(self, data)
-    if self:isWeak(self.player) and self:getAllPeachNum() == 0 then return false end
-    if self:willSkipPlayPhase(self.player) then return false end
+ai_skill_invoke.guihao = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    if self:isWeak(self.player) and self:getAllPeachNum() == 0 then return (false) or false end
+    if self:willSkipPlayPhase(self.player) then return (false) or false end
     for _,card in ipairs(self.player:getHandcards()) do
         if card:isKindOf("Peach") or card:isKindOf("Analeptic") or card:isKindOf("Slash") then
-            return true
+            return (true) or false
         end
     end
-    if math.random()<0.6 then return true end
-    return false
+    if math.random()<0.6 then return (true) or false end
+    return (false) or false
 end
 
-sgs.ai_skill_use["@@caiduan"] = function(self,prompt)
+ai_skill_use["@@caiduan"] = function(self, prompt, request)
     local cards = self.player:getCards("h")
     cards = copy(cards) -- 将列表转换为表
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
     for _,h in ipairs(cards)do
         if h and not h:targetFixed() then
             local dummy_use = self:aiUseCard(h)
@@ -342,9 +347,10 @@ sgs.ai_skill_use["@@caiduan"] = function(self,prompt)
     end
 end
 
-sgs.ai_skill_invoke["caiduan"] = function(self, data)
+ai_skill_invoke["caiduan"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local current = self.room:getCurrent()
-    return current and self:isEnemy(current) and not self:isWeak()
+    return (current and self:isEnemy(current) and not self:isWeak()) or false
 end
 sgs.ai_choicemade_filter.skillInvoke.caiduan = function(self, player, promptlist)
     if promptlist[#promptlist] == "yes" then
@@ -353,14 +359,15 @@ sgs.ai_choicemade_filter.skillInvoke.caiduan = function(self, player, promptlist
     end
 end
 
-sgs.ai_skill_invoke["shenni"] = function(self, data)
+ai_skill_invoke["shenni"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local move = data:toMoveOneTime()
     for _,card_id in ipairs(move.card_ids) do
         if (known(self:getKnownCardById(card_id),"shenni disclosed moved card")):isKindOf("Peach") then
-            return true
+            return (true) or false
         end
     end
-    return not self:isWeak()
+    return (not self:isWeak()) or false
 end
 
 

@@ -1,5 +1,4 @@
--- Fixed challengedeveloper-ai.lua b6025acc983331337614289d8cac79b078c003af.
--- Decisions preserve donor loop/short-circuit order; native scopes own authority.
+-- Source: b6025acc ai/challengedeveloper-ai.lua.
 local package_skills={}
 local known = AIValue.requireKnown
 
@@ -76,7 +75,9 @@ end
 local dev_lvedong = {}
 dev_lvedong.name = "dev_lvedong"
 table.insert(package_skills,dev_lvedong)
-dev_lvedong.getTurnUseCard = function(self,inclusive,request)
+dev_lvedong.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if lvedong_mark(self)>0
 	then
 		for i=0,1+self.player:getLostHp() do
@@ -138,7 +139,7 @@ dev_lvedong.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.DevLvedongCard = function(card,use,self,request)
+ai_card_use.DevLvedongCard = function(self, card, use, request)
 	use.card = card
 	use.to = self._dev_lvedong_plan.to
 	increment_lvedong(self)
@@ -150,9 +151,10 @@ sgs.ai_guhuo_card.dev_lvedong = function(self,toname,class_name)
 end
 
 --猜疑
-sgs.ai_skill_invoke.dev_caiyi = function(self,data)
+ai_skill_invoke.dev_caiyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return to and not self:isFriend(to)
+	return (to and not self:isFriend(to)) or false
 end
 
 sgs.ai_skill_discard.dev_caiyi = function(self)
@@ -160,7 +162,7 @@ sgs.ai_skill_discard.dev_caiyi = function(self)
 	if self:needToLoseHp(self.player, use.from, use.card)
 	or self:getCardsNum("Jink")<1 then return {} end
 	local handcards = AIList.new(self.player:getCards("h"))
-    self:sortByKeepValueInPlace(handcards) -- 按保留值排序
+    self:sortByKeepValueInPlace(handcards)
    	for _,h in sgs.list(handcards)do
 		if h:isKindOf("Slash") then return {h:getKnownEffectiveId()} end
 	end
@@ -176,8 +178,9 @@ function sgs.ai_cardsview_valuable.dev_jianshi(self,class_name,player)
 	return {name="nullification",skill="dev_jianshi",suit=null:getSuit(),number=null:getNumber(),subcards={jians:first(),jians:last()}}
 end
 
-sgs.ai_skill_invoke.dev_jianshi = function(self,data)
-	return true
+ai_skill_invoke.dev_jianshi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 --藏刀
@@ -228,14 +231,15 @@ sgs.ai_skill_askforyiji.dev_cangdao = function(self,card_ids)
 	return sgs.ai_skill_askforyiji.miji(self,card_ids)
 end
 
-sgs.ai_skill_invoke.dev_cangdao = function(self,data)
+ai_skill_invoke.dev_cangdao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
 	local slash = clone(self,"dev_cangdao","_dev_cangdao","slash",{})	
 	if self:isEnemy(to) then
 		if self:slashIsEffective(slash, to, self.player)
 		and self:damageIsEffective(to, slash, self.player)
 		and not self:needToLoseHp(enemy, self.player, self:getEvaluationCard("slash"))
-		then return true end
+		then return (true) or false end
 	end
 	if self:isFriend(to) then
 		local huatuo = false
@@ -249,48 +253,51 @@ sgs.ai_skill_invoke.dev_cangdao = function(self,data)
 		and ((self:findLeijiTarget(to, 50, self.player, -1) or (self:findLeijiTarget(to, 50, self.player, 1) and to:isWounded()))
 		or (to:isLord() and self.player:hasSkill("guagu") and to:getLostHp()>=1 and getCardsNum("Jink",to,self.player)==0)
 		or (friend:hasSkill("jieming") and self.player:hasSkill("nosrende") and huatuo)) then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 --全能
-sgs.ai_skill_invoke.dev_quanneng = function(self,data)
-	return true
+ai_skill_invoke.dev_quanneng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.dev_quanneng_buyi = function(self,data)
+ai_skill_invoke.dev_quanneng_buyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying={who=data:toPlayer()}
-    local new_data={toDying=function()return dying end}
-	return sgs.ai_skill_invoke.buyi(self,new_data)
+	return (ai_skill_invoke.buyi(self,self:inquiryInput("skill_invoke","buyi",{dying=dying}))) or false
 end
 
-sgs.ai_skill_invoke.dev_quanneng_lieren = function(self,data)
+ai_skill_invoke.dev_quanneng_lieren = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage={to=data:toPlayer()}
-    local new_data={toDamage=function()return damage end}
-	return sgs.ai_skill_invoke.lieren(self,new_data)
+	return (ai_skill_invoke.lieren(self,self:inquiryInput("skill_invoke","lieren",{damage=damage}))) or false
 end
 
 --破风
 local dev_pofeng_skill = {}
 dev_pofeng_skill.name = "dev_pofeng"
 table.insert(package_skills,dev_pofeng_skill)
-dev_pofeng_skill.getTurnUseCard = function(self,inclusive,request)
+dev_pofeng_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:isNude() then return end
 	local cards = AIList.new(self.player:getCards("he"))
 	table.sort(cards,function(a,b)
 		return a:getNumber()>b:getNumber()
 	end)
 	if cards[1]:getNumber()>=9 then
-		if sgs.ai_skill_invoke.qinyin(self) then
+		if ai_skill_invoke.qinyin(self, {}, nil) then
 			if qinyin_choice(self)=="down" then
 				remember(self,"pofeng_id",cards[1]:getEffectiveId())
 				return turn(self,"dev_pofeng","DevPofengCard",{},request)
 			end
 		end
 	elseif cards[#cards]:getNumber()<=5 then
-		if sgs.ai_skill_invoke.qinyin(self) then
+		if ai_skill_invoke.qinyin(self, {}, nil) then
 			if qinyin_choice(self)=="up" then
 				remember(self,"pofeng_id",cards[1]:getEffectiveId())
 				return turn(self,"dev_pofeng","DevPofengCard",{},request)
@@ -299,7 +306,7 @@ dev_pofeng_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.DevPofengCard = function(card,use,self,request)
+ai_card_use.DevPofengCard = function(self, card, use, request)
 	use.card = card
 end
 
@@ -321,7 +328,7 @@ sgs.ai_skill_discard.dev_pofeng = function(self,discard_num,min_num,optional,inc
 		return a:getNumber()>b:getNumber()
 	end)
 	
-	if sgs.ai_skill_invoke.qinyin(self) then
+	if ai_skill_invoke.qinyin(self, {}, nil) then
 		if qinyin_choice(self)=="down" then
 			for _,c in sgs.list(cards)do
 				if c:getNumber()<n then
@@ -348,7 +355,9 @@ end
 local dev_xiaohun_skill = {}
 dev_xiaohun_skill.name = "dev_xiaohun"
 table.insert(package_skills,dev_xiaohun_skill)
-dev_xiaohun_skill.getTurnUseCard = function(self,inclusive,request)
+dev_xiaohun_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = AIList.new(self.player:getCards("h"))
 	if self.player:getHandcardNum()<self.room:getOtherPlayers(self.player):length()/2 then return end
 	self:sortByKeepValueInPlace(cards)
@@ -383,7 +392,7 @@ dev_xiaohun_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.DevXiaohunCard=function(card,use,self,request)
+ai_card_use.DevXiaohunCard=function(self, card, use, request)
 	use.card = card
 end
 
@@ -507,11 +516,13 @@ end
 local dev_bancheng_skill={}
 dev_bancheng_skill.name = "dev_bancheng"
 table.insert(package_skills,dev_bancheng_skill)
-dev_bancheng_skill.getTurnUseCard = function(self,inclusive,request)
+dev_bancheng_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return turn(self,"dev_bancheng","DevBanchengCard",{},request)
 end
 
-sgs.ai_skill_use_func.DevBanchengCard = function(card,use,self,request)
+ai_card_use.DevBanchengCard = function(self, card, use, request)
 	local num = 2+self.player:getLostHp()
 	
 	if num==2 then
@@ -596,7 +607,7 @@ sgs.ai_card_intention.DevBanchengCard = function(self,card,from,tos)
 	end
 end
 
-sgs.ai_skill_use["@@dev_bancheng"] = function(self,prompt)
+ai_skill_use["@@dev_bancheng"] = function(self, prompt, request)
     local card=bind(self,"dev_bancheng","DevBanchengCard",{},nil)
     local use=dummy();self:useSkillCard(card, use)
     if use.card and recall(self,"bancheng_target")then return response(self,"dev_bancheng","DevBanchengCard",{}, {self.room:findPlayerByObjectName(recall(self,"bancheng_target"))})end
@@ -608,29 +619,32 @@ sgs.ai_need_damaged.dev_bancheng = function (self,attacker,player)
 end
 
 --曙光
-sgs.ai_skill_invoke.dev_shuguang = function(self,data)
+ai_skill_invoke.dev_shuguang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local who = data:toPlayer()
-	if who:getLostHp()==0 or not self:isFriend(who) then return false end
+	if who:getLostHp()==0 or not self:isFriend(who) then return (false) or false end
 	if who:getMaxHp()-who:getHp()==1 and not self.player:hasFlag("Global_PreventPeach") then
 		for _,peach in sgs.list(self:getCards("Peach"))do
 			if not self.player:isProhibited(who, peach) then
-				return false
+				return (false) or false
 			end
 		end
 	end
-	return true
+	return (true) or false
 end
 
 --妮妮
 local dev_nini_skill={}
 dev_nini_skill.name = "dev_nini"
 table.insert(package_skills,dev_nini_skill)
-dev_nini_skill.getTurnUseCard = function(self,inclusive,request)
+dev_nini_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies<=0 then return end
 	return turn(self,"dev_nini","DevNiniCard",{},request)
 end
 
-sgs.ai_skill_use_func.DevNiniCard = function(card,use,self,request)
+ai_card_use.DevNiniCard = function(self, card, use, request)
 	self:sortInPlace(self.enemies, "handcard")
 	for _,p in sgs.list(self.enemies)do
 		if not(self.player:canPindian(p) and self:doDisCard(p, "h")) then continue end
@@ -653,16 +667,17 @@ function sgs.ai_skill_pindian.dev_nini(minusecard,self,requestor)
 end
 
 --蛋疼
-sgs.ai_skill_invoke.dev_danteng = function(self,data)
+ai_skill_invoke.dev_danteng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target:objectName()==self.player:objectName() then return self:canDraw() end
-	if target:isWounded() then return self:canDraw() end
-	if self:isFriend(target) then return self:canDraw() and target:getHandcardNum()<=2 end
-	return self:canDraw()
+	if target:objectName()==self.player:objectName() then return (self:canDraw()) or false end
+	if target:isWounded() then return (self:canDraw()) or false end
+	if self:isFriend(target) then return (self:canDraw() and target:getHandcardNum()<=2) or false end
+	return (self:canDraw()) or false
 end
 
 --更新
-sgs.ai_skill_use["@@dev_gengxin"] = function(self,prompt)
+ai_skill_use["@@dev_gengxin"] = function(self, prompt, request)
 	local x = {}
 	local enemies,friends = {},{}
 	for _,p in sgs.list(self.enemies)do
@@ -737,36 +752,40 @@ sgs.ai_skill_use["@@dev_gengxin"] = function(self,prompt)
 end
 
 --学霸
-sgs.ai_skill_invoke.dev_xueba = function(self,data)
+ai_skill_invoke.dev_xueba = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	return self:isFriend(target)
+	return (self:isFriend(target)) or false
 end
 
-sgs.ai_skill_choice.xuehen = function(self,choices)
+ai_skill_choice.xuehen = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	choices = choices:split("+")
 	for _,choice in sgs.list(choices)do
 		if self:isValueSkill(choice, self.player, true) then
-			return choice
+			return ai_choice_result((choice), options)
 		end
 	end
 	for _,choice in sgs.list(choices)do
 		if self:isValueSkill(choice, self.player) then
-			return choice
+			return ai_choice_result((choice), options)
 		end
 	end
 	for _,choice in sgs.list(choices)do
 		if string.find(sgs.bad_skills,choice) then continue end
-		return choice
+		return ai_choice_result((choice), options)
 	end
-	return choices[math.random(1,#choices)]
+	return ai_choice_result((choices[math.random(1,#choices)]), options)
 end
 
 --魅惑
-sgs.ai_skill_invoke.dev_meihuo = function(self,data)
+ai_skill_invoke.dev_meihuo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return self:canDraw() and not self:isFriend(target) and (self:doDisCard(target, "h") or
-		(target:getHp()==1 and target:getHandcardNum()==1 and not hasBuquEffect(target)))
+		return (self:canDraw() and not self:isFriend(target) and (self:doDisCard(target, "h") or
+		(target:getHp()==1 and target:getHandcardNum()==1 and not hasBuquEffect(target)))) or false
 	else
 		local use = data:toCardUse()
 		local nature = sgs.DamageStruct_Normal
@@ -775,14 +794,14 @@ sgs.ai_skill_invoke.dev_meihuo = function(self,data)
 		elseif use.card:isKindOf("IceSlash") then nature = sgs.DamageStruct_Ice end
 		if self:canDraw() then
 			if self:isFriend(use.from) then
-				return self:isGoodChainTarget(self.player, nature, use.from)
-				and self:slashIsEffective(use.card, self.player, use.from)
+				return (self:isGoodChainTarget(self.player, nature, use.from)
+				and self:slashIsEffective(use.card, self.player, use.from)) or false
 			end
-			return true
+			return (true) or false
 		end
-		return self:isWeak() and not self:isFriend(use.from) and self:slashIsEffective(use.card, self.player, use.from) and self:damageIsEffective(self.player, nature, use.from)
+		return (self:isWeak() and not self:isFriend(use.from) and self:slashIsEffective(use.card, self.player, use.from) and self:damageIsEffective(self.player, nature, use.from)) or false
 	end
-	return false
+	return (false) or false
 end
 
 --女神
@@ -808,8 +827,9 @@ sgs.ai_skill_playerchosen.dev_nvshen = function(self,targets)
 end
 
 --嗝屁
-sgs.ai_skill_invoke.dev_gepi = function(self,data)
-	if self.player:getCardCount()==1 and not self.player:isKongcheng() and self.player:getCards("h"):first():isKindOf("Peach") and self:isWeak(self.friends) then return false end
+ai_skill_invoke.dev_gepi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:getCardCount()==1 and not self.player:isKongcheng() and self.player:getCards("h"):first():isKindOf("Peach") and self:isWeak(self.friends) then return (false) or false end
 	local target = data:toPlayer()
 	local skills = {}
 	for _,sk in sgs.qlist(target:getVisibleSkillList())do
@@ -817,12 +837,12 @@ sgs.ai_skill_invoke.dev_gepi = function(self,data)
 		sk:getFrequency()==sgs.Skill_Wake or table.contains(skills,sk:objectName()) then continue end
 		table.insert(skills,sk:objectName())
 	end
-	if #skills==0 then return self:canDraw(target) and self:isFriend(target) end
+	if #skills==0 then return (self:canDraw(target) and self:isFriend(target)) or false end
 	if self:isFriend(target) then
 		for _,sk in sgs.list(skills)do
 			if string.find(sgs.bad_skills,sk) then
 				remember(self,"gepi_choice",sk)
-				return true
+				return (true) or false
 			end
 		end
 	elseif self:isEnemy(target) then
@@ -830,24 +850,25 @@ sgs.ai_skill_invoke.dev_gepi = function(self,data)
 			if not string.find(self.room:getPublicSkill(sk):getDescription(),"出牌阶段") then continue end
 			if self:isValueSkill(sk, target) then
 				remember(self,"gepi_choice",sk)
-				return true
+				return (true) or false
 			end
 		end
 	end
-	return false
+	return (false) or false
 end
 
 --柴刀
-sgs.ai_skill_invoke.dev_chaidao = function(self,data)
+ai_skill_invoke.dev_chaidao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local str = data:toString():split(":")
-	if #str~=2 then return false end
+	if #str~=2 then return (false) or false end
 	local target = self.room:findPlayerByObjectName(str[2])  --被横置就先不考虑了
 	if str[1]=="DamageCaused" then
-		return self:isEnemy(target) and not self:cantDamageMore(self.player, target)
+		return (self:isEnemy(target) and not self:cantDamageMore(self.player, target)) or false
 	elseif str[1]=="DamageInflicted" then
-		return not self:isFriend(target)  --被横置就先不考虑了，有卖血技也先不考虑了
+		return (not self:isFriend(target)) or false  --被横置就先不考虑了，有卖血技也先不考虑了
 	end
-	return false
+	return (false) or false
 end
 
 --骚动
@@ -941,11 +962,11 @@ end
 sgs.ai_playerchosen_intention.dev_zhiyin = -20
 
 --教导
-sgs.ai_skill_invoke.dev_jiaodao = function(self,data)
+ai_skill_invoke.dev_jiaodao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = context(self,"jiaodao_use")
-	if not use then return false end
-	--return q(self,"willUse",use.from,use.card,false,false,true)
-	return self:willUse(self.player, use.card, false, false, true)
+	if not use then return (false) or false end
+	return (self:willUse(self.player, use.card, false, false, true)) or false
 end
 
 --美工
@@ -980,12 +1001,14 @@ end
 local dev_meigong_skill={}
 dev_meigong_skill.name = "dev_meigong"
 table.insert(package_skills,dev_meigong_skill)
-dev_meigong_skill.getTurnUseCard = function(self,inclusive,request)
+dev_meigong_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.friends_noself<=0 then return end
 	return turn(self,"dev_meigong","DevMeigongCard",{},request)
 end
 
-sgs.ai_skill_use_func.DevMeigongCard = function(card,use,self,request)
+ai_card_use.DevMeigongCard = function(self, card, use, request)
 	limited_sort(self,self.friends_noself,true)
 	local num = 0
 	for _,skill in sgs.qlist(self.friends_noself[1]:getVisibleSkillList())do
@@ -1021,30 +1044,35 @@ end
 
 sgs.ai_playerchosen_intention.dev_qiliao = -20
 
-sgs.ai_skill_invoke.dev_qiliao = function(self,data)
+ai_skill_invoke.dev_qiliao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local strs = data:toString():split(":")
-	if #strs~=2 then return false end
+	if #strs~=2 then return (false) or false end
 	local target = self.room:findPlayerByObjectName(strs[2])
-	if not target or target:isDead() then return false end
-	return self:isFriend(target) and self:isWeak(target) and target:getLostHp()>0
+	if not target or target:isDead() then return (false) or false end
+	return (self:isFriend(target) and self:isWeak(target) and target:getLostHp()>0) or false
 end
 
 --学习
-sgs.ai_skill_invoke.dev_xuexi = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.dev_xuexi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 --给力
-sgs.ai_skill_invoke.dev_geili = function(self,data)
+ai_skill_invoke.dev_geili = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	return self:isEnemy(target) and target:getLostHp()>0
+	return (self:isEnemy(target) and target:getLostHp()>0) or false
 end
 
 --奆佬
 local dev_juanlao_skill = {}
 dev_juanlao_skill.name = "dev_juanlao"
 table.insert(package_skills,dev_juanlao_skill)
-dev_juanlao_skill.getTurnUseCard = function(self,inclusive,request)
+dev_juanlao_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local name = self.player:getPropertyValue("dev_juanlao_card") or "" -- absent: QVariant::toString() ""
 	if not name or name==nil or name=="" then return end
 	local card_str = ("%s:dev_juanlao[no_suit:0]=."):format(name)
@@ -1057,21 +1085,22 @@ dev_juanlao_skill.getTurnUseCard = function(self,inclusive,request)
 end
 
 --饺气
-sgs.ai_skill_invoke.dev_jiaoqi = function(self,data)
+ai_skill_invoke.dev_jiaoqi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local strs = data:toString():split(":")
-	if #strs~=2 then return false end
+	if #strs~=2 then return (false) or false end
 	local target = self.room:findPlayerByObjectName(strs[2])
-	if not target or target:isDead() then return false end
+	if not target or target:isDead() then return (false) or false end
 	if strs[1]=="discard" then
-		return self:isEnemy(target) and self:doDisCard(target, "e")
+		return (self:isEnemy(target) and self:doDisCard(target, "e")) or false
 	elseif strs[1]=="jink" then
-		return self:isEnemy(target)
+		return (self:isEnemy(target)) or false
 	end
-	return false
+	return (false) or false
 end
 
 --饺猾
-sgs.ai_skill_use["@@dev_jiaohua"] = function(self,prompt)
+ai_skill_use["@@dev_jiaohua"] = function(self, prompt, request)
 	local cards,suits = {},{}
 	for _,c in sgs.qlist(self.player:getEquips())do
 		local suit = c:getSuit()
@@ -1111,7 +1140,9 @@ end
 local dev_tumou = {}
 dev_tumou.name = "dev_tumou"
 table.insert(package_skills,dev_tumou)
-dev_tumou.getTurnUseCard = function(self,inclusive,request)
+dev_tumou.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = AIList.new(self.player:getCards("h"))
 	self:sortByKeepValueInPlace(cards)
 	local id = -1
@@ -1167,7 +1198,7 @@ dev_tumou.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.DevTumouCard = function(card,use,self,request)
+ai_card_use.DevTumouCard = function(self, card, use, request)
 	use.card = card
 	use.to = self._dev_tumou_plan.to
 end
@@ -1191,12 +1222,40 @@ sgs.ai_guhuo_card.dev_tumou = function(self,toname,class_name)
 end
 
 --机应
-sgs.ai_skill_invoke.dev_jiying = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.dev_jiying = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
-sgs.ai_skill_choice.dev_gepi=function(self)return known(recall(self,"gepi_choice"),"dev_gepi prior choice")end
-sgs.ai_skill_choice.dev_saodong=function(self)return known(recall(self,"saodong_choice"),"dev_saodong prior choice")end
-for _,skill in ipairs(package_skills)do sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end
+ai_skill_choice.dev_gepi=function(self, options, request)return ai_choice_result((known(recall(self,"gepi_choice"),"dev_gepi prior choice")), options)end
+ai_skill_choice.dev_saodong=function(self, options, request)return ai_choice_result((known(recall(self,"saodong_choice"),"dev_saodong prior choice")), options)end
+for _,skill in ipairs(package_skills)do ai_fill_skill[skill.name]=skill.getTurnUseCard end
 
 SmartAIView.DevLimitedSkillSort=limited_sort
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_skill_defense["dev_shanbi"]
+    local policy = function(self, to, context)
+        local value, query = context.value, context.query
+        local hp, core_query = context.extra[1], context.extra[2]
+        if query(to, "hasSkill", "dev_shanbi") then return false, true end
+        return value
+    end
+    sgs.ai_skill_defense["dev_shanbi"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "weakness_early" and context.rule == "dev_shanbi" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+        return previous
+    end
+    sgs.declareValueHookStages("ai_skill_defense", "dev_shanbi", {
+        {phase="weakness_early", order=1, rule="dev_shanbi"},
+    })
+end)()
+end

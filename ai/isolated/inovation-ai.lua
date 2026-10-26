@@ -1,6 +1,4 @@
--- Fixed b6025acc inovation-ai.lua:1119-1186 necessary dependency slice.
--- No other Inovation callback is claimed. The source free global `to_use`
--- has no writer (the seven other assignments are lexically local).
+-- Source: b6025acc ai/inovation-ai.lua.
 local to_use = nil
 local known = AIValue.requireKnown
 local function analeptic_available(self)
@@ -26,7 +24,9 @@ sgs.ai_cardsview_valuable.inovation_fengzhu = function(self, class_name, player)
 	end
 end
 
-sgs.ai_fill_skill.inovation_fengzhu = function(self, inclusive, request)
+ai_fill_skill.inovation_fengzhu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then
 		return
 	end
@@ -41,7 +41,7 @@ sgs.ai_fill_skill.inovation_fengzhu = function(self, inclusive, request)
     end
 end
 
-sgs.ai_skill_use_func.InovationFengzhuCard = function(card, use, self)
+ai_card_use.InovationFengzhuCard = function(self, card, use, request)
 
     local pattern = nil
 
@@ -77,22 +77,24 @@ sgs.ai_use_value["InovationFengzhuCard"] = 6
 sgs.ai_use_priority["InovationFengzhuCard"] = 3.5
 
 
--- R43 complete fixed Baonu/Jizhanshiz strategy family.
 do
 
 
-sgs.ai_skill_invoke.baonu = function(self, data)
-	if #self.enemies == 0 then return false end
-	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return false end
-	if self.player:getLostHp() == 0 and self.player:getHandcardNum() > 4 then return false end
+ai_skill_invoke.baonu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
+	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return (false) or false end
+	if self.player:getLostHp() == 0 and self.player:getHandcardNum() > 4 then return (false) or false end
 	for _,p in sgs.list(self.room:getOtherPlayers(self.player)) do
-		if self.player:inMyAttackRange(p) and not p:isNude() then return true end
+		if self.player:inMyAttackRange(p) and not p:isNude() then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
 
-sgs.ai_fill_skill.jizhanshiz = function(self, inclusive, request)
+ai_fill_skill.jizhanshiz = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("JizhanCard") then return end
 	if self.player:getMark("@Baonu") == 0 then return end
 	for _,p in sgs.list(self.room:getOtherPlayers(self.player)) do
@@ -102,7 +104,7 @@ sgs.ai_fill_skill.jizhanshiz = function(self, inclusive, request)
 	end
 end
 
-sgs.ai_skill_use_func.JizhanCard = function(card,use,self)
+ai_card_use.JizhanCard = function(self, card, use, request)
 	local target
 	if #self.enemies > 1 then
 		for _,p in sgs.list(self.room:getOtherPlayers(self.player)) do
@@ -149,7 +151,6 @@ sgs.ai_card_intention["JizhanCard"] = 0
 
 end
 
--- R45 complete fixed Inovation stateless policies; native/current-view facts only.
 do
 
 
@@ -251,302 +252,341 @@ sgs.ai_need_damaged.inovation_SE_Maoqun = function (self, attacker)
 end
 
 -- Fixed inovation-ai.lua:76-82
-sgs.ai_skill_choice["dingxin"] = function(self, choices, data)
-	if self:getCardsNum("Peach") == 0 then return "dingxin_recover" end
+ai_skill_choice["dingxin"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	if self:getCardsNum("Peach") == 0 then return ai_choice_result(("dingxin_recover"), options) end
 	for _,p in sgs.list(self.room:getPlayers()) do
-		if (p:getKnownGeneralName() == "inovation_Nagisa" or p:getGeneral2Name() == "inovation_Nagisa") and (self.player:getKnownRole() == p:getKnownRole() or (self.player:getKnownRole() == "lord" and p:getKnownRole() == "loyalist")) then return "dingxin_revive" end
+		if (p:getKnownGeneralName() == "inovation_Nagisa" or p:getGeneral2Name() == "inovation_Nagisa") and (self.player:getKnownRole() == p:getKnownRole() or (self.player:getKnownRole() == "lord" and p:getKnownRole() == "loyalist")) then return ai_choice_result(("dingxin_revive"), options) end
 	end
-	return "dingxin_recover"
+	return ai_choice_result(("dingxin_recover"), options)
 end
 
 -- Fixed inovation-ai.lua:1217-1220
-sgs.ai_skill_choice["jicheng"] = function(self, choices, data)
-	if self:isWeak() and self:getCardsNum("Peach") == 0 and self.player:getHp() == 1 then return "jicheng_recover" end
-	return "jicheng_draw"
+ai_skill_choice["jicheng"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	if self:isWeak() and self:getCardsNum("Peach") == 0 and self.player:getHp() == 1 then return ai_choice_result(("jicheng_recover"), options) end
+	return ai_choice_result(("jicheng_draw"), options)
 end
 
 -- Fixed inovation-ai.lua:951-955
-sgs.ai_skill_choice.nangua = function(self, choices, data)
-	if self.player:faceUp() then return "nangua_recover" end
-	if self.player:getHp() < 1 then return "nangua_recover" end
-	return "nangua_turnover"
+ai_skill_choice.nangua = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	if self.player:faceUp() then return ai_choice_result(("nangua_recover"), options) end
+	if self.player:getHp() < 1 then return ai_choice_result(("nangua_recover"), options) end
+	return ai_choice_result(("nangua_turnover"), options)
 end
 
 -- Fixed inovation-ai.lua:1054-1064
-sgs.ai_skill_choice["paoji"] = function(self, choices, data)
+ai_skill_choice["paoji"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local target = self:getPriorTarget()
 	for _,p in ipairs(self.friends) do
-		if p:hasSkills("guicai|se_qidian") then return "4" end
+		if p:hasSkills("guicai|se_qidian") then return ai_choice_result(("4"), options) end
 	end
-	if target and self:isWeak(target) then return "1" end
+	if target and self:isWeak(target) then return ai_choice_result(("1"), options) end
 	for _,p in ipairs(self.enemies) do
-		if p:hasSkills("guicai|se_qidian") then return "1" end
+		if p:hasSkills("guicai|se_qidian") then return ai_choice_result(("1"), options) end
 	end
-	return "4"
+	return ai_choice_result(("4"), options)
 end
 
 -- Fixed inovation-ai.lua:870-878
-sgs.ai_skill_choice["xingjian"] = function(self, choices, data)
+ai_skill_choice["xingjian"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local ranka = self.room:findPlayerBySkillName("xingjian")
-	if not self:isEnemy(ranka) then return "xingjian_skip" end
-	if self.player:hasSkills(sgs.need_equip_skill) then return "xingjian_skip" end
-	if self.player:hasSkills(sgs.lose_equip_skill) then return "xingjian_throw" end
-	if self.player:hasSkills(sgs.cardneed_skill) then return "xingjian_throw" end
-	if self:getCardsNum("Slash") == 0 then return "xingjian_throw" end
-	return "xingjian_skip"
+	if not self:isEnemy(ranka) then return ai_choice_result(("xingjian_skip"), options) end
+	if self.player:hasSkills(sgs.need_equip_skill) then return ai_choice_result(("xingjian_skip"), options) end
+	if self.player:hasSkills(sgs.lose_equip_skill) then return ai_choice_result(("xingjian_throw"), options) end
+	if self.player:hasSkills(sgs.cardneed_skill) then return ai_choice_result(("xingjian_throw"), options) end
+	if self:getCardsNum("Slash") == 0 then return ai_choice_result(("xingjian_throw"), options) end
+	return ai_choice_result(("xingjian_skip"), options)
 end
 
 -- Fixed inovation-ai.lua:521-524
-sgs.ai_skill_invoke.FukurouzaTobi = function(self, data)
-	if self:isEnemy(self.room:getCurrent()) and not self.room:getCurrent():hasSkills(sgs.immune_skill) then return true end
-	return false
+ai_skill_invoke.FukurouzaTobi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self:isEnemy(self.room:getCurrent()) and not self.room:getCurrent():hasSkills(sgs.immune_skill) then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:498-503
-sgs.ai_skill_invoke.Takamakuri = function(self, data)
+ai_skill_invoke.Takamakuri = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if not damage or not damage.to then return false end
-	if self:isEnemy(damage.to) and not damage.to:hasSkills(sgs.lose_equip_skill) then return true end
-	return false
+	if not damage or not damage.to then return (false) or false end
+	if self:isEnemy(damage.to) and not damage.to:hasSkills(sgs.lose_equip_skill) then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:505-512
-sgs.ai_skill_invoke.Tobiugachi = function(self, data)
+ai_skill_invoke.Tobiugachi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if self:isFriend(self.room:getCurrent()) then
-		if self.player:getHandcardNum() - self.player:getHp() + 1 <= 3 and (self:isWeak() or self:getCardsNum("Jink") == 0) then return true end
-		return false
+		if self.player:getHandcardNum() - self.player:getHp() + 1 <= 3 and (self:isWeak() or self:getCardsNum("Jink") == 0) then return (true) or false end
+		return (false) or false
 	end
-	if self.player:getHandcardNum() - self.player:getHp() + 1 <= 5 then return true end
-	return false
+	if self.player:getHandcardNum() - self.player:getHp() + 1 <= 5 then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:316-319
-sgs.ai_skill_invoke.diangongDamage = function(self, data)
+ai_skill_invoke.diangongDamage = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	return self:isFriend(damage.to)
+	return (self:isFriend(damage.to)) or false
 end
 
 -- Fixed inovation-ai.lua:22-37
-sgs.ai_skill_invoke.fushang = function(self, data)
+ai_skill_invoke.fushang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if not damage or not damage.to then return false end
+	if not damage or not damage.to then return (false) or false end
 	if self:isFriend(damage.to) then
 		local num = damage.to:getMark("@fushang")
 		local last = damage.to:getMark("@fushang_time")
 		if last == 1 then
-			if self:isWeak(damage.to) and self:getCardsNum("Peach") == 0 then return false end
-			if num >= damage.to:getLostHp() - 1 then return false end
-			return true
+			if self:isWeak(damage.to) and self:getCardsNum("Peach") == 0 then return (false) or false end
+			if num >= damage.to:getLostHp() - 1 then return (false) or false end
+			return (true) or false
 		else
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:56-59
-sgs.ai_skill_invoke.guangyu = function(self, data)
-	if self:isFriend(self.room:getCurrent()) then return true end
-	return false
+ai_skill_invoke.guangyu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self:isFriend(self.room:getCurrent()) then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:413-417
-sgs.ai_skill_invoke.inovation_SE_Zhixing = function(self, data)
+ai_skill_invoke.inovation_SE_Zhixing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local source = data:toPlayer()
-	if self:isFriend(source) then return true end
-	return false
+	if self:isFriend(source) then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:1066-1069
-sgs.ai_skill_invoke.inovation_dianci = function(self, data)
-	if #self.enemies == 0 then return false end
-	return true
+ai_skill_invoke.inovation_dianci = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
+	return (true) or false
 end
 
 -- Fixed inovation-ai.lua:335-342
-sgs.ai_skill_invoke.inovation_haixing = function(self, data)
+ai_skill_invoke.inovation_haixing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying_data = data:toDying()
 	local source = dying_data.who
 	if self:isFriend(source) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:306-311
-sgs.ai_skill_invoke.inovation_huanxing = function(self, data)
+ai_skill_invoke.inovation_huanxing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	if not use or not use.from then return false end
-	if self:isEnemy(use.from) then return true end
-	return false
+	if not use or not use.from then return (false) or false end
+	if self:isEnemy(use.from) then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:930-945
-sgs.ai_skill_invoke.inovation_jixian = function(self, data)
-	if #self.enemies == 0 then return false end
-	if self.player:getLostHp() == 1 then return true end
+ai_skill_invoke.inovation_jixian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
+	if self.player:getLostHp() == 1 then return (true) or false end
 	if self.player:getLostHp() > 1 then
-		if self.player:getKnownRole() == "rebel" and self:isWeak(self.room:getLord()) then return true end
-		if self.room:getAlivePlayers():length() == 2 then return true end
-		if self.player:getHp() <= 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return true end
+		if self.player:getKnownRole() == "rebel" and self:isWeak(self.room:getLord()) then return (true) or false end
+		if self.room:getAlivePlayers():length() == 2 then return (true) or false end
+		if self.player:getHp() <= 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return (true) or false end
 	end
 	for _,p in ipairs(self.friends) do
-		if p:hasSkills("SE_Shuanglang|SE_Mengfeng")then return true end
+		if p:hasSkills("SE_Shuanglang|SE_Mengfeng")then return (true) or false end
 	end
 	for _,p in ipairs(self.enemies) do
-		if p:getHp() == 1 and self:isWeak(p) and p:getKnownRole() == "rebel" then return true end
+		if p:getHp() == 1 and self:isWeak(p) and p:getKnownRole() == "rebel" then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:206-208
-sgs.ai_skill_invoke.inovation_zhuren = function(self, data)
-	return true
+ai_skill_invoke.inovation_zhuren = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 -- Fixed inovation-ai.lua:713-730
-sgs.ai_skill_invoke.jianjin = function(self, data)
+ai_skill_invoke.jianjin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 
-	if not self:isFriend(damage.from) and not self:isFriend(damage.to) then return false end
+	if not self:isFriend(damage.from) and not self:isFriend(damage.to) then return (false) or false end
 	local current = self.room:getCurrent()
 	if current:objectName() == self.player:objectName() or current:getNextAlive():objectName() == self.player:objectName() then
-		if self.player:getMark("@Jianjin_damage_recovery") > 2 then return true end
-		if self.player:getLostHp() > 0 and self:getCardsNum("Peach") > 0 then return false end
-		if self.player:hasWeapon("crossbow") and self:getCardsNum("Slash") > 0 then return false end
-		return true
+		if self.player:getMark("@Jianjin_damage_recovery") > 2 then return (true) or false end
+		if self.player:getLostHp() > 0 and self:getCardsNum("Peach") > 0 then return (false) or false end
+		if self.player:hasWeapon("crossbow") and self:getCardsNum("Slash") > 0 then return (false) or false end
+		return (true) or false
 	else
-		if self.player:getMark("@Jianjin_damage_recovery") > 2 then return true end
+		if self.player:getMark("@Jianjin_damage_recovery") > 2 then return (true) or false end
 		if self.player:getMark("@Jianjin_damage_recovery") == 2 then
-			if self:isFriend(damage.from) and self:isWeak(damage.from) then return true end
-			if self:isFriend(damage.to) and self:isWeak(damage.to) then return true end
+			if self:isFriend(damage.from) and self:isWeak(damage.from) then return (true) or false end
+			if self:isFriend(damage.to) and self:isWeak(damage.to) then return (true) or false end
 		end
 	end
+	return false
+
 end
 
 -- Fixed inovation-ai.lua:1017-1032
-sgs.ai_skill_invoke.jiguan = function(self, data)
-	if #self.enemies == 0 then return false end
+ai_skill_invoke.jiguan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
 	local use = data:toCardUse()
-	if use.from:objectName() == self.player:objectName() then return true end
+	if use.from:objectName() == self.player:objectName() then return (true) or false end
 	if self:isEnemy(use.from) then
-		if use.from:getHp() == 1 then return true end
+		if use.from:getHp() == 1 then return (true) or false end
 		local num = 0
 		for _, id in sgs.list(self.player:getPile("jiguan")) do
 			if sgs.Sanguosha:getCard(id):getNumber() == use.card:getNumber() then
 				num = num + 1
 			end
 		end
-		if num > 1 then return true end
+		if num > 1 then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:636-641
-sgs.ai_skill_invoke.kangfen = function(self, data)
-	if #self.enemies == 0 then return false end
-	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return false end
-	if self.player:getEquips():length() == 0 and self.player:getHp() <= 3 then return false end
-	return true
+ai_skill_invoke.kangfen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
+	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return (false) or false end
+	if self.player:getEquips():length() == 0 and self.player:getHp() <= 3 then return (false) or false end
+	return (true) or false
 end
 
 -- Fixed inovation-ai.lua:529-533
-sgs.ai_skill_invoke.kongdi = function(self, data)
+ai_skill_invoke.kongdi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local move = data:toMoveOneTime()
-	if move.to and not self:isFriend(move.to) then return true end
-	return false
+	if move.to and not self:isFriend(move.to) then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:536-540
-sgs.ai_skill_invoke.kuisi = function(self, data)
+ai_skill_invoke.kuisi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local death = death(self)
-	if self:isEnemy(death.damage.from) then return true end
-	return false
+	if self:isEnemy(death.damage.from) then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:975-995
-sgs.ai_skill_invoke.lunpo = function(self, data)
+ai_skill_invoke.lunpo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if self:isEnemy(use.from) then
 		if use.card:isKindOf("SingleTargetTrick") and use.to:length() > 0 and self:isFriend(use.to:at(0)) then
-			if use.card:isKindOf("Snatch") or use.card:isKindOf("Duel") then return true end
-			--if q(use.card,"isKindOf","Dismantlement") and q(use.to,"at",0):getEquips():length() > 0 then return true end
-			if use.card:isKindOf("DelayedTrick") and not use.card:isKindOf("KeyTrick") then return true end
+			if use.card:isKindOf("Snatch") or use.card:isKindOf("Duel") then return (true) or false end
+			if use.card:isKindOf("DelayedTrick") and not use.card:isKindOf("KeyTrick") then return (true) or false end
 		end
-		if use.card:isKindOf("Slash") and self:isWeak(use.to:at(0)) and self:isFriend(use.to:at(0)) then return true end
-		if use.card:isKindOf("Jink") or use.card:isKindOf("Peach") then return true end
+		if use.card:isKindOf("Slash") and self:isWeak(use.to:at(0)) and self:isFriend(use.to:at(0)) then return (true) or false end
+		if use.card:isKindOf("Jink") or use.card:isKindOf("Peach") then return (true) or false end
 		if use.card:isKindOf("AOE") or use.card:isKindOf("GlobalEffect") then
 			for _,p in ipairs(self.friends) do
 				if self:isWeak(p) then
-					return true
+					return (true) or false
 				end
 			end
 		end
 	end
 
-	return false
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:958-973
-sgs.ai_skill_invoke.lunpo_inturn = function(self, data)
-	if #self.enemies == 0 then return false end
+ai_skill_invoke.lunpo_inturn = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
 	local min = 100
 	for _,p in sgs.list(self.room:getAlivePlayers()) do
 		if p:getHp() < min then min = p:getHp() end
 	end
 	local num = self.player:getPile("Yandan"):length()
-	if min == 1 and num >= 3 then return true end
+	if min == 1 and num >= 3 then return (true) or false end
 	if min <= 2 then
 		local toFight = self:getPriorTarget()
-		if toFight:getHp() <= 1 then return true end
-		if toFight:hasSkills(sgs.masochism_skill) then return true end
-		if toFight:hasSkill("Lichang") then return true end
+		if toFight:getHp() <= 1 then return (true) or false end
+		if toFight:hasSkills(sgs.masochism_skill) then return (true) or false end
+		if toFight:hasSkill("Lichang") then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:909-927
-sgs.ai_skill_invoke.qiyue = function(self, data)
+ai_skill_invoke.qiyue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
-	if not self:isFriend(dying.who) then return false end
+	if not self:isFriend(dying.who) then return (false) or false end
 
-	if self.player:objectName() == dying.who:objectName() then return true end
+	if self.player:objectName() == dying.who:objectName() then return (true) or false end
 	local aggregate_num = 0
 	for i=1, self.player:getMaxHp() do
 		aggregate_num = aggregate_num + (5 - i) * self.room:getAlivePlayers():length()
 	end
-	if aggregate_num >= draw_count(self) then return true end
+	if aggregate_num >= draw_count(self) then return (true) or false end
 
-	if dying.who:isLord() then return true end
+	if dying.who:isLord() then return (true) or false end
 
-	if self.player:getMaxHp() >= 3 then return true end
-	if self:getCardsNum("Jink") > 0 or self:getCardsNum("Analeptic") > 0 and self.player:getMaxHp() >= 2 then return true end
+	if self.player:getMaxHp() >= 3 then return (true) or false end
+	if self:getCardsNum("Jink") > 0 or self:getCardsNum("Analeptic") > 0 and self.player:getMaxHp() >= 2 then return (true) or false end
 
 
-	return false
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:344-346
-sgs.ai_skill_invoke.tanyan = function(self, data)
-	return self:isFriend(self.room:getCurrent())
+ai_skill_invoke.tanyan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:isFriend(self.room:getCurrent())) or false
 end
 
 -- Fixed inovation-ai.lua:62-65
-sgs.ai_skill_invoke.xiyuan = function(self, data)
-	if #self.friends_noself == 0 then return false end
-	return true
+ai_skill_invoke.xiyuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.friends_noself == 0 then return (false) or false end
+	return (true) or false
 end
 
 -- Fixed inovation-ai.lua:542-551
-sgs.ai_skill_invoke.youer = function(self, data)
+ai_skill_invoke.youer = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
 	if self:isEnemy(dying.damage.from) then
 		if self:getCardsNum("Peach") > 0 or self:getCardsNum("Analeptic") > 0 then
-			return false
+			return (false) or false
 		end
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:514-518
@@ -681,25 +721,24 @@ sgs.ai_use_priority.DiangongCard = 2.5
 sgs.ai_use_value.ZhilingCard = 9
 sgs.ai_use_priority.ZhilingCard = 9.8
 sgs.ai_card_intention.ZhilingCard  = 50
-sgs.ai_skill_invoke.FukurouzaTaka = true
-sgs.ai_skill_invoke.yuzhai = true
+ai_skill_invoke.FukurouzaTaka = true
+ai_skill_invoke.yuzhai = true
 sgs.ai_use_value["TaxianCard"] = 8
 sgs.ai_use_priority["TaxianCard"]  = 1
 sgs.ai_card_intention["TaxianCard"] = 100
 sgs.ai_use_value["NingjuCard"] = 8
 sgs.ai_use_priority["NingjuCard"]  = 2
 sgs.ai_card_intention["NingjuCard"] = 100
-sgs.ai_skill_invoke.xingjian = true
+ai_skill_invoke.xingjian = true
 sgs.ai_use_value["JiguanCard"] = 5
 sgs.ai_use_priority["JiguanCard"]  = 8
 sgs.ai_card_intention["JiguanCard"] = 0
-sgs.ai_skill_choice["jiguan"] = "jiguan_put"
-sgs.ai_skill_invoke.paoji = true
-sgs.ai_skill_invoke.xinyang = true
+ai_skill_choice["jiguan"] = "jiguan_put"
+ai_skill_invoke.paoji = true
+ai_skill_invoke.xinyang = true
 sgs.inovation_SE_Maoqun_keep_value = {Peach=9,Analeptic=8,Jink=9}
 end
 
--- R45 NEXT SLICE: six complete source SkillCard planner families.
 do
 
 
@@ -710,7 +749,9 @@ local function ningju_slash(self)
  return self:evaluateOwnerViewAsCard({source_key="inovation.ningju",name="slash",skill="",suit=sgs.Card_NoSuit,number=0,subcards={}})
 end
 -- Fixed inovation-ai.lua:266-277
-sgs.ai_fill_skill.diangong=function(self,inclusive,request)
+ai_fill_skill.diangong=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	self:sortByUseValue(cards,true)
 	for _,enemy in ipairs(self.enemies) do
@@ -724,7 +765,9 @@ sgs.ai_fill_skill.diangong=function(self,inclusive,request)
 end
 
 -- Fixed inovation-ai.lua:161-167
-sgs.ai_fill_skill.inovation_zhuren=function(self,inclusive,request)
+ai_fill_skill.inovation_zhuren=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.friends <= 1 then return end
 	local source = self.player
 	if source:isKongcheng() then return end
@@ -733,13 +776,17 @@ sgs.ai_fill_skill.inovation_zhuren=function(self,inclusive,request)
 end
 
 -- Fixed inovation-ai.lua:1001-1004
-sgs.ai_fill_skill.jiguan=function(self,inclusive,request)
+ai_fill_skill.jiguan=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("JiguanCard") then return end
 	 return seed(self,"jiguan","JiguanCard",{},request)
 end
 
 -- Fixed inovation-ai.lua:778-786
-sgs.ai_fill_skill.ningju=function(self,inclusive,request)
+ai_fill_skill.ningju=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:usedTimes("NingjuCard") >= 3 then return end
 	if #self.enemies == 0 then return end
 	local card = ningju_slash(self)
@@ -750,7 +797,9 @@ sgs.ai_fill_skill.ningju=function(self,inclusive,request)
 end
 
 -- Fixed inovation-ai.lua:673-682
-sgs.ai_fill_skill.taxian=function(self,inclusive,request)
+ai_fill_skill.taxian=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("TaxianCard") then return end
 	for _,p in sgs.list(self.room:getOtherPlayers(self.player)) do
 		if self:isEnemy(p) and self.player:inMyAttackRange(p) and not p:inMyAttackRange(self.player) then return seed(self,"taxian","TaxianCard",{},request) end
@@ -762,7 +811,9 @@ sgs.ai_fill_skill.taxian=function(self,inclusive,request)
 end
 
 -- Fixed inovation-ai.lua:365-387
-sgs.ai_fill_skill.zhiling=function(self,inclusive,request)
+ai_fill_skill.zhiling=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies == 0 then return end
 	if self.player:getPile("Neko"):length() == 0 then return end
 	local can = false
@@ -787,7 +838,7 @@ sgs.ai_fill_skill.zhiling=function(self,inclusive,request)
 end
 
 -- Fixed inovation-ai.lua:279-304
-sgs.ai_skill_use_func.DiangongCard = function(card,use,self)
+ai_card_use.DiangongCard = function(self, card, use, request)
 	local target
 	for _,enemy in sgs.list(self.room:getAlivePlayers()) do
 		local pl = false
@@ -815,7 +866,7 @@ sgs.ai_skill_use_func.DiangongCard = function(card,use,self)
 end
 
 -- Fixed inovation-ai.lua:169-200
-sgs.ai_skill_use_func.InovationZhurenCard = function(card,use,self)
+ai_card_use.InovationZhurenCard = function(self, card, use, request)
 	local target
 	local source = self.player
 	local keys = 0
@@ -849,13 +900,13 @@ sgs.ai_skill_use_func.InovationZhurenCard = function(card,use,self)
 end
 
 -- Fixed inovation-ai.lua:1006-1009
-sgs.ai_skill_use_func.JiguanCard = function(card,use,self)
+ai_card_use.JiguanCard = function(self, card, use, request)
 	use.card = card
 	return
 end
 
 -- Fixed inovation-ai.lua:788-829
-sgs.ai_skill_use_func.NingjuCard = function(card,use,self)
+ai_card_use.NingjuCard = function(self, card, use, request)
 	local target
 	if self.player:getMark("@waked") == 1 then
 		for _,p in ipairs(self.enemies) do
@@ -899,7 +950,7 @@ sgs.ai_skill_use_func.NingjuCard = function(card,use,self)
 end
 
 -- Fixed inovation-ai.lua:684-706
-sgs.ai_skill_use_func.TaxianCard = function(card,use,self)
+ai_card_use.TaxianCard = function(self, card, use, request)
 	local targets = AIList.new({})
 	for _,p in ipairs(self.enemies) do
 		if self.player:inMyAttackRange(p) then
@@ -924,7 +975,7 @@ sgs.ai_skill_use_func.TaxianCard = function(card,use,self)
 end
 
 -- Fixed inovation-ai.lua:389-407
-sgs.ai_skill_use_func.ZhilingCard = function(card,use,self)
+ai_card_use.ZhilingCard = function(self, card, use, request)
 	local target
 	local lord = self.room:getLord()
 	for _,enemy in ipairs(self.enemies) do
@@ -946,7 +997,6 @@ end
 
 end
 
--- R45 effective Inovation SmartAI bodies.
 do
 local providers={}
 
@@ -1606,7 +1656,6 @@ for name,provider in pairs(providers)do SmartAIView["inovation_"..name]=provider
 for name,provider in pairs(providers)do SmartAIView[name]=provider end
 end
 
--- R45 Inovation current-question callbacks using existing lawful DTOs.
 do
 
 
@@ -1616,43 +1665,49 @@ local function visible_card(self,id)
  return c
 end
 -- Fixed inovation-ai.lua:210-237
-sgs.ai_skill_choice.inovation_Daolu = function(self, choices, data)
+ai_skill_choice.inovation_Daolu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local lord = self.room:getLord()
 	if self.player:getKnownRole() == "lord" then
 		for _,friend in ipairs(self.friends) do
 			if self:isWeak(friend) and friend:objectName() ~= self.player:objectName() then
-				return "Fuko_summoner"
+				return ai_choice_result(("Fuko_summoner"), options)
 			end
 		end
-		return "inovation_Nagisa_Protector"
+		return ai_choice_result(("inovation_Nagisa_Protector"), options)
 	elseif self.player:getKnownRole() == "loyalist" then
-		return "Tomoyo_Couple"
+		return ai_choice_result(("Tomoyo_Couple"), options)
 	elseif self.player:getKnownRole() == "rebel" then
 		for _,friend in ipairs(self.friends) do
 			if self:isWeak(friend) and self.player:getHp() > 2 and friend:objectName() ~= self.player:objectName() then
 				if #self.friends > #self.enemies then
-					return "Fuko_summoner"
+					return ai_choice_result(("Fuko_summoner"), options)
 				end
 			end
 			--TODO
 		end
-		return "inovation_Nagisa_Protector"
+		return ai_choice_result(("inovation_Nagisa_Protector"), options)
 	elseif self.player:getKnownRole() == "renegade" then
 		if lord and lord:getHp() <= 2 then
-			return "Fuko_summoner"
+			return ai_choice_result(("Fuko_summoner"), options)
 		end
-		return "inovation_Nagisa_Protector"
+		return ai_choice_result(("inovation_Nagisa_Protector"), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 -- Fixed inovation-ai.lua:740-760
-sgs.ai_skill_invoke.faka = function(self, data)
+ai_skill_invoke.faka = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local move = data:toMoveOneTime()
 	local value = move.card_ids:length()
 	if move.from then
-		if not self:isEnemy(self.room:getCurrent()) and not self:isEnemy(move.from) then return false end
+		if not self:isEnemy(self.room:getCurrent()) and not self:isEnemy(move.from) then return (false) or false end
 	else
-		if not self:isEnemy(self.room:getCurrent()) then return false end
+		if not self:isEnemy(self.room:getCurrent()) then return (false) or false end
 	end
 
 
@@ -1664,8 +1719,8 @@ sgs.ai_skill_invoke.faka = function(self, data)
 			value = value - 1.5
 		end
 	end
-	if value >= 1 then return true end
-	return false
+	if value >= 1 then return (true) or false end
+	return (false) or false
 end
 
 -- Fixed inovation-ai.lua:762-771
@@ -1681,14 +1736,14 @@ sgs.ai_skill_playerchosen.faka = function(self, targets)
 end
 
 -- Fixed inovation-ai.lua:1223-1226
-sgs.ai_skill_invoke.shoushi = function(self, data)
+ai_skill_invoke.shoushi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	return not use.card:isKindOf("ExNihilo") and not use.card:isKindOf("AmazingGrace") and not use.card:isKindOf("GodSalvation")
+	return (not use.card:isKindOf("ExNihilo") and not use.card:isKindOf("AmazingGrace") and not use.card:isKindOf("GodSalvation")) or false
 end
 
 end
 
--- R45 complete fixed Inovation owner-material constructor policies.
 do
 
 
@@ -1709,7 +1764,9 @@ sgs.ai_view_as.touzhi=function(card,player,card_place)
  if player:getPhase()~=sgs.Player_Play then return end
  if allowed(card)then return('slash:touzhi[%s:%s]=%d'):format(suit,number,id)end
 end
-sgs.ai_fill_skill.touzhi=function(self,inclusive,request)
+ai_fill_skill.touzhi=function(self, options, request)
+    local inclusive = options and options.inclusive
+
  if #self.enemies<1 then return end
  local material
  for _,card in sgs.list(self.player:getHandcards())do if allowed(card)then material=card end end
@@ -1736,7 +1793,8 @@ local function selected(self,card,s,target)
  for i,id in ipairs(s.subcards)do if exact.subcards[i]~=id then ai_unsupported('Inovation selected native cost order changed',s.skill)end end
  return{kind='use_card',card_spec=exact,targets={target}}
 end
-sgs.ai_skill_use['@@youjiao']=function(self,prompt,method)
+ai_skill_use['@@youjiao']=function(self, prompt, request)
+ local method = request and request.handling_method
  local material
  for _,card in sgs.list(self.player:getHandcards())do if card:isKindOf('BasicCard')and not card:isKindOf('Peach')then material=card end end
  if material then
@@ -1746,7 +1804,7 @@ sgs.ai_skill_use['@@youjiao']=function(self,prompt,method)
   if use.card and not use.to:isEmpty()then return selected(self,card,s,use.to:first():objectName())end
  end
 end
-sgs.ai_skill_use['@@guangyu']=function(self)
+ai_skill_use['@@guangyu']=function(self, prompt, request)
  local ctx=self:getDecisionContext();local row=ctx.inovation_guangyu
  if type(row)~='table'or row.known~=true or type(row.ids)~='table'then ai_unsupported('Guangyu exact current owner property is unavailable','guangyu')end
  for _,id in ipairs(row.ids)do
@@ -1763,7 +1821,6 @@ sgs.ai_skill_use['@@guangyu']=function(self)
 end
 end
 
--- R45 NEXT SLICE: actual source Xinyang Room-tag writes, not plan substitution.
 do
 
 -- The donor passes its pick through the AI-only xinyang_judge_card Room tag;
@@ -1775,17 +1832,18 @@ local function tag(self,op,id)
  self:remember('inovation.xinyang_judge_card',-1)
  return value
 end
-sgs.ai_skill_invoke.xinyang_judge = function(self,data)
+ai_skill_invoke.xinyang_judge = function(self, options, request)
+ local data = request and self:getDecisionData(request) or nil
  local judge=data:toJudge()
  if self:needRetrial(judge)then
-  if self.player:getPile('xinyang'):length()==0 then return false end
+  if self.player:getPile('xinyang'):length()==0 then return (false) or false end
   local cards_ids=sgs.QList2Table(self.player:getPile('xinyang'))
   local newList={}
   for _,id in ipairs(cards_ids)do newList[#newList+1]=self:getKnownCardById(id)end
   local id=self:getRetrialCardId(newList,judge)
-  if id~=-1 then tag(self,'write',id);return true end
+  if id~=-1 then tag(self,'write',id);return (true) or false end
  end
- return false
+ return (false) or false
 end
 sgs.ai_skill_askforag.xinyang=function(self,card_ids)
  local id=tag(self,'take',-1) -- read followed immediately by setTag(-1).
@@ -1795,7 +1853,6 @@ sgs.ai_skill_askforag.xinyang=function(self,card_ids)
 end
 end
 
--- R45 complete Shoushi choice/playerchosen source bodies; finite host state only.
 do
 
 
@@ -1823,39 +1880,42 @@ local function dummy(use)
     for _, player in sgs.list(use.to) do current[#current + 1] = player:objectName() end
     return AIUsePlan.dummy(true, nil, current)
 end
-sgs.ai_skill_choice.shoushi=function(self,choices,data)
+ai_skill_choice.shoushi=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
  local use=data:toCardUse()
  if use.card:isKindOf('ExNihilo')then
   local friend=self:findPlayerToDraw(false,2)
-  if friend then save(self,'extra',friend);return'add'end
+  if friend then save(self,'extra',friend);returnai_choice_result(('add'), options)end
  elseif use.card:isKindOf('GodSalvation')then
   self:sort(self.enemies,'hp')
   for _,enemy in ipairs(self.enemies)do
-   if enemy:isWounded()and self:hasTrickEffective(use.card,enemy,self.player)then save(self,'remove',enemy);return'remove'end
+   if enemy:isWounded()and self:hasTrickEffective(use.card,enemy,self.player)then save(self,'remove',enemy);returnai_choice_result(('remove'), options)end
   end
  elseif use.card:isKindOf('AmazingGrace')then
   self:sort(self.enemies)
   for _,enemy in ipairs(self.enemies)do
-   if self:hasTrickEffective(use.card,enemy,self.player)and not manjuan(enemy)and not self:needKongcheng(enemy,true)then save(self,'remove',enemy);return'remove'end
+   if self:hasTrickEffective(use.card,enemy,self.player)and not manjuan(enemy)and not self:needKongcheng(enemy,true)then save(self,'remove',enemy);returnai_choice_result(('remove'), options)end
   end
  elseif use.card:isKindOf('AOE')then
   self:sort(self.friends_noself)
   local lord=self.room:getLord()
-  if lord and lord:objectName()~=self.player:objectName()and self:isFriend(lord)and self:isWeak(lord)then save(self,'remove',lord);return'remove'end
+  if lord and lord:objectName()~=self.player:objectName()and self:isFriend(lord)and self:isWeak(lord)then save(self,'remove',lord);returnai_choice_result(('remove'), options)end
   for _,friend in ipairs(self.friends_noself)do
-   if self:hasTrickEffective(use.card,friend,self.player)then save(self,'remove',friend);return'remove'end
+   if self:hasTrickEffective(use.card,friend,self.player)then save(self,'remove',friend);returnai_choice_result(('remove'), options)end
   end
  elseif use.card:isKindOf('Snatch')or use.card:isKindOf('Dismantlement')then
   local trick=clone(self,use.card);local d=dummy(use);self:useCardSnatchOrDismantlement(trick,d)
-  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());return'add'end
+  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());returnai_choice_result(('add'), options)end
  elseif use.card:isKindOf('Slash')then
   local slash=clone(self,use.card);local d=dummy(use);self:useCardSlash(slash,d)
-  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());return'add'end
+  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());returnai_choice_result(('add'), options)end
  else
   local d=dummy(use);self:useCardByClassName(use.card,d)
-  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());return'add'end
+  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());returnai_choice_result(('add'), options)end
  end
- save(self,'extra',nil);save(self,'remove',nil);return'cancel'
+ save(self,'extra',nil);save(self,'remove',nil);returnai_choice_result(('cancel'), options)
 end
 sgs.ai_skill_playerchosen.shoushi=function(self,targets)
  local row=self:recall('inovation.shoushi')
@@ -1867,7 +1927,6 @@ sgs.ai_skill_playerchosen.shoushi=function(self,targets)
 end
 end
 
--- R45 Goutong: full source invoke, actual game-VM global move assignment prefix.
 do
 
 -- The ask's CardsMoveOneTimeStruct data is not projected into the decision context.
@@ -1881,24 +1940,24 @@ local function endpoint(self,key)
  if type(name)~='string'or name==''then ai_unsupported('Goutong public endpoint unknown',key)end
  return self.room:findPlayerByObjectName(name,true)
 end
-sgs.ai_skill_invoke.goutong=function(self,data)
+ai_skill_invoke.goutong=function(self, options, request)
+ local data = request and self:getDecisionData(request) or nil
  host('write') -- actual data:toMoveOneTime() copy and global source assignment
  if self.player:objectName()==(endpoint(self,'to')):objectName()then
-  if endpoint(self,'from')and not self:isEnemy(endpoint(self,'from'))then return true end
+  if endpoint(self,'from')and not self:isEnemy(endpoint(self,'from'))then return (true) or false end
   if endpoint(self,'from')then
-   if self:isWeak(self.player)and not self:isWeak(endpoint(self,'from'))and (endpoint(self,'from')):getLostHp()==0 then return true end
+   if self:isWeak(self.player)and not self:isWeak(endpoint(self,'from'))and (endpoint(self,'from')):getLostHp()==0 then return (true) or false end
   end
  else
-  if endpoint(self,'to')and not self:isEnemy(endpoint(self,'to'))then return true end
+  if endpoint(self,'to')and not self:isEnemy(endpoint(self,'to'))then return (true) or false end
   if endpoint(self,'to')then
-   if self:isWeak(self.player)and not self:isWeak(endpoint(self,'to'))and (endpoint(self,'to')):getLostHp()==0 then return true end
+   if self:isWeak(self.player)and not self:isWeak(endpoint(self,'to'))and (endpoint(self,'to')):getLostHp()==0 then return (true) or false end
   end
  end
- return false
+ return (false) or false
 end
 end
 
--- R46 reachable fixed Inovation consumers. No alias for obsolete Discard questions.
 do
 
 
@@ -1968,11 +2027,12 @@ sgs.ai_skill_askforag.kaiqi=function(self,card_ids)
 end
 end
 
--- R47 Xiedou: source Duel policy, selected native V2 authority.
 do
 
 
- sgs.ai_fill_skill.xiedou=function(self,inclusive,request)
+ ai_fill_skill.xiedou=function(self, options, request)
+    local inclusive = options and options.inclusive
+
   if type(self.enemies)~='table'then ai_unsupported('Xiedou enemy list unknown','xiedou')end
   if #self.enemies<1 then return end
   if #self.player:getEquips()==0 then return end

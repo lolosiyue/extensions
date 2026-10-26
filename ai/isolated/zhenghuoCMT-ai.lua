@@ -1,4 +1,4 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/zhenghuoCMT-ai.lua.
 
 
 local function paid(self,skill,selector,request,old)
@@ -11,12 +11,14 @@ local function slash_available(self)
     return (self:getEvaluationCard("slash")):isAvailable(self.player)
 end
 --神技
-sgs.ai_fill_skill.shenjiZHCMT=function(self,inclusive,request)
+ai_fill_skill.shenjiZHCMT=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#shenjiZHCMTCard") then return end
 	if #self.enemies == 0 then return end--没有敌人f
 	return self:legacySkillSeed("shenjiZHCMT", "#shenjiZHCMTCard", request)
 end
-sgs.ai_skill_use_func["#shenjiZHCMTCard"] = function(card, use, self,request)
+ai_card_use["#shenjiZHCMTCard"] = function(self, card, use, request)
     self:sort(self.enemies, "handcard")
     local targets = {}
     for _, enemy in ipairs(self.enemies) do
@@ -46,14 +48,16 @@ sgs.ai_skill_playerchosen["#shenjiZHCMTCard"] = function(self, targets)
     return chosen
 end
 --追戮
-sgs.ai_fill_skill.zhuiluZHCMT=function(self,inclusive,request)
+ai_fill_skill.zhuiluZHCMT=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not slash_available(self) then return end
 	if #self.enemies == 0 then return end--敌人多
 	if self.player:getMark("zhuiluZHCMT")==0 then
 	return self:legacySkillSeed("zhuiluZHCMT", "#zhuiluZHCMTCard", request)
             end
 end
-sgs.ai_skill_use_func["#zhuiluZHCMTCard"] = function(card, use, self,request)
+ai_card_use["#zhuiluZHCMTCard"] = function(self, card, use, request)
     self:sort(self.enemies, "handcard")
     local targets = {}
     for _, enemy in ipairs(self.enemies) do
@@ -73,12 +77,14 @@ sgs.ai_skill_use_func["#zhuiluZHCMTCard"] = function(card, use, self,request)
     end
 end
 --甄族
-sgs.ai_skill_invoke.zhenzuZHCMT = function(self, data)
-    return true
+ai_skill_invoke.zhenzuZHCMT = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 --魏代
-sgs.ai_skill_invoke.weidaiZHCMT = function(self, data)
-    return true
+ai_skill_invoke.weidaiZHCMT = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 sgs.ai_skill_playerchosen.weidaiZHCMT = function(self, targets)
     local chosen = nil
@@ -91,12 +97,14 @@ sgs.ai_skill_playerchosen.weidaiZHCMT = function(self, targets)
     return chosen
 end
 --滞横
-sgs.ai_fill_skill.XiansiZHCMT=function(self,inclusive,request)
+ai_fill_skill.XiansiZHCMT=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#XiansiZHCMTCard") then return end
 	if #self.enemies == 0 then return end--没有敌人f
 	return self:legacySkillSeed("XiansiZHCMT", "#XiansiZHCMTCard", request)
 end
-sgs.ai_skill_use_func["#XiansiZHCMTCard"] = function(card, use, self,request)
+ai_card_use["#XiansiZHCMTCard"] = function(self, card, use, request)
     self:sort(self.enemies, "handcard")
     local targets = {}
 
@@ -121,19 +129,21 @@ sgs.ai_skill_use_func["#XiansiZHCMTCard"] = function(card, use, self,request)
         return
     end
 end
-sgs.ai_skill_invoke["XiansiZHCMTCard"] = false
+ai_skill_invoke["XiansiZHCMTCard"] = false
 sgs.ai_use_value["XiansiZHCMTCard"] = 4
 sgs.ai_use_priority["XiansiZHCMTCard"] = 10
 sgs.ai_card_intention["XiansiZHCMTCard"]  = 100
 sgs.dynamic_value.control_card.XiansiZHCMTCard = true
 --陷嗣
-sgs.ai_fill_skill.XiansiZHCMTSlash=function(self,inclusive,request)
+ai_fill_skill.XiansiZHCMTSlash=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not slash_available(self) then return end
 	if self.player:getStrategyHasUsed("#XiansiZHCMTSlashCard") then return end
 	if #self.enemies == 0 then return end--敌人多
 	return self:legacySkillSeed("XiansiZHCMTSlash", "#XiansiZHCMTSlashCard", request)
 end
-sgs.ai_skill_use_func["#XiansiZHCMTSlashCard"] = function(card, use, self,request)
+ai_card_use["#XiansiZHCMTSlashCard"] = function(self, card, use, request)
     self:sort(self.enemies, "handcard")
     local targets = {}
     for _, enemy in ipairs(self.enemies) do
@@ -154,13 +164,15 @@ sgs.ai_skill_use_func["#XiansiZHCMTSlashCard"] = function(card, use, self,reques
     end
 end
 --争嗣
-sgs.ai_fill_skill.zhengsiZHCMT=function(self,inclusive,request)
+ai_fill_skill.zhengsiZHCMT=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#zhengsiZHCMTCard") then return end
 	if self.player:isKongcheng() then return end--没有手牌f
 	if #self.enemies < 2 then return end--敌人多
 	return self:legacySkillSeed("zhengsiZHCMT", "#zhengsiZHCMTCard", request)
 end
-sgs.ai_skill_use_func["#zhengsiZHCMTCard"] = function(card, use, self,request)
+ai_card_use["#zhengsiZHCMTCard"] = function(self, card, use, request)
     self:sort(self.enemies, "handcard")
     local targets = {}
     for _, enemy in ipairs(self.enemies) do
@@ -190,14 +202,18 @@ sgs.ai_skill_playerchosen["#zhengsiZHCMTCard"] = function(self, targets)
     return chosen
 end
 --魂聚
-sgs.ai_skill_invoke.hunjuZHCMT = function(self, data)
+ai_skill_invoke.hunjuZHCMT = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     if self.player:getHp() <= 2 then
-        return true
+        return (true) or false
     end
+    return false
+
 end
 --敛财
-sgs.ai_skill_invoke.liancaiZHCMT = function(self, data)
-    return true
+ai_skill_invoke.liancaiZHCMT = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 --诈逆
 sgs.ai_skill_playerchosen.zhaniZHCMT = function(self, targets)

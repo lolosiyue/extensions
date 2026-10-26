@@ -1,8 +1,6 @@
--- Fixed b6025acc li policy bodies. Private draw order is never inspected.
+-- Source: b6025acc ai/li-ai.lua.
 local known = AIValue.requireKnown
 
--- The donor reads the viewer's own tags/properties; an absent one reads as the
--- QVariant default (nil player, "" string, empty list).
 local function tag_player(self,key)
     local name=self.player:getTag(key)
     if name==nil then return nil end
@@ -39,10 +37,13 @@ local function disclosed_top(self,count)
 end
 
 --不臣
-sgs.ai_skill_invoke.jinbuchen = function(self,data)
+ai_skill_invoke.jinbuchen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local player = data:toPlayer()
-	if self:needKongcheng(self.player,true) then return false end
-	if self:doDisCard(player,"he") then return true end
+	if self:needKongcheng(self.player,true) then return (false) or false end
+	if self:doDisCard(player,"he") then return (true) or false end
+	return false
+
 end
 
 sgs.ai_can_damagehp.jinbuchen = function(self,from,card,to)
@@ -51,11 +52,13 @@ sgs.ai_can_damagehp.jinbuchen = function(self,from,card,to)
 end
 
 --雄志
-sgs.ai_fill_skill.jinxiongzhi = function(self,inclusive,request)
+ai_fill_skill.jinxiongzhi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("jinxiongzhi","JinXiongzhiCard",request)
 end
 
-sgs.ai_skill_use_func.JinXiongzhiCard = function(card,use,self)
+ai_card_use.JinXiongzhiCard = function(self, card, use, request)
 	local list = disclosed_top(self,self.player:getMaxHp())
 	local use_num = 0
 	for _,id in sgs.qlist(list)do
@@ -72,7 +75,8 @@ end
 
 sgs.ai_use_priority.JinXiongzhiCard = 0
 
-sgs.ai_skill_use["@@jinxiongzhi!"] = function(self,prompt,method)
+ai_skill_use["@@jinxiongzhi!"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local id = self.player:getStrategyMark("jinxiongzhi_id-PlayClear")
     local card = known(self:getKnownCardById(id),"disclosed card")
 	local dummy = self:aiUseCard(card)
@@ -87,25 +91,29 @@ sgs.ai_skill_use["@@jinxiongzhi!"] = function(self,prompt,method)
 end
 
 --权变
-sgs.ai_skill_invoke.jinquanbian = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.jinquanbian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 --二版权变
-sgs.ai_skill_invoke.secondjinquanbian = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.secondjinquanbian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 --慧识
-sgs.ai_skill_invoke.jinhuishi = function(self,data)
+ai_skill_invoke.jinhuishi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local num = data:toString():split(":")[2]
 	num = tonumber(num)
 	num = math.floor(num/2)
-	return num>=2
+	return (num>=2) or false
 end
 
 --清冷
-sgs.ai_skill_use["@@jinqingleng"] = function(self,prompt,method)
+ai_skill_use["@@jinqingleng"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local cards = self:addHandPile("he")
 	cards = self:sortByUseValue(cards,true)
 
@@ -291,14 +299,17 @@ sgs.ai_skill_playerchosen.xianzhu_target = function(self,targets)
 end
 
 --才望
-sgs.ai_skill_invoke.jincaiwang = function(self,data)
+ai_skill_invoke.jincaiwang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local name = data:toString():split(":")[2]
 	local to = self.room:findPlayerByObjectName(name)
-	if not to then return false end
-	return self:isEnemy(to) and self:doDisCard(to,"he")
+	if not to then return (false) or false end
+	return (self:isEnemy(to) and self:doDisCard(to,"he")) or false
 end
 
-sgs.ai_fill_skill.secondjincaiwang = function(self,inclusive,request)
+ai_fill_skill.secondjincaiwang = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("j")
 	cards = self:sortByKeepValue(cards,nil,"l")
   	for d,c in sgs.list(cards)do
@@ -313,21 +324,21 @@ end
 
 sgs.ai_guhuo_card.secondjincaiwang = function(self,toname,class_name)
     local cards = self.player:getCards("h")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	if #cards==1
 	and class_name=="Jink"
 	then
 		return material(cards[1],"jink","secondjincaiwang")
 	end
 	cards = self.player:getCards("e")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	if #cards==1
 	and class_name=="Nullification"
 	then
 		return material(cards[1],"nullification","secondjincaiwang")
 	end
 	cards = self.player:getCards("j")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)
 	if #cards==1
 	and class_name=="Slash"
 	then
@@ -336,11 +347,14 @@ sgs.ai_guhuo_card.secondjincaiwang = function(self,toname,class_name)
 end
 
 --车悬
-sgs.ai_skill_invoke.chexuan = function(self,data)
-	return true
+ai_skill_invoke.chexuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_fill_skill.chexuan = function(self,inclusive,request)
+ai_fill_skill.chexuan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
     cards = self:sortByKeepValue(cards)
@@ -352,7 +366,7 @@ sgs.ai_fill_skill.chexuan = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["ChexuanCard"] = function(card,use,self)
+ai_card_use["ChexuanCard"] = function(self, card, use, request)
 	use.card = card
 end
 
@@ -361,7 +375,9 @@ sgs.ai_use_priority.ChexuanCard = 0.4
 
 
 --草诏
-sgs.ai_fill_skill.caozhao = function(self,inclusive,request)
+ai_fill_skill.caozhao = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
     cards = self:sortByKeepValue(cards)
@@ -380,7 +396,7 @@ sgs.ai_fill_skill.caozhao = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["CaozhaoCard"] = function(card,use,self)
+ai_card_use["CaozhaoCard"] = function(self, card, use, request)
 	use.card = card
 end
 
@@ -419,20 +435,26 @@ sgs.ai_skill_playerchosen.caozhao_give = function(self,players)
 	return destlist[1]
 end
 
-sgs.ai_skill_choice.caozhao = function(self,choices,data)
+ai_skill_choice.caozhao = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	local cn = items[1]:split("=")[2]
 	local c = self:getEvaluationCard(cn)
 	if self:isFriend(target) or self:isWeak()
-	then return items[1] end
+	then return ai_choice_result((items[1]), options) end
 	if self:isEnemy(target) and not self:isWeak()
 	and self:getUseValue(c)>3
-	then return items[2] end
+	then return ai_choice_result((items[2]), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 --息兵
-sgs.ai_skill_invoke.olxibing = function(self,data)
+ai_skill_invoke.olxibing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dama = data:toDamage()
 	if dama.from
 	then
@@ -440,23 +462,30 @@ sgs.ai_skill_invoke.olxibing = function(self,data)
 		then
 			if self.player:getHandcardNum()-dama.from:getHandcardNum()>2
 			or dama.from:getHandcardNum()-self.player:getHandcardNum()>2
-			then return true end
+			then return (true) or false end
 		else
-			return true
+			return (true) or false
 		end
 	end
+	return false
+
 end
 
-sgs.ai_skill_choice.olxibing = function(self,choices,data)
+ai_skill_choice.olxibing = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local dama = data:toDamage()
 	if table.contains(items,"discard_self")
 	then
 		if self.player:getHandcardNum()-dama.from:getHandcardNum()<2
-		then return "discard_self" end
+		then return ai_choice_result(("discard_self"), options) end
 	end
     for _,item in sgs.list(items)do
 		if item~="discard_self"
-		then return item end
+		then return ai_choice_result((item), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end

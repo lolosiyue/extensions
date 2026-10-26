@@ -1,4 +1,4 @@
--- All three effective luaoldenemy callbacks from b6025acc983331337614289d8cac79b078c003af.
+-- Source: b6025acc ai/luaoldenemy-ai.lua.
 
 local function canDiscard(self, target)
     if type(self.doDisCard) ~= "function" then ai_unsupported("OldEnemy discard helper is unavailable", "doDisCard") end
@@ -18,19 +18,19 @@ local function hermitTarget(self)
     if not target then ai_unsupported("OldEnemyHermit target is outside roster", "OldEnemyHermit") end
     return target
 end
-sgs.ai_skill_invoke.LuaOldEnemyHermit = function(self)
+ai_skill_invoke.LuaOldEnemyHermit = function(self, options, request)
     local target = hermitTarget(self)
     if self:isFriend(target) then
-        if self:getOverflow(target) > 2 then return true end
-        if canDiscard(self, target) then return true end
+        if self:getOverflow(target) > 2 then return (true) or false end
+        if canDiscard(self, target) then return (true) or false end
     end
     if self:isEnemy(target) then
-        if canDiscard(self, target) then return true end
-        return false
+        if canDiscard(self, target) then return (true) or false end
+        return (false) or false
     end
-    return true
+    return (true) or false
 end
-sgs.ai_skill_invoke.LuaPublicEnemy = function() return true end
+ai_skill_invoke.LuaPublicEnemy = function(self, options, request) return (true) or false end
 sgs.ai_skill_playerchosen.LuaOldEnemyHermit = function(self)
     local friends = self.friends_noself
     if not AIValue.isList(friends) then ai_unsupported("OldEnemy friend order is unknown", "friends_noself") end

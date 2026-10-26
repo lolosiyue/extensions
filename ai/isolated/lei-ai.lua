@@ -1,4 +1,4 @@
--- Fixed b6025acc lei source bodies. Public values and primitive viewer state only.
+-- Source: b6025acc ai/lei-ai.lua.
 local dummy = AIUsePlan.dummy
 local known = AIValue.requireKnown
 
@@ -44,13 +44,15 @@ local function duorui_invoke(self,data,ol)
 end
 
 --往烈
-sgs.ai_skill_invoke.wanglie = function(self,data)
+ai_skill_invoke.wanglie = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	return use.card:isKindOf("Duel") or use.card:isKindOf("SavageAssault") or use.card:isKindOf("ArcheryAttack") or use.card:isKindOf("Slash") or use.card:getStrategyFlag("drank")
+	return (use.card:isKindOf("Duel") or use.card:isKindOf("SavageAssault") or use.card:isKindOf("ArcheryAttack") or use.card:isKindOf("Slash") or use.card:getStrategyFlag("drank")) or false
 end
 
 --罪论
-sgs.ai_skill_invoke.zuilun = function(self,data)
+ai_skill_invoke.zuilun = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local n = 0
 	if self.player:getStrategyMark("damage_point_round")>0 then n = n+1 end
 	local minhandnum = true
@@ -65,13 +67,13 @@ sgs.ai_skill_invoke.zuilun = function(self,data)
 
 	if n==0 then
 		local to = self:findPlayerToLoseHp()
-		if not to then return false end
-		if to:getHp()>self.player:getHp() then return false end
-		if (self.player:isLord() or self.player:getKnownRole()=="renegade") and self:isWeak() then return false end
-		return true
+		if not to then return (false) or false end
+		if to:getHp()>self.player:getHp() then return (false) or false end
+		if (self.player:isLord() or self.player:getKnownRole()=="renegade") and self:isWeak() then return (false) or false end
+		return (true) or false
 	end
-	if self:hasJieyingyEffect(self.player) then return false end
-	return true
+	if self:hasJieyingyEffect(self.player) then return (false) or false end
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen.zuilun = function(self,targets)
@@ -181,11 +183,13 @@ sgs.ai_target_revises.qianjie = function(to,card,self,use)
 end
 
 --决堰
-sgs.ai_fill_skill.jueyan = function(self,inclusive,request)
+ai_fill_skill.jueyan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("jueyan","JueyanCard",request)
 end
 
-sgs.ai_skill_use_func.JueyanCard = function(card,use,self)
+ai_card_use.JueyanCard = function(self, card, use, request)
 	write(self,"jueyan",nil)
 	if self:needToThrowArmor() and self.player:hasEquipArea(1) then
 		self:setPriorityValue("JueyanCard",10,"lei")
@@ -232,17 +236,24 @@ end
 
 sgs.ai_use_priority.JueyanCard = 10
 
-sgs.ai_skill_choice.jueyan = function(self,choices,data)
+ai_skill_choice.jueyan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if read(self,"jueyan") then
-		return read(self,"jueyan")
+		return ai_choice_result((read(self,"jueyan")), options)
 	else
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 --怀柔
-sgs.ai_fill_skill.huairou = function(self,inclusive,request)	--yun
+ai_fill_skill.huairou = function(self, options, request)
+    local inclusive = options and options.inclusive
+	--yun
 	if self:needToThrowArmor() then return paid(self,"huairou","HuairouCard",{self.player:getArmor():getEffectiveId()},request) end
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	for _,c in sgs.list(cards)do
@@ -270,7 +281,7 @@ sgs.ai_fill_skill.huairou = function(self,inclusive,request)	--yun
 	return
 end
 
-sgs.ai_skill_use_func.HuairouCard = function(card,use,self)
+ai_card_use.HuairouCard = function(self, card, use, request)
 	use.card = card
 end
 
@@ -319,23 +330,24 @@ sgs.ai_playerchosen_intention.zhengu = function(self,from,to)
 end
 
 --征荣
-sgs.ai_skill_invoke.zhengrong = function(self,data)
+ai_skill_invoke.zhengrong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isFriend(target) then
-		if self:getOverflow(target)>2 then return true end
-		if self:needToThrowCard(target) then return true end
-		if self:needKongcheng(target) and target:getHandcardNum()==1 then return true end
-		return false
+		if self:getOverflow(target)>2 then return (true) or false end
+		if self:needToThrowCard(target) then return (true) or false end
+		if self:needKongcheng(target) and target:getHandcardNum()==1 then return (true) or false end
+		return (false) or false
 	end
 	if self:isEnemy(target) then
-		if not self:doDisCard(target,"he",true) then return false end
-		return true
+		if not self:doDisCard(target,"he",true) then return (false) or false end
+		return (true) or false
 	end
-	return true
+	return (true) or false
 end
 
 --鸿举
-sgs.ai_skill_use["@@hongju"] = function(self,prompt)
+ai_skill_use["@@hongju"] = function(self, prompt, request)
     local pile = self.player:getPile("rong")
 	local piles = {}
 	local cards = self.player:getCards("h")
@@ -374,12 +386,14 @@ sgs.ai_skill_use["@@hongju"] = function(self,prompt)
 end
 
 --清侧
-sgs.ai_fill_skill.qingce = function(self,inclusive,request)
+ai_fill_skill.qingce = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local piles = self.player:getPile("rong")
 	return paid(self,"qingce","QingceCard",{piles:first()},request)
 end
 
-sgs.ai_skill_use_func.QingceCard = function(card,use,self)
+ai_card_use.QingceCard = function(self, card, use, request)
 	local to = self:findPlayerToDiscard("ej",true,false,players)[1]
 	if not to then return end
 	use.card = card
@@ -399,7 +413,7 @@ sgs.ai_skill_playerchosen.olzhengrong = function(self,targets)
 end
 
 --OL鸿举
-sgs.ai_skill_use["@@olhongju"] = function(self,prompt)
+ai_skill_use["@@olhongju"] = function(self, prompt, request)
     local pile = self.player:getPile("rong")
 	local piles = {}
 	local cards = self.player:getCards("h")
@@ -438,7 +452,9 @@ sgs.ai_skill_use["@@olhongju"] = function(self,prompt)
 end
 
 --OL清侧
-sgs.ai_fill_skill.olqingce = function(self,inclusive,request)
+ai_fill_skill.olqingce = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local hands = sgs.QList2Table(self.player:getCards("h"))
 	hands = self:sortByKeepValue(hands)
 	if hands[1]:isKindOf("ExNihilo") then return end
@@ -455,7 +471,7 @@ sgs.ai_fill_skill.olqingce = function(self,inclusive,request)
 	return paid(self,"olqingce","OLQingceCard",c,request)
 end
 
-sgs.ai_skill_use_func.OLQingceCard = function(card,use,self)
+ai_card_use.OLQingceCard = function(self, card, use, request)
 	local to = self:findPlayerToDiscard("ej",true,false,players)[1]
 	if not to then return end
 	use.card = card
@@ -478,7 +494,7 @@ sgs.ai_skill_playerchosen.mobilezhengrong = function(self,targets)
 end
 
 --手杀鸿举
-sgs.ai_skill_use["@@mobilehongju"] = function(self,prompt)
+ai_skill_use["@@mobilehongju"] = function(self, prompt, request)
     local pile = self.player:getPile("rong")
 	local piles = {}
 	local cards = self.player:getCards("h")
@@ -595,11 +611,13 @@ sgs.ai_skill_askforyiji.congjian = function(self,card_ids,tos)
 end
 
 --雄乱
-sgs.ai_fill_skill.xiongluan = function(self,inclusive,request)
+ai_fill_skill.xiongluan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("xiongluan","XiongluanCard",request)
 end
 
-sgs.ai_skill_use_func.XiongluanCard = function(card,use,self)
+ai_card_use.XiongluanCard = function(self, card, use, request)
 	local slashes = self:getCards("Slash")
 	for _,e in sgs.list(self.player:getEquips())do
 		for _,slash in sgs.list(AIList.new(slashes))do
@@ -635,53 +653,62 @@ sgs.ai_use_value.XiongluanCard = 3
 
 
 --夺锐
-sgs.ai_skill_invoke.duorui = function(self,data)
-    return duorui_invoke(self,data,false)
+ai_skill_invoke.duorui = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (duorui_invoke(self,data,false)) or false
 end
 
-sgs.ai_skill_choice.duorui_area = function(self,choices,data)
+ai_skill_choice.duorui_area = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if self:needToThrowArmor() and self.player:hasEquipArea(1) and table.contains(items,"1") then
-		return "1"
+		return ai_choice_result(("1"), options)
 	elseif self.player:hasEquipArea(4) and not self.player:getTreasure() and table.contains(items,"4") then
-		return "4"
+		return ai_choice_result(("4"), options)
 	elseif self.player:hasEquipArea(1) and not self.player:getArmor() and table.contains(items,"1") then
-		return "1"
+		return ai_choice_result(("1"), options)
 	elseif self.player:hasEquipArea(0) and not self.player:getWeapon() and table.contains(items,"0") then
-		return "0"
+		return ai_choice_result(("0"), options)
 	elseif self.player:hasEquipArea(3) and not self.player:getOffensiveHorse() and table.contains(items,"3") then
-		return "3"
+		return ai_choice_result(("3"), options)
 	elseif self.player:hasEquipArea(2) and not self.player:getDefensiveHorse() and table.contains(items,"2") then
-		return "2"
+		return ai_choice_result(("2"), options)
 	elseif self.player:hasEquipArea(4) and not self:keepWoodenOx() and table.contains(items,"4") then
-		return "4"
+		return ai_choice_result(("4"), options)
 	elseif self.player:hasEquipArea(1) and table.contains(items,"1") then
-		return "1"
+		return ai_choice_result(("1"), options)
 	elseif self.player:hasEquipArea(0) and table.contains(items,"0") then
-		return "0"
+		return ai_choice_result(("0"), options)
 	elseif self.player:hasEquipArea(3) and table.contains(items,"3") then
-		return "3"
+		return ai_choice_result(("3"), options)
 	elseif self.player:hasEquipArea(2) and table.contains(items,"2") then
-		return "2"
+		return ai_choice_result(("2"), options)
 	else
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_choice.duorui = function(self,choices,data)
+ai_skill_choice.duorui = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local player = data:toDamage().to
 	local skills = choices:split("+")
 
 
 	for _,sk in sgs.list(skills)do
 		if self:isValueSkill(sk,player,true) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 
 	for _,sk in sgs.list(skills)do
 		if self:isValueSkill(sk,player) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 
@@ -691,36 +718,43 @@ sgs.ai_skill_choice.duorui = function(self,choices,data)
 		table.insert(not_bad_skills,sk)
 	end
 	if #not_bad_skills>0 then
-		return not_bad_skills[math.random(1,#not_bad_skills)]
+		return ai_choice_result((not_bad_skills[math.random(1,#not_bad_skills)]), options)
 	end
 
-	return skills[math.random(1,#skills)]
+	return ai_choice_result((skills[math.random(1,#skills)]), options)
 end
 
 --止啼
-sgs.ai_skill_choice.zhiti = function(self,choices,data)
+ai_skill_choice.zhiti = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if not self.player:hasEquipArea(1) then
-		return "1"
+		return ai_choice_result(("1"), options)
 	elseif not self.player:hasEquipArea(0) then
-		return "0"
+		return ai_choice_result(("0"), options)
 	elseif not self.player:hasEquipArea(2) then
-		return "2"
+		return ai_choice_result(("2"), options)
 	elseif not self.player:hasEquipArea(3) then
-		return "3"
+		return ai_choice_result(("3"), options)
 	elseif not self.player:hasEquipArea(4) then
-		return "4"
+		return ai_choice_result(("4"), options)
 	else
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 --魄袭
-sgs.ai_fill_skill.poxi = function(self,inclusive,request)
+ai_fill_skill.poxi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("poxi","PoxiCard",request)
 end
 
-sgs.ai_skill_use_func.PoxiCard = function(card,use,self)
+ai_card_use.PoxiCard = function(self, card, use, request)
 	if #self.enemies<=0 then return end
 	local target = nil
 	self.enemies = self:sort(self.enemies,"handcard")
@@ -738,7 +772,7 @@ sgs.ai_skill_use_func.PoxiCard = function(card,use,self)
 	end
 end
 
-sgs.ai_skill_use["@@poxi"] = function(self,prompt)
+ai_skill_use["@@poxi"] = function(self, prompt, request)
 	if read(self,"poxi_target") then
 		local target_handcards = disclosed_hand(self,read(self,"poxi_target"))
 		target_handcards = self:sortByUseValue(target_handcards,inverse)
@@ -835,23 +869,27 @@ end
 
 
 --OL夺锐
-sgs.ai_skill_invoke.olduorui = function(self,data)
-    return duorui_invoke(self,data,true)
+ai_skill_invoke.olduorui = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (duorui_invoke(self,data,true)) or false
 end
 
-sgs.ai_skill_choice.olduorui = function(self,choices,data)
+ai_skill_choice.olduorui = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local player = data:toDamage().to
 	local skills = choices:split("+")
 
 	for _,sk in sgs.list(skills)do
 		if self:isValueSkill(sk,player,true) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 
 	for _,sk in sgs.list(skills)do
 		if self:isValueSkill(sk,player) then
-			return sk
+			return ai_choice_result((sk), options)
 		end
 	end
 
@@ -861,10 +899,10 @@ sgs.ai_skill_choice.olduorui = function(self,choices,data)
 		table.insert(not_bad_skills,sk)
 	end
 	if #not_bad_skills>0 then
-		return not_bad_skills[math.random(1,#not_bad_skills)]
+		return ai_choice_result((not_bad_skills[math.random(1,#not_bad_skills)]), options)
 	end
 
-	return skills[math.random(1,#skills)]
+	return ai_choice_result((skills[math.random(1,#skills)]), options)
 end
 
 --OL止啼
@@ -962,3 +1000,100 @@ sgs.ai_skill_playerchosen.olzhiti = function(self,targets)
 	return nil
 end
 
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["duorui"]
+    local damage_known = AIValue.requireKnownFor("ajustDamage", "damage projection is unknown: ")
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        local duorui_ready
+        if from:objectName() == self.player:objectName() then
+                    local names = damage_known(self.player:getPropertyValue("duorui_skills") or {}, "owner duorui acquisition state")
+                    if not AIValue.isList(names) then ai_unsupported("invalid owner duorui acquisition state", "canLoseHp") end
+                    duorui_ready = #names < 1
+                else
+                    duorui_ready = damage_call(self, "useKnowledgeEstimate", {
+                        value=true, status="estimate", viewer=self.player:objectName(), target=from:objectName(),
+                        basis="foreign_duorui_readiness_assumed_from_public_skill_private_acquisitions_excluded"
+                    }, "canLoseHp.duorui")
+                end
+        if duorui_ready and damage_call(from, "hasSkill", "duorui") then return nil, true end
+        return value
+    end
+    sgs.ai_need_damaged["duorui"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "can_lose_hostile" and context.rule == "duorui" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "duorui", {
+        {phase="can_lose_hostile", order=6, rule="duorui"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_target_damage["duorui"]
+    local policy = function(self, to, context)
+        local value, strategy_call = context.value, context.query
+        local from, is_slash, lock, same_player, strategy_known = context.extra[1], context.extra[2], context.extra[3], context.extra[4], context.extra[5]
+        do
+                -- Source reads the property length BEFORE checking the skill.
+                local ready
+                if same_player(from, self.player) then
+                    local names = self.player:getPropertyValue("duorui_skills") or {}
+                    if type(names) ~= "table" then ai_unsupported("owner duorui skill state is malformed", "duorui_skills") end
+                    ready = #names < 1
+                else
+                    ready = self:useKnowledgeEstimate({value = true, status = "estimate", viewer = self.player:objectName(), target = from:objectName(),
+                        basis = "foreign_duorui_readiness_assumed_from_public_skill_private_acquisitions_excluded"}, "justDamage.duorui")
+                end
+                if ready and strategy_call(from,"hasSkill","duorui") then return true, true end
+            end
+        return value
+    end
+    sgs.ai_target_damage["duorui"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "just_damage_after_relation" and context.rule == "duorui" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "duorui", {
+        {phase="just_damage_after_relation", order=2, rule="duorui"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_target_damage["olduorui"]
+    local policy = function(self, to, context)
+        local value, strategy_call = context.value, context.query
+        local from, is_slash, lock, same_player, strategy_known = context.extra[1], context.extra[2], context.extra[3], context.extra[4], context.extra[5]
+        if strategy_call(from, "hasSkill", "olduorui") then return true, true end
+        return value
+    end
+    sgs.ai_target_damage["olduorui"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "just_damage_after_relation" and context.rule == "olduorui" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "olduorui", {
+        {phase="just_damage_after_relation", order=3, rule="olduorui"},
+    })
+end)()
+end

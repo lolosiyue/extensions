@@ -20,7 +20,7 @@ local function ice_data(self)
     local damage={};for k,v in pairs(row)do damage[k]=v end
     for _,k in ipairs({"from","to"})do if type(row[k])=="string"and row[k]~=""then damage[k]=known(self.room:findPlayerByObjectName(row[k]),"damage player")end end
     if row.card then damage.card=CardView.new(row.card)end
-    return {toDamage=function()return damage end}
+    return damage
 end
 local function is_current(use,to)
     for _,p in ipairs(use.current_targets or {})do if p==to or p==to:objectName()then return true end end
@@ -31,9 +31,10 @@ local function pattern_names(self)
     if not AIValue.isList(names)then ai_unsupported("ordered public pattern catalog missing","wuxinghelingshan")end;return names
 end
 --冰属性伤害效果
-sgs.ai_skill_invoke.IceDamagePrevent = function(self,data)
+ai_skill_invoke.IceDamagePrevent = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = ice_data(self)
-	return sgs.ai_skill_invoke.ice_sword(self,damage)
+	return (ai_skill_invoke.ice_sword(self,self:inquiryInput("skill_invoke","ice_sword",{damage=damage}))) or false
 end
 
 --冰杀
@@ -79,6 +80,7 @@ end
 
 --出其不意
 function SmartAIView:useCardChuqibuyi(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	self:sort(self.enemies)
 	local enemies = {}
 	for _,enemy in sgs.list(self.enemies)do
@@ -86,6 +88,7 @@ function SmartAIView:useCardChuqibuyi(card,use)
 		elseif can_to(self,card,enemy) and self:isGoodTarget(enemy, self.enemies, card)
 		then table.insert(enemies,enemy) end
 	end
+	enemies = self:orderTargetsByRecommend(enemies, recommend)
 	if #enemies<1 then return end
 	local extraTarget = card:getTargetModExtra(self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
@@ -135,6 +138,7 @@ end
 
 --逐近弃远
 function SmartAIView:useCardZhujinqiyuan(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	local tos = {}
 	for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
 		if can_to(self,card,p) then table.insert(tos,p) end
@@ -142,7 +146,7 @@ function SmartAIView:useCardZhujinqiyuan(card,use)
 	if #tos<1 then return end
 	local extraTarget = card:getTargetModExtra(self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-	for _,p in sgs.list(self:findPlayerToDiscard("hej",false,false,tos,"zhujinqiyuan"))do
+	for _,p in sgs.list(self:orderTargetsByRecommend(self:findPlayerToDiscard("hej",false,false,tos,"zhujinqiyuan"), recommend))do
 		if is_current(use,p) then continue end
 		if table.contains(tos,p)
 		then
@@ -152,7 +156,7 @@ function SmartAIView:useCardZhujinqiyuan(card,use)
 			then return end
 		end
 	end
-	for _,p in sgs.list(tos)do
+	for _,p in sgs.list(self:orderTargetsByRecommend(tos, recommend))do
 		if is_current(use,p) then continue end
 		if self:doDisCard(p,"ej",self.player:distanceTo(p)<2)
 		then
@@ -162,7 +166,7 @@ function SmartAIView:useCardZhujinqiyuan(card,use)
 			then return end
 		end
 	end
-	for _,p in sgs.list(tos)do
+	for _,p in sgs.list(self:orderTargetsByRecommend(tos, recommend))do
 		if is_current(use,p) then continue end
 		if self:doDisCard(p,"hej",self.player:distanceTo(p)<2)
 		then
@@ -173,6 +177,7 @@ function SmartAIView:useCardZhujinqiyuan(card,use)
 		end
 	end
 end
+sgs.registerSkillCardType("Zhujinqiyuan", "decrease")
 
 sgs.ai_use_value.Zhujinqiyuan = 9
 sgs.ai_use_priority.Zhujinqiyuan = 9.3
@@ -210,7 +215,7 @@ sgs.ai_nullification.Zhujinqiyuan = function(self,trick,from,to,positive)
 end
 
 --护心镜
-sgs.ai_skill_invoke.huxinjing = true
+ai_skill_invoke.huxinjing = true
 
 sgs.ai_use_priority.Tongque = 7.3
 sgs.ai_use_value.Tongque = 6
@@ -265,7 +270,9 @@ sgs.ai_use_revises.tianjitu = function(self,card,use)
 end
 
 --五行鹤翎扇
-sgs.ai_fill_skill.wuxinghelingshan = function(self,inclusive,request)
+ai_fill_skill.wuxinghelingshan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile()
 	cards = self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do
@@ -352,7 +359,7 @@ sgs.ai_skill_discard.yb_zhuzhan1 = function(self,discard_num,min_num,optional,in
 		or use.card:isKindOf("Zhujinqiyuan") and use.to:at(0):getCardCount()<2
 		or self:isFriend(use.to:at(0)) then return {} end
 		local handcards = self.player:getCards("he")
-		handcards = self:sortByKeepValue(handcards,nil,true) -- 按保留值排序
+		handcards = self:sortByKeepValue(handcards,nil,true)
 		for _,c in sgs.list(handcards)do
 			if c:getTypeId()==use.card:getTypeId()
 			then return {c:getKnownEffectiveId()} end
@@ -467,3 +474,27 @@ end
 sgs.ai_skill_playerchosen.yb_canqu2=function(self,targets)
     return sgs.ai_skill_playerchosen.yb_zhuzhan2(self,targets)
 end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        local damage_card_flag=helpers.card_flag
+        if damage_card_flag(self,card,"yb_canqu1_add_damage") then dmg=dmg+1 end
+        return dmg, nature
+    end
+    local previous_1 = sgs.ai_ajustdamage_from["yb_canqu1"]
+    sgs.ai_ajustdamage_from["yb_canqu1"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "any_card" and context.rule == "yb_canqu1" then
+                local damage, next_nature, terminal = policy_1(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_from", "yb_canqu1", {
+        {phase="any_card", rule="yb_canqu1", order=5200},
+    })
+end)()

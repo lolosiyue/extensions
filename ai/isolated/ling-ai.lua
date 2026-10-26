@@ -1,5 +1,4 @@
--- Fixed ling-ai.lua donor b6025acc983331337614289d8cac79b078c003af.
--- First source costs are preserved even when current native V2 rejects them.
+-- Source: b6025acc ai/ling-ai.lua.
 local known = AIValue.requireKnown
 
 local function paid(self,skill,class,id,request)
@@ -51,7 +50,9 @@ local function invoke_zhiman(self,data)
 	end
 end
 
-sgs.ai_fill_skill.neoluoyi = function(self,inclusive,request)
+ai_fill_skill.neoluoyi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:needBear() then return nil end
 	local luoyicard
 	if self:needToThrowArmor() then
@@ -133,18 +134,20 @@ sgs.ai_fill_skill.neoluoyi = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.LuoyiCard=function(card,use,self)
+ai_card_use.LuoyiCard=function(self, card, use, request)
 	use.card = card
 end
 
 sgs.ai_use_priority.LuoyiCard = 9.2
 
-sgs.ai_fill_skill.neofanjian = function(self,inclusive,request)
+ai_fill_skill.neofanjian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return nil end
 	return self:legacySkillSeed("neofanjian", "NeoFanjianCard", request)
 end
 
-sgs.ai_skill_use_func.NeoFanjianCard = function(card,use,self,request)
+ai_card_use.NeoFanjianCard = function(self, card, use, request)
 	self:sort(self.enemies,"defense")
 	local target
 	for _,enemy in ipairs(self.enemies)do
@@ -200,11 +203,13 @@ function sgs.ai_skill_suit.neofanjian(self)
 	if self.player:hasSkill("hongyan") and suit==sgs.Card_Spade then return sgs.Card_Heart else return suit end
 end
 
-sgs.ai_skill_invoke.yishi = function(self,data)
-	return invoke_zhiman(self,data)
+ai_skill_invoke.yishi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (invoke_zhiman(self,data)) or false
 end
 
-sgs.ai_skill_invoke.zhulou = function(self,data)
+ai_skill_invoke.zhulou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local weaponnum = 0
 	for _,card in sgs.qlist(self.player:getCards("h"))do
 		if card:isKindOf("Weapon") then
@@ -212,17 +217,17 @@ sgs.ai_skill_invoke.zhulou = function(self,data)
 		end
 	end
 
-	if weaponnum>0 then return true end
+	if weaponnum>0 then return (true) or false end
 
 	if self.player:getHandcardNum()<3 and self.player:getHp()>2 then
-		return true
+		return (true) or false
 	end
 
 	if self.player:getHp()<3 and self.player:getWeapon() then
-		return true
+		return (true) or false
 	end
 
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_cardask["@zhulou-discard"] =  function(self,data)
@@ -242,30 +247,32 @@ ai_audited_aliases.register{id="ai_cardneed.zhulou",registry="ai_cardneed",path=
 
 sgs.zhulou_keep_value = sgs.qiangxi_keep_value
 
-function sgs.ai_skill_invoke.neojushou(self,data)
-	if not self.player:faceUp() then return true end
+function ai_skill_invoke.neojushou(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if not self.player:faceUp() then return (true) or false end
 	for _,friend in ipairs(self.friends)do
-		if self:hasSkills("fangzhu|jilve",friend) then return true end
+		if self:hasSkills("fangzhu|jilve",friend) then return (true) or false end
 	end
-	return self:isWeak()
+	return (self:isWeak()) or false
 end
 
-sgs.ai_skill_invoke.neoganglie = function(self,data)
+ai_skill_invoke.neoganglie = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if not damage.from then
 		local zhangjiao = self.room:findPlayerBySkillName("guidao")
-		return zhangjiao and self:isFriend(zhangjiao)
+		return (zhangjiao and self:isFriend(zhangjiao)) or false
 	end
 	local who = damage.from
 	if self:isFriend(who) and self:needToLoseHp(who,self.player,damage.card,true) then
 		set_ganglie_flag(self,who,true)
-		return true
+		return (true) or false
 	end
 	if self:needToLoseHp(who,self.player) and self:isEnemy(who) and who:getHandcardNum()<2 then
-		return false
+		return (false) or false
 	end
 
-	return not self:isFriend(who)
+	return (not self:isFriend(who)) or false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.neoganglie = function(self,player,promptlist)
@@ -292,7 +299,9 @@ sgs.ai_need_damaged.neoganglie = function (self,attacker,player)
 	end
 end
 
-sgs.ai_skill_choice.neoganglie = function(self,choices)
+ai_skill_choice.neoganglie = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local target
 	for _,player in sgs.qlist(self.room:getOtherPlayers(self.player))do
 		if ganglie_flags(self)[player:objectName()]==true then
@@ -300,12 +309,12 @@ sgs.ai_skill_choice.neoganglie = function(self,choices)
 			set_ganglie_flag(self,target,false)
 		end
 	end
-	if self:needToLoseHp(target,self.player) and self:isFriend(target) then return "damage" end
+	if self:needToLoseHp(target,self.player) and self:isFriend(target) then return ai_choice_result(("damage"), options) end
 
 	if self:needToLoseHp(target,self.player) and target:getHandcardNum()>1 then
-		return "throw"
+		return ai_choice_result(("throw"), options)
 	end
-	return "damage"
+	return ai_choice_result(("damage"), options)
 end
 
 sgs.ai_skill_discard.neoganglie = function(self,discard_num,min_num,optional,include_equip)
@@ -325,4 +334,61 @@ sgs.ai_skill_discard.neoganglie = function(self,discard_num,min_num,optional,inc
 		end
 	end
 	return to_discard
+end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_target_damage["good_survival.ganglie_group"]
+    local policy = function(self, to, context)
+        local value, good_query = context.value, context.query
+        local card, damageNum, apn, value_known = context.extra[1], context.extra[2], context.extra[3], context.extra[4]
+        if good_query(to, "hasSkills", "neoganglie|xuehen|xueji")
+        		and good_query(self, "isWeak", self.friends) then return nil, true end
+        return value
+    end
+    sgs.ai_target_damage["good_survival.ganglie_group"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "good_survival" and context.rule == "ganglie_group" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "good_survival.ganglie_group", {
+        {phase="good_survival", order=4, rule="ganglie_group"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_target_damage["chain_retaliation.ganglie"]
+    local policy = function(self, to, context)
+        local strategy_call = context.query
+        local source, strategy_known = context.extra[1], context.extra[2]
+        local result, killlord = context.value.result, context.value.killlord
+        if strategy_call(self, "isEnemy", to, source)
+                        and strategy_call(to, "hasSkills", "ganglie|neoganglie")
+                        and strategy_call(source, "getHandcardNum") + strategy_call(source, "getHp")
+                            + strategy_known(getKnownCard(source, self.player, "Peach", true, "he"), "Peach estimate") < 3 then
+                        result = result + 3
+                    end
+        return {result=result, killlord=killlord}
+    end
+    sgs.ai_target_damage["chain_retaliation.ganglie"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "chain_retaliation" and context.rule == "ganglie" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "chain_retaliation.ganglie", {
+        {phase="chain_retaliation", order=1, rule="ganglie"},
+    })
+end)()
 end

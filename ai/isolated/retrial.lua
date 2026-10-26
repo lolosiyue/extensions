@@ -739,7 +739,7 @@ local function beige_candidate(self, judge, card, self_card, filtered)
     if not source then return nil end
     -- The source repeatedly reads the filtered/original suits only in reached
     -- clauses; do not prefetch them before toTurnOver or the overflow gate.
-    local function q(object,method,...) return r33_retrial_query(object,method,...) end
+    local q = r33_retrial_query
     if q(self,"isFriend",source) then
         if not q(self,"toTurnOver",source,0)
             and q(judge.card,"getSuit")~=0 and q(filtered,"getSuit")==0 then

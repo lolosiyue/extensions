@@ -1,6 +1,4 @@
--- Complete fixed imagine-ai.lua method bodies (b6025acc), pure facade ABI.
--- Source errors (unquoted result keys, table-valued DamageResult index,
--- non-strict damage-sort ties, luoyi/nil card) are deliberately preserved.
+-- Source: b6025acc ai/imagine-ai.lua.
 local nullable={getWeapon=true,getArmor=true,sortByRecoverRate=true}
 local function imagine_call(object,name,...)
     if object==nil then error("attempt to index a nil value",0) end
@@ -25,7 +23,7 @@ end
 		SmartAI:tdr(result,source,target)
 		SmartAI:KingdomsCount(players)
 		SmartAI:SortByAtomDamageCount(targets,source,nature,card,inverse)
-]]--
+]]
 --[[
 	函数名：AtomDamageCount
 	功能：计算一次单体伤害的点数
@@ -38,7 +36,7 @@ end
 			雷电伤害：sgs.DamageStruct_Thunder
 		card：伤害所用卡牌，默认值为nil（没有卡牌）
 	返回值：一个整数，表示伤害点数
-]]--
+]]
 function SmartAIView:AtomDamageCount(target,source,nature,card)
 	if not target then return 0 end--没有伤害目标直接返回0
 	nature = nature or sgs.DamageStruct_Normal --伤害属性的默认值处理
@@ -123,7 +121,7 @@ end
 			Max：最高收入；
 			Min：最低收入；
 			Expectancy：收入的平均值。
-]]--
+]]
 function SmartAIView:DamageToCards(target,source,count)
 	local result = {
 		thisIncome = {
@@ -383,7 +381,7 @@ end
 			equalNum：对target的对方造成的等价翻面人数（被翻面人数-被翻回人数）
 			faceUp：伤害后target的对方正面向上的人数
 			faceDown：伤害后target的对方背面向上的人数
-]]--
+]]
 function SmartAIView:DamageToTurnOver(target,source,count)
 	local result = {
 		thisResult = {
@@ -446,26 +444,7 @@ function SmartAIView:DamageToTurnOver(target,source,count)
 			end
 		end
 		--破军（按次数结算，被忽略）
-		--[[if source and source:hasSkill("pojun") then
-			if civil then
-				if target:faceUp() then
-					if target:getHp()>2 then
-						thisDownCount = thisDownCount+1
-						thisTurnOverCount = thisTurnOverCount+1
-					end
-				else
-					thisDownCount = thisDownCount-1
-					thisTurnOverCount = thisTurnOverCount+1
-				end
-			else
-				if target:faceUp() then
-					if target:getHp()<=2 then
-						thisDownCount = thisDownCount+1
-						thisTurnOverCount = thisTurnOverCount+1
-					end
-				end
-			end
-		end]]--
+
 		--归心（按点数结算）
 		if imagine_call(target,"hasSkill","guixin") then
 			local flag = imagine_call(target,"faceUp")
@@ -562,7 +541,7 @@ end
 			damageCount：对target的对方造成的伤害点数
 			cardsIncome：对target的对方造成的手牌收入
 			turnOver：对target的对方造成的翻面人数
-]]--
+]]
 function SmartAIView:DamageResult(target,source,nature,card,chained)
 	local result = {
 		damageValue = 0,
@@ -672,7 +651,7 @@ end
 	功能：测试DamageResult函数的结果
 	参数表：result（待测试的结果）
 	返回值：无
-]]--
+]]
 function SmartAIView:tdr(result,source,target)
 	local room = self.room
 	local from = "nobody"
@@ -703,7 +682,7 @@ end
 	功能：统计指定范围内出现的势力数目
 	参数表：players（QList<Player*>类型，表示待统计的范围）
 	返回值：一个整数，表示范围内出现的势力的数目
-]]--
+]]
 
 --[[
 	函数名：SortByAtomDamageCount
@@ -720,7 +699,7 @@ end
 			true：按从小到大的顺序排序
 			false：按从大到小的顺序排序（默认值）
 	返回值：table类型，表示排序结果。
-]]--
+]]
 function SmartAIView:SortByAtomDamageCount(targets,source,nature,card,inverse)
 	if not nature then
 		nature = sgs.DamageStruct_Normal
@@ -753,7 +732,7 @@ end
 		SmartAI:RecoverRate(player)
 		SmartAI:sortByRecoverRate(players,inverse)
 		SmartAI:getFocusTarget(players)
-]]--
+]]
 function SmartAIView:getDamagePoint(player)
 	if player then
 		return self:getImagineFocusMark(player,"FocusDamageCount")

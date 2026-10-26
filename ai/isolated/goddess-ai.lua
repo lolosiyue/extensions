@@ -1,4 +1,4 @@
--- Fixed b6025acc goddess source policies. No hidden-card lookup or donor error repair.
+-- Source: b6025acc ai/goddess-ai.lua.
 local function result(v)if AIUnsupported.is(v)then error(v,0)end;return v end
 local known = AIValue.requireKnown
 local nullable={getWeapon=true,getCard=true,getCardId=true,findPlayerBySkillName=true,getCurrent=true,speak=true,setStrategyPlayerFlag=true,
@@ -72,7 +72,9 @@ local function youhua_source(self,material_id,reference,request)
     return self:evaluateTurnConversion("GodYouhua", known(row.card.class_name,"GodYouhua parsed class"), {name=known(row.card.name,"GodYouhua parsed name"),skill=known(row.card.skill_name,"GodYouhua parsed skill"),
          suit=known(row.card.suit,"GodYouhua parsed suit"),number=known(row.card.number,"GodYouhua parsed number"),subcards={material_id}}, request or self.request)
 end
-sgs.ai_fill_skill.GodQuxiang = function(self, inclusive, request)
+ai_fill_skill.GodQuxiang = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getHandcardNum() < 1 then return end
 	local can = false
 	local cards = sgs.QList2Table(self.player:getCards("he"))
@@ -93,17 +95,22 @@ sgs.ai_fill_skill.GodQuxiang = function(self, inclusive, request)
 end
 
 
-sgs.ai_skill_choice["GodShenfu"] = function(self, choices, data)
+ai_skill_choice["GodShenfu"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-	return items[math.random(1,#items)]
+	return ai_choice_result((items[math.random(1,#items)]), options)
 end
 
-sgs.ai_fill_skill.GodShijun = function(self, inclusive, request)
+ai_fill_skill.GodShijun = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:canDiscard(self.player, "he") then return end
 	return self:legacySkillSeed("GodShijun", "#GodShijunCard", request or self.request)
 end
 
-sgs.ai_skill_use_func["#GodShijunCard"] = function(card, use, self, request)
+ai_card_use["#GodShijunCard"] = function(self, card, use, request)
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	self:sortInPlace(self.enemies, "handcard")
 	local slashcount = self:getCardsNum("Slash")
@@ -142,7 +149,9 @@ sgs.ai_card_intention["GodShijunCard"] = 70
 sgs.ai_use_value["GodShijunCard"] = 9.2
 sgs.ai_use_priority["GodShijunCard"] = sgs.ai_use_priority.Slash + 0.1
 
-sgs.ai_fill_skill.GodYouhua = function(self, inclusive, request)
+ai_fill_skill.GodYouhua = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isNude() then return nil end
 	if self.player:getStrategyMark("LastId") == 0 or self.player:hasFlag("YouhuaUsed") then return nil end
 	local cards = self.player:getCards("he")
@@ -169,7 +178,9 @@ end
 
 
 
-sgs.ai_fill_skill.GodGongshen = function(self, inclusive, request)
+ai_fill_skill.GodGongshen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getHandcardNum() < 1 then return end
 	local can = false
 	local cards = sgs.QList2Table(self.player:getCards("he"))
@@ -226,36 +237,41 @@ end
 -- GodJiuse identity-gated alias remains shared-owned.
 
 
-sgs.ai_skill_invoke.GodManwu = function(self, data)
+ai_skill_invoke.GodManwu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local card = tag_card(self,"GodManwu")
-	if self:isWeak() and (card:isKindOf("Peach") or card:isKindOf("Analeptic")) then return true end
-	if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow") and card:isKindOf("Slash") then return true end
-	if not self:isWeak() and (card:isKindOf("Snatch") or card:isKindOf("ExNihilo") or card:isKindOf("Dismantlement")) then return true end
-	return false
+	if self:isWeak() and (card:isKindOf("Peach") or card:isKindOf("Analeptic")) then return (true) or false end
+	if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow") and card:isKindOf("Slash") then return (true) or false end
+	if not self:isWeak() and (card:isKindOf("Snatch") or card:isKindOf("ExNihilo") or card:isKindOf("Dismantlement")) then return (true) or false end
+	return (false) or false
 end
 
 
-sgs.ai_skill_choice["LuaDanji"] = function(self, choices, data)
+ai_skill_choice["LuaDanji"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if self.player:isWeak() then
-		return "distwocards"
+		return ai_choice_result(("distwocards"), options)
 	end
-	return items[math.random(1,#items)]
+	return ai_choice_result((items[math.random(1,#items)]), options)
 end
 
-function sgs.ai_skill_invoke.LuaXJianshou(self, data)
+function ai_skill_invoke.LuaXJianshou(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local sbdiaochan = self.room:findPlayerBySkillName("lihun")
 	if sbdiaochan and sbdiaochan:faceUp() and not self:willSkipPlayPhase(sbdiaochan)
-		and (self:isEnemy(sbdiaochan) or (known(self.world.turn_count,"turncount") <= 1 and role(self,sbdiaochan) == "neutral")) then return false end
-	if not self.player:faceUp() then return true end
+		and (self:isEnemy(sbdiaochan) or (known(self.world.turn_count,"turncount") <= 1 and role(self,sbdiaochan) == "neutral")) then return (false) or false end
+	if not self.player:faceUp() then return (true) or false end
 	for _, friend in ipairs(self.friends) do
-		if self:hasSkills("fangzhu|jilve", friend) then return true end
+		if self:hasSkills("fangzhu|jilve", friend) then return (true) or false end
 		if friend:hasSkill("junxing") and friend:faceUp() and not self:willSkipPlayPhase(friend)
 			and not (friend:isKongcheng() and self:willSkipDrawPhase(friend)) then
-			return true
+			return (true) or false
 		end
 	end
-	return self:isWeak()
+	return (self:isWeak()) or false
 end
 
 sgs.ai_target_revises.LuaTiebi = function(to,card)
@@ -275,10 +291,11 @@ end
 
 
 function SmartAIView:useCardshot(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	local extraTarget = extra(self,card)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	local function slashNoTarget(target)
-		if is_current(use,target)
+		if recommend(target, 0) == nil or is_current(use,target)
 		or use.to:contains(target) then return end
 		if use.card and use.card~=card then
 			extraTarget = extra(self,use.card)
@@ -299,7 +316,7 @@ function SmartAIView:useCardshot(card,use)
 			end
 		end
 	end
-	for _,friend in ipairs(self.friends_noself)do
+	for _,friend in ipairs(self:orderTargetsByRecommend(self.friends_noself, recommend))do
 		if role(self,friend)==role(self,self.player)
 		and self:isPriorFriendOfSlash(friend, use.card or card)
 		and slashNoTarget(friend) then return end
@@ -307,7 +324,7 @@ function SmartAIView:useCardshot(card,use)
 	
 	local forbidden = {}
 	self:sortInPlace(self.enemies, "defenseSlash")
-	for _,enemy in ipairs(self.enemies)do
+	for _,enemy in ipairs(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if self:isGoodTarget(enemy, self.enemies, use.card or card) then
 			if self:objectiveLevel(enemy)<=3
 			then table.insert(forbidden,enemy)
@@ -315,7 +332,7 @@ function SmartAIView:useCardshot(card,use)
 			then return end
 		end
 	end
-	for _,friend in ipairs(self.friends_noself)do
+	for _,friend in ipairs(self:orderTargetsByRecommend(self.friends_noself, recommend))do
 		if role(self,friend)==role(self,self.player)
 		and (use.card or card):getSkillName()~="lihuo"
 		and not(friend:isLord() and #self.enemies<1)
@@ -323,7 +340,7 @@ function SmartAIView:useCardshot(card,use)
 		and self:ajustDamage(self.player, friend, 1, use.card or card)==1
 		and slashNoTarget(friend) then return end
 	end
-	for _,target in ipairs(forbidden)do
+	for _,target in ipairs(self:orderTargetsByRecommend(forbidden, recommend))do
 		if slashNoTarget(target) then return end
 	end
 end
@@ -482,10 +499,11 @@ end
 sgs.ai_keep_value.Weikai = 5.2
 
 function SmartAIView:useCardSu(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	self:sortInPlace(self.friends, "hp")
 	local extraTarget = 1 + extra(self,card)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-	for _,ep in sgs.list(self.friends)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.friends, recommend))do
 		if is_current(use,ep) then continue end
 		if self.player:canUse(card, ep) then
 	    	use.card = card
@@ -495,6 +513,7 @@ function SmartAIView:useCardSu(card,use)
 		end
 	end
 end
+sgs.registerSkillCardType("Su", "recover")
 sgs.ai_use_priority.Su = 2.4
 sgs.ai_keep_value.Su = 2.2
 sgs.ai_use_value.Su = 4.7
@@ -551,13 +570,14 @@ local function manbing_flag(self,target,write)
 end
 
 function SmartAIView:useCardmanbing(manbing,use)
+    local recommend = self:targetRecommendScorer(manbing)
 	self.aiUsing = manbing:getSubcards()
 	local extraTarget = extra(self,manbing)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	if use.xiechan then extraTarget = 100 end
 	self:sortInPlace(self.enemies)
 	local enemySlash = 0
-	for _,enemy in sgs.list(self.enemies)do
+	for _,enemy in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if is_current(use,enemy) then continue end
 		if manbing_flag(self,enemy)
 		and can_to(self,manbing,self.player,enemy)
@@ -588,7 +608,7 @@ function SmartAIView:useCardmanbing(manbing,use)
 		return bcv[a:objectName()]<bcv[b:objectName()]
 	end
 	table.sort(self.enemies,compare_func)
-	for _,enemy in sgs.list(self.enemies)do
+	for _,enemy in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if is_current(use,enemy) then continue end
 		if not use.to:contains(enemy) and can_to(self,manbing,self.player,enemy)
 		and self:objectiveLevel(enemy)>3 and self:isGoodTarget(enemy, self.enemies)
@@ -646,8 +666,9 @@ end
 
 
 function SmartAIView:useCardquanxiang(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	self:sortInPlace(self.enemies, "skill", false)
-	for _,ep in sgs.list(self.enemies)do
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do
 		if is_current(use,ep) then continue end
 		if ep:getStrategyMark("@RemoveGeneral") == 0
 		and ep:getVisibleSkillList():length()>0
@@ -658,6 +679,7 @@ function SmartAIView:useCardquanxiang(card,use)
 		end
 	end
 end
+sgs.registerSkillCardType("quanxiang", "debuff")
 sgs.ai_use_priority.quanxiang = 5.4
 sgs.ai_keep_value.quanxiang = 4
 sgs.ai_use_value.quanxiang = 3.7
@@ -686,6 +708,7 @@ end
 
 
 function SmartAIView:useCardshuigong(shuigong,use)
+    local recommend = self:targetRecommendScorer(shuigong)
 	local lack = {basic=false,trick=false,equip=false}
 	local canDis = {}
 	for _,h in sgs.list(self.player:getHandcards())do
@@ -712,7 +735,7 @@ function SmartAIView:useCardshuigong(shuigong,use)
 	for _,enemy in sgs.list(self.enemies)do
 		if can_attack(enemy) then table.insert(enemies,enemy) end
 	end
-	for kc,enemy in sgs.list(enemies)do
+	for kc,enemy in sgs.list(self:orderTargetsByRecommend(enemies, recommend))do
 		kc = getKnownCards(enemy,self.player)
 		if #kc>enemy:getHandcardNum()/2
 		then
@@ -728,7 +751,7 @@ function SmartAIView:useCardshuigong(shuigong,use)
 	if (suitnum==2 and lack.diamond or suitnum<=1) and #targets<1
 	and self:getOverflow()<=(self.player:hasSkills("jizhi|nosjizhi") and -2 or 0)
 	then return end
-	for _,enemy in sgs.list(enemies)do
+	for _,enemy in sgs.list(self:orderTargetsByRecommend(enemies, recommend))do
 		if table.contains(targets,enemy)
 		then else table.insert(targets,enemy) end
 	end

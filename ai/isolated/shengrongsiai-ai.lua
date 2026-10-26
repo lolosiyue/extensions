@@ -1,5 +1,4 @@
--- Fixed shengrongsiai-ai.lua b6025acc983331337614289d8cac79b078c003af.
--- Decisions preserve donor loop/short-circuit order; native scopes own authority.
+-- Source: b6025acc ai/shengrongsiai-ai.lua.
 local package_skills={}
 local known = AIValue.requireKnown
 local function action_request(self,request)
@@ -59,7 +58,7 @@ local function role_effect(self,source,target)
 end
 
 
-sgs.ai_skill_use["@@luaRshiji"]=function(self,prompt)
+ai_skill_use["@@luaRshiji"]=function(self, prompt, request)
 	self:updatePlayers()
 	self:sortInPlace(self.enemies, "defense")
 	
@@ -107,8 +106,9 @@ sgs.ai_event_callback[sgs.Death or "Death"].luaRquanxiang=function(self,player,e
         end
     end
 end
-sgs.ai_skill_invoke.luaRquanxiang = function(self, data)
-	return true
+ai_skill_invoke.luaRquanxiang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
@@ -189,10 +189,13 @@ sgs.ai_skill_discard.luaRcaiyi = function(self,discard_num,min_num,optional,incl
 	return to_discard
 end
 
-sgs.ai_skill_choice.luaRcaiyi=function(self,choices,data)
+ai_skill_choice.luaRcaiyi=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items=(choices:split("+"))
     local target=get_target(self,"luaRcaiyi_target")
-    if not target then local items=(choices:split("+"));return items[math.random(1,#items)]end
+    if not target then local items=(choices:split("+"));return ai_choice_result((items[math.random(1,#items)]), options)end
     local ids=AIList.new(known((self:getDecisionContext()).shengrongsiai_caiyi_ids,"caiyi disclosed input IDs"))
     local shown,unshown=0,0
     local totalabs,halfexact=0,true
@@ -215,16 +218,17 @@ sgs.ai_skill_choice.luaRcaiyi=function(self,choices,data)
     if hidden>0 and not(halfexact and totalabs+hidden*.5<2^50) and math.abs(shown-unshown)<=tolerance then
         ai_unsupported("caiyi hidden-order floating-point tie is unresolved","luaRcaiyi")
     end
-    if shown>unshown then return "luaRcaiyi1"end
-    if shown<=unshown then return "luaRcaiyi2"end
-    return items[math.random(1,#items)]
+    if shown>unshown then return ai_choice_result(("luaRcaiyi1"), options)end
+    if shown<=unshown then return ai_choice_result(("luaRcaiyi2"), options)end
+    return ai_choice_result((items[math.random(1,#items)]), options)
 end
-function sgs.ai_skill_invoke.luaRhuogen(self, data)
+function ai_skill_invoke.luaRhuogen(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and (self:isFriend(target)) then
-		return not (self:isWeak())
+		return (not (self:isWeak())) or false
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_choicemade_filter.skillInvoke.luaRhuogen = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -236,7 +240,9 @@ end
 local luaRsihu_skill = {}
 luaRsihu_skill.name = "luaRsihu"
 table.insert(package_skills,luaRsihu_skill)
-luaRsihu_skill.getTurnUseCard = function(self,inclusive,request)
+luaRsihu_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local card
 	if (self:needToThrowArmor()) then
 		card = self.player:getArmor()
@@ -284,7 +290,7 @@ luaRsihu_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#luaRsihuCard"] = function(card,use,self,request)
+ai_card_use["#luaRsihuCard"] = function(self, card, use, request)
 	local target
 	local friends = self.friends_noself
 	local slash = (self:getEvaluationCard("slash"))
@@ -333,7 +339,6 @@ sgs.ai_skill_playerchosen.luaRsihu = function(self,targets)
 	return sgs.ai_skill_playerchosen.zero_card_as_slash(self,targets)
 end
 
--- sgs.ai_playerchosen_intention.luaRsihu = 80
 
 sgs.ai_use_value["luaRsihuCard"] = 5.9
 sgs.ai_use_priority["luaRsihuCard"] = 4
@@ -396,49 +401,52 @@ sgs.ai_can_damagehp.luaRzhiyu = function(self,from,card,to)
 	and (self:canLoseHp(from,card,to)) and from and (from:getHandcardNum()) - (self.player:getHandcardNum()) >= 2
 end
 
-sgs.ai_skill_invoke.luaRqice = function(self, data)
+ai_skill_invoke.luaRqice = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local use = (data:toCardUse())
     if (self.player:getPhase()) == sgs.Player_Play and not (self.player:isKongcheng()) then
         local cards = AIList.new((self.player:getCards("h")))
 	    for _,c in sgs.list(cards)do
             if (self:willUse(self.player,c)) then
-                return false
+                return (false) or false
             end
         end
     end
     if use.from and (self:isFriend(use.from)) then
-        if (self.player:isKongcheng()) and (self:isWeak()) then return false end
+        if (self.player:isKongcheng()) and (self:isWeak()) then return (false) or false end
         if (use.card:isDamageCard()) or (use.card:isKindOf("SingleTargetTrick")) then
             for _,to in sgs.list(use.to)do
                 if (self:isFriend(to))
-                then return false end
+                then return (false) or false end
             end
             if not (self.player:isKongcheng()) then
                 local cards = AIList.new((self.player:getCards("h")))
                 for _,c in sgs.list(cards)do
                     if (self:getUseValue(c)) > (self:getUseValue(use.card)) then
-                        return false
+                        return (false) or false
                     end
                 end
             end
-            return true
+            return (true) or false
         end
         local dummy_use = (self:aiUseCard(use.card,dummy()))
         if dummy_use.card and dummy_use.to then
             for _, p in sgs.qlist(dummy_use.to) do
                 if (use.to:contains(p)) then
-                    return true
+                    return (true) or false
                 end
             end
         end
     end
-	return false
+	return (false) or false
 end
 
 local luaRziao_skill = {}
 luaRziao_skill.name = "luaRziao"
 table.insert(package_skills, luaRziao_skill)
-luaRziao_skill.getTurnUseCard = function(self,inclusive,request)
+luaRziao_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self:needBear()) then return end
 	if #self.enemies < 1 or (self.player:isKongcheng()) then return end
 	if not (self.player:isKongcheng()) then
@@ -446,7 +454,7 @@ luaRziao_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#luaRziao"] = function(card,use,self,request)
+ai_card_use["#luaRziao"] = function(self, card, use, request)
 	self:sortInPlace(self.enemies, "handcard")
 	local cards = AIList.new({})
 	local peach = 0
@@ -571,14 +579,16 @@ sgs.ai_playerchosen_intention.luaRyaoyan = -40
 local luaRzhangshi_skill = {}
 luaRzhangshi_skill.name = "luaRzhangshi"
 table.insert(package_skills, luaRzhangshi_skill)
-luaRzhangshi_skill.getTurnUseCard = function(self,inclusive,request)
+luaRzhangshi_skill.getTurnUseCard = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 or (self.player:getStrategyHasUsed("#luaRzhangshicard")) then return end
     if #(self.room:getLieges("qun",self.player)) < 1 then return end
 	return seed(self,"luaRzhangshi","#luaRzhangshicard",request)
 end
 
 
-sgs.ai_skill_use_func["#luaRzhangshicard"] = function(card,use,self,request)
+ai_card_use["#luaRzhangshicard"] = function(self, card, use, request)
 	local target
 	self:sortInPlace(self.enemies, "defense")
     for _, enemy in ipairs(self.enemies) do
@@ -595,11 +605,51 @@ end
 sgs.ai_use_value["luaRzhangshicard"]       = 8
 sgs.ai_use_priority["luaRzhangshicard"]    = 8
 sgs.ai_card_intention["luaRzhangshicard"]  = 50
-sgs.ai_skill_choice["luaRzhangshi"] = function(self, choices, data)
+ai_skill_choice["luaRzhangshi"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = (choices:split("+"))
-    if #(self.room:getLieges("qun",self.player)) < 1 then return "slash" end
-	return items[math.random(1,#items)]
+    if #(self.room:getLieges("qun",self.player)) < 1 then return ai_choice_result(("slash"), options) end
+	return ai_choice_result((items[math.random(1,#items)]), options)
 end
 
 
-for _,skill in ipairs(package_skills)do sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end
+for _,skill in ipairs(package_skills)do ai_fill_skill[skill.name]=skill.getTurnUseCard end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(to, "hasSkill", "luaRkuangyan") and nature == "N" and dmg == 1 then
+            dmg = 0
+        end
+        return dmg, nature
+    end
+    local function policy_2(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(to, "hasSkill", "luaRkuangyan") and dmg > 1 then
+            dmg = dmg + 1
+        end
+        return dmg, nature
+    end
+    local previous_1 = sgs.ai_ajustdamage_to["luaRkuangyan"]
+    sgs.ai_ajustdamage_to["luaRkuangyan"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "after_to" and context.rule == "luaRkuangyan_normal" then
+                local damage, next_nature, terminal = policy_1(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            if context.phase == "after_to" and context.rule == "luaRkuangyan_more" then
+                local damage, next_nature, terminal = policy_2(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "luaRkuangyan", {
+        {phase="after_to", rule="luaRkuangyan_normal", order=6500},
+        {phase="after_to", rule="luaRkuangyan_more", order=6600},
+    })
+end)()

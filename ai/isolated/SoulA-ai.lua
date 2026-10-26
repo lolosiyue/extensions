@@ -1,25 +1,20 @@
--- Complete two-callback SoulA AI source at
--- b6025acc983331337614289d8cac79b078c003af: ai/SoulA-ai.lua.
--- Policy emits a pure proposal; the shared response resolver alone issues and
--- revalidates the native conversion ticket for the exact source and material.
-local function query(object, method, ...)
-    if not object or type(object[method]) ~= "function" then
-        ai_unsupported("SoulA policy requires " .. method, "SoulA")
-    end
-    local value = object[method](object, ...)
-    if AIUnsupported and AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("SoulA policy requires known " .. method, "SoulA") end
-    return value
-end
+-- Source: b6025acc ai/SoulA-ai.lua.
+local query = AIValue.bindQuery {
+    missing = function(method) ai_unsupported("SoulA policy requires " .. method, "SoulA") end,
+    known = function(value, method)
+        if value == nil then ai_unsupported("SoulA policy requires known " .. method, "SoulA") end
+        return value
+    end,
+}
 
-sgs.ai_skill_invoke.Rcekuiwei = function(self)
+ai_skill_invoke.Rcekuiwei = function(self, options, request)
     local current = query(self.room, "getCurrent")
     local next_alive = query(current, "getNextAlive")
     if query(next_alive, "objectName") == query(self.player, "objectName")
         and query(self.player, "faceUp") then
-        return false
+        return (false) or false
     end
-    return true
+    return (true) or false
 end
 
 sgs.ai_view_as.Rceyanzheng = function(card, player, card_place)

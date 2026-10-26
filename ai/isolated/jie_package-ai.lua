@@ -1,4 +1,4 @@
--- Fixed b6025acc jie_package policies. Observations never carry payment authority.
+-- Source: b6025acc ai/jie_package-ai.lua.
 local known = AIValue.requireKnown
 
 local function color(card)
@@ -69,11 +69,14 @@ end
 
 
 
-sgs.ai_skill_invoke.jinbolan = function(self,data)
-    return true
+ai_skill_invoke.jinbolan = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
-sgs.ai_fill_skill.jinbolan_skill = function(self,inclusive,request)
+ai_fill_skill.jinbolan_skill = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:isWeak() or self.player:getHp()<2 then return end
     for _,ep in sgs.list(self.room:getOtherPlayers(self.player))do
 		if ep:hasSkill("jinbolan") and ep:getStrategyMark("jinbolan-PlayClear")<1
@@ -85,7 +88,7 @@ sgs.ai_fill_skill.jinbolan_skill = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["JinBolanSkillCard"] = function(card,use,self)
+ai_card_use["JinBolanSkillCard"] = function(self, card, use, request)
 	use.card = card
 	use.to:append(self.jinbolan_to or find(self,known(recall(self,"jinbolan_to"),"jinbolan_to")))
 end
@@ -169,19 +172,22 @@ sgs.ai_skill_playerchosen.jincanmou = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.jincongjian = function(self,data)
+ai_skill_invoke.jincongjian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = tagged_use(self,"JincongjianData")
 	self.jcj_can = nil; remember(self,"jcj_can",nil)
 	if use.to:contains(use.from)
 	and not source_damage(use.card)
-	then return self:canCanmou(self.player,use)
+	then return (self:canCanmou(self.player,use)) or false
 	elseif source_damage(use.card)
 	then
 		self.jcj_can = not self:isWeak(); remember(self,"jcj_can",self.jcj_can)
-		return self.jcj_can
+		return (self.jcj_can
 		and self:canCanmou(self.player,use)
-		and self:canDamageHp(use.from,use.card)
+		and self:canDamageHp(use.from,use.card)) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_cardask.jincongjian = function(self,data,pattern,prompt)
@@ -193,13 +199,16 @@ sgs.ai_skill_cardask.jincongjian = function(self,data,pattern,prompt)
 	end
 end
 
-sgs.ai_skill_invoke.jinxiongshu = function(self,data)
+ai_skill_invoke.jinxiongshu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = self:getDecisionData():toPlayer()
 	if target and not target:isKongcheng()
 	then
-		return self:isEnemy(target)
-		or (not self:isFriend(target)) and #self.enemies<2
+		return (self:isEnemy(target)
+		or (not self:isFriend(target)) and #self.enemies<2) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_discard.jinxiongshu = function(self,x,n)
@@ -216,7 +225,8 @@ sgs.ai_skill_discard.jinxiongshu = function(self,x,n)
 	return to_cards
 end
 
-sgs.ai_skill_invoke.jinxiongshu_guess = function(self,data)
+ai_skill_invoke.jinxiongshu_guess = function(self, options, request)
+   	local data = request and self:getDecisionData(request) or nil
    	local target = self.room:getCurrent()
 	local row=scoped(self,"JinXiongshuShowCard")
     if row==false then error("fixed jinxiongshu_guess missing show-card tag yields card -1",0)end
@@ -228,16 +238,20 @@ sgs.ai_skill_invoke.jinxiongshu_guess = function(self,data)
 			then
 				if (c:isDamageCard() or c:isKindOf("SingleTargetTrick"))
 				and self:isEnemy(target, to)
-				then return true end
+				then return (true) or false end
 			end
 		end
 		if c:targetFixed()
 		and not c:isDamageCard()
-		then return true end
+		then return (true) or false end
 	end
+   	return false
+
 end
 
-sgs.ai_fill_skill.jinbingxin = function(self,inclusive,request)
+ai_fill_skill.jinbingxin = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards)
 	local can = #cards==self.player:getHp()
@@ -267,7 +281,7 @@ sgs.ai_fill_skill.jinbingxin = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["JinBingxinCard"] = function(card,use,self)
+ai_card_use["JinBingxinCard"] = function(self, card, use, request)
 	local saved=prior_plan(self)
 	if saved
 	then

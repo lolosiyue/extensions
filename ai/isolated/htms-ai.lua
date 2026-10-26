@@ -1,4 +1,4 @@
--- Fixed htms b6025acc source policy. Readonly proposals never grant payment authority.
+-- Source: b6025acc ai/htms-ai.lua.
 local known = AIValue.requireKnown
 local function __htms_value_call(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("htms method unavailable",k)end;return known(o[k](o,...),k)end
 -- The remaining htms facts (Room tags voidid/voidtarget, pingjian catalogs, use history,
@@ -236,10 +236,11 @@ end
 
 
 sgs.ai_cardneed.zhuisha = sgs.ai_cardneed.slash
-sgs.ai_skill_invoke.zhuisha = function(self,data)
+ai_skill_invoke.zhuisha = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
-	if self:isFriend(effect.to,self.player) then return false end
-	return true
+	if self:isFriend(effect.to,self.player) then return (false) or false end
+	return (true) or false
 end
 sgs.ai_skill_cardask["@zhuisha_ask"] = function(self,data,pattern,target)
 	local card_list = self.player:getHandcards()
@@ -257,13 +258,15 @@ sgs.ai_ajustdamage_from.htms_zangsong = function(self, from, to, card, nature)
 		return __htms_value_call(to,"getLostHp")
 	end
 end
-sgs.ai_fill_skill["htms_zangsong"] = function(self,inclusive,request)
+ai_fill_skill["htms_zangsong"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:hasUsed("#htms_zangsongCard") then return nil end
 	if  (#self.enemies == 0) then return nil end
 	return policy(self,"#htms_zangsongCard:.:")
 end
 
-sgs.ai_skill_use_func["#htms_zangsongCard"] =function(card,use,self)
+ai_card_use["#htms_zangsongCard"] =function(self, card, use, request)
 	self.enemies = self:sort(self.enemies, "defense")
 	local use_card
 	local cards = sgs.QList2Table(self.player:getCards("h"))
@@ -290,24 +293,30 @@ end
 
 sgs.ai_use_value["htms_zangsongCard"] = sgs.ai_use_value.Slash - 0.2
 sgs.ai_use_priority["htms_zangsongCard"] = sgs.ai_use_priority.Slash - 0.2
-sgs.ai_skill_invoke.shilian = function(self,data)
+ai_skill_invoke.shilian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local slash = clone(self,"slash",sgs.Card_NoSuit,0)
 	slash:deleteLater()
-	if self:isFriend(damage.from,self.player) then return false end
+	if self:isFriend(damage.from,self.player) then return (false) or false end
 	if  damage.from and self:isEnemy(damage.from) and  self:slashIsEffective(slash, damage.from) and not self:slashProhibit(slash, damage.from) and self:isGoodTarget(damage.from, self.enemies, slash) then
-	return true
+	return (true) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.shilianEX = function(self,data)
+ai_skill_invoke.shilianEX = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local slash = clone(self,"slash",sgs.Card_NoSuit,0)
 	slash:deleteLater()
-	if self:isFriend(damage.from,self.player) then return false end
+	if self:isFriend(damage.from,self.player) then return (false) or false end
 	if  damage.from and self:isEnemy(damage.from) and  self:slashIsEffective(slash, damage.from) and not self:slashProhibit(slash, damage.from) and self:isGoodTarget(damage.from, self.enemies, slash) then
-	return true
+	return (true) or false
 	end
+	return false
+
 end
 sgs.ai_choicemade_filter.skillInvoke.shilianEX = function(self,player,promptlist)
 	local damage = room_tag(self,"CurrentDamageStruct","Damage")
@@ -323,29 +332,34 @@ sgs.ai_choicemade_filter.skillInvoke.shilianEX = function(self,player,promptlist
 end
 
 
-sgs.ai_skill_invoke.xianxuefeiteng = function(self,data)
+ai_skill_invoke.xianxuefeiteng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if __htms_value_call(self.player,"getLostHp") > __htms_value_call(self.player,"getHp") then
 		if self:isWeak() and self:getCardsNum("Slash") < 2 then
-			return true
+			return (true) or false
 		end
 	else
 		if self:getCardsNum("Peach") > 0 then
-			return true
+			return (true) or false
 		end
 	end
+	return false
+
 end
 
 sgs.double_slash_skill = sgs.double_slash_skill .. "|xianxuefeiteng"
 
-sgs.ai_skill_choice.fengwang = function(self,choices)
-	if self:needKongcheng(self.player) or self:isWeak(self.player) then return "fengwang_discard" end
+ai_skill_choice.fengwang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	if self:needKongcheng(self.player) or self:isWeak(self.player) then return ai_choice_result(("fengwang_discard"), options) end
 	local card_list = self.player:getHandcards()
 	local x = 0
 	for _,card in sgs.qlist(card_list) do
 		if __htms_value_call(card,"isKindOf","Slash") then x = x + 1 end
 	end
-	if x > 2 then return "fengwang_equip" end
-	return "fengwang_discard"
+	if x > 2 then return ai_choice_result(("fengwang_equip"), options) end
+	return ai_choice_result(("fengwang_discard"), options)
 end
 sgs.ai_skill_cardask["@fengwang_askforequip"] = function(self,data,pattern,target)
 	local card_list = self.player:getCards("e")
@@ -353,11 +367,13 @@ sgs.ai_skill_cardask["@fengwang_askforequip"] = function(self,data,pattern,targe
 	cards = self:sortByKeepValue(cards,false)
 	return "$"..__htms_value_call(cards[1],"getEffectiveId")
 end
-sgs.ai_fill_skill["fengwang"] = function(self,inclusive,request)
+ai_fill_skill["fengwang"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#fengwang") then return end
 	return policy(self,"#fengwang:.:")
 end
-sgs.ai_skill_use_func["#fengwang"] = function(card,use,self)
+ai_card_use["#fengwang"] = function(self, card, use, request)
 	local player = self.player
 	local room = player:getRoom()
 	local cards = sgs.QList2Table(complete_hand(self,player))
@@ -401,18 +417,23 @@ sgs.fengwang_keep_value = {
 	BasicCard = 6
 }
 
-sgs.ai_skill_choice.newfengwang = function(self,choices, data)
+ai_skill_choice.newfengwang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local target = data:toPlayer()
-	if getKnownCard(target,self.player,"Jink")>0 and __htms_value_call(target,"getMark","&newfengwang+to+#".. self.player:objectName().. "-Clear") == 0  then return "newfengwang_discard" end
-	if (not self:needToThrowArmor(target) and not target:hasArmorEffect("silver_lion") and not self:hasSkills(sgs.lose_equip_skill, target) or self:doDisCard(target, "e", true)) then return "newfengwang_equip" end
-	return "newfengwang_equip"
+	if getKnownCard(target,self.player,"Jink")>0 and __htms_value_call(target,"getMark","&newfengwang+to+#".. self.player:objectName().. "-Clear") == 0  then return ai_choice_result(("newfengwang_discard"), options) end
+	if (not self:needToThrowArmor(target) and not target:hasArmorEffect("silver_lion") and not self:hasSkills(sgs.lose_equip_skill, target) or self:doDisCard(target, "e", true)) then return ai_choice_result(("newfengwang_equip"), options) end
+	return ai_choice_result(("newfengwang_equip"), options)
 end
 
-sgs.ai_fill_skill["newfengwang"] = function(self,inclusive,request)
+ai_fill_skill["newfengwang"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#newfengwang") then return end
 	return policy(self,"#newfengwang:.:")
 end
-sgs.ai_skill_use_func["#newfengwang"] = function(card,use,self)
+ai_card_use["#newfengwang"] = function(self, card, use, request)
 	local player = self.player
 	local room = player:getRoom()
 	local cards = sgs.QList2Table(complete_hand(self,player))
@@ -538,7 +559,9 @@ sgs.fengwang_keep_value = {
 }
 sgs.hit_skill = sgs.hit_skill .. "|newfengwang"
 
-sgs.ai_fill_skill["wangzhe"] = function(self,inclusive,request)
+ai_fill_skill["wangzhe"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local player = self.player
 	local slash = clone(self,"Slash",sgs.Card_NoSuit,0)
 	slash:deleteLater()
@@ -547,7 +570,7 @@ sgs.ai_fill_skill["wangzhe"] = function(self,inclusive,request)
 	if #cards == 0 then return end
 	return policy(self,"#wangzhe:.:")
 end
-sgs.ai_skill_use_func["#wangzhe"] = function(card,use,self)
+ai_card_use["#wangzhe"] = function(self, card, use, request)
 	local player = self.player
 	local cards = sgs.QList2Table(player:getCards("he"))
 	cards = self:sortByKeepValue(cards,false,true)
@@ -593,8 +616,8 @@ sgs.ai_card_intention["wangzhe"] = sgs.ai_card_intention.Slash
 
 sgs.ai_cardneed.wangzhe = sgs.ai_cardneed.slash
 
-sgs.ai_skill_invoke.doubleslash = function(self)  --必定使用
-		return true
+ai_skill_invoke.doubleslash = function(self, options, request)  --必定使用
+		return (true) or false
 end
 
 sgs.ai_skill_cardask["@doubleslash"] = function(self, data, pattern)
@@ -640,11 +663,13 @@ end
 
 
 
-sgs.ai_fill_skill["handsonic"] = function(self,inclusive,request)
+ai_fill_skill["handsonic"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#handsonicCard") then return end
 	return policy(self,"#handsonicCard:.:")
 end
-sgs.ai_skill_use_func["#handsonicCard"] = function(card,use,self)
+ai_card_use["#handsonicCard"] = function(self, card, use, request)
 	local player = self.player
 	local room = player:getRoom()
 	local cards = sgs.QList2Table(complete_hand(self,player))
@@ -765,7 +790,9 @@ end
 
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|defencefield"
 
-sgs.ai_fill_skill["frozenpuppet"] = function(self,inclusive,request)
+ai_fill_skill["frozenpuppet"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local player = self.player
 	if __htms_value_call(player,"getHandcardNum") < 3 then return end
 	if __htms_value_call(player,"getMark","@frozenpuppet") == 0 then return end
@@ -779,7 +806,7 @@ sgs.ai_use_priority["frozenpuppetCard"] =sgs.ai_use_priority.Peach - 5
 sgs.ai_card_intention["frozenpuppetCard"] = -80
 
 
-sgs.ai_skill_use_func["#frozenpuppetCard"] = function(card, use, self)
+ai_card_use["#frozenpuppetCard"] = function(self, card, use, request)
 	local player = self.player
 	if __htms_value_call(player,"getHandcardNum") < 1 then return end
 	if __htms_value_call(player,"getMark","@frozenpuppet") == 0 then return end
@@ -853,7 +880,9 @@ end
 sgs.exclusive_skill = sgs.exclusive_skill .. "|htms_xiaoshi"
 
 
-sgs.ai_fill_skill["mie"] = function(self,inclusive,request)
+ai_fill_skill["mie"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 if __htms_value_call(self.player,"getMark","@Luazuihou") > 0 then
 	if self.player:usedTimes("#mie") == 2 then return end
 	return policy(self,"#mie:.:")
@@ -862,7 +891,7 @@ if __htms_value_call(self.player,"getMark","@Luazuihou") > 0 then
 	return policy(self,"#mie:.:")
 	end
 end
-sgs.ai_skill_use_func["#mie"] = function(card,use,self)
+ai_card_use["#mie"] = function(self, card, use, request)
 	local player = self.player
 	local room = player:getRoom()
 	local cards = sgs.QList2Table(player:getCards("he"))
@@ -905,13 +934,15 @@ sgs.mie_keep_value = {
 	BasicCard = 6
 }
 
-sgs.ai_fill_skill["diancp"] = function(self,inclusive,request)
+ai_fill_skill["diancp"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies == 0 then return end
 	return policy(self,"#diancp:.:")
 end
 
 
-sgs.ai_skill_use_func["#diancp"] = function(card, use, self)
+ai_card_use["#diancp"] = function(self, card, use, request)
 	local cmp = function(a, b)
 		if __htms_value_call(a,"getHp") < __htms_value_call(b,"getHp") then
 			if __htms_value_call(a,"getHp") == 1 and __htms_value_call(b,"getHp") == 2 then return false else return true end
@@ -986,7 +1017,8 @@ end
 sgs.ai_cardneed.Luayezhan = sgs.ai_cardneed.nosluoyi
 
 
-sgs.ai_skill_use["@@jiasugaobai"] = function(self, prompt, method)
+ai_skill_use["@@jiasugaobai"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local data = room_data(self,"jiasugaobai")
 	local use = data:toCardUse()
 	if __htms_value_call(use.card,"isKindOf","Duel") then
@@ -1048,15 +1080,17 @@ sgs.ai_skill_use["@@jiasugaobai"] = function(self, prompt, method)
 	end
 	return "."
 end
-sgs.ai_skill_invoke.juedoujiasu = function(self,data)
-	return true
+ai_skill_invoke.juedoujiasu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 function sgs.ai_cardneed.juedoujiasu(to,card)
 	return __htms_value_call(card,"isKindOf","Duel")
 end
 
-sgs.ai_skill_invoke.jiasuduijue = function(self,data)
+ai_skill_invoke.jiasuduijue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	local Duel = clone(self,"Duel", sgs.Card_SuitToBeDecided, 0)
 	Duel = mutate(self,Duel,"skill","jiasuduijue")
@@ -1065,7 +1099,7 @@ sgs.ai_skill_invoke.jiasuduijue = function(self,data)
 		if use.from:objectName() == self.player:objectName() then
 			local dummy_use = self:aiUseCard(Duel, dummy_plan(true, 99))
 
-			if self:hasHeavyDamage(use.from, use.card, self.player) then return false end
+			if self:hasHeavyDamage(use.from, use.card, self.player) then return (false) or false end
 			local invoke = true
 			for _, player in sgs.qlist(use.to) do
 				if dummy_use.card and dummy_use.to:length() > 0 then
@@ -1078,14 +1112,14 @@ sgs.ai_skill_invoke.jiasuduijue = function(self,data)
 				if self:ajustDamage(self.player,player,1,Duel)==0 then invoke = false end
 				if  getCardsNum("Jink", player, use.from) == 0  then invoke = false end
 			end
-			return invoke
+			return (invoke) or false
 		else
 			if self:getCardsNum("Jink") == 0 or self:getCardsNum("Slash") > getCardsNum("Slash", use.from, self.player) or  self:hasHeavyDamage(use.from, use.card, self.player)  then
-				return true
+				return (true) or false
 			end
 		end
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_view_as.xiangy = function(card, player, card_place)
@@ -1104,16 +1138,20 @@ sgs.ai_skill_playerchosen["xiangy"] = function(self, targets)
 	return nil
 end
 
-sgs.ai_skill_choice.xiangy = function(self, choices)
+ai_skill_choice.xiangy = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	if self:findPlayerToDiscard("ej", true, false) ~= {} and not self:isWeak() then
-		return "dis"
+		return ai_choice_result(("dis"), options)
 		end
-	return "draw1"
+	return ai_choice_result(("draw1"), options)
 end
 
 sgs.use_lion_skill = sgs.use_lion_skill .. "|xiangy"
 
-sgs.ai_fill_skill["jiujideqiyuan"] = function(self,inclusive,request)
+ai_fill_skill["jiujideqiyuan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:canDiscard(self.player, "he") then return end
 	if self.player:hasUsed("#jiujideqiyuan") then return end
 	local hurtF = 0
@@ -1124,7 +1162,7 @@ sgs.ai_fill_skill["jiujideqiyuan"] = function(self,inclusive,request)
 	if hurtF > 0 then return policy(self,"#jiujideqiyuan:.:") end
 	return
 end
-sgs.ai_skill_use_func["#jiujideqiyuan"] = function(card, use, self)
+ai_card_use["#jiujideqiyuan"] = function(self, card, use, request)
 	local targets = AIList.new({})
 	local cards = self.player:getCards("he")
 
@@ -1185,7 +1223,10 @@ sgs.ai_use_revises.jiujideqiyuan = function(self,card,use)
 	then return false end
 end
 
-sgs.ai_skill_choice["fazededizao"] = function(self, choices, data)
+ai_skill_choice["fazededizao"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local value_j = 0
 	local value_d = 0
@@ -1194,7 +1235,7 @@ sgs.ai_skill_choice["fazededizao"] = function(self, choices, data)
 	if table.contains(items, "fzndz_1") then
 	local judges = self.player:getJudgingArea()
 		if not judges:isEmpty() then
-			return "fzndz_1"
+			return ai_choice_result(("fzndz_1"), options)
 		end
 		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
 			local judges = p:getJudgingArea()
@@ -1258,49 +1299,50 @@ sgs.ai_skill_choice["fazededizao"] = function(self, choices, data)
 	end
 	if temp > 0 then
 		if temp == value_j and table.contains(items, "fzndz_1") then
-		return "fzndz_1"
+		return ai_choice_result(("fzndz_1"), options)
 		elseif temp == value_p and table.contains(items, "fzndz_3") then
-		return "fzndz_3"
+		return ai_choice_result(("fzndz_3"), options)
 		elseif temp == value_t and table.contains(items, "fzndz_4") then
-		return "fzndz_4"
+		return ai_choice_result(("fzndz_4"), options)
 		elseif temp == value_d and table.contains(items, "fzndz_2") then
-		return "fzndz_2"
+		return ai_choice_result(("fzndz_2"), options)
 		end
 	else
 		if #items == 2 then
-			return items[math.random(1,#items)]
+			return ai_choice_result((items[math.random(1,#items)]), options)
 		end
-		return "cancel"
+		return ai_choice_result(("cancel"), options)
 	end
-	return items[math.random(1,#items)]
+	return ai_choice_result((items[math.random(1,#items)]), options)
 end
 
 
-sgs.ai_skill_invoke.gonglzs = function(self,data)
+ai_skill_invoke.gonglzs = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if not self.player:getJudgingArea():isEmpty() then
-	return true
+	return (true) or false
 	end
 	if self:isFriend(use.from) then
 		if self:needToThrowArmor(self.player) and self:needToThrowArmor(use.from) then
-			return true
+			return (true) or false
 		end
 	else
 		if self:needToThrowArmor(self.player) and not use.from:hasSkills(sgs.lose_equip_skill)  then
-			return use.from:getCards("e"):length() > 0
+			return (use.from:getCards("e"):length() > 0) or false
 		end
 		if self.player:getCards("e"):length() > 0 and not use.from:hasSkills(sgs.lose_equip_skill) and ( use.from:getWeapon() and  use.from:getWeapon():isKindOf("Crossbow")) then
-			return true
+			return (true) or false
 		end
 		if self:getCardsNum("Jink") == 0 and __htms_value_call(self.player,"getHandcardNum") ~= self:getCardsNum("Peach") then
-			return __htms_value_call(use.from,"getHandcardNum") > 0
+			return (__htms_value_call(use.from,"getHandcardNum") > 0) or false
 		end
 		if self:getCardsNum("Jink") > 1   then
-			return __htms_value_call(use.from,"getHandcardNum") > 0
+			return (__htms_value_call(use.from,"getHandcardNum") > 0) or false
 		end
 	end
 
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_cardchosen["gonglzs"] = function(self, who, flags)
@@ -1324,12 +1366,13 @@ sgs.ai_skill_cardchosen["gonglzs"] = function(self, who, flags)
 end
 sgs.ai_choicemade_filter.cardChosen.gonglzs = sgs.ai_choicemade_filter.cardChosen.snatch
 
-sgs.ai_skill_invoke.shens = function(self,data)
+ai_skill_invoke.shens = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toDying().who
 	if self:isFriend(target) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.shens = function(self,player,promptlist)
@@ -1348,14 +1391,16 @@ sgs.ai_skill_playerchosen["hunq"] = function(self, targets)
 	return self:findPlayerToDraw(true, 1)
 end
 
-sgs.ai_fill_skill["pojgj"] = function(self,inclusive,request)
+ai_fill_skill["pojgj"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:isWeak() then return nil end
 
 	local card_str = ("#pojgjCard:.:")
 	return policy(self,card_str)
 end
 
-sgs.ai_skill_use_func["#pojgjCard"] = function(card, use, self)
+ai_card_use["#pojgjCard"] = function(self, card, use, request)
 	local arr1, arr2 = self:getWoundedFriend(false, false)
 	if self:isWeak() then return  end
 	local target = nil
@@ -1374,12 +1419,14 @@ sgs.ai_card_intention["pojgj"] = -100
 sgs.recover_hp_skill = sgs.recover_hp_skill .. "|pojgj"
 
 
-sgs.ai_fill_skill["LuamuguanVS"] = function(self,inclusive,request)
+ai_fill_skill["LuamuguanVS"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:canDiscard(self.player,"he") then return end
 	return policy(self,"#LuamuguanCard:.:")
 end
 
-sgs.ai_skill_use_func["#LuamuguanCard"] = function(card, use, self)
+ai_card_use["#LuamuguanCard"] = function(self, card, use, request)
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	self.enemies = self:sort(self.enemies, "handcard")
 	local slashcount = self:getCardsNum("Slash")
@@ -1439,15 +1486,18 @@ sgs.ai_view_as.soulfire = function(card, player, card_place)
 	end
 end
 
-sgs.ai_skill_invoke.soulfire = function(self,data)
+ai_skill_invoke.soulfire = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toDamage().to
 	if self:isEnemy(target) and __htms_value_call(self.player,"getHp") > __htms_value_call(target,"getHp") and self:objectiveLevel(target) > 3 and not self:cantbeHurt(target) and self:canDamage(target,self.player,nil) and self:damageIsEffective(target) then
-	return true
+	return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_fill_skill["soulfire"] = function(self,inclusive,request)
+ai_fill_skill["soulfire"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile("he")
 	cards = self:sortByUseValue(cards,true)
 	local red_card = {}
@@ -1468,13 +1518,15 @@ sgs.ai_fill_skill["soulfire"] = function(self,inclusive,request)
 end
 
 
-sgs.ai_fill_skill["jfxl"] = function(self,inclusive,request)
+ai_fill_skill["jfxl"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:hasUsed("#jfxl") then
 		return policy(self,"#jfxl:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#jfxl"] = function(card, use, self)
+ai_card_use["#jfxl"] = function(self, card, use, request)
 local handcards = sgs.QList2Table(self.player:getCards("he"))
 	local use_card = {}
 	handcards = self:sortByUseValue(handcards, true)
@@ -1520,7 +1572,8 @@ sgs.ai_view_as.zhenhong = function(card, player, card_place)
 end
 
 sgs.hit_skill = sgs.hit_skill .. "|zhenhong"
-sgs.ai_skill_invoke.tprs = function(self,data)
+ai_skill_invoke.tprs = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local slash = clone(self,"fire_slash", sgs.Card_NoSuit, 0)
 	slash:deleteLater()
 	slash = mutate(self,slash,"skill","tprs")
@@ -1559,10 +1612,10 @@ sgs.ai_skill_invoke.tprs = function(self,data)
 			end
 		end
 		if x > 0 then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_ajustdamage_from.tprs = function(self, from, to, card, nature)
 	if card and __htms_value_call(card,"isKindOf","Slash") and table.contains(card:getSkillNames(), "tprs") then
@@ -1570,33 +1623,35 @@ sgs.ai_ajustdamage_from.tprs = function(self, from, to, card, nature)
 	end
 end
 
-sgs.ai_skill_invoke.duanzui = function(self,data)
+ai_skill_invoke.duanzui = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isEnemy(target) then
 		if not self:cantbeHurt(target) and self:damageIsEffective(target, sgs.DamageStruct_Fire, self.player) and not self:needToLoseHp(target, self.player) then
-			return true
+			return (true) or false
 		end
 	elseif self:isFriend(target) then
-		return self:needToLoseHp(target, self.player) and self:damageIsEffective(target, sgs.DamageStruct_Fire, self.player)
+		return (self:needToLoseHp(target, self.player) and self:damageIsEffective(target, sgs.DamageStruct_Fire, self.player)) or false
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_invoke.meihuomoyan = function(self,data)
+ai_skill_invoke.meihuomoyan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if self:isFriend(use.to:first()) then
 		if self:isEnemy(use.from)
 			or (self:isFriend(use.from) and self.role=="loyalist" and not __htms_value_call(use.from,"hasSkill","jueqing") and __htms_value_call(use.from,"isLord")) then
 				if __htms_value_call(use.card,"isKindOf","Slash") then
-					if not self:slashIsEffective(use.card,use.to:first(),use.from) then return false end
-					if self:ajustDamage(use.from,use.to:first(),1,use.card)>1 then return true end
+					if not self:slashIsEffective(use.card,use.to:first(),use.from) then return (false) or false end
+					if self:ajustDamage(use.from,use.to:first(),1,use.card)>1 then return (true) or false end
 
 					if self:getCardsNum("Jink")<1 then
-						if __htms_value_call(use.card,"isKindOf","NatureSlash") and use.to:first():isChained() and not self:isGoodChainTarget(use.to:first(),use.card,use.from) then return true end
-						if __htms_value_call(use.from,"hasSkill","nosqianxi") and __htms_value_call(use.from,"distanceTo",use.to:first())==1 then return true end
-						if self:isFriend(use.from) and self.role=="loyalist" and not __htms_value_call(use.from,"hasSkill","jueqing") and __htms_value_call(use.from,"isLord") and use.to:first():getHp()<2 then return true end
+						if __htms_value_call(use.card,"isKindOf","NatureSlash") and use.to:first():isChained() and not self:isGoodChainTarget(use.to:first(),use.card,use.from) then return (true) or false end
+						if __htms_value_call(use.from,"hasSkill","nosqianxi") and __htms_value_call(use.from,"distanceTo",use.to:first())==1 then return (true) or false end
+						if self:isFriend(use.from) and self.role=="loyalist" and not __htms_value_call(use.from,"hasSkill","jueqing") and __htms_value_call(use.from,"isLord") and use.to:first():getHp()<2 then return (true) or false end
 						if (not (self:hasSkills(sgs.masochism_skill) or (use.to:first():hasSkill("tianxiang") and getKnownCard(use.to:first(),use.to:first(),"heart")>0)) or __htms_value_call(use.from,"hasSkill","jueqing"))  then
-							return true
+							return (true) or false
 						end
 					end
 				elseif __htms_value_call(use.card,"isKindOf","AOE") then
@@ -1614,43 +1669,43 @@ sgs.ai_skill_invoke.meihuomoyan = function(self,data)
 					friend_null = friend_null+self:getCardsNum("Nullification")
 					local sj_num = self:getCardsNum(__htms_value_call(use.card,"isKindOf","SavageAssault") and "Slash" or "Jink")
 
-					if not self:hasTrickEffective(use.card,use.to:first(),from) then return false end
-					if not self:damageIsEffective(use.to:first(),sgs.DamageStruct_Normal,from) then return false end
-					if __htms_value_call(use.from,"hasSkill","drwushuang") and use.to:first():getCardCount()==1 and self:hasLoseHandcardEffective() then return true end
+					if not self:hasTrickEffective(use.card,use.to:first(),from) then return (false) or false end
+					if not self:damageIsEffective(use.to:first(),sgs.DamageStruct_Normal,from) then return (false) or false end
+					if __htms_value_call(use.from,"hasSkill","drwushuang") and use.to:first():getCardCount()==1 and self:hasLoseHandcardEffective() then return (true) or false end
 					if sj_num==0 and friend_null<=0 then
-						if self:isEnemy(from) and __htms_value_call(from,"hasSkill","jueqing") then return true end
-						if self:isFriend(from) and self.role=="loyalist" and __htms_value_call(from,"isLord") and use.to:first():getHp()==1 and not __htms_value_call(from,"hasSkill","jueqing") then return true end
+						if self:isEnemy(from) and __htms_value_call(from,"hasSkill","jueqing") then return (true) or false end
+						if self:isFriend(from) and self.role=="loyalist" and __htms_value_call(from,"isLord") and use.to:first():getHp()==1 and not __htms_value_call(from,"hasSkill","jueqing") then return (true) or false end
 						if (not (self:hasSkills(sgs.masochism_skill) or (use.to:first():hasSkill("tianxiang") and getKnownCard(use.to:first(),use.to:first(),"heart")>0)) or __htms_value_call(use.from,"hasSkill","jueqing"))  then
-							return true
+							return (true) or false
 						end
 					end
 				elseif self:isEnemy(use.from) then
-					if not self:hasTrickEffective(use.card,use.to:first()) then return false end
+					if not self:hasTrickEffective(use.card,use.to:first()) then return (false) or false end
 					if __htms_value_call(use.card,"isKindOf","FireAttack") and __htms_value_call(use.from,"getHandcardNum")>0 then
-						if not self:damageIsEffective(use.to:first(),sgs.DamageStruct_Fire,use.from) then return false end
+						if not self:damageIsEffective(use.to:first(),sgs.DamageStruct_Fire,use.from) then return (false) or false end
 						if (use.to:first():hasArmorEffect("vine") or use.to:first():getMark("&kuangfeng")>0) and __htms_value_call(use.from,"getHandcardNum")>3
 						and not(__htms_value_call(use.from,"hasSkill","hongyan") and getKnownCard(use.to:first(),use.to:first(),"spade")>0)
-						then return true
+						then return (true) or false
 						elseif use.to:first():isChained() and not self:isGoodChainTarget(use.to:first(),nil,use.from)
-						then return true end
+						then return (true) or false end
 					elseif (__htms_value_call(use.card,"isKindOf","Snatch") or __htms_value_call(use.card,"isKindOf","Dismantlement"))
 					and self:getCardsNum("Peach")==use.to:first():getHandcardNum() and not use.to:first():isKongcheng()
-					then return true
+					then return (true) or false
 					elseif __htms_value_call(use.card,"isKindOf","Duel") then
 						if self:getCardsNum("Slash")<1
 						or self:getCardsNum("Slash")<getCardsNum("Slash",use.from,use.to:first()) then
-							if not self:damageIsEffective(use.to:first(),sgs.DamageStruct_Normal,use.from) then return false end
-							return true
+							if not self:damageIsEffective(use.to:first(),sgs.DamageStruct_Normal,use.from) then return (false) or false end
+							return (true) or false
 						end
 					end
 				end
 			end
 	elseif self:isEnemy(use.to:first()) then
 		if __htms_value_call(use.card,"isKindOf","Peach") or __htms_value_call(use.card,"isKindOf","ExNihilo") then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_playerchosen["meihuomoyan"] = function(self, targets)
@@ -1699,7 +1754,9 @@ end
 
 sgs.bad_skills = sgs.bad_skills .. "|haniel"
 
-sgs.ai_fill_skill["guancha"] = function(self,inclusive,request)
+ai_fill_skill["guancha"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.friends <= 1 then return end
 	local source = self.player
 	if source:isKongcheng() then return end
@@ -1707,7 +1764,7 @@ sgs.ai_fill_skill["guancha"] = function(self,inclusive,request)
 	return policy(self,"#guancha:.:")
 end
 
-sgs.ai_skill_use_func["#guancha"] = function(card,use,self)
+ai_card_use["#guancha"] = function(self, card, use, request)
 	local target
 	local max_num =  math.floor((__htms_value_call(self.player,"getHandcardNum") + 1) / 2)
 	local max_x = 0
@@ -1740,24 +1797,27 @@ sgs.ai_card_intention["guancha"]  = -60
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|guancha"
 sgs.recover_hp_skill = sgs.recover_hp_skill .. "|guancha"
 
-sgs.ai_skill_invoke.jiyi = function(self,data)
-	local cardstr = sgs.ai_skill_use["@@jiyi"](self, "@jiyi")
+ai_skill_invoke.jiyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	local cardstr = ai_skill_use["@@jiyi"](self, "@jiyi", nil)
     if cardstr:match(":.:") then
-        return true
+        return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 
-sgs.ai_skill_use["@@jiyi"]=function(self,prompt)
+ai_skill_use["@@jiyi"]=function(self, prompt, request)
 	if self:isWeak() then return "." end
 	if self:getOverflow() > 0 and self:getCardsNum("Peach") < 1 then return "." end
 	return "#jiyi:.:"
 end
 
 
-sgs.ai_skill_choice.jiyi = function(self, choices)
-    return "jiyi_throw"
+ai_skill_choice.jiyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+    return ai_choice_result(("jiyi_throw"), options)
 end
 
 sgs.ai_can_damagehp.jiyi = function(self, from, card, to)
@@ -1765,16 +1825,17 @@ sgs.ai_can_damagehp.jiyi = function(self, from, card, to)
 		and self:canLoseHp(from, card, to) and not __htms_value_call(self.player,"isWounded")
 end
 
-sgs.ai_skill_invoke.Luachicheng = function(self, data)
-	if self:needBear() then return true end
-	if self.player:isSkipped(sgs.Player_Play) then return true end
+ai_skill_invoke.Luachicheng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self:needBear() then return (true) or false end
+	if self.player:isSkipped(sgs.Player_Play) then return (true) or false end
 
 	local chance_value = 1
 	local peach_num = self:getCardsNum("Peach")
 	local can_save_card_num = self:getOverflow(self.player, true) - __htms_value_call(self.player,"getHandcardNum")
 
 	if __htms_value_call(self.player,"getHp") <= 2 and __htms_value_call(self.player,"getHp") < getBestHp(self.player) then chance_value = chance_value + 1 end
-	return self:ImitateResult_DrawNCards(self.player, self.player:getVisibleSkillList(true)) - can_save_card_num + peach_num  <= chance_value
+	return (self:ImitateResult_DrawNCards(self.player, self.player:getVisibleSkillList(true)) - can_save_card_num + peach_num  <= chance_value) or false
 end
 
 sgs.ai_ajustdamage_from.lianjiqudong = function(self, from, to, card, nature)
@@ -1783,11 +1844,13 @@ sgs.ai_ajustdamage_from.lianjiqudong = function(self, from, to, card, nature)
 	end
 end
 
-sgs.ai_skill_invoke.lunhui1 = function(self, data)
-	return true
+ai_skill_invoke.lunhui1 = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_use["@@lunhui"] = function(self, prompt, method)
+ai_skill_use["@@lunhui"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local will_use = self.player:getPile("lunhui")
 	if will_use:isEmpty() then return "." end
 	for _,id in sgs.qlist(will_use) do
@@ -1821,13 +1884,15 @@ sgs.ai_hasTuntianEffect_skill.lunhui = function(to, need_zaoxian)
 	return __htms_value_call(to,"getPhase") == sgs.Player_NotActive
 end
 
-sgs.ai_fill_skill["pocdsf"] = function(self,inclusive,request)
+ai_fill_skill["pocdsf"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local source = self.player
 	if source:hasUsed("#pocdsf") then return end
 	return policy(self,"#pocdsf:.:")
 end
 
-sgs.ai_skill_use_func["#pocdsf"] = function(card,use,self)
+ai_card_use["#pocdsf"] = function(self, card, use, request)
 	if self:isWeak(self.player) then return nil end
 	local targets = sgs.QList2Table(self.room:getOtherPlayers(self.player))
 	local value = 0
@@ -1868,17 +1933,19 @@ sgs.ai_can_damagehp.moxing = function(self,from,card,to)
 	end
 end
 
-sgs.ai_skill_invoke.xiangrui = function(self, data)
+ai_skill_invoke.xiangrui = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 
 	if self:hasHeavyDamage(damage.from, damage.card, self.player) then
-		return true
+		return (true) or false
 	end
-	if self:needToLoseHp(self.player, damage.from) and damage.damage <= 1 then return false end
-	return true
+	if self:needToLoseHp(self.player, damage.from) and damage.damage <= 1 then return (false) or false end
+	return (true) or false
 end
 
-sgs.ai_skill_use["@@xiangrui"] = function(self, prompt, method)
+ai_skill_use["@@xiangrui"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	self.enemies = self:sort(self.enemies)
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
@@ -1897,7 +1964,7 @@ end
 sgs.ai_can_damagehp.xiangrui = function(self,from,card,to)
 	local d = {damage=1}
 	d.nature = card and sgs.card_damage_nature[__htms_value_call(card,"getClassName")] or sgs.DamageStruct_Normal
-	return sgs.ai_skill_use["@@xiangrui"](self,d,sgs.Card_MethodDiscard)~="." and __htms_value_call(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	return ai_skill_use["@@xiangrui"](self, d, {handling_method=sgs.Card_MethodDiscard})~="." and __htms_value_call(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to)
 end
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|xiangrui"
@@ -1912,7 +1979,9 @@ sgs.ai_ajustdamage_to.wnlz = function(self, from, to, card, nature)
 		return 1
 	end
 end
-sgs.ai_fill_skill["hxss"] = function(self,inclusive,request)
+ai_fill_skill["hxss"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getMark","hxss-PlayClear") > 0 then return end
 	local cards = self.player:getCards("he")
 	cards=sgs.QList2Table(cards)
@@ -1952,7 +2021,9 @@ sgs.ai_fill_skill["hxss"] = function(self,inclusive,request)
 end
 sgs.ai_cardneed.hxss = sgs.ai_cardneed.bignumber
 
-sgs.ai_fill_skill["Luachuyi"] = function(self,inclusive,request)
+ai_fill_skill["Luachuyi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards=sgs.QList2Table(cards)
 
@@ -2003,20 +2074,23 @@ sgs.ai_cardneed.Luachuyi = function(to,card)
 	return __htms_value_call(card,"isKindOf","EquipCard")
 end
 
-sgs.ai_skill_invoke.Lualianji = function(self, data)
-	return true
+ai_skill_invoke.Lualianji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_cardneed.Lualianji = sgs.ai_cardneed.slash
 
-sgs.ai_fill_skill["geass"] = function(self,inclusive,request)
+ai_fill_skill["geass"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 then return end
 	local source = self.player
 	if source:hasUsed("#geasstarget") then return end
 	return policy(self,"#geasstarget:.:")
 end
 
-sgs.ai_skill_use_func["#geasstarget"] = function(card,use,self)
+ai_card_use["#geasstarget"] = function(self, card, use, request)
 	local target
     self.enemies = self:sort(self.enemies, "handcard")
 	sgs.reverse(self.enemies)
@@ -2083,7 +2157,8 @@ sgs.ai_skill_askforag["geass"] = function(self, card_ids)
     end
     return -1
 end
-sgs.ai_skill_use["@@geass"] = function(self, prompt, method)
+ai_skill_use["@@geass"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	self.enemies = self:sort(self.enemies)
 	local card = visible(self,__htms_value_call(self.player,"getMark","geass"))
 	if card then
@@ -2099,34 +2174,39 @@ sgs.ai_skill_use["@@geass"] = function(self, prompt, method)
 end
 sgs.ai_card_intention["#geasstarget"] = 60
 
-sgs.ai_skill_invoke.znai = function(self, data)
+ai_skill_invoke.znai = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	return target and self:isFriend(target)
+	return (target and self:isFriend(target)) or false
 end
 
-sgs.ai_skill_choice["znai"] = function(self, choices, data)
+ai_skill_choice["znai"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		if  (target:hasSkills(sgs.cardneed_skill) or self:isWeak(target)) then
-			return "znai2"
+			return ai_choice_result(("znai2"), options)
 		end
 		if  (target:hasSkills(sgs.need_equip_skill) and not self:isWeak(target)) then
 			for _, enemy in ipairs(self.enemies) do
 				if (not enemy:getEquips():isEmpty()) and not enemy:hasSkills(sgs.lose_equip_skill) then
-					return "znai1"
+					return ai_choice_result(("znai1"), options)
 				end
 			end
 		end
 
     end
-    return "znai2"
+    return ai_choice_result(("znai2"), options)
 end
 
-sgs.ai_skill_use["@@znai"] = function(self, prompt, method)
+ai_skill_use["@@znai"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	self.enemies = self:sort(self.enemies)
 	for _, enemy in ipairs(self.enemies) do
 		if (not enemy:getEquips():isEmpty()) and not enemy:hasSkills(sgs.lose_equip_skill) then
@@ -2135,18 +2215,21 @@ sgs.ai_skill_use["@@znai"] = function(self, prompt, method)
 	end
 	return "."
 end
-sgs.ai_skill_invoke.changedfate = function(self, data)
+ai_skill_invoke.changedfate = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
-	return current and self:isFriend(current)
+	return (current and self:isFriend(current)) or false
 end
 
-sgs.ai_skill_invoke.tmsp = function(self, data)
-	return self:isWeak() or sgs.ai_skill_invoke["tishen"](self, data)
+ai_skill_invoke.tmsp = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:isWeak() or ai_skill_invoke["tishen"](self, options, request)) or false
 end
 
 
-sgs.ai_skill_invoke.wangzbk = function(self, data)
-	return true
+ai_skill_invoke.wangzbk = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_cardask["@bings-increase"] = function(self, data)
@@ -2202,10 +2285,13 @@ sgs.need_equip_skill = sgs.need_equip_skill .. "|bings"
 sgs.ai_cardneed.bings = sgs.ai_cardneed.equip
 
 
-sgs.ai_skill_choice.guailj = function(self, choices, data)
+ai_skill_choice.guailj = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	if not self:damageIsEffective(self.player, sgs.DamageStruct_Normal, self.player)
-		or self:needToLoseHp(self.player, self.player) then return "guailj2" end
-	if self:isWeak() and not self:needDeath() then return "guailj1" end
+		or self:needToLoseHp(self.player, self.player) then return ai_choice_result(("guailj2"), options) end
+	if self:isWeak() and not self:needDeath() then return ai_choice_result(("guailj1"), options) end
 
 	local value = 0
 	for _, equip in sgs.qlist(self.player:getEquips()) do
@@ -2217,10 +2303,14 @@ sgs.ai_skill_choice.guailj = function(self, choices, data)
 		elseif __htms_value_call(equip,"isKindOf","DefensiveHorse") then value = value + 5
 		end
 	end
-	if value < 8 then return "guailj1" else return "guailj2" end
+	if value < 8 then return ai_choice_result(("guailj1"), options) else return ai_choice_result(("guailj2"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_fill_skill["guailj"] = function(self,inclusive,request)
+ai_fill_skill["guailj"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getMark","@guailj") <= 0 then return end
 	if self.room:getMode() == "_mini_13" then return policy(self,"#guailj:.:") end
 	local good, bad = 0, 0
@@ -2262,14 +2352,15 @@ sgs.ai_fill_skill["guailj"] = function(self,inclusive,request)
 	if good > bad then return policy(self,"#guailj:.:") end
 end
 
-sgs.ai_skill_use_func["#guailj"]=function(card,use,self)
+ai_card_use["#guailj"]=function(self, card, use, request)
 	use.card = card
 end
 
 sgs.dynamic_value.damage_card["#guailj"] = true
 
 
-sgs.ai_skill_invoke.guichan = function(self, data)
+ai_skill_invoke.guichan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
 		if self:isFriend(target) then
@@ -2281,25 +2372,26 @@ sgs.ai_skill_invoke.guichan = function(self, data)
 				end
 			end
 			if can_use then
-				return true
+				return (true) or false
 			else
-				return false
+				return (false) or false
 			end
 		else
-			return true
+			return (true) or false
 		end
 	else
-		return true
+		return (true) or false
 	end
-	return true
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.dafan = function(self, data)
+ai_skill_invoke.dafan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage and damage.from and self:isEnemy(damage.from) then
-	return true
+	return (true) or false
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_skill_cardask["@dafanuj-give"] = function(self, data)
 	local damage = data:toDamage()
@@ -2342,7 +2434,10 @@ sgs.ai_skill_cardask["@dafanuj-give"] = function(self, data)
 	return "$" .. __htms_value_call(cards[1],"getEffectiveId")
 end
 
-sgs.ai_skill_choice.juejian = function(self, choices, data)
+ai_skill_choice.juejian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local good, bad = 0, 0
 	for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 		if self:isWeak(player) then
@@ -2378,10 +2473,12 @@ sgs.ai_skill_choice.juejian = function(self, choices, data)
 			end
 	end
 	if value_lost > value_dis then
-		return "juejian:ls"
+		return ai_choice_result(("juejian:ls"), options)
 	else
-		return "juejian:qz"
+		return ai_choice_result(("juejian:qz"), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 sgs.ai_skill_cardask["@smsy"] = function(self,data)
@@ -2406,13 +2503,15 @@ sgs.ai_ajustdamage_from.smsy = function(self,from,to,card,nature)
 end
 sgs.ai_cardneed.smsy = sgs.ai_cardneed.slash
 
-sgs.ai_fill_skill["jiewq"] = function(self,inclusive,request)
+ai_fill_skill["jiewq"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies<=0 then return end
 	if self:getAllPeachNum()<=0 then return end
 	return policy(self,"#jiewq:.:")
 end
 
-sgs.ai_skill_use_func["#jiewq"] = function(card,use,self)
+ai_card_use["#jiewq"] = function(self, card, use, request)
 	self:writeCurrentSourceSlot("jiewq_lose",0)
 	local slashcount = self:getCardsNum("Slash")-1
 	self:writeCurrentSourceSlot("jiewq_lose",math.min(slashcount,__htms_value_call(self.player,"getHp")))
@@ -2425,13 +2524,15 @@ sgs.ai_skill_use_func["#jiewq"] = function(card,use,self)
 end
 sgs.ai_use_priority["jiewq"] = sgs.ai_use_priority.TenyearQimouCard
 
-sgs.ai_skill_choice.jiewq = function(self,choices)
+ai_skill_choice.jiewq = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	choices = choices:split("+")
 	local num = self:readCurrentSourceSlot("jiewq_lose")
 	for _,choice in ipairs(choices)do
-		if tonumber(choice)==num and self:getAllPeachNum() > 0 then return choice end
+		if tonumber(choice)==num and self:getAllPeachNum() > 0 then return ai_choice_result((choice), options) end
 	end
-	return choices[1]
+	return ai_choice_result((choices[1]), options)
 end
 sgs.ai_cardneed.jiewq = sgs.ai_cardneed.slash
 
@@ -2511,27 +2612,30 @@ end
 
 sgs.recover_hp_skill = sgs.recover_hp_skill .. "|mozy"
 
-sgs.ai_skill_invoke.zsmy = function(self, data)
+ai_skill_invoke.zsmy = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local target = damage.to
-	if not self:isEnemy(target) then return false end
-	if target:hasArmorEffect("silver_lion") then return false end
-	if self:cantDamageMore(self.player, target) then return false end
+	if not self:isEnemy(target) then return (false) or false end
+	if target:hasArmorEffect("silver_lion") then return (false) or false end
+	if self:cantDamageMore(self.player, target) then return (false) or false end
 	if self:isWeak(target) and getCardsNum("Peach", target) < 1 and self:damageIsEffective(target, damage.nature, self.player) then
-	return true
+	return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 
-sgs.ai_fill_skill["qsas"] = function(self,inclusive,request)
+ai_fill_skill["qsas"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 then return end
 	local source = self.player
 	if source:hasUsed("#qsas") then return end
 	return policy(self,"#qsas:.:")
 end
 
-sgs.ai_skill_use_func["#qsas"] = function(card,use,self)
+ai_card_use["#qsas"] = function(self, card, use, request)
     self.enemies = self:sort(self.enemies, "defenseSlash")
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	local targets = {}
@@ -2563,11 +2667,13 @@ sgs.ai_ajustdamage_from.nirendao = function(self, from, to, card, nature)
 		return 1
 	end
 end
-sgs.ai_fill_skill["nidaoren"] = function(self,inclusive,request)
+ai_fill_skill["nidaoren"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getMark","@nidaoren") == 0 or __htms_value_call(self.player,"getHp") < 2 then return end
 	return policy(self,"#nidaorenCard:.:")
 end
-sgs.ai_skill_use_func["#nidaorenCard"] = function(card, use, self)
+ai_card_use["#nidaorenCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	self.enemies = self:sort(self.enemies,"defense")
 	local acard = policy(self,"#nidaorenCard:.:") --根据卡牌构成字符串产生实际将使用的卡牌
@@ -2642,10 +2748,12 @@ sgs.ai_skill_use_func["#nidaorenCard"] = function(card, use, self)
 
 
 end
-sgs.ai_skill_choice.nidaorendraw = function(self, choices)
+ai_skill_choice.nidaorendraw = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		for _, c in sgs.qlist(self.player:getHandcards()) do
 			local x = nil
@@ -2657,21 +2765,23 @@ sgs.ai_skill_choice.nidaorendraw = function(self, choices)
 
 			local du = { isDummy = true }
 			self:useTrickCard(x, du)
-			if (du.card) then return tostring(__htms_value_call(self.player,"getHp")-1) end
+			if (du.card) then return ai_choice_result((tostring(__htms_value_call(self.player,"getHp")-1)), options) end
 		end
-		return tostring(math.min(__htms_value_call(self.player,"getHp")-1, self:getCardsNum("Slash")))
+		return ai_choice_result((tostring(math.min(__htms_value_call(self.player,"getHp")-1, self:getCardsNum("Slash")))), options)
     end
-    return items[1]
+    return ai_choice_result((items[1]), options)
 end
 sgs.ai_use_value["nidaorenCard"] = 2 --卡牌使用价值
 sgs.ai_use_priority["nidaorenCard"] = 3 --卡牌使用优先级
 
 
-sgs.ai_fill_skill["badaozhai"] = function(self,inclusive,request)
+ai_fill_skill["badaozhai"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getMark","@badaozhai") == 0  then return end
 	return policy(self,"#badaozhaiCard:.:")
 end
-sgs.ai_skill_use_func["#badaozhaiCard"] = function(card, use, self)
+ai_card_use["#badaozhaiCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	self.enemies = self:sort(self.enemies,"defense")
 	local acard = policy(self,"#badaozhaiCard:.:") --根据卡牌构成字符串产生实际将使用的卡牌
@@ -2697,13 +2807,15 @@ sgs.ai_use_value["badaozhaiCard"] = 2 --卡牌使用价值
 sgs.ai_use_priority["badaozhaiCard"] = 2 --卡牌使用优先级
 
 
-sgs.ai_fill_skill["feils2"] = function(self,inclusive,request)
+ai_fill_skill["feils2"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:hasUsed("#feils2") then return nil end
 
 		return policy(self,"#feils2:.:")
 end
 
-sgs.ai_skill_use_func["#feils2"] =function(card,use,self)
+ai_card_use["#feils2"] =function(self, card, use, request)
 	self.enemies = self:sort(self.enemies, "defense")
 	self.MingceTarget = nil
 	local slash = clone(self,"slash", sgs.Card_NoSuit, 0)
@@ -2730,11 +2842,14 @@ sgs.ai_use_priority["feils2"] = sgs.ai_use_priority.Slash - 0.2
 
 sgs.double_slash_skill = sgs.double_slash_skill .. "|feils2"
 
-sgs.ai_skill_invoke.jiushu = function(self, data)
-	return true
+ai_skill_invoke.jiushu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_use["@@jiushu"] = function(self, prompt, method, data)
+ai_skill_use["@@jiushu"] = function(self, prompt, request)
+	local method = request and request.handling_method
+	local data = request and request.pattern
 	local first_card, second_card
 	local first_found, second_found = false, false
 	local use_card = {}
@@ -2777,8 +2892,9 @@ sgs.recover_hp_skill = sgs.recover_hp_skill .. "|jiushu"
 sgs.save_skill = sgs.save_skill .. "|jiushu"
 sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .. "|jiushu"
 
-sgs.ai_skill_invoke.xieheng = function(self, data)
-	return true
+ai_skill_invoke.xieheng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen["xieheng"] = function(self, targets)
@@ -2828,33 +2944,39 @@ sgs.ai_skill_cardask["@xieheng"] = function(self, data)
 	return "."
 end
 
-sgs.ai_skill_invoke.tjdzf = function(self, data)
+ai_skill_invoke.tjdzf = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if damage.from and damage.nature ~= sgs.DamageStruct_Normal and self:isFriend(damage.from) and self.player:isChained() and self:isGoodChainTarget(self.player, damage.card, damage.from, damage.damage) then return false end
+	if damage.from and damage.nature ~= sgs.DamageStruct_Normal and self:isFriend(damage.from) and self.player:isChained() and self:isGoodChainTarget(self.player, damage.card, damage.from, damage.damage) then return (false) or false end
 
-	if self:needToLoseHp(damage.to,damage.from,damage.card) then return false end
-	return true
+	if self:needToLoseHp(damage.to,damage.from,damage.card) then return (false) or false end
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.qrdag = function(self, data)
-	return true
+ai_skill_invoke.qrdag = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
-sgs.ai_skill_choice["qrdag"] = function(self, choices, data)
+ai_skill_choice["qrdag"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		if self.player:getPile("qrdag_yin"):length() < __htms_value_call(self.player,"getHp") and __htms_value_call(self.player,"getHp") > 3  then
-			return "qrdag_recover"
+			return ai_choice_result(("qrdag_recover"), options)
 		end
     end
-    return "qrdag_discard"
+    return ai_choice_result(("qrdag_discard"), options)
 end
 
 sgs.ai_cardneed.qrdag = sgs.ai_cardneed.slash
 
-sgs.ai_skill_invoke.fenmao = function(self, data)
-	return true
+ai_skill_invoke.fenmao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_cardask["@fenmao-qp"] = function(self, data)
@@ -2869,18 +2991,22 @@ sgs.ai_skill_cardask["@fenmao-qp"] = function(self, data)
 	return "."
 end
 
-sgs.ai_fill_skill["changgui"] = function(self,inclusive,request)
+ai_fill_skill["changgui"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#changgui")then return false end
 	local card_str = ("#changgui:%d:")
 	return policy(self,card_str)
 end
 
-sgs.ai_skill_use_func["#changgui"] = function(card, use, self)
+ai_card_use["#changgui"] = function(self, card, use, request)
 	use.card = card
 end
 sgs.ai_use_priority["changgui"] = 9.4
 sgs.ai_use_value["changgui"] = 4.4
-sgs.ai_fill_skill["heihua"] = function(self,inclusive,request)
+ai_fill_skill["heihua"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#heihua") then return false end
 	for _, enemy in ipairs(self.enemies) do
 		if self:doDisCard(enemy, "h", true) then
@@ -2898,7 +3024,7 @@ sgs.ai_fill_skill["heihua"] = function(self,inclusive,request)
 		end
 	end
 end
-sgs.ai_skill_use_func["#heihua"] = function(card, use, self)
+ai_card_use["#heihua"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies, "defense")
 	for _, enemy in ipairs(self.enemies) do
 		if self:doDisCard(enemy, "h", true) then
@@ -2926,7 +3052,9 @@ sgs.ai_use_value["heihua"] = sgs.ai_use_value.Slash + 1
 sgs.ai_use_priority["heihua"] = sgs.ai_use_priority.Slash + 1
 
 
-sgs.ai_skill_use["@@maware"] = function(self, data, method)
+ai_skill_use["@@maware"] = function(self, prompt, request)
+	local data = prompt
+	local method = request and request.handling_method
 	if not method then method = sgs.Card_MethodUse end
 	 local pattern = property(self,"maware_use"):split("+")
 	local cards = sgs.QList2Table(self.player:getCards("h"))
@@ -3018,20 +3146,25 @@ sgs.ai_skill_use["@@maware"] = function(self, data, method)
 	return "."
 end
 
-sgs.ai_skill_choice["samsara"] = function(self, choices, data)
+ai_skill_choice["samsara"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		if items[1] ~= "cancel"  then
-			return  items[1]
+			return  ai_choice_result((items[1]), options)
 		end
     end
-    return "cancel"
+    return ai_choice_result(("cancel"), options)
 end
 
 
-sgs.ai_skill_use["@@kuixin"] = function(self, prompt, method, data)
+ai_skill_use["@@kuixin"] = function(self, prompt, request)
+	local method = request and request.handling_method
+	local data = request and request.pattern
 	local target
 	self.enemies = self:sort(self.enemies, "handcard")
 	for _, enemy in ipairs(self.enemies) do
@@ -3051,39 +3184,41 @@ end
 
 
 
-sgs.ai_skill_invoke.slash_defence = function(self, data)
+ai_skill_invoke.slash_defence = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local duel = clone(self,"duel", sgs.Card_NoSuit, 0)
 	duel:deleteLater()
 	duel = mutate(self,duel,"skill","zhanxianfanyu")
 	if damage.to and self:isFriend(damage.to) and  self:needToLoseHp(damage.to, damage.from, damage.card) then
-		return false
+		return (false) or false
 	end
 	if damage.from and self:isFriend(damage.from) and not  self:needToLoseHp(damage.from, self.player, duel) then
-		return false
+		return (false) or false
 	end
-	return true
+	return (true) or false
 end
-sgs.ai_skill_invoke.zhanxianfanyu = function(self, data)
+ai_skill_invoke.zhanxianfanyu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local change = data:toPhaseChange()
 	self.friends = self:sort(self.friends, "defenseSlash")
 	if change.to == sgs.Player_Draw and self:ImitateResult_DrawNCards(self.player, self.player:getVisibleSkillList(true)) < 4 then
 		for _,friend in ipairs(self.friends) do
 			if self:isWeak(friend) then
-				return true
+				return (true) or false
 			end
 		end
-		return false
+		return (false) or false
 	end
 	if change.to == sgs.Player_Play and self:getOverflow() < 3 then
 		for _,friend in ipairs(self.friends) do
 			if self:isWeak(friend) then
-				return true
+				return (true) or false
 			end
 		end
-		return false
+		return (false) or false
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_skill_playerchosen.zhanxianfanyu = function(self, targets)
 	local target
@@ -3098,65 +3233,69 @@ end
 sgs.ai_playerchosen_intention.zhanxianfanyu = -40
 
 
-sgs.ai_skill_invoke.jixieshen = function(self, data)
+ai_skill_invoke.jixieshen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if self.player:getGeneralName() == "siluokayi" or self.player:getGeneral2Name() == "siluokayi" then
-		return true
+		return (true) or false
 	end
 	if self.player:getGeneralName() == "gaowen" or self.player:getGeneral2Name() == "gaowen" then
 		if self:isWeak() then
-			return true
+			return (true) or false
 		end
 		if self:getCardsNum("Slash") > 0 then
-			return true
+			return (true) or false
 		end
 		if self:getCardsNum("Slash") > 0 or self:getCardsNum("Jink") > 0 then
-			return true
+			return (true) or false
 		end
-		return false
+		return (false) or false
 	end
 	if self.player:getGeneralName() == "gemingji" or self.player:getGeneral2Name() == "gemingji" then
 		if self:isWeak() then
-			return true
+			return (true) or false
 		end
 		if self:getCardsNum("Slash") > 0 then
-			return false
+			return (false) or false
 		end
 		if self:getCardsNum("Slash") == 0 or self:getCardsNum("Jink") == 0 then
-			return true
+			return (true) or false
 		end
-		return false
+		return (false) or false
 	end
 	if self.player:getGeneralName() == "fuxiao" or self.player:getGeneral2Name() == "fuxiao" then
 		if self:isWeak() then
-			return false
+			return (false) or false
 		end
 		if self:getCardsNum("Slash") > 0 then
-			return true
+			return (true) or false
 		end
 		if self:getCardsNum("Slash") == 0 or self:getCardsNum("Jink") == 0 then
-			return true
+			return (true) or false
 		end
-		return false
+		return (false) or false
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_choice["jixieshen"] = function(self, choices, data)
+ai_skill_choice["jixieshen"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		if self:isWeak() and table.contains(items, "fuxiao") then
-			return "fuxiao"
+			return ai_choice_result(("fuxiao"), options)
 		end
 		if self:getCardsNum("Slash") > 0 and table.contains(items, "gemingji")  then
-			return "gemingji"
+			return ai_choice_result(("gemingji"), options)
 		end
 		if (self:getCardsNum("Slash") == 0 or self:getCardsNum("Jink") == 0) and table.contains(items, "gaowen") then
-			return "gaowen"
+			return ai_choice_result(("gaowen"), options)
 		end
     end
-    return "siluokayi"
+    return ai_choice_result(("siluokayi"), options)
 end
 
 sgs.ai_skill_playerchosen.jixieshen = function(self, targets)
@@ -3164,30 +3303,36 @@ sgs.ai_skill_playerchosen.jixieshen = function(self, targets)
 	return target
 end
 
-sgs.ai_skill_invoke["jixieshen:fixmachine"] = function(self, data)
-    return true
+ai_skill_invoke["jixieshen:fixmachine"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
-sgs.ai_skill_choice["jixieshenfixmachine"] = function(self, choices, data)
+ai_skill_choice["jixieshenfixmachine"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		if __htms_value_call(self,"getMark","@fuxiao") <= 1 and table.contains(items, "fuxiao") then
-			return "fuxiao"
+			return ai_choice_result(("fuxiao"), options)
 		end
 		if __htms_value_call(self,"getMark","@gemingji") <= 1 and table.contains(items, "gemingji")  then
-			return "gemingji"
+			return ai_choice_result(("gemingji"), options)
 		end
 		if __htms_value_call(self,"getMark","@gaowen") <= 1 and table.contains(items, "gaowen") then
-			return "gaowen"
+			return ai_choice_result(("gaowen"), options)
 		end
     end
-    return items[1]
+    return ai_choice_result((items[1]), options)
 end
 
 
-sgs.ai_fill_skill["jixieshenchain"] = function(self,inclusive,request)
+ai_fill_skill["jixieshenchain"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards=sgs.QList2Table(cards)
 
@@ -3241,21 +3386,22 @@ sgs.ai_ajustdamage_to.jixieshendefense = function(self, from, to, card, nature)
 end
 
 
-sgs.ai_skill_invoke.jixieshenslash = function(self, data)
+ai_skill_invoke.jixieshenslash = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	if self:hasHeavyDamage(self.player) then return false end
+	if self:hasHeavyDamage(self.player) then return (false) or false end
 	for _, p in sgs.qlist(use.to) do
 		if self:isFriend(p) then
 			if getCardsNum("Jink", p, self.player) > 0 and not self:needToLoseHp(p) and self:damageIsEffective(p, sgs.DamageStruct_Fire) then
-				return false
+				return (false) or false
 			end
 		else
 			if not self:damageIsEffective(p, sgs.DamageStruct_Fire) then
-				return false
+				return (false) or false
 			end
 		end
 	end
-	return true
+	return (true) or false
 end
 sgs.ai_cardneed.jixieshenslash = sgs.ai_cardneed.slash
 
@@ -3281,34 +3427,41 @@ sgs.ai_skill_playerchosen.loyal_inu = function(self, targets)
 end
 sgs.ai_playerchosen_intention.loyal_inu = -80
 
-sgs.ai_skill_choice["kikann"] = function(self, choices, data)
+ai_skill_choice["kikann"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 		local target = self.room:findPlayerBySkillName("loyal_inu")
 		if target then
 			if __htms_value_call(target,"getHandcardNum") > __htms_value_call(self.player,"getHandcardNum") and table.contains(items, "kikann_2") then
-				return "kikann_2"
+				return ai_choice_result(("kikann_2"), options)
 			end
 			if __htms_value_call(target,"getHp") > __htms_value_call(self.player,"getHp") and table.contains(items, "kikann_1") then
-				return "kikann_1"
+				return ai_choice_result(("kikann_1"), options)
 			end
 		end
-    return "cancel"
+    return ai_choice_result(("cancel"), options)
 end
 
-sgs.ai_skill_choice.jueduiyazhi = function(self, choices)
+ai_skill_choice.jueduiyazhi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if __htms_value_call(self.player,"getMark","@lanyu") > 4 and table.contains(items, "jueduiyazhi_loseMark") then return "jueduiyazhi_loseMark" end
-	if __htms_value_call(self.player,"getHp") + self:getCardsNum("Peach") > 3 then return "jueduiyazhi_losehp"
-	else if table.contains(items, "jueduiyazhi_loseMark") then return "jueduiyazhi_loseMark" end
+	if __htms_value_call(self.player,"getMark","@lanyu") > 4 and table.contains(items, "jueduiyazhi_loseMark") then return ai_choice_result(("jueduiyazhi_loseMark"), options) end
+	if __htms_value_call(self.player,"getHp") + self:getCardsNum("Peach") > 3 then return ai_choice_result(("jueduiyazhi_losehp"), options)
+	else if table.contains(items, "jueduiyazhi_loseMark") then return ai_choice_result(("jueduiyazhi_loseMark"), options) end
 	end
-	return "jueduiyazhi_losehp"
+	return ai_choice_result(("jueduiyazhi_losehp"), options)
 end
 
-sgs.ai_fill_skill["jueduiyazhi"] = function(self,inclusive,request)
+ai_fill_skill["jueduiyazhi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#jueduiyazhiCard:.:")
 end
 
-sgs.ai_skill_use_func["#jueduiyazhiCard"] = function(card,use,self)
+ai_card_use["#jueduiyazhiCard"] = function(self, card, use, request)
 	local slashes = self:getCards("Slash")
 	if #slashes<1 then return end
 	self.enemies = self:sort(self.enemies,"hp")
@@ -3333,7 +3486,9 @@ sgs.ai_use_value["jueduiyazhiCard"] = 3
 sgs.double_slash_skill = sgs.double_slash_skill .. "|lanyuhua"
 sgs.ai_cardneed.lanyuhua = sgs.ai_cardneed.slash
 
-sgs.ai_fill_skill["guangzijupao"] = function(self,inclusive,request)
+ai_fill_skill["guangzijupao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if  self.player:getCards("he"):length() < 1 then return nil end
     if self.player:hasUsed("#guangzijupaoCard") then return nil end
 	local card
@@ -3352,7 +3507,7 @@ sgs.ai_fill_skill["guangzijupao"] = function(self,inclusive,request)
 		end
 end
 
-sgs.ai_skill_use_func["#guangzijupaoCard"] =function(card,use,self)
+ai_card_use["#guangzijupaoCard"] =function(self, card, use, request)
 	self.enemies = self:sort(self.enemies, "defense")
 	local target = nil
 	local slash = clone(self,"slash", sgs.Card_NoSuit, 0)
@@ -3394,38 +3549,43 @@ sgs.double_slash_skill = sgs.double_slash_skill .. "|guangzijupao"
 
 
 
-sgs.ai_skill_invoke.Luayanhu = function(self, data)
+ai_skill_invoke.Luayanhu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage.to and self:isFriend(damage.to) and self:damageIsEffective(damage.to, damage.nature, damage.from) then
 		if self:isWeak(damage.to) or (not self:needToLoseHp(damage.to, damage.from, damage.card))  then
-			return not self:isWeak()
+			return (not self:isWeak()) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_invoke.xinsuo = function(self, data)
+ai_skill_invoke.xinsuo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:getCurrent()
 	if  sgs.ai_role[target:objectName()] ~= "neutral" or __htms_value_call(target,"isLord")  then
-			return true
+			return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_choice["xinsuo"] = function(self, choices, data)
+ai_skill_choice["xinsuo"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local target = self.room:getCurrent()
 	local items = choices:split("+")
 
 	if sgs.ai_role[target:objectName()]== "rebel" and table.contains(items, "rebel")  then
-		return "rebel"
+		return ai_choice_result(("rebel"), options)
 	elseif __htms_value_call(target,"isLord") and table.contains(items, "lord")  then
-		return "lord"
+		return ai_choice_result(("lord"), options)
 	elseif sgs.ai_role[target:objectName()]== "loyalist" and table.contains(items, "loyalist")  then
-		return "loyalist"
+		return ai_choice_result(("loyalist"), options)
 	elseif sgs.ai_role[target:objectName()]== "renegade" and table.contains(items, "renegade")  then
-		return "renegade"
+		return ai_choice_result(("renegade"), options)
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 sgs.ai_skill_cardask["@fengfu-discard"] = function(self, data)
@@ -3443,7 +3603,9 @@ sgs.ai_skill_cardask["@fengfu-discard"] = function(self, data)
 end
 
 
-sgs.ai_fill_skill["yohane"] = function(self,inclusive,request)
+ai_fill_skill["yohane"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#yohane") then return end
 	local t=0
 	for _,p in ipairs(self.friends_noself) do
@@ -3457,7 +3619,7 @@ sgs.ai_fill_skill["yohane"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#yohane"]=function(card,use,self)
+ai_card_use["#yohane"]=function(self, card, use, request)
     use.card=card
 	if #self.friends_noself>=1 then
 	    local friends={}
@@ -3571,85 +3733,90 @@ sgs.ai_skill_playerchosen.yohane = function(self, targets)
 end
 
 
-sgs.ai_skill_choice.yohane = function(self, choices)
+ai_skill_choice.yohane = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		local target = self:yohaneRoomTag("ai_yohane_player","take")
 		if table.contains(items, "pe") and target and self:isFriend(target) then
-			return "pe"
+			return ai_choice_result(("pe"), options)
 		end
 		if table.contains(items, "pj") and target and self:isEnemy(target) then
-			return "pj"
+			return ai_choice_result(("pj"), options)
 		end
     end
-    return "ph"
+    return ai_choice_result(("ph"), options)
 end
 
 
 
 
 
-sgs.ai_skill_choice.fanyi = function(self, choices)
+ai_skill_choice.fanyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		if self:needBear() then
 			if table.contains(items, "5draw_ad")  then
-				return "5draw_ad"
+				return ai_choice_result(("5draw_ad"), options)
 			end
 			if table.contains(items, "2maxcard_ad")  then
-				return "2maxcard_ad"
+				return ai_choice_result(("2maxcard_ad"), options)
 			end
 			if table.contains(items, "3available_re")  then
-				return "3available_re"
+				return ai_choice_result(("3available_re"), options)
 			end
 			if table.contains(items, "1range_re")  then
-				return "1range_re"
+				return ai_choice_result(("1range_re"), options)
 			end
 		end
 	if __htms_value_call(self.player,"getAttackRange") >= 3 then
 		if table.contains(items, "1range_re")  then
-			return "1range_re"
+			return ai_choice_result(("1range_re"), options)
 		end
 	else
 		if table.contains(items, "1range_ad") and self.player:getSlashCount() > 0 then
-			return "1range_ad"
+			return ai_choice_result(("1range_ad"), options)
 		end
 	end
 
 	if self.player:getSlashCount() > 0 then
 		if table.contains(items, "4target_ad") and #self.enemies > 1 then
-			return "4target_ad"
+			return ai_choice_result(("4target_ad"), options)
 		end
 		if table.contains(items, "3available_ad")  then
-			return "3available_ad"
+			return ai_choice_result(("3available_ad"), options)
 		end
 	else
 		if table.contains(items, "3available_re")  then
-			return "3available_re"
+			return ai_choice_result(("3available_re"), options)
 		end
 	end
 
 	if table.contains(items, "5draw_ad")  then
-				return "5draw_ad"
+				return ai_choice_result(("5draw_ad"), options)
 	end
 	if table.contains(items, "done")  then
-				return "done"
+				return ai_choice_result(("done"), options)
 	end
 	if table.contains(items, "2maxcard_re") and self:getOverflow() == 0  then
-				return "2maxcard_re"
+				return ai_choice_result(("2maxcard_re"), options)
 	end
   end
-    return items[1]
+    return ai_choice_result((items[1]), options)
 end
 
 
-sgs.ai_skill_invoke.jihang = function(self, data)
+ai_skill_invoke.jihang = function(self, options, request)
 
-	return true
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
@@ -3684,66 +3851,71 @@ sgs.ai_skill_playerchosen.anni = function(self, targets)
 	return targets[1]
 end
 
-sgs.ai_skill_choice.anni = function(self, choices)
+ai_skill_choice.anni = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		local use = room_tag(self,"CurrentUseStruct","CardUse")
 		for _, t in sgs.qlist(use.to) do
 			if table.contains(items, "anni_hit") and (getCardsNum("Jink", t) == 0 or self:canLiegong(t, use.from) )  then
-						return "anni_hit"
+						return ai_choice_result(("anni_hit"), options)
 			end
 		end
 			if table.contains(items, "anni_miss")  then
-						return "anni_miss"
+						return ai_choice_result(("anni_miss"), options)
 			end
   end
-    return items[1]
+    return ai_choice_result((items[1]), options)
 end
 
 sgs.ai_choicemade_filter.cardChosen.anni = sgs.ai_choicemade_filter.cardChosen.snatch
 
-sgs.ai_skill_choice.jiaoxing = function(self, choices)
+ai_skill_choice.jiaoxing = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local target = self.room:getCurrent()
 	local items = choices:split("+")
     if #items == 1 then
-        return items[1]
+        return ai_choice_result((items[1]), options)
 	else
 		if target then
 			if self:isFriend(target) then
 				if target:isSkipped(sgs.Player_Play) and table.contains(items, "indulgence")  then
-					return "indulgence"
+					return ai_choice_result(("indulgence"), options)
 				end
 				if target:isSkipped(sgs.Player_Draw) and table.contains(items, "supply_shortage")  then
-					return "supply_shortage"
+					return ai_choice_result(("supply_shortage"), options)
 				end
 				if __htms_value_call(target,"getHandcardNum") < 3  and table.contains(items, "indulgence")  then
-					return "indulgence"
+					return ai_choice_result(("indulgence"), options)
 				elseif __htms_value_call(target,"getHandcardNum") >= 3  and table.contains(items, "supply_shortage")  then
-					return "supply_shortage"
+					return ai_choice_result(("supply_shortage"), options)
 				end
 			elseif self:isEnemy(target) then
 				if target:isSkipped(sgs.Player_Play) and table.contains(items, "supply_shortage")  then
-					return "supply_shortage"
+					return ai_choice_result(("supply_shortage"), options)
 				end
 				if target:isSkipped(sgs.Player_Draw) and table.contains(items, "indulgence")  then
-					return "indulgence"
+					return ai_choice_result(("indulgence"), options)
 				end
 				if __htms_value_call(target,"getHandcardNum") < 3  and table.contains(items, "supply_shortage")  then
-					return "supply_shortage"
+					return ai_choice_result(("supply_shortage"), options)
 				elseif __htms_value_call(target,"getHandcardNum") >= 3  and table.contains(items, "indulgence")  then
-					return "indulgence"
+					return ai_choice_result(("indulgence"), options)
 				end
 			end
 		end
 
   end
-    return "cancel"
+    return ai_choice_result(("cancel"), options)
 end
 
-sgs.ai_skill_use["@@jiaoxing"] = function(self, prompt, method)
+ai_skill_use["@@jiaoxing"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	self:updatePlayers()
 
 	local jiaoxing = property(self,"jiaoxing"):split("+")
@@ -3768,7 +3940,9 @@ end
 
 
 
-sgs.ai_skill_choice.sandun = function(self, choices)
+ai_skill_choice.sandun = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 
 
@@ -3780,10 +3954,10 @@ sgs.ai_skill_choice.sandun = function(self, choices)
 
 		if not self.player:canSlash(enemy, slash, false) then
 		elseif self:slashProhibit(nil, enemy) then
-		elseif def < 6 and eff then return "use_slash"
+		elseif def < 6 and eff then return ai_choice_result(("use_slash"), options)
 		end
 	end
-    return "use_blackequip_discard"
+    return ai_choice_result(("use_blackequip_discard"), options)
 end
 
 sgs.ai_skill_playerchosen.sandun = sgs.ai_skill_playerchosen.zero_card_as_slash
@@ -3792,7 +3966,9 @@ sgs.ai_skill_playerchosen.sandun = sgs.ai_skill_playerchosen.zero_card_as_slash
 sgs.need_equip_skill = sgs.need_equip_skill .. "|sandun"
 sgs.ai_cardneed.sandun = sgs.ai_cardneed.equip
 
-sgs.ai_fill_skill["xieyan"] = function(self,inclusive,request)
+ai_fill_skill["xieyan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	self:updatePlayers()
 	if self.player:isNude() then return end
 
@@ -3806,7 +3982,7 @@ sgs.ai_fill_skill["xieyan"] = function(self,inclusive,request)
 
 end
 
-sgs.ai_skill_use_func["#xieyancard"] = function(card, use, self)
+ai_card_use["#xieyancard"] = function(self, card, use, request)
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
 	handcards = self:sortByUseValue(handcards, true)
 	local useable_cards = {}
@@ -3861,28 +4037,32 @@ sgs.ai_use_value.xieyancard = 8.5
 sgs.ai_use_priority.xieyancard = 6.6
 
 
-sgs.ai_skill_invoke.sugong = function(self, data)
+ai_skill_invoke.sugong = function(self, options, request)
 
-	return true
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
-sgs.ai_skill_choice.sugong = function(self, choices)
+ai_skill_choice.sugong = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
     if self:getCardsNum("Peach") > 1 or self:needToLoseHp(self.player, nil, nil, true) then
-		return "sugong:lius"
+		return ai_choice_result(("sugong:lius"), options)
 	end
 
 
-    return "sugong:huix"
+    return ai_choice_result(("sugong:huix"), options)
 end
 
-sgs.ai_skill_invoke.fuzou = function(self, data)
+ai_skill_invoke.fuzou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	for _, p in sgs.qlist(use.to) do
 		if self:isFriend(p) and __htms_value_call(p,"getHandcardNum") >= 2 and __htms_value_call(p,"getPhase") == sgs.Player_NotActive then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 
@@ -3918,13 +4098,14 @@ sgs.ai_card_priority.haiyin = function(self,card,v)
 end
 
 
-sgs.ai_skill_invoke.tianqu = function(self, data)
+ai_skill_invoke.tianqu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if self:isWeak() then
 		if self:getEnemyNumBySeat(self.room:getCurrent(), self.player, self.player, true) > __htms_value_call(self.player,"getHp") and self:getCardsNum("Peach") > 0 then
-			return false
+			return (false) or false
 		end
 	end
-	return true
+	return (true) or false
 end
 sgs.ai_skill_playerchosen.tianqu_from = function(self, targets)
 
@@ -3998,19 +4179,20 @@ end
 
 sgs.ai_can_damagehp.tianqu = function(self,from,card,to)
 	return __htms_value_call(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
-	and self:canLoseHp(from,card,to) and card and __htms_value_call(card,"isKindOf","Slash") and not __htms_value_call(card,"isKindOf","NatureSlash") and sgs.ai_skill_invoke.tianqu(self, local_data())
+	and self:canLoseHp(from,card,to) and card and __htms_value_call(card,"isKindOf","Slash") and not __htms_value_call(card,"isKindOf","NatureSlash") and ai_skill_invoke.tianqu(self, {}, nil)
 end
 
-sgs.ai_skill_invoke.htms_wanlan = function(self, data)
+ai_skill_invoke.htms_wanlan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if #self.enemies > 0 then
 		for _, enemy in ipairs(self.enemies) do
 			if  not enemy:isKongcheng() and self:objectiveLevel(enemy) > 3 and
 			not self:cantbeHurt(enemy) and self:damageIsEffective(enemy, sgs.DamageStruct_Normal) and self:canDamage(enemy,self.player,nil)  then
-			return self:doDisCard(enemy, "he")
+			return (self:doDisCard(enemy, "he")) or false
 			end
 		end
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_skill_playerchosen.htms_wanlan = function(self, targets)
 
@@ -4042,8 +4224,10 @@ end
 
 
 
-sgs.ai_skill_choice.htms_wanlan = function(self, choices)
-    return "draw_one_card"
+ai_skill_choice.htms_wanlan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+    return ai_choice_result(("draw_one_card"), options)
 end
 
 
@@ -4196,18 +4380,21 @@ sgs.ai_skill_playerchosen["huanggui"] = function(self, targets)
 	return nil
 end
 
-sgs.ai_skill_invoke.fuqian = function(self, data)
-	return self:isEnemy(self.room:getCurrent():getNextAlive())
+ai_skill_invoke.fuqian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:isEnemy(self.room:getCurrent():getNextAlive())) or false
 end
 
 
-sgs.ai_fill_skill["zangsong"] = function(self,inclusive,request)
+ai_fill_skill["zangsong"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:hasUsed("#zangsongCard") then return nil end
 	if  (#self.enemies == 0) then return nil end
 		return policy(self,"#zangsongCard:.:")
 end
 
-sgs.ai_skill_use_func["#zangsongCard"] =function(card,use,self)
+ai_card_use["#zangsongCard"] =function(self, card, use, request)
 	self.enemies = self:sort(self.enemies, "defense")
 	local target
 	local slash = clone(self,"slash", sgs.Card_NoSuit, 0)
@@ -4239,9 +4426,10 @@ end
 sgs.ai_use_value["zangsongCard"] = sgs.ai_use_value.Slash - 0.2
 sgs.ai_use_priority["zangsongCard"] = sgs.ai_use_priority.Slash - 0.2
 
-sgs.ai_skill_invoke.jianwushu = function(self, data)
+ai_skill_invoke.jianwushu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	return self:doDisCard(target, "he")
+	return (self:doDisCard(target, "he")) or false
 end
 
 sgs.ai_choicemade_filter.cardChosen.jianwushu = sgs.ai_choicemade_filter.cardChosen.dismantlement
@@ -4273,16 +4461,17 @@ sgs.ai_event_callback[sgs.TurnStart].Cjiyongbing = function(self, player, data)
 end
 
 
-sgs.ai_skill_invoke.huoliquankai = function(self, data)
+ai_skill_invoke.huoliquankai = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if #self.enemies > 0 then
 		for _, enemy in ipairs(self.enemies) do
 			if  self:objectiveLevel(enemy) > 3 and
 			not self:cantbeHurt(enemy) and self:damageIsEffective(enemy, sgs.DamageStruct_Normal) and self:canDamage(enemy,self.player,nil)  then
-			return self.player:getCards("he"):length() < 4
+			return (self.player:getCards("he"):length() < 4) or false
 			end
 		end
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_skill_playerchosen.huoliquankai = function(self, targets)
 
@@ -4314,13 +4503,16 @@ end
 
 
 
-sgs.ai_skill_invoke.wujinzhishu = function(self, data)
-	return true
+ai_skill_invoke.wujinzhishu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
 
-sgs.ai_fill_skill["chunrijilu"] = function(self,inclusive,request)
+ai_fill_skill["chunrijilu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	self:updatePlayers()
 	local choices = {}
 	for _,id in sgs.qlist(self.player:getPile("s_ye")) do
@@ -4335,7 +4527,7 @@ sgs.ai_fill_skill["chunrijilu"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#chunrijilu"] = function(card, use, self)
+ai_card_use["#chunrijilu"] = function(self, card, use, request)
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
 	handcards = self:sortByUseValue(handcards, true)
 	local useable_cards = {}
@@ -4364,7 +4556,8 @@ sgs.ai_use_priority["chunrijilu"] = 1
 sgs.ai_use_value["chunrijilu"] = 3
 
 
-sgs.ai_skill_use["@@chunrijilu!"] = function(self, prompt, method)
+ai_skill_use["@@chunrijilu!"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	for _,id in sgs.qlist(self.player:getPile("s_ye")) do
 		local card = visible(self,id)
 		if __htms_value_call(card,"isAvailable",self.player) and self:getCardsNum(__htms_value_call(card,"getClassName")) == 0 then
@@ -4386,7 +4579,8 @@ end
 
 sgs.Active_cardneed_skill = sgs.Active_cardneed_skill .. "|chunrijilu"
 
-sgs.ai_skill_use["@@haite"] = function(self, prompt, method)
+ai_skill_use["@@haite"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local targets = {}
 	for _, enemy in ipairs(self.enemies) do
 		if self:damageIsEffective(enemy, sgs.DamageStruct_Normal) and not self:cantbeHurt(enemy) and self:canDamage(enemy,self.player,nil) then
@@ -4403,11 +4597,13 @@ sgs.ai_skill_use["@@haite"] = function(self, prompt, method)
 	end
 end
 
-sgs.ai_fill_skill["yueying"] = function(self,inclusive,request)
+ai_fill_skill["yueying"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return policy(self,"#yueying:.:")
 end
 
-sgs.ai_skill_use_func["#yueying"] = function(card,use,self)
+ai_card_use["#yueying"] = function(self, card, use, request)
  local costs=self:selectZhihengCosts();if costs and #costs>0 then use.card=policy(self,"#yueying:"..table.concat(costs,"+")..":")end
 end
 
@@ -4429,48 +4625,52 @@ sgs.ai_ajustdamage_to.hmrleiji = function(self, from, to, card, nature)
 		end
 	end
 end
-sgs.ai_skill_invoke.jiyidiejia = function(self, data)
+ai_skill_invoke.jiyidiejia = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local names, name = foreign_property(self,damage.from,"SkillDescriptionRecord_hmrleiji"):split("+"), damage.card:objectName()
 	if __htms_value_call(damage.card,"isKindOf","Slash") then name = "hmrleijiSlash" end
 	if self:isFriend(damage.to) then
 		if not table.contains(names, name) and (not self:needToLoseHp(damage.to, damage.from, damage.card)) then
-			return true
+			return (true) or false
 		end
 	elseif self:isEnemy(damage.to) then
 		if not table.contains(names, name) and self:cantbeHurt(damage.to,damage.from) and self:canDamage(damage.to,damage.from,nil) then
-			return true
+			return (true) or false
 		end
 		if table.contains(names, name) and not self:cantDamageMore(damage.from, damage.to) and self:ajustDamage(damage.from,damage.to, 1, damage.card) > 0 then
-			return true
+			return (true) or false
 		end
 	else
-		return true
+		return (true) or false
 	end
 
-	return false
+	return (false) or false
 end
 
 
 
 
-sgs.ai_skill_invoke.dushe = function(self, data)
+ai_skill_invoke.dushe = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local judge = data:toJudge()
 	if self:needRetrial(judge) then
-			return true
+			return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 
 
 
-sgs.ai_fill_skill["zuzhou"] = function(self,inclusive,request)
+ai_fill_skill["zuzhou"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getMark","@zuzhou") <= 0 then return end
 	return policy(self,"#zuzhouCard:.:")
 end
 
-sgs.ai_skill_use_func["#zuzhouCard"] = function(card, use, self)
+ai_card_use["#zuzhouCard"] = function(self, card, use, request)
 	local weak_target = nil
 	local target = nil
 	self:updatePlayers()
@@ -4494,7 +4694,7 @@ sgs.ai_use_value["zuzhouCard"] = 0.5
 
 
 
-sgs.ai_skill_use["@@xiangyangshi"] = function(self, prompt)
+ai_skill_use["@@xiangyangshi"] = function(self, prompt, request)
 	self:updatePlayers()
 	local targets = {}
 	for _,p in ipairs(self.friends) do
@@ -4517,7 +4717,9 @@ function sgs.ai_cardneed.xiangyangshi(to, card, self)
 end
 
 
-sgs.ai_fill_skill["shengdanny"] = function(self,inclusive,request)
+ai_fill_skill["shengdanny"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getHandcardNum") < 1 then return nil end
 	 if self.player:hasUsed("#shengdanny") then return nil end
 
@@ -4535,7 +4737,7 @@ sgs.ai_fill_skill["shengdanny"] = function(self,inclusive,request)
 	return policy(self,card_str)
 end
 
-sgs.ai_skill_use_func["#shengdanny"] = function(card, use, self)
+ai_card_use["#shengdanny"] = function(self, card, use, request)
 	local arr1, arr2 = self:getWoundedFriend(false, true)
 	local target = nil
 
@@ -4574,8 +4776,9 @@ function sgs.ai_cardneed.shengdanny(to, card, self)
 end
 
 
-sgs.ai_skill_invoke.leijijingyan = function(self, data)
-	return true
+ai_skill_invoke.leijijingyan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.recover_hp_skill = sgs.recover_hp_skill .. "|leijijingyan"
@@ -4584,42 +4787,45 @@ function sgs.ai_cardneed.leijijingyan(to, card, self)
 end
 
 
-sgs.ai_skill_invoke.suoersiman = function(self, data)
+ai_skill_invoke.suoersiman = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if #self.enemies > 0 and self:getCardsNum("Peach") == 0 then
 		local slash = clone(self,"slash", sgs.Card_NoSuit, 0)
 		slash:deleteLater()
 		for _, enemy in ipairs(self.enemies) do
 			if self.player:canSlash(enemy, slash) and not self:slashProhibit(slash, enemy)
 				and self:slashIsEffective(slash, enemy) and self:isGoodTarget(enemy, self.enemies, slash)  then
-				return true
+				return (true) or false
 		end
 	end
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_playerchosen.suoersiman = function(self, targets)
 	return sgs.ai_skill_playerchosen.zero_card_as_slash(self, targets)
 end
 
-sgs.ai_skill_invoke.yinbiman = function(self, data)
+ai_skill_invoke.yinbiman = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if  #self.enemies > 0 and self:getCardsNum("Peach") + __htms_value_call(self.player,"getHp") > 1 and self:getCardsNum("Jink") == 0 then
-				return true
+				return (true) or false
 	end
-	if __htms_value_call(self.player,"getHp")  > getBestHp(self.player) then return true end
-	if __htms_value_call(self.player,"getMark","@jujiman") > 0 and self:getCardsNum("Peach") + __htms_value_call(self.player,"getHp") > 0 then return true end
-	return false
+	if __htms_value_call(self.player,"getHp")  > getBestHp(self.player) then return (true) or false end
+	if __htms_value_call(self.player,"getMark","@jujiman") > 0 and self:getCardsNum("Peach") + __htms_value_call(self.player,"getHp") > 0 then return (true) or false end
+	return (false) or false
 end
-sgs.ai_skill_invoke.jujiman = function(self, data)
+ai_skill_invoke.jujiman = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local selfSub = self:getOverflow()
-	if selfSub > 2 then return false end
+	if selfSub > 2 then return (false) or false end
 	for _, enemy in ipairs(self.enemies) do
 			if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy)  and self:canDamage(enemy,self.player,nil)
 			and self:isGoodTarget(enemy, self.enemies, nil)  then
-				return true
+				return (true) or false
 		end
 		end
-	return false
+	return (false) or false
 end
 sgs.ai_skill_playerchosen.jujiman = function(self, targets)
 	for _, enemy in ipairs(self.enemies) do
@@ -4674,7 +4880,9 @@ end
 
 
 
-sgs.ai_fill_skill["yushicp"] = function(self,inclusive,request)
+ai_fill_skill["yushicp"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not __htms_value_call(self.player,"isWounded") then return end
 	self:updatePlayers()
 	self.enemies = self:sort(self.enemies, "defense")
@@ -4704,7 +4912,7 @@ sgs.ai_fill_skill["yushicp"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#yushicp"] = function(card, use, self)
+ai_card_use["#yushicp"] = function(self, card, use, request)
 	local userstring = card:getLegacyStringKey()
 	userstring = (userstring:split(":"))[4]
 	do end
@@ -4741,7 +4949,8 @@ sgs.ai_guhuo_card.yushicp = function(self,toname,class_name)
 end
 
 
-sgs.ai_skill_invoke.wushitexing = function(self, data)
+ai_skill_invoke.wushitexing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	local good = 0
 	for _, p in sgs.qlist(use.to) do
@@ -4751,19 +4960,22 @@ sgs.ai_skill_invoke.wushitexing = function(self, data)
 			good = good + 1
 		end
 	end
-	return good > 0
+	return (good > 0) or false
 end
 
 sgs.ai_cardneed.wushitexing = sgs.ai_cardneed.slash
 
-sgs.ai_skill_invoke.shanyao = function(self,data)
+ai_skill_invoke.shanyao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
 	local slash = clone(self,"slash",sgs.Card_NoSuit,0)
 	slash:deleteLater()
-	if self:isFriend(effect.to,self.player) then return false end
+	if self:isFriend(effect.to,self.player) then return (false) or false end
 	if  effect.to and self:isEnemy(effect.to) and  self:slashIsEffective(slash, effect.to) and not self:slashProhibit(slash, effect.to) and self:isGoodTarget(effect.to, self.enemies, slash) then
-	return true
+	return (true) or false
 	end
+	return false
+
 end
 sgs.ai_card_priority.shanyao = function(self,card)
 	if __htms_value_call(card,"isKindOf","Slash") and card:isRed()
@@ -4783,7 +4995,9 @@ end
 sgs.ai_cardneed.shanyao = sgs.ai_cardneed.jiang
 sgs.ai_cardneed.jiansu = sgs.ai_cardneed.slash
 
-sgs.ai_fill_skill["yugao"] = function(self,inclusive,request)
+ai_fill_skill["yugao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	 if #self.enemies == 0 then return nil end
 	 local id = room_tag(self,"yugao_card","Int")
 	 if id ~= 0 then return nil end
@@ -4793,7 +5007,7 @@ sgs.ai_fill_skill["yugao"] = function(self,inclusive,request)
 	return policy(self,card_str)
 end
 
-sgs.ai_skill_use_func["#yugao"] = function(card, use, self)
+ai_card_use["#yugao"] = function(self, card, use, request)
 
 		self.enemies = self:sort(self.enemies, "handcard")
 		self.enemies = sgs.reverse(self.enemies)
@@ -4807,7 +5021,8 @@ sgs.ai_skill_use_func["#yugao"] = function(card, use, self)
 
 end
 
-sgs.ai_skill_use["@@yugao"] = function(self, prompt, method)
+ai_skill_use["@@yugao"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	self:updatePlayers()
 	self.enemies = self:sort(self.enemies, "handcard")
 		self.enemies = sgs.reverse(self.enemies)
@@ -4824,19 +5039,22 @@ sgs.ai_skill_use["@@yugao"] = function(self, prompt, method)
 	return "."
 end
 
-sgs.ai_skill_invoke.yugao = function(self,data)
+ai_skill_invoke.yugao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
 		local cards = sgs.QList2Table(complete_hand(self,target))
 		cards = self:sortByKeepValue(cards)
 		for _, card in ipairs(cards) do
 			if self:getUseValue(card) >= 6 then
-				return true
+				return (true) or false
 			end
 		end
 		local id = room_tag(self,"yugao_card","Int")
-		return id == 0
+		return (id == 0) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_askforag["yugao"] = function(self, card_ids)
@@ -4857,23 +5075,25 @@ end
 
 
 
-sgs.ai_skill_invoke.weituo = function(self,data)
+ai_skill_invoke.weituo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage.to and self:isFriend(damage.to) and damage.from and self:isEnemy(damage.from) then
-		return true
+		return (true) or false
 	end
 	if damage.to and self:isEnemy(damage.to) and damage.from and self:isEnemy(damage.from) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_invoke.weituo11 = function(self,data)
+ai_skill_invoke.weituo11 = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if  damage.from and self:isEnemy(damage.from) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 sgs.exclusive_skill = sgs.exclusive_skill .. "|yuanhuo"
@@ -4890,7 +5110,8 @@ self.enemies = self:sort(self.enemies, "handcard")
 			end
 	return nil
 end
-sgs.ai_skill_invoke.zhengdao = function(self,data)
+ai_skill_invoke.zhengdao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 
 	if use.card then
@@ -4898,25 +5119,25 @@ sgs.ai_skill_invoke.zhengdao = function(self,data)
 		if __htms_value_call(use.card,"getNumber") > 10 and __htms_value_call(self.player,"getMark","@zhengdao") == 0 then
 			for _, enemy in ipairs(self.enemies) do
 				if not enemy:isKongcheng() then
-					return true
+					return (true) or false
 				end
 			end
 		elseif __htms_value_call(use.card,"getNumber") < 8 and __htms_value_call(self.player,"getMark","@zhengdao") ~= 0 then
 			for _, enemy in ipairs(self.enemies) do
 				if not enemy:isKongcheng() then
-					return true
+					return (true) or false
 				end
 			end
 		end
 		if self:getUseValue(use.card) < 5.6 then
 			for _, enemy in ipairs(self.enemies) do
 				if not enemy:isKongcheng() then
-					return true
+					return (true) or false
 				end
 			end
 		end
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_skill_playerchosen["zhengdao"] = function(self, targets)
 	self.enemies = self:sort(self.enemies, "handcard")
@@ -4941,19 +5162,22 @@ end
 
 
 
-sgs.ai_skill_invoke.jiqiangs = function(self,data)
+ai_skill_invoke.jiqiangs = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	local slash = clone(self,"slash",sgs.Card_NoSuit,0)
 	slash:deleteLater()
 	for _, p in sgs.qlist(use.to) do
-		if self:isFriend(p,self.player) then return false end
+		if self:isFriend(p,self.player) then return (false) or false end
 		if  p and self:isEnemy(p) and
 		self:slashIsEffective(slash, p) and
 		not self:slashProhibit(slash, p) and
 		self:isGoodTarget(p, self.enemies, slash) then
-		return true
+		return (true) or false
 		end
 	end
+	return false
+
 end
 
 
@@ -4966,7 +5190,9 @@ function sgs.ai_cardneed.lanyushanbi(to,card,self)
 end
 
 
-sgs.ai_fill_skill["jibanvs"] = function(self,inclusive,request)
+ai_fill_skill["jibanvs"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 
 if not self.player:hasUsed("#jibanhyCard") then
 	local target
@@ -4984,7 +5210,7 @@ if not self.player:hasUsed("#jibanhyCard") then
 end
 
 
-sgs.ai_skill_use_func["#jibanhyCard"] = function(card,use,self)
+ai_card_use["#jibanhyCard"] = function(self, card, use, request)
 	local target
 	local players = self.room:getOtherPlayers(self.player)
 	for _,p in sgs.qlist(players) do
@@ -5150,7 +5376,7 @@ local function card_for_nvzidao(self, who, return_prompt)
 	end
 end
 
-sgs.ai_skill_use["@@nvzidao"] = function(self, prompt)
+ai_skill_use["@@nvzidao"] = function(self, prompt, request)
 	self:updatePlayers()
 		self.enemies = self:sort(self.enemies, "defense")
 		for _, friend in ipairs(self.friends) do
@@ -5208,16 +5434,19 @@ sgs.ai_card_priority.weixiaojn = function(self,card,v)
 end
 
 
-sgs.ai_skill_invoke.chuanxiao = function(self,data)
+ai_skill_invoke.chuanxiao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if self:needToLoseHp(self.player, damage.from, damage.card) then return false end
-	return true
+	if self:needToLoseHp(self.player, damage.from, damage.card) then return (false) or false end
+	return (true) or false
 end
 
 sgs.ai_cardneed.yijizho = sgs.ai_cardneed.slash
 sgs.hit_skill = sgs.hit_skill .. "|yijizho"
 
-sgs.ai_fill_skill["duandai"] = function(self,inclusive,request)
+ai_fill_skill["duandai"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (__htms_value_call(self.player,"hasFlag","duandai_e") and __htms_value_call(self.player,"hasFlag","duandai_h") and __htms_value_call(self.player,"hasFlag","duandai_j")	) then return end
 	local card, target
 	for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
@@ -5291,7 +5520,7 @@ sgs.ai_fill_skill["duandai"] = function(self,inclusive,request)
 	if card  and target then return policy(self,"#duandai:.:") end
 end
 
-sgs.ai_skill_use_func["#duandai"]=function(card,use,self)
+ai_card_use["#duandai"]=function(self, card, use, request)
 	local card, target
 	for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 		if self:isFriend(player) then
@@ -5398,7 +5627,10 @@ sgs.ai_skill_cardask["@duandai"]=function(self, data, pattern, target)
 	return "."
 end
 
-sgs.ai_skill_choice["duandai"] = function(self, choices, data)
+ai_skill_choice["duandai"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	local card
@@ -5408,7 +5640,7 @@ sgs.ai_skill_choice["duandai"] = function(self, choices, data)
 			for _, judge in sgs.qlist(judges) do
 				card = visible(self,__htms_value_call(judge,"getEffectiveId"))
 				if not __htms_value_call(card,"isKindOf","YanxiaoCard") then
-					return "duandai_j"
+					return ai_choice_result(("duandai_j"), options)
 				end
 			end
 		end
@@ -5428,7 +5660,7 @@ sgs.ai_skill_choice["duandai"] = function(self, choices, data)
 				end
 			end
 			if card then
-				return "duandai_e"
+				return ai_choice_result(("duandai_e"), options)
 			end
 		end
 	else
@@ -5437,7 +5669,7 @@ sgs.ai_skill_choice["duandai"] = function(self, choices, data)
 			for _, judge in sgs.qlist(judges) do
 				if __htms_value_call(judge,"isKindOf","YanxiaoCard") then
 					card = visible(self,__htms_value_call(judge,"getEffectiveId"))
-					return "duandai_j"
+					return ai_choice_result(("duandai_j"), options)
 				end
 			end
 		end
@@ -5447,7 +5679,7 @@ sgs.ai_skill_choice["duandai"] = function(self, choices, data)
 			if card_id >= 0 and target:hasEquip(visible(self,card_id)) then card = visible(self,card_id) end
 
 			if card then
-				return "duandai_e"
+				return ai_choice_result(("duandai_e"), options)
 			end
 			end
 
@@ -5456,11 +5688,11 @@ sgs.ai_skill_choice["duandai"] = function(self, choices, data)
 			if card_id >= 0 then card = visible(self,card_id) end
 
 			if card then
-				return "duandai_h"
+				return ai_choice_result(("duandai_h"), options)
 			end
 			end
 	end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 sgs.ai_skill_cardchosen["duandai"] = function(self, who, flags)
@@ -5540,12 +5772,14 @@ sgs.ai_skill_playerchosen["tucao"] = function(self, targets)
 	return self:findPlayerToDiscard("ej", true, false, targets, false)[1]
 end
 
-sgs.ai_skill_choice["#tucaoxx"] = function(self, choices)
-	if self:getCardsNum("BasicCard") <= 1 then return "tucao:mp" end
+ai_skill_choice["#tucaoxx"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	if self:getCardsNum("BasicCard") <= 1 then return ai_choice_result(("tucao:mp"), options) end
 	if self:findPlayerToDiscard("ej", true, false, nil, false) ~= {} and not self:isWeak() then
-		return "tucao:qp"
+		return ai_choice_result(("tucao:qp"), options)
 		end
-	return "tucao:mp"
+	return ai_choice_result(("tucao:mp"), options)
 end
 
 sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .. "|tucao"
@@ -5558,14 +5792,16 @@ end
 
 
 
-sgs.ai_fill_skill["wangwei"] = function(self,inclusive,request)
+ai_fill_skill["wangwei"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getHandcardNum") < 1 then return nil end
 	if self.player:hasUsed("#wangwei") then return nil end
 
 	return policy(self,"#wangwei:.:")
 end
 
-sgs.ai_skill_use_func["#wangwei"] = function(card, use, self)
+ai_card_use["#wangwei"] = function(self, card, use, request)
 	local targets = AIList.new({})
 	local cards = self.player:getCards("h")
 
@@ -5611,7 +5847,10 @@ sgs.ai_use_priority["wangwei"] = 4.2
 sgs.ai_card_intention["wangwei"] = -100
 
 
-sgs.ai_skill_choice["qidao"] = function(self, choices, data)
+ai_skill_choice["qidao"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local move = data:toMoveOneTime()
 	local target = move.to
 	local items = choices:split("+")
@@ -5624,15 +5863,15 @@ sgs.ai_skill_choice["qidao"] = function(self, choices, data)
 	if target then
 		if self:isFriend(target) then
 			if __htms_value_call(self.player,"getLostHp") > card_ids:length() then
-				return "qidao_draw"
+				return ai_choice_result(("qidao_draw"), options)
 			end
 		elseif self:isEnemy(target) then
 			if target:canDiscard(target, "he") and table.contains(items, "qidao_dis") and self:doDisCard(target, "he") then
-				return "qidao_dis"
+				return ai_choice_result(("qidao_dis"), options)
 			end
 		end
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.ai_choicemade_filter.skillChoice["qidao"] = function(self, player, promptlist)
@@ -5658,13 +5897,15 @@ sgs.ai_skill_playerchosen["qiyuan"] = function(self, targets)
 		end
 	end
 end
-sgs.ai_fill_skill["qiyuan"] = function(self,inclusive,request)
+ai_fill_skill["qiyuan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getMark","qidao_lun") == 0 then return end
 	if self.player:hasUsed("#qiyuan") or (__htms_value_call(self.player,"getMark","@qiyuan") + __htms_value_call(self.player,"getMaxCards") < 4) then return end
 	return policy(self,"#qiyuan:.:")
 end
 
-sgs.ai_skill_use_func["#qiyuan"] = function(wuqiancard, use, self)
+ai_card_use["#qiyuan"] = function(self, wuqiancard, use, request)
 	use.card = wuqiancard
 end
 
@@ -5678,7 +5919,9 @@ sgs.ai_view_as.LuaLeishi = function(card, player, card_place)
     end
 end
 
-sgs.ai_fill_skill["LuaLeishi"] = function(self,inclusive,request)
+ai_fill_skill["LuaLeishi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards)
 
@@ -5706,9 +5949,7 @@ sgs.ai_fill_skill["LuaLeishi"] = function(self,inclusive,request)
         use.from = self.player
         use.to = dummy_use.to
         use.card = slash
-        local data = local_data()
-        data:setValue(use)
-        if not sgs.ai_skill_invoke.fulu(self, data) then return nil end
+        if not ai_skill_invoke.fulu(self, self:inquiryInput("skill_invoke","fulu",{use=use})) then return nil end
     else return nil end
 
     if slash then
@@ -5724,14 +5965,15 @@ sgs.ai_fill_skill["LuaLeishi"] = function(self,inclusive,request)
 end
 
 
-sgs.ai_skill_invoke.Luayuanxing = function(self, data)
+ai_skill_invoke.Luayuanxing = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
-	if self:cantDamageMore(self.player,damage.to) then return false end
-    if not self:isFriend(damage.to) then return true end
-    return false
+	if self:cantDamageMore(self.player,damage.to) then return (false) or false end
+    if not self:isFriend(damage.to) then return (true) or false end
+    return (false) or false
 end
 
-sgs.ai_skill_use["@@Luayuanling"]=function(self,prompt)
+ai_skill_use["@@Luayuanling"]=function(self, prompt, request)
 	self:updatePlayers()
 	self.enemies = self:sort(self.enemies,"defense")
 	local targets = {}
@@ -5752,17 +5994,18 @@ sgs.ai_skill_use["@@Luayuanling"]=function(self,prompt)
 	return "."
 end
 
-sgs.ai_skill_invoke.Luashenyi = function(self, data)
+ai_skill_invoke.Luashenyi = function(self, options, request)
+		local data = request and self:getDecisionData(request) or nil
 		if #self.enemies == 0 then
 			local lord = self.room:getLord()
 			if lord and self:isFriend(lord) then
-				return true
+				return (true) or false
 			end
 		end
 
 		local AssistTarget = self:AssistTarget()
 		if AssistTarget  then
-			return true
+			return (true) or false
 		end
 
 		self.friends = self:sort(self.friends, "handcard")
@@ -5770,7 +6013,7 @@ sgs.ai_skill_invoke.Luashenyi = function(self, data)
 		for _, target in ipairs(self.friends) do
 			if not __htms_value_call(target,"hasSkill","dawu") and target:hasSkills("yongsi|zhiheng|" .. sgs.priority_skill .. "|shensu")
 				and (not self:willSkipPlayPhase(target) or __htms_value_call(target,"hasSkill","shensu")) then
-				return true
+				return (true) or false
 			end
 		end
 
@@ -5781,13 +6024,13 @@ sgs.ai_skill_invoke.Luashenyi = function(self, data)
 					if __htms_value_call(p,"getMark","@fog") > 0 then use = false break end
 				end
 				if use then
-					return true
+					return (true) or false
 				end
 			else
-				return true
+				return (true) or false
 			end
 		end
-	return sgs.ai_skill_playerchosen["Luashenyi"](self, self.room:getAlivePlayers()) ~= nil
+	return (sgs.ai_skill_playerchosen["Luashenyi"](self, self.room:getAlivePlayers()) ~= nil) or false
 end
 sgs.ai_skill_playerchosen["Luashenyi"] = function(self, targets)
 	targets = sgs.QList2Table(targets)
@@ -5830,23 +6073,26 @@ sgs.ai_skill_playerchosen["Luashenyi"] = function(self, targets)
 		return self.player
 end
 
-sgs.ai_skill_invoke.luajiejie = function(self, data)
+ai_skill_invoke.luajiejie = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return true end
-    return false
+    if not self:isFriend(target) then return (true) or false end
+    return (false) or false
 end
 
 
 
 
-sgs.ai_fill_skill["luakuaiqing"] = function(self,inclusive,request)
+ai_fill_skill["luakuaiqing"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	self:setPriorityValue("#luakuaiqing",3,"htms")
 	if self.player:getCardCount(true) < 2 then return false end
 	if self:getOverflow() <= 0 then return false end
 	if self:isWeak() and self:getOverflow() <= 1 then return false end
 	return policy(self,"#luakuaiqing:.:")
 end
-sgs.ai_skill_use_func["#luakuaiqing"] = function(card, use, self)
+ai_card_use["#luakuaiqing"] = function(self, card, use, request)
 	local unpreferedCards = {}
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	cards = self:sortByKeepValue(cards)
@@ -5858,7 +6104,6 @@ sgs.ai_skill_use_func["#luakuaiqing"] = function(card, use, self)
 		if __htms_value_call(self.player,"getHp") < 3 then
 			local zcards = self.player:getCards("he")
 			local  keep_jink, keep_analeptic, keep_weapon =  false, false
-			-- Own tag holds the granted skill name; QVariant::toBool reads absent as false.
 			local wansha = self.player:getTag("JilveWansha")
 			if wansha ~= nil and type(wansha) ~= "string" then ai_unsupported("owner JilveWansha is unknown","JilveWansha") end
 			local keep_slash = wansha ~= nil and wansha ~= "" and wansha ~= "0" and wansha:lower() ~= "false"
@@ -5986,14 +6231,16 @@ sgs.ai_use_priority["#luakuaiqing"] = 3
 
 
 
-sgs.ai_fill_skill["luajieao"] = function(self,inclusive,request)
+ai_fill_skill["luajieao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#luajieao") then return nil end
 
 	self.enemies = self:sort(self.enemies, "handcard")
 	return policy(self,"#luajieao:.:")
 end
 
-sgs.ai_skill_use_func["#luajieao"] = function(card, use, self)
+ai_card_use["#luajieao"] = function(self, card, use, request)
 
 	local max_card = self:getMaxCard()
 
@@ -6022,27 +6269,28 @@ sgs.ai_cardneed.luajieao = sgs.ai_cardneed.bignumber
 
 
 
-sgs.ai_skill_invoke.luajinlun = function(self, data)
+ai_skill_invoke.luajinlun = function(self, options, request)
 
 
 
+		local data = request and self:getDecisionData(request) or nil
 		if #self.enemies == 0 then
 			local lord = self.room:getLord()
 			if lord and self:isFriend(lord) and __htms_value_call(lord,"getHandcardNum") < 3 then
-				return true
+				return (true) or false
 			end
 		end
 
 		local AssistTarget = self:AssistTarget()
 		if AssistTarget and not self:willSkipPlayPhase(AssistTarget) and __htms_value_call(AssistTarget,"getHandcardNum") < 3 then
-			return true
+			return (true) or false
 		end
 
 		self.friends = self:sort(self.friends, "handcard")
 		for _, target in ipairs(self.friends) do
 			if not __htms_value_call(target,"hasSkill","dawu") and target:hasSkills("yongsi|zhiheng|" .. sgs.priority_skill .. "|shensu")
 				and (not self:willSkipPlayPhase(target) or __htms_value_call(target,"hasSkill","shensu")) and __htms_value_call(target,"getHandcardNum") < 3  then
-				return true
+				return (true) or false
 			end
 		end
 
@@ -6053,13 +6301,13 @@ sgs.ai_skill_invoke.luajinlun = function(self, data)
 					if __htms_value_call(p,"getMark","@fog") > 0 then use = false break end
 				end
 				if use then
-					return true
+					return (true) or false
 				end
 			else
-				return true
+				return (true) or false
 			end
 		end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_playerchosen["luajinlun"] = function(self, targets)
@@ -6105,15 +6353,16 @@ sgs.ai_skill_playerchosen["luajinlun"] = function(self, targets)
 end
 
 
-sgs.ai_skill_invoke.empaidui = function(self, data)
+ai_skill_invoke.empaidui = function(self, options, request)
 
-	local empaidui_string = sgs.ai_skill_use["@@empaidui"](self, prompt, method)
+	local data = request and self:getDecisionData(request) or nil
+	local empaidui_string = ai_skill_use["@@empaidui"](self, prompt, {handling_method=method})
 	if empaidui_string == "." then
-		return false
+		return (false) or false
 	end
-	return true
+	return (true) or false
 end
-sgs.ai_skill_use["@@empaidui"]=function(self,prompt)
+ai_skill_use["@@empaidui"]=function(self, prompt, request)
 	self:updatePlayers()
 	self.enemies = self:sort(self.enemies,"defense")
 	local targets = {}
@@ -6143,25 +6392,26 @@ sgs.hit_skill = sgs.hit_skill .. "|empaidui"
 sgs.ai_cardneed.empaidui = sgs.ai_cardneed.slash
 
 
-sgs.ai_skill_invoke.yftuji = function(self, data)
+ai_skill_invoke.yftuji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if #self.enemies > 0 then
 		if self:needToLoseHp(self.player, damage.to) then
-			return true
+			return (true) or false
 		end
 		if sgs.ai_can_damagehp.yiji(self,damage.to,nil, self.player) then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_can_damagehp.zhongerhx = function(self,from,card,to)
 	return __htms_value_call(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to)
 end
-sgs.ai_skill_invoke.zhongerhx = function(self)
-	return true
+ai_skill_invoke.zhongerhx = function(self, options, request)
+	return (true) or false
 end
 
 sgs.ai_skill_askforag.zhongerhx = function(self,card_ids)
@@ -6187,7 +6437,7 @@ sgs.ai_skill_askforag.zhongerhx = function(self,card_ids)
 	end
 	return -1
 end
-sgs.ai_skill_use["@@zhongerhx"] = function(self,prompt)
+ai_skill_use["@@zhongerhx"] = function(self, prompt, request)
 	local card = self:getZhongerhxCardEvaluation(__htms_value_call(self.player,"getMark","zhongerhuan") - 1)
 	local dummy = self:aiUseCard(card)
 	if dummy.card
@@ -6202,25 +6452,27 @@ sgs.ai_skill_use["@@zhongerhx"] = function(self,prompt)
 	return "."
 end
 
-sgs.ai_skill_invoke.hanrenzd = function(self, data)
+ai_skill_invoke.hanrenzd = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage.to then
 		if self:isEnemy(damage.to) and (not damage.to:getWeapon() or (damage.to:getWeapon() and self:doDisCard(damage.to, damage.to:getWeapon():getEffectiveId()) )) then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_cardneed.hanrenzd = sgs.ai_cardneed.slash
 
-sgs.ai_skill_invoke.bingfengzd = function(self, data)
+ai_skill_invoke.bingfengzd = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage.from  then
 		if self:isEnemy(damage.from)  then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_can_damagehp.bingfengzd = function(self,from,card,to)
@@ -6231,11 +6483,14 @@ sgs.ai_can_damagehp.bingfengzd = function(self,from,card,to)
 	end
 end
 
-sgs.ai_skill_choice["hezibz"] = function(self, choices, data)
+ai_skill_choice["hezibz"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local good, bad = 0, 0
 	local lord = self.room:getLord()
-	if lord and self.role ~= "rebel" and self:isWeak(lord) then return "hezibz:huif" end
+	if lord and self.role ~= "rebel" and self:isWeak(lord) then return ai_choice_result(("hezibz:huif"), options) end
 	for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 		if self:isWeak(player) and self:damageIsEffective(player, sgs.DamageStruct_Normal) then
 			if self:isFriend(player) then bad = bad + 1
@@ -6243,7 +6498,7 @@ sgs.ai_skill_choice["hezibz"] = function(self, choices, data)
 			end
 		end
 	end
-	if good == 0 then return  "hezibz:huif" end
+	if good == 0 then return  ai_choice_result(("hezibz:huif"), options) end
 
 	for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 		local hp = math.max(__htms_value_call(player,"getHp"), 1)
@@ -6263,8 +6518,8 @@ sgs.ai_skill_choice["hezibz"] = function(self, choices, data)
 				end
 		end
 	end
-	if good > bad then return "hezibz:shangh" end
-	return "hezibz:huif"
+	if good > bad then return ai_choice_result(("hezibz:shangh"), options) end
+	return ai_choice_result(("hezibz:huif"), options)
 end
 
 sgs.ai_damage_reason_suppress_intention["hezibz"] = true
@@ -6309,22 +6564,24 @@ sgs.ai_skill_cardask["@duancaiex"] = function(self, data, pattern, target, targe
 end
 sgs.ai_cardneed.duancaiex = sgs.ai_cardneed.bignumber
 
-sgs.ai_skill_invoke.midie = function(self, data)
+ai_skill_invoke.midie = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if self:getCardsNum("Peach") >= 1 - __htms_value_call(self.player,"getHp") then
-		return false
+		return (false) or false
 	end
-	return true
+	return (true) or false
 end
 
 sgs.ai_canNiepan_skill.midie = function(player)
 	return __htms_value_call(player,"getMark","@midie") > 0
 end
 
-sgs.ai_skill_invoke.tongzhouqg = function(self, data)
+ai_skill_invoke.tongzhouqg = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if #self.friends + 1 >= #self.enemies  then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_cardask["@tongzhouqg"] = function(self, data, pattern, target, target2)
@@ -6344,7 +6601,7 @@ sgs.ai_skill_cardask["@tongzhouqg"] = function(self, data, pattern, target, targ
 end
 
 
-sgs.ai_skill_use["@@qgjiesi"] = function(self, prompt)
+ai_skill_use["@@qgjiesi"] = function(self, prompt, request)
 	self:updatePlayers()
 	self.enemies = self:sort(self.enemies, "defense")
 	local targets = {}
@@ -6364,14 +6621,16 @@ sgs.ai_skill_use["@@qgjiesi"] = function(self, prompt)
 end
 
 
-sgs.ai_fill_skill["zjyizhen"] = function(self,inclusive,request)
+ai_fill_skill["zjyizhen"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isNude() then return nil end
 
 	local card_str = "#zjyizhenCard:.:"
 	return policy(self,card_str)
 end
 
-sgs.ai_skill_use_func["#zjyizhenCard"] = function(card, use, self)
+ai_card_use["#zjyizhenCard"] = function(self, card, use, request)
 	local arr1, arr2 = self:getWoundedFriend(false, true)
 	local target = nil
 
@@ -6435,8 +6694,9 @@ function sgs.ai_cardneed.zjyizhen(to,card)
 	return not __htms_value_call(card,"isKindOf","Jink")
 end
 
-sgs.ai_skill_invoke.zjmoshuxif = function(self, data)
-		return true
+ai_skill_invoke.zjmoshuxif = function(self, options, request)
+		local data = request and self:getDecisionData(request) or nil
+		return (true) or false
 end
 sgs.ai_skill_cardask["@zjmoshuxif"] = function(self, data, pattern, target)
 	if self:needToThrowArmor() then
@@ -6455,20 +6715,27 @@ sgs.need_equip_skill = sgs.need_equip_skill .. "|zjmoshuxif"
 
 
 
-sgs.ai_skill_invoke.zjruoshi = function(self, data)
-		return true
+ai_skill_invoke.zjruoshi = function(self, options, request)
+		local data = request and self:getDecisionData(request) or nil
+		return (true) or false
 end
 
-sgs.ai_skill_choice["zjruoshi"] = function(self, choices, data)
+ai_skill_choice["zjruoshi"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-	return items[math.random(1,#items)]
+	return ai_choice_result((items[math.random(1,#items)]), options)
 end
 
 
 
-sgs.ai_skill_choice["zjaojiaol"] = function(self, choices, data)
-	if self:isWeak() and __htms_value_call(self.player,"isWounded") then return "zjaojiaol:red" end
-	return "zjaojiaol:black"
+ai_skill_choice["zjaojiaol"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	if self:isWeak() and __htms_value_call(self.player,"isWounded") then return ai_choice_result(("zjaojiaol:red"), options) end
+	return ai_choice_result(("zjaojiaol:black"), options)
 end
 sgs.ai_skill_cardchosen["zjaojiaol"] = function(self, who, flags)
 	local card
@@ -6498,14 +6765,16 @@ sgs.ai_skill_cardchosen["zjaojiaol"] = function(self, who, flags)
 end
 
 
-sgs.ai_fill_skill["zjaojiaol"] = function(self,inclusive,request)
+ai_fill_skill["zjaojiaol"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#zjaojiaol") then return nil end
 	if #self.friends_noself == 0 then return nil end
 	if self.player:isKongcheng() then return nil end
 	return policy(self,"#zjaojiaol:.:")
 end
 
-sgs.ai_skill_use_func["#zjaojiaol"] = function(card, use, self)
+ai_card_use["#zjaojiaol"] = function(self, card, use, request)
 
 	for _, friend in ipairs(self.friends_noself) do
 		if self:isWeak(friend) then
@@ -6543,7 +6812,10 @@ sgs.dynamic_value.benefit["#zjaojiaol"] = true
 
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|zjaojiaol"
 
-sgs.ai_skill_choice["puzou"] = function(self, choices, data)
+ai_skill_choice["puzou"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	self.friends = self:sort(self.friends, "hp")
 	self.enemies = self:sort(self.enemies, "hp")
 	local up = 0
@@ -6588,33 +6860,36 @@ sgs.ai_skill_choice["puzou"] = function(self, choices, data)
 	end
 
 	if down > 0 then
-		return "puzou_losehp"
+		return ai_choice_result(("puzou_losehp"), options)
 	elseif up > 0 then
-		return "puzou_heal"
+		return ai_choice_result(("puzou_heal"), options)
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.bad_skills = sgs.bad_skills .."|bieniu"
 
-sgs.ai_skill_choice.htms_weiyi = function(self,choices,data)
+ai_skill_choice.htms_weiyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local target = data:toDamage().from
 	if self:isEnemy(target) and self:doDisCard(target, "he") and __htms_value_call(self.player,"getMark","@wysh") > 0 then
-		return "htms_weiyi:qp"
+		return ai_choice_result(("htms_weiyi:qp"), options)
 	end
 	if self:isEnemy(target) and self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player) and not self:cantbeHurt(target) and __htms_value_call(self.player,"getMark","@wyqp") > 0 and self:canDamage(target,self.player,nil) then
-		return "htms_weiyi:sh"
+		return ai_choice_result(("htms_weiyi:sh"), options)
 	end
 	if self:isEnemy(target) and self:doDisCard(target, "he") then
-		return "htms_weiyi:qp"
+		return ai_choice_result(("htms_weiyi:qp"), options)
 	end
 	if self:isFriend(target) and self:doDisCard(target, "he") and __htms_value_call(self.player,"getMark","@wysh") == 0 then
-		return "htms_weiyi:qp"
+		return ai_choice_result(("htms_weiyi:qp"), options)
 	end
 	if self:isFriend(target) and ((self:needToLoseHp(target, self.player, nil) and __htms_value_call(self.player,"getMark","@wyqp") > 0) or __htms_value_call(self.player,"getMark","@wyqp")==0) then
-		return "htms_weiyi:sh"
+		return ai_choice_result(("htms_weiyi:sh"), options)
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 
@@ -6698,20 +6973,21 @@ sgs.ai_cardneed.lualushou = sgs.ai_cardneed.slash
 
 
 
-sgs.ai_skill_invoke.huazang = function(self, data)
+ai_skill_invoke.huazang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	for _,p in sgs.qlist(use.to) do
 		if self:isFriend(p) and not __htms_value_call(p,"faceUp") then
-			return true
+			return (true) or false
 		end
 		if not self:toTurnOver(p, __htms_value_call(p,"getLostHp"), "huazang") then
-			return true
+			return (true) or false
 		end
 		if self:isEnemy(p) and self:toTurnOver(p, __htms_value_call(p,"getLostHp"), "huazang") then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_cardneed.huazang = sgs.ai_cardneed.slash
@@ -6720,7 +6996,9 @@ sgs.ai_cardneed.huazang = sgs.ai_cardneed.slash
 
 
 
-sgs.ai_fill_skill["zchize"] = function(self,inclusive,request)
+ai_fill_skill["zchize"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	self.enemies = self:sort(self.enemies, "handcard")
 	if __htms_value_call(self.player,"getHandcardNum") < 2  then return false end
 	for _, enemy in ipairs(self.enemies) do
@@ -6730,7 +7008,7 @@ sgs.ai_fill_skill["zchize"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#zchizeCard"]=function(card, use, self)
+ai_card_use["#zchizeCard"]=function(self, card, use, request)
     local cards = sgs.QList2Table(self.player:getCards("h"))
 	cards = self:sortByUseValue(cards,true)
 	self.enemies = self:sort(self.enemies, "handcard")
@@ -6767,7 +7045,8 @@ sgs.ai_card_intention["zchizeCard"] = 80
 
 
 
-sgs.ai_skill_invoke.gaoling = function(self, data)
+ai_skill_invoke.gaoling = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
 
 		if self:isEnemy(effect.from) or (self:isFriend(effect.from) and self.role == "loyalist" and not __htms_value_call(effect.from,"hasSkill","jueqing") and __htms_value_call(effect.from,"isLord") and __htms_value_call(self.player,"getHp") == 1) then
@@ -6780,12 +7059,12 @@ sgs.ai_skill_invoke.gaoling = function(self, data)
 
 				if self:hasTrickEffective(effect.card, self.player, from) then
 				if self:damageIsEffective(self.player, sgs.DamageStruct_Normal, from) then
-				if __htms_value_call(effect.from,"hasSkill","drwushuang") and self.player:getCardCount() == 1 and self:hasLoseHandcardEffective() then return true end
+				if __htms_value_call(effect.from,"hasSkill","drwushuang") and self.player:getCardCount() == 1 and self:hasLoseHandcardEffective() then return (true) or false end
 
-					if self:isEnemy(from) and __htms_value_call(from,"hasSkill","jueqing") then return true end
-					if self:isFriend(from) and self.role == "loyalist" and __htms_value_call(from,"isLord") and __htms_value_call(self.player,"getHp") == 1 and not __htms_value_call(from,"hasSkill","jueqing") then return true end
+					if self:isEnemy(from) and __htms_value_call(from,"hasSkill","jueqing") then return (true) or false end
+					if self:isFriend(from) and self.role == "loyalist" and __htms_value_call(from,"isLord") and __htms_value_call(self.player,"getHp") == 1 and not __htms_value_call(from,"hasSkill","jueqing") then return (true) or false end
 					if (not (self:hasSkills(sgs.masochism_skill) or (self.player:hasSkills("tianxiang|ol_tianxiang") and getKnownCard(self.player, self.player, "heart") > 0)) or __htms_value_call(effect.from,"hasSkill","jueqing"))  then
-						return true
+						return (true) or false
 					end
 					end
 				end
@@ -6795,40 +7074,41 @@ sgs.ai_skill_invoke.gaoling = function(self, data)
 					if  self:damageIsEffective(self.player, sgs.DamageStruct_Fire, effect.from) then
 					if (self.player:hasArmorEffect("vine") or __htms_value_call(self.player,"getMark","@gale") > 0) and __htms_value_call(effect.from,"getHandcardNum") > 3
 						and not (__htms_value_call(effect.from,"hasSkill","hongyan") and getKnownCard(self.player, self.player, "spade") > 0) then
-						return true
+						return (true) or false
 					elseif self.player:isChained() and not self:isGoodChainTarget(self.player, effect.from) then
-						return true
+						return (true) or false
 					end
 					end
 					end
 				elseif (__htms_value_call(effect.card,"isKindOf","Snatch") or __htms_value_call(effect.card,"isKindOf","Dismantlement"))
 						 and not self.player:isKongcheng() then
 					if  self:hasTrickEffective(effect.card, self.player) then
-					return true
+					return (true) or false
 					end
 				elseif __htms_value_call(effect.card,"isKindOf","Duel") then
 					if self:getCardsNum("Slash") == 0 or self:getCardsNum("Slash") < getCardsNum("Slash", effect.from, self.player) then
 						if self:hasTrickEffective(effect.card, self.player) then
 						if self:damageIsEffective(self.player, sgs.DamageStruct_Normal, effect.from) then
-						return true
+						return (true) or false
 						end
 						end
 					end
 				end
 			end
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_target_revises.gaoling = function(to,card,self)
 	return card:isNDTrick() and __htms_value_call(self.player,"getHandcardNum") <= __htms_value_call(to,"getHandcardNum") and not self:beFriend(to, self.player)
 end
 
-sgs.ai_skill_invoke.zhengjiu = function(self, data)
+ai_skill_invoke.zhengjiu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use and use.card then
-		return true
+		return (true) or false
 	end
-	return sgs.ai_skill_playerchosen.zhengjiu(self, self.room:getOtherPlayers(self.player)) ~= nil
+	return (sgs.ai_skill_playerchosen.zhengjiu(self, self.room:getOtherPlayers(self.player)) ~= nil) or false
 end
 sgs.ai_skill_playerchosen.zhengjiu = function(self, targets)
 	self.friends_noself = self:sort(self.friends_noself, "defense")
@@ -6846,14 +7126,16 @@ end
 
 
 
-sgs.ai_fill_skill["molwf"] = function(self,inclusive,request)
+ai_fill_skill["molwf"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:needBear() then return end
 	if not self.player:hasUsed("#molwf")  then
 		return policy(self,"#molwf:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#molwf"] = function(card, use, self)
+ai_card_use["#molwf"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies, "handcard")
 	local slashcount = self:getCardsNum("Slash")
 	local cards = sgs.QList2Table(self.player:getCards("he"))
@@ -6896,13 +7178,15 @@ end
 sgs.ai_cardneed.molwf = sgs.ai_cardneed.slash
 
 
-sgs.ai_fill_skill["html_shisheng"] = function(self,inclusive,request)
+ai_fill_skill["html_shisheng"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getMark","@shisheng") > 0 then
 		return policy(self,"#html_shishengCard:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#html_shishengCard"] = function(card, use, self)
+ai_card_use["#html_shishengCard"] = function(self, card, use, request)
 		self.enemies = self:sort(self.enemies, "hp")
 		for _, enemy in ipairs(self.enemies) do
 			if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy) and self:canDamage(enemy,self.player,nil) then
@@ -6925,12 +7209,14 @@ sgs.straight_damage_skill = sgs.straight_damage_skill .. "|html_shisheng"
 
 
 
-sgs.ai_fill_skill["ujyaozhan"] = function(self,inclusive,request)
+ai_fill_skill["ujyaozhan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#ujyaozhanCard") then return end
 	return policy(self,"#ujyaozhanCard:.:")
 end
 
-sgs.ai_skill_use_func["#ujyaozhanCard"] = function(card, use, self)
+ai_card_use["#ujyaozhanCard"] = function(self, card, use, request)
 
 	local canleiji
 	if self:findLeijiTarget(self.player, 50)
@@ -7001,13 +7287,15 @@ sgs.ai_cardneed.ujlianjig = sgs.ai_cardneed.slash
 
 
 
-sgs.ai_skill_choice.Sdorica_FuWei = function(self, choices)
+ai_skill_choice.Sdorica_FuWei = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 local items = choices:split("+")
 	if self.room:getCurrent() and self:isFriend(self.room:getCurrent()) and  self.room:getCurrent():getJudgingArea():length() > 0 and not self.room:getCurrent():containsTrick("YanxiaoCard")
 	and table.contains(items, "fwdiscard&put") then
-		return "fwdiscard&put"
+		return ai_choice_result(("fwdiscard&put"), options)
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.ai_skill_discard.Sdorica_FuWei = function(self, discard_num, min_num, optional, include_equip)
@@ -7067,13 +7355,15 @@ sgs.ai_skill_discard.Sdorica_FuWei = function(self, discard_num, min_num, option
 end
 
 
-sgs.ai_fill_skill["Sdorica_MiLing"] = function(self,inclusive,request)
+ai_fill_skill["Sdorica_MiLing"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:hasUsed("#Sdorica_MiLingCard") then return nil end
 	if self.player:isKongcheng() then return nil end
 	return policy(self,"#Sdorica_MiLingCard:.:")
 end
 
-sgs.ai_skill_use_func["#Sdorica_MiLingCard"] = function(card, use, self)
+ai_card_use["#Sdorica_MiLingCard"] = function(self, card, use, request)
 
 	for _, friend in ipairs(self.friends) do
 		if self:isWeak(friend) and __htms_value_call(friend,"getMark","@Immunity") == 0 then
@@ -7107,13 +7397,15 @@ sgs.ai_card_intention["#Sdorica_MiLingCard"] = -100
 
 sgs.dynamic_value.benefit["#Sdorica_MiLingCard"] = true
 
-sgs.ai_fill_skill["void"] = function(self,inclusive,request)
+ai_fill_skill["void"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if __htms_value_call(self.player,"getMark","voidcanuse")- __htms_value_call(self.player,"getMark","voidused") >= 0 then
 		return policy(self,"#void:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#void"] = function(card, use, self)
+ai_card_use["#void"] = function(self, card, use, request)
 	local names = fact(self,"voidtarget"):split("+")
 	self.friends_noself = self:sort(self.friends_noself, "handcard")
 	self.enemies = self:sort(self.enemies, "handcard")
@@ -7190,24 +7482,29 @@ sgs.ai_card_priority.void = function(self,card)
 	end
 end
 
-sgs.ai_skill_choice.wangguo = function(self, choices)
+ai_skill_choice.wangguo = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 local items = choices:split("+")
 local current = self.room:getCurrent()
 	if current then
 		if self:isFriend(current) and table.contains(items, "oumashu_recover") then
-			return "oumashu_recover"
+			return ai_choice_result(("oumashu_recover"), options)
 		elseif  table.contains(items, "oumashu_lose") then
-			return "oumashu_lose"
+			return ai_choice_result(("oumashu_lose"), options)
 		end
 	end
-	return items[math.random(1,#items)]
+	return ai_choice_result((items[math.random(1,#items)]), options)
 end
 
-sgs.ai_skill_invoke.lsqd = function(self, data)
-	return true
+ai_skill_invoke.lsqd = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_choice.lsqd = function(self, choices)
+ai_skill_choice.lsqd = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 local items = choices:split("+")
 		if not self.player:getWeapon() and table.contains(items, "lsqd:qp") then
 			local list=AIList.new({})
@@ -7217,13 +7514,13 @@ local items = choices:split("+")
 				end
 			end
 		   if list:length()>0 then
-			return "lsqd:qp"
+			return ai_choice_result(("lsqd:qp"), options)
 			end
 		end
 		if  self.player:getWeapon() and table.contains(items, "lsqd:kd") then
-			return "lsqd:kd"
+			return ai_choice_result(("lsqd:kd"), options)
 		end
-	return "lsqd:kd"
+	return ai_choice_result(("lsqd:kd"), options)
 end
 sgs.ai_skill_cardask["@lsqd"] = function(self,data)
 	local id,cards = nil,{}
@@ -7248,13 +7545,15 @@ sgs.ai_skill_playerchosen.tscg = function(self, targets)
 	return sgs.ai_skill_playerchosen.damage(self, targets)
 end
 
-sgs.ai_fill_skill["wzgz"] = function(self,inclusive,request)
+ai_fill_skill["wzgz"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:hasUsed("#wzgzcard") then
 		return policy(self,"#wzgzcard:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#wzgzcard"] = function(card, use, self)
+ai_card_use["#wzgzcard"] = function(self, card, use, request)
 
 		self.enemies = self:sort(self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do
@@ -7326,7 +7625,9 @@ sgs.ai_cardneed.tcmfs = function(to,card,self)
 end
 
 
-sgs.ai_fill_skill["blmf"] = function(self,inclusive,request)
+ai_fill_skill["blmf"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
    if #self.enemies < 1 then return end
 	self.enemies = self:sort(self.enemies, "hp")
 
@@ -7401,12 +7702,13 @@ sgs.ai_playerchosen_intention.pomiehb = function(self, from, to)
 		self:updateIntention(from, to, -50)
 end
 
-sgs.ai_skill_invoke.yiban = function(self, data)
-	local yiban_string = sgs.ai_skill_use["@@yiban"](self, prompt, method)
+ai_skill_invoke.yiban = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	local yiban_string = ai_skill_use["@@yiban"](self, prompt, {handling_method=method})
 	if yiban_string == "." then
-		return false
+		return (false) or false
 	end
-	return true
+	return (true) or false
 end
 
 function SmartAIView:shouldUseYiban()
@@ -7454,7 +7756,7 @@ function SmartAIView:shouldUseYiban()
 	end
 end
 
-sgs.ai_skill_use["@@yiban"]=function(self,prompt)
+ai_skill_use["@@yiban"]=function(self, prompt, request)
 
 	if self:getOverflow() <= 0 then return "." end
 
@@ -7636,7 +7938,8 @@ sgs.ai_playerchosen_intention.luahongyu = function(self, from, to)
 	end
 end
 
-sgs.ai_skill_invoke.pinkdevil = function(self, data)
+ai_skill_invoke.pinkdevil = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local targets=AIList.new({})
 	local slash = clone(self,"slash", sgs.Card_NoSuit, 0)
 	slash:deleteLater()
@@ -7645,13 +7948,13 @@ sgs.ai_skill_invoke.pinkdevil = function(self, data)
 			targets:append(p)
         end
     end
-	if targets:length()==0 then return false end
+	if targets:length()==0 then return (false) or false end
 
 	local pinkdevil = sgs.ai_skill_playerchosen.pinkdevil(self, targets)
 	if pinkdevil == nil then
-		return false
+		return (false) or false
 	end
-	return true
+	return (true) or false
 end
 sgs.ai_skill_playerchosen.pinkdevil = function(self, targets)
 	return sgs.ai_skill_playerchosen.zero_card_as_slash(self, targets)
@@ -7703,7 +8006,8 @@ sgs.ai_skill_playerchosen.shenpan = function(self, targets)
 	return target
 end
 
-sgs.ai_skill_invoke.shenpan = function(self, data)
+ai_skill_invoke.shenpan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local n = 0
 	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 		n = math.max(n, __htms_value_call(p,"getHp"))
@@ -7714,14 +8018,15 @@ sgs.ai_skill_invoke.shenpan = function(self, data)
 			targets:append(p)
 		end
 	end
-	if targets:isEmpty() then return false end
+	if targets:isEmpty() then return (false) or false end
 	local target = self:findPlayerToDamage(1, self.player, "N", targets, 5)[1]
-	if target then return true end
-	return false
+	if target then return (true) or false end
+	return (false) or false
 end
 sgs.straight_damage_skill = sgs.straight_damage_skill .. "|shenpan"
 
-sgs.ai_skill_invoke.nxlieren = function(self, data)
+ai_skill_invoke.nxlieren = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	local shouldUse, range_fix = 0, 0
 	local hasCrossbow, slashTo = false, false
@@ -7755,46 +8060,50 @@ sgs.ai_skill_invoke.nxlieren = function(self, data)
 			end
 		end
 	end
-	if shouldUse >= 2 then return false end
+	if shouldUse >= 2 then return (false) or false end
 
 
-	return true
+	return (true) or false
 end
-sgs.ai_skill_invoke.nxlieren_damage = function(self, data)
+ai_skill_invoke.nxlieren_damage = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isEnemy(target) and not self:cantbeHurt(target) and self:canDamage(target,self.player,nil) and self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player) then
-		return true
+		return (true) or false
 	end
 
-	return false
+	return (false) or false
 end
 
 
-sgs.ai_skill_choice.nxlieren = function(self, choices)
+ai_skill_choice.nxlieren = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	if __htms_value_call(self.player,"getMark","slash") == 0 then
-		return "slash"
+		return ai_choice_result(("slash"), options)
 		else
 			if __htms_value_call(self.player,"getMark","jink") == 0 then
-				return "jink"
+				return ai_choice_result(("jink"), options)
 			else
 				if __htms_value_call(self.player,"getMark","peach") == 0 then
-					return "peach"
+					return ai_choice_result(("peach"), options)
 				else
 					if __htms_value_call(self.player,"getMark","analeptic") == 0 then
-						return "analeptic"
+						return ai_choice_result(("analeptic"), options)
 					end
 				end
 			end
 	end
-	return "slash"
+	return ai_choice_result(("slash"), options)
 end
 
-sgs.ai_skill_invoke.zhanshubuju = function(self, data)
+ai_skill_invoke.zhanshubuju = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dest
 	for _, aplayer in sgs.qlist(self.room:getAlivePlayers()) do
 		if __htms_value_call(aplayer,"hasFlag","zhanshubuju_Target") then dest = aplayer break end
 	end
-	if not self:isFriend(dest) then return false end
+	if not self:isFriend(dest) then return (false) or false end
 	local isUse = data:toStringList()[3] == "use"
 	local use
 	if isUse then
@@ -7803,17 +8112,17 @@ sgs.ai_skill_invoke.zhanshubuju = function(self, data)
 		end
 	end
 
-	if dest and __htms_value_call(dest,"hasFlag","dahe") then return false  end
+	if dest and __htms_value_call(dest,"hasFlag","dahe") then return (false) or false  end
 	if isUse then
-		if use.card and __htms_value_call(use.card,"hasFlag","NosJiefanUsed") then return false  end
+		if use.card and __htms_value_call(use.card,"hasFlag","NosJiefanUsed") then return (false) or false  end
 		if not use.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,use.from)
 		or __htms_value_call(use.card,"isKindOf","NatureSlash") and dest:isChained() and self:isGoodChainTarget(dest,use.card,use.from)
-		or self:needToLoseHp(dest,use.from,use.card) and self:ajustDamage(use.from,dest,1,use.card)==1 then return false end
+		or self:needToLoseHp(dest,use.from,use.card) and self:ajustDamage(use.from,dest,1,use.card)==1 then return (false) or false end
 	end
-	if self:needToLoseHp(dest, nil, nil, true) then return false end
-	if self:getCardsNum("Jink") == 0 then return true end
-	if self:ajustDamage(nil,dest,1,nil)>1 then return true end
-	return true
+	if self:needToLoseHp(dest, nil, nil, true) then return (false) or false end
+	if self:getCardsNum("Jink") == 0 then return (true) or false end
+	if self:ajustDamage(nil,dest,1,nil)>1 then return (true) or false end
+	return (true) or false
 end
 
 
@@ -7862,7 +8171,9 @@ local function getzhachangUseValueOfHECards(self, to)
 
 	return value
 end
-sgs.ai_fill_skill["zhachang"] = function(self,inclusive,request)
+ai_fill_skill["zhachang"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local list=AIList.new({})
 	for _,id in sgs.qlist(private_draw(self)) do
 		if  visible(self,id):isKindOf("Jink") and list:length() ~= 1 then
@@ -7874,7 +8185,7 @@ sgs.ai_fill_skill["zhachang"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#zhachang"] = function(card, use, self)
+ai_card_use["#zhachang"] = function(self, card, use, request)
 	local cards = sgs.QList2Table(self.player:getHandcards())
 		cards = self:sortByKeepValue(cards)
 		local willUse
@@ -7899,27 +8210,30 @@ end
 sgs.ai_use_priority["#zhachang"] = sgs.ai_use_priority.Slash + 0.1
 
 
-sgs.ai_skill_invoke.hongshui = function(self, data)
+ai_skill_invoke.hongshui = function(self, options, request)
+local data = request and self:getDecisionData(request) or nil
 local benefit = 0
 		for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 			if self:isFriend(player) then benefit = benefit - getzhachangUseValueOfHECards(self, player) end
 			if self:isEnemy(player) then benefit = benefit + getzhachangUseValueOfHECards(self, player) end
 		end
 		if  benefit > 0 then
-			return true
+			return (true) or false
 
 		end
-	return false
+	return (false) or false
 end
 
-sgs.ai_fill_skill["zhufu"] = function(self,inclusive,request)
+ai_fill_skill["zhufu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 
 	if __htms_value_call(self.player,"getMark","@zfu") > 0 then
 		return policy(self,"#zhufu:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#zhufu"] = function(card, use, self)
+ai_card_use["#zhufu"] = function(self, card, use, request)
 	local cards = sgs.QList2Table(self.player:getHandcards())
 		cards = self:sortByKeepValue(cards)
 		local benefit = 0
@@ -7939,42 +8253,46 @@ end
 
 
 
-sgs.ai_skill_invoke.afuhuo = function(self, data)
+ai_skill_invoke.afuhuo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
 	local lord = self.room:getLord()
 	if self:isFriend(dying.who) and dying.who:objectName() ~= self.player:objectName() then
-		if dying.who:objectName() == lord:objectName() then return true end
-		if self:isFriend(lord) and not self:canNiepan(lord) and __htms_value_call(lord,"getHp") == 1 then return end
-		if viewer_role(self,self.player) == "renegade" and #self.friends >= #self.enemies then return end
-		return true
+		if dying.who:objectName() == lord:objectName() then return (true) or false end
+		if self:isFriend(lord) and not self:canNiepan(lord) and __htms_value_call(lord,"getHp") == 1 then return false end
+		if viewer_role(self,self.player) == "renegade" and #self.friends >= #self.enemies then return false end
+		return (true) or false
 	end
-	if __htms_value_call(dying.who,"hasSkill","wuhun") and self:TheWuhun(dying.who, true) == -2  then return true end
-	if self.player:objectName() == dying.who:objectName() then return true end
-	return false
+	if __htms_value_call(dying.who,"hasSkill","wuhun") and self:TheWuhun(dying.who, true) == -2  then return (true) or false end
+	if self.player:objectName() == dying.who:objectName() then return (true) or false end
+	return (false) or false
 end
 
 sgs.ai_canNiepan_skill.afuhuo = function(player)
 	return __htms_value_call(player,"getMark","@fuhuo") > 0
 end
 
-sgs.ai_skill_choice.afuhuo = function(self, choices)
+ai_skill_choice.afuhuo = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 
 				if table.contains(items, "fuhuo_j") then
-					return "fuhuo_j"
+					return ai_choice_result(("fuhuo_j"), options)
 				end
 		if table.contains(items, "fuhuo_e") then
-					return "fuhuo_e"
+					return ai_choice_result(("fuhuo_e"), options)
 				end
 				if table.contains(items, "fuhuo_h") then
-					return "fuhuo_h"
+					return ai_choice_result(("fuhuo_h"), options)
 				end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
-sgs.ai_skill_invoke.tonghua = function(self, data)
-	 return true
+ai_skill_invoke.tonghua = function(self, options, request)
+	 local data = request and self:getDecisionData(request) or nil
+	 return (true) or false
 end
 
 sgs.ai_skill_playerchosen.tonghua = function(self, targets)
@@ -8102,7 +8420,9 @@ function SmartAIView:UseAoeSkillValue_paojixj(element, players, card)
 	return good
 end
 
-sgs.ai_fill_skill["paojixj"] = function(self,inclusive,request)
+ai_fill_skill["paojixj"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:hasUsed("#paojixj") and (__htms_value_call(self.player,"getMark","@xjpaoj") > 0 ) then
 		if __htms_value_call(self.player,"getHandcardNum") >= 4 then
 		local spade, club, heart, diamond
@@ -8145,7 +8465,7 @@ sgs.ai_fill_skill["paojixj"] = function(self,inclusive,request)
 	end
 	end
 end
-sgs.ai_skill_use_func["#paojixj"] = function(card, use, self)--凤翼天翔
+ai_card_use["#paojixj"] = function(self, card, use, request)--凤翼天翔
 	local jiu
 	if not self.player:hasUsed("Analeptic") and self:getCard("Analeptic") then
 		jiu = self:getCard("Analeptic")
@@ -8188,18 +8508,19 @@ sgs.ai_use_priority["paojixj"] = 3
 
 sgs.drawpeach_skill = sgs.drawpeach_skill .. "|dqjt"
 
-sgs.ai_skill_invoke.dqjt = function(self,data)
+ai_skill_invoke.dqjt = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local change = data:toPhaseChange()
 	if change.to==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not self.player:hasSkills("tuxi|nostuxi") then
-		local cardstr = sgs.ai_skill_use["@@nostuxi"](self,"@nostuxi")
+		local cardstr = ai_skill_use["@@nostuxi"](self, "@nostuxi", nil)
 		if cardstr:match("->") then
 			local targetstr = cardstr:split("->")[2]
 			local targets = targetstr:split("+")
 			if #targets>0 then
-				return true
+				return (true) or false
 			end
 		end
-		return false
+		return (false) or false
 	elseif change.to==sgs.Player_Play then
 		local cards = sgs.QList2Table(self.player:getHandcards())
 		local shouldUse,range_fix = 0,0
@@ -8234,14 +8555,16 @@ sgs.ai_skill_invoke.dqjt = function(self,data)
 				end
 			end
 		end
-		if shouldUse>=2 then return false end
-		return true
+		if shouldUse>=2 then return (false) or false end
+		return (true) or false
 	end
+	return false
+
 
 end
 sgs.ai_skill_playerchosen.dqjt = function(self,targets)
 	if __htms_value_call(self.player,"hasFlag","dqjt") then
-		local cardstr = sgs.ai_skill_use["@@nostuxi"](self,"@nostuxi")
+		local cardstr = ai_skill_use["@@nostuxi"](self, "@nostuxi", nil)
 		if cardstr:match("->") then
 			local targetstr = cardstr:split("->")[2]
 			local targets = targetstr:split("+")
@@ -8264,15 +8587,17 @@ sgs.ai_skill_playerchosen.dqjt = function(self,targets)
 	return self.player
 end
 
-sgs.ai_skill_invoke.lianxie = function(self, data)
-	 return true
+ai_skill_invoke.lianxie = function(self, options, request)
+	 local data = request and self:getDecisionData(request) or nil
+	 return (true) or false
 end
 
 sgs.double_slash_skill = sgs.double_slash_skill .. "|lianxie"
 sgs.ai_cardneed.lianxie = sgs.ai_cardneed.paoxiao
 
-sgs.ai_skill_invoke.huanzhaung = function(self, data)
-	 return true
+ai_skill_invoke.huanzhaung = function(self, options, request)
+	 local data = request and self:getDecisionData(request) or nil
+	 return (true) or false
 end
 
 sgs.ai_skill_cardchosen["huanzhaung"] = function(self, who, flags)
@@ -8305,22 +8630,25 @@ sgs.ai_skill_cardchosen["huanzhaung"] = function(self, who, flags)
 end
 
 
-sgs.ai_skill_invoke.xinshengll = function(self, data)
+ai_skill_invoke.xinshengll = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isFriend(target) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_fill_skill["xinshengll"] = function(self,inclusive,request)
+ai_fill_skill["xinshengll"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 then return end
 	local source = self.player
 	if source:hasUsed("#xinshengll") then return end
 	return policy(self,"#xinshengll:.:")
 end
 
-sgs.ai_skill_use_func["#xinshengll"] = function(card,use,self)
+ai_card_use["#xinshengll"] = function(self, card, use, request)
 	local target
     self.friends_noself = self:sort(self.friends_noself, "handcard")
 	for _,friend in ipairs(self.friends_noself) do
@@ -8390,28 +8718,31 @@ end
 
 
 
-sgs.ai_skill_invoke.llpj = function(self, data)
+ai_skill_invoke.llpj = function(self, options, request)
+local data = request and self:getDecisionData(request) or nil
 local benefit = 0
 		for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 			if self:isFriend(player) then benefit = benefit - __htms_value_call(player,"getHp") end
 			if self:isEnemy(player) then benefit = benefit + __htms_value_call(player,"getHp") end
 		end
 		if  benefit > 0 then
-			return true
+			return (true) or false
 
 		end
-	return false
+	return (false) or false
 end
 
 
-sgs.ai_fill_skill["shejiao"] = function(self,inclusive,request)
+ai_fill_skill["shejiao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.friends_noself < 1 then return end
 	local source = self.player
 	if source:hasUsed("#shejiao") then return end
 	return policy(self,"#shejiao:.:")
 end
 
-sgs.ai_skill_use_func["#shejiao"] = function(card,use,self)
+ai_card_use["#shejiao"] = function(self, card, use, request)
 	local target
     self.friends_noself = self:sort(self.friends_noself, "hp")
 
@@ -8441,20 +8772,23 @@ sgs.ai_skill_use_func["#shejiao"] = function(card,use,self)
 	end
 end
 
-sgs.ai_skill_choice.shejiao = function(self, choices, data)
+ai_skill_choice.shejiao = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local target = data:toPlayer()
 	local items = choices:split("+")
 	if table.contains(items, "shejiao_hf") and self:isFriend(target) then
-		return "shejiao_hf"
+		return ai_choice_result(("shejiao_hf"), options)
 	end
 	if table.contains(items, "shejiao_sq") and self:isEnemy(target) and not hasZhaxiangEffect(target) then
-		return "shejiao_sq"
+		return ai_choice_result(("shejiao_sq"), options)
 	end
 
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
-sgs.ai_skill_use["@@shejiaofuka"]=function(self,prompt)
+ai_skill_use["@@shejiaofuka"]=function(self, prompt, request)
 	self:updatePlayers()
 	local current = self.room:getCurrent()
 	local to_give = {}
@@ -8470,8 +8804,9 @@ sgs.ai_skill_use["@@shejiaofuka"]=function(self,prompt)
 	return "#shejiaofuka:"..table.concat(to_give, "+")..":->"..current:objectName()
 end
 
-sgs.ai_skill_invoke.wanxian = function(self, data)
-	return true
+ai_skill_invoke.wanxian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 sgs.ai_skill_playerchosen.wanxian = function(self, targets)
 	local arr1, arr2 = self:getWoundedFriend(false, true)
@@ -8499,8 +8834,9 @@ sgs.ai_skill_playerchosen.wanxian = function(self, targets)
 	return self.player
 end
 
-sgs.ai_skill_invoke.liantan = function(self, data)
-	return true
+ai_skill_invoke.liantan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen.liantan = function(self, targets)
@@ -8523,13 +8859,15 @@ sgs.ai_playerchosen_intention.liantan = function(self, from, to)
 end
 
 
-sgs.ai_skill_choice.liantan = function(self, choices)
+ai_skill_choice.liantan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 
 	if table.contains(items, "liantan_hd") then
-					return "liantan_hd"
+					return ai_choice_result(("liantan_hd"), options)
 				end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
@@ -8542,14 +8880,16 @@ sgs.ai_can_damagehp.s_yanyu = function(self,from,card,to)
 	return (__htms_value_call(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to)and math.min(__htms_value_call(to,"getHandcardNum"), __htms_value_call(to,"getMaxHp"))-__htms_value_call(to,"getHp")>2)
 end
-sgs.ai_fill_skill["s_yanmojianglin"] = function(self,inclusive,request)
+ai_fill_skill["s_yanmojianglin"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 then return end
 	local source = self.player
 	if source:hasUsed("#s_yanmojianglin") or __htms_value_call(source,"getHandcardNum") < 3 then return end
 	return policy(self,"#s_yanmojianglin:.:")
 end
 
-sgs.ai_skill_use_func["#s_yanmojianglin"] = function(card,use,self)
+ai_card_use["#s_yanmojianglin"] = function(self, card, use, request)
 	local target
 	local allcard = {}
 	local benefit = 0
@@ -8588,37 +8928,41 @@ sgs.ai_skill_use_func["#s_yanmojianglin"] = function(card,use,self)
 end
 
 
-sgs.ai_skill_choice.s_yanmojianglin = function(self, choices)
+ai_skill_choice.s_yanmojianglin = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	local current = self.room:getCurrent()
 	if self:willSkipPlayPhase() and table.contains(items, "s_yanmojianglin_skipplay") then
-		return "s_yanmojianglin_skipplay"
+		return ai_choice_result(("s_yanmojianglin_skipplay"), options)
 	end
 	if self:damageIsEffective(self.player, sgs.DamageStruct_Normal, current)
 			and  self:needToLoseHp(self.player, current) and table.contains(items, "s_yanmojianglin_damage") then
-					return "s_yanmojianglin_damage"
+					return ai_choice_result(("s_yanmojianglin_damage"), options)
 	end
 	if ((not self:damageIsEffective(self.player, sgs.DamageStruct_Normal, current)) or
 	not self:isWeak())
 	and table.contains(items, "s_yanmojianglin_damage") then
-					return "s_yanmojianglin_damage"
+					return ai_choice_result(("s_yanmojianglin_damage"), options)
 	end
 	if __htms_value_call(self.player,"getHandcardNum") <= 3 and  table.contains(items, "s_yanmojianglin_throwcard") then
-					return "s_yanmojianglin_throwcard"
+					return ai_choice_result(("s_yanmojianglin_throwcard"), options)
 				end
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 
 
 
-sgs.ai_fill_skill["s_lianjie"] = function(self,inclusive,request)
+ai_fill_skill["s_lianjie"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:hasUsed("#s_lianjie") then
 		return policy(self,"#s_lianjie:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#s_lianjie"] = function(card, use, self)
+ai_card_use["#s_lianjie"] = function(self, card, use, request)
 
 	self.friends_noself = self:sort(self.friends_noself, "handcard")
 	self.enemies = self:sort(self.enemies, "handcard")
@@ -8662,14 +9006,16 @@ sgs.ai_skill_use_func["#s_lianjie"] = function(card, use, self)
 	end
 end
 
-sgs.ai_fill_skill["s_polie"] = function(self,inclusive,request)
+ai_fill_skill["s_polie"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies == 0 then return end
 	if not self.player:hasUsed("#s_polie") then
 		return policy(self,"#s_polie:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#s_polie"] = function(card, use, self)
+ai_card_use["#s_polie"] = function(self, card, use, request)
 
 	self.friends_noself = self:sort(self.friends_noself, "handcard")
 	self.enemies = self:sort(self.enemies, "handcard")
@@ -8748,20 +9094,22 @@ sgs.ai_skill_playerchosen.s_polie = function(self, targets)
 end
 
 
-sgs.ai_skill_choice.s_shuimian = function(self, choices)
+ai_skill_choice.s_shuimian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 
 	if self:isWeak() and not self:getOverflow() > 2 and table.contains(items, "s_shuimian_recover") then
-		return "s_shuimian_recover"
+		return ai_choice_result(("s_shuimian_recover"), options)
 	end
 	if self:getOverflow() > 0 and table.contains(items, "s_shuimian_skipdiscard") then
-		return "s_shuimian_skipdiscard"
+		return ai_choice_result(("s_shuimian_skipdiscard"), options)
 	end
 	if __htms_value_call(self.player,"isWounded") and table.contains(items, "s_shuimian_recover") then
-		return "s_shuimian_recover"
+		return ai_choice_result(("s_shuimian_recover"), options)
 	end
 
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
 sgs.ai_skill_playerchosen.s_jieshu = function(self, targets)
@@ -8803,34 +9151,42 @@ sgs.ai_skill_playerchosen.s_jieshu = function(self, targets)
 	end
     return nil
 end
-sgs.ai_skill_choice.s_jieshu = function(self, choices, data)
+ai_skill_choice.s_jieshu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if target and self:isFriend(target) and table.contains(items, "s_jieshu_skill") then
-		return "s_jieshu_skill"
+		return ai_choice_result(("s_jieshu_skill"), options)
 	end
 	if target and self:isEnemy(target) and table.contains(items, "s_jieshu_pindian") then
-		return "s_jieshu_pindian"
+		return ai_choice_result(("s_jieshu_pindian"), options)
 	end
 
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 sgs.ai_cardneed.s_jieshu = sgs.ai_cardneed.bignumber
 
-sgs.ai_skill_choice.s_fudao = function(self, choices, data)
+ai_skill_choice.s_fudao = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if target and self:isFriend(target) and table.contains(items, "s_fudao_play") then
-		return "s_fudao_play"
+		return ai_choice_result(("s_fudao_play"), options)
 	end
 	if target and self:isEnemy(target) and table.contains(items, "s_fudao_discard") then
-		return "s_fudao_discard"
+		return ai_choice_result(("s_fudao_discard"), options)
 	end
 
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
-sgs.ai_fill_skill["s_fudao"] = function(self,inclusive,request)
+ai_fill_skill["s_fudao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 
 if not self.player:hasUsed("#s_fudao") then
 	local target
@@ -8848,7 +9204,7 @@ if not self.player:hasUsed("#s_fudao") then
 end
 
 
-sgs.ai_skill_use_func["#s_fudao"] = function(card,use,self)
+ai_card_use["#s_fudao"] = function(self, card, use, request)
 	local target
 	local players = self.room:getOtherPlayers(self.player)
 	for _,p in sgs.qlist(players) do
@@ -8867,24 +9223,28 @@ sgs.ai_skill_use_func["#s_fudao"] = function(card,use,self)
 	end
 end
 
-sgs.ai_skill_invoke.s_douM = function(self, data)
-	return true
+ai_skill_invoke.s_douM = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 
 
 
 
-sgs.ai_skill_choice.s_kongyi = function(self, choices, data)
+ai_skill_choice.s_kongyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	if table.contains(items, "s_kongyi_damage") then
 		if self:damageIsEffective(self.player, sgs.DamageStruct_Normal) and
 		self:needToLoseHp(self.player, target) then
-		return "s_kongyi_damage"
+		return ai_choice_result(("s_kongyi_damage"), options)
 		end
 		if not self:damageIsEffective(self.player, sgs.DamageStruct_Normal) then
-			return  "s_kongyi_damage"
+			return  ai_choice_result(("s_kongyi_damage"), options)
 		end
 	end
 	if table.contains(items, "s_kongyi_movefield") then
@@ -8902,7 +9262,7 @@ sgs.ai_skill_choice.s_kongyi = function(self, choices, data)
 						end
 					end
 					if targetc then
-						return true
+						return ai_choice_result((true), options)
 					end
 				end
 			end
@@ -8947,18 +9307,18 @@ sgs.ai_skill_choice.s_kongyi = function(self, choices, data)
 					end
 				end
 				if targetc then
-						return "s_kongyi_movefield"
+						return ai_choice_result(("s_kongyi_movefield"), options)
 					end
 				end
 			end
 	end
 	if table.contains(items, "s_kongyi_handcard") then
 		if __htms_value_call(self.player,"getMark","s_kongyi_num") <= 2 then
-			return "s_kongyi_handcard"
+			return ai_choice_result(("s_kongyi_handcard"), options)
 		end
 	end
 
-	return "s_kongyi_damage"
+	return ai_choice_result(("s_kongyi_damage"), options)
 end
 
 sgs.ai_skill_cardchosen.s_kongyi = function(self, who, flags)
@@ -9218,13 +9578,15 @@ local target
 
 end
 
-sgs.ai_fill_skill["s_kongyi"] = function(self,inclusive,request)
+ai_fill_skill["s_kongyi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:isNude() and not self.player:hasUsed("#s_kongyi") then
         return policy(self,"#s_kongyi:.:")
     end
 end
 
-sgs.ai_skill_use_func["#s_kongyi"] = function(card,use,self)
+ai_card_use["#s_kongyi"] = function(self, card, use, request)
 	self.friends_noself = self:sort(self.friends_noself, "handcard")
 	local cards=sgs.QList2Table(self.player:getCards("he"))
 	local needed = {}
@@ -9267,14 +9629,15 @@ end
 
 
 
-sgs.ai_skill_invoke.s_yueqian = function(self, data)
+ai_skill_invoke.s_yueqian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local source = self.player
 	local card
 	local target
 	local damage = data:toDamage()
-	if self:ajustDamage(damage.from,damage.to,damage.damage,damage.card) > 0 and self:needToLoseHp(damage.to, damage.from) then return false end
+	if self:ajustDamage(damage.from,damage.to,damage.damage,damage.card) > 0 and self:needToLoseHp(damage.to, damage.from) then return (false) or false end
 	if self:ajustDamage(damage.from,damage.to,damage.damage,damage.card) == 0 then
-		return false
+		return (false) or false
 	end
 		local judges = source:getJudgingArea()
 		if not judges:isEmpty() then
@@ -9289,7 +9652,7 @@ sgs.ai_skill_invoke.s_yueqian = function(self, data)
 						end
 					end
 					if target then
-						return true
+						return (true) or false
 					end
 				end
 			end
@@ -9334,11 +9697,11 @@ sgs.ai_skill_invoke.s_yueqian = function(self, data)
 					end
 				end
 				if target then
-						return true
+						return (true) or false
 					end
 			end
 		end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_cardchosen.s_yueqian = function(self, who, flags)
@@ -9483,24 +9846,29 @@ sgs.need_equip_skill = sgs.need_equip_skill .. "|s_yueqian"
 sgs.use_lion_skill = sgs.use_lion_skill .. "|s_yueqian"
 
 
-sgs.ai_skill_invoke.s_newtype = function(self, data)
+ai_skill_invoke.s_newtype = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
 		if self:isFriend(target)  and __htms_value_call(target,"getHandcardNum") < 3  then
-			return true
+			return (true) or false
 		end
 		if self:isEnemy(target) and __htms_value_call(target,"getHandcardNum") > 3 then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_use["@@s_newtype"] = function(self, prompt, method)
+ai_skill_use["@@s_newtype"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	return "#s_newtype:.:"
 end
 
-sgs.ai_skill_choice["s_newtype"] = function(self, choices, data)
+ai_skill_choice["s_newtype"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	self:updatePlayers()
 
 
@@ -9523,19 +9891,19 @@ sgs.ai_skill_choice["s_newtype"] = function(self, choices, data)
 		if table.contains(items, c:objectName()) then
 			if c:targetFixed() then
 				if __htms_value_call(c,"isKindOf","Peach") and __htms_value_call(self.player,"isWounded") and __htms_value_call(self.player,"getHp") <= 2 then
-					return c:objectName()
+					return ai_choice_result((c:objectName()), options)
 				end
 				if __htms_value_call(c,"isKindOf","ExNihilo") and __htms_value_call(self.player,"getHandcardNum") <= 2 then
-					return c:objectName()
+					return ai_choice_result((c:objectName()), options)
 				end
 				if __htms_value_call(c,"isKindOf","SavageAssault") then
 					if self:getAoeValue(c) > 0 then
-						return c:objectName()
+						return ai_choice_result((c:objectName()), options)
 					end
 				end
 				if __htms_value_call(c,"isKindOf","ArcheryAttack") then
 					if self:getAoeValue(c) > 0 then
-						return c:objectName()
+						return ai_choice_result((c:objectName()), options)
 					end
 				end
 				if __htms_value_call(c,"isKindOf","AmazingGrace") then
@@ -9546,12 +9914,12 @@ sgs.ai_skill_choice["s_newtype"] = function(self, choices, data)
 						end
 					end
 					if low_handcard_friend then
-						return c:objectName()
+						return ai_choice_result((c:objectName()), options)
 					end
 				end
 				if __htms_value_call(c,"isKindOf","GodSalvation") then
 					if self:willUseGodSalvation(c) then
-						return c:objectName()
+						return ai_choice_result((c:objectName()), options)
 					end
 				end
 				if __htms_value_call(c,"isKindOf","Analeptic") then
@@ -9561,7 +9929,7 @@ sgs.ai_skill_choice["s_newtype"] = function(self, choices, data)
 							if not dummy_use.to:isEmpty() then
 								for _, p in sgs.qlist(dummy_use.to) do
 									if self:shouldUseAnaleptic(p, slash) then
-										return c:objectName()
+										return ai_choice_result((c:objectName()), options)
 									end
 								end
 							end
@@ -9578,7 +9946,7 @@ sgs.ai_skill_choice["s_newtype"] = function(self, choices, data)
 								if p:isChained() then
 									set_observation(self,"ai_taoluan_card_name",c:objectName())
 
-									return c:objectName()
+									return ai_choice_result((c:objectName()), options)
 								end
 							end
 						end
@@ -9592,7 +9960,7 @@ sgs.ai_skill_choice["s_newtype"] = function(self, choices, data)
 							if __htms_value_call(p,"getHp") <= 2 and p:getCards("he"):length() <= 2 and __htms_value_call(p,"getHandcardNum") <= 1 then
 								set_observation(self,"ai_taoluan_card_name",c:objectName())
 
-								return c:objectName()
+								return ai_choice_result((c:objectName()), options)
 							end
 						end
 					end
@@ -9600,10 +9968,11 @@ sgs.ai_skill_choice["s_newtype"] = function(self, choices, data)
 			end
 		end
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
-sgs.ai_skill_use["@@s_newtypeOther"] = function(self, prompt, method)
+ai_skill_use["@@s_newtypeOther"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local card
 	for _, amuro in sgs.qlist(self.room:findPlayersBySkillName("s_newtype")) do
 		if __htms_value_call(self.player,"getMark","s_newtype"..amuro:objectName().."-Clear") > 0 then
@@ -9632,9 +10001,9 @@ sgs.ai_skill_use["@@s_newtypeOther"] = function(self, prompt, method)
 	return "."
 end
 
-sgs.ai_skill_invoke.htms_diwu = true
+ai_skill_invoke.htms_diwu = true
 
-sgs.ai_skill_use["@@htms_nisheng"]=function(self,prompt)
+ai_skill_use["@@htms_nisheng"]=function(self, prompt, request)
 	self:updatePlayers()
 	local tos = {}
 	local x = math.max(1, __htms_value_call(self.player,"getMark","htms_sanqi"))
@@ -9664,28 +10033,32 @@ sgs.ai_skill_use["@@htms_nisheng"]=function(self,prompt)
 	return "#htms_nishengCard:"..table.concat(to_give, "+")..":->"..table.concat(tos, "+")
 end
 
-sgs.ai_skill_choice.htms_sanqi = function(self, choices, data)
+ai_skill_choice.htms_sanqi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	if table.contains(items, "equip") then
-		return "equip"
+		return ai_choice_result(("equip"), options)
 	end
 	if table.contains(items, "trick") then
-		return "trick"
+		return ai_choice_result(("trick"), options)
 	end
 	if table.contains(items, "basic") then
-		return "basic"
+		return ai_choice_result(("basic"), options)
 	end
 
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
-sgs.ai_skill_invoke.htms_ranxin = function(self, data)
-	if self.player:getPile("htms_mo"):length() < 2 then return true end
-	if self:isWeak(self.player) and self:getAllPeachNum() <= 1 then return true end
-	if not __htms_value_call(self.player,"hasSkill","htms_chiyi") then return true end
+ai_skill_invoke.htms_ranxin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:getPile("htms_mo"):length() < 2 then return (true) or false end
+	if self:isWeak(self.player) and self:getAllPeachNum() <= 1 then return (true) or false end
+	if not __htms_value_call(self.player,"hasSkill","htms_chiyi") then return (true) or false end
 	if math.random(1, 2) == 1 then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_cardneed.htms_ranxin = sgs.ai_cardneed.slash
 
@@ -9776,14 +10149,15 @@ local function wrap(f,key,kind)
   local outer=not self._htms_callback_depth;local previous=self._htms_callback_key
   self._htms_callback_depth=(self._htms_callback_depth or 0)+1;self._htms_callback_key=key
   if outer then load_state(self)end
-  if kind=="ai_skill_use_func"and classes[key]and args[1]and not recipes[args[1]]then recipes[args[1]]={prototype=key,skill=classes[key],subcards=copy(__htms_value_call(args[1],"getSubcards")),user=__htms_value_call(args[1],"getUserString")}end
+  if kind=="ai_card_use"and classes[key]and args[2]and not recipes[args[2]]then recipes[args[2]]={prototype=key,skill=classes[key],subcards=copy(__htms_value_call(args[2],"getSubcards")),user=__htms_value_call(args[2],"getUserString")}end
   local result=table.pack(pcall(f,table.unpack(args,1,args.n)))
   local saved=outer and table.pack(pcall(save_state,self))or{true}
   self._htms_callback_depth=self._htms_callback_depth-1;if self._htms_callback_depth==0 then self._htms_callback_depth=nil end;self._htms_callback_key=previous
   if not result[1]then error(result[2],0)end
   if not saved[1]then error(saved[2],0)end
-  if outer and kind=="ai_skill_use_func"and args[2]and args[2].card and recipes[args[2].card]and not recipes[args[2].card].prototype then
-   local c=args[2].card;local row=copy(recipes[c]);row.source_key=nil;local mapped=self:evaluateTurnConversion(row.skill,c:getClassName(),row,nil);self:inheritLegacyCardIdentity(mapped,c);args[2].card=mapped
+  -- Native play callbacks receive self, card, use, request in that order.
+  if outer and kind=="ai_card_use"and args[3]and args[3].card and recipes[args[3].card]and not recipes[args[3].card].prototype then
+   local c=args[3].card;local row=copy(recipes[c]);row.source_key=nil;local mapped=self:evaluateTurnConversion(row.skill,c:getClassName(),row,nil);self:inheritLegacyCardIdentity(mapped,c);args[3].card=mapped
   elseif outer and kind=="ai_skill_use"then
    if key=="@@zhongerhx"then result[2]=self:zhongerhxSourceResult(result[2])else result[2]=response(self,result[2])end
   elseif outer and(kind=="ai_cardsview"or kind=="ai_cardsview_valuable"or kind=="ai_guhuo_card")then result[2]=proposal(result[2])
@@ -9794,378 +10168,378 @@ local function wrap(f,key,kind)
   return table.unpack(result,2,result.n)
  end
 end
-sgs.ai_skill_invoke['zhuisha']=wrap(sgs.ai_skill_invoke['zhuisha'],'zhuisha','ai_skill_invoke')
+ai_skill_invoke['zhuisha']=wrap(ai_skill_invoke['zhuisha'],'zhuisha','ai_skill_invoke')
 sgs.ai_skill_cardask['@zhuisha_ask']=wrap(sgs.ai_skill_cardask['@zhuisha_ask'],'@zhuisha_ask','ai_skill_cardask')
 sgs.ai_ajustdamage_from['zhuisha']=wrap(sgs.ai_ajustdamage_from['zhuisha'],'zhuisha','ai_ajustdamage_from')
 sgs.ai_ajustdamage_from['htms_zangsong']=wrap(sgs.ai_ajustdamage_from['htms_zangsong'],'htms_zangsong','ai_ajustdamage_from')
-sgs.ai_fill_skill['htms_zangsong']=wrap(sgs.ai_fill_skill['htms_zangsong'],'htms_zangsong','ai_fill_skill')
-sgs.ai_skill_use_func['#htms_zangsongCard']=wrap(sgs.ai_skill_use_func['#htms_zangsongCard'],'#htms_zangsongCard','ai_skill_use_func')
-sgs.ai_skill_invoke['shilian']=wrap(sgs.ai_skill_invoke['shilian'],'shilian','ai_skill_invoke')
-sgs.ai_skill_invoke['shilianEX']=wrap(sgs.ai_skill_invoke['shilianEX'],'shilianEX','ai_skill_invoke')
-sgs.ai_skill_invoke['xianxuefeiteng']=wrap(sgs.ai_skill_invoke['xianxuefeiteng'],'xianxuefeiteng','ai_skill_invoke')
-sgs.ai_skill_choice['fengwang']=wrap(sgs.ai_skill_choice['fengwang'],'fengwang','ai_skill_choice')
+ai_fill_skill['htms_zangsong']=wrap(ai_fill_skill['htms_zangsong'],'htms_zangsong','ai_fill_skill')
+ai_card_use['#htms_zangsongCard']=wrap(ai_card_use['#htms_zangsongCard'],'#htms_zangsongCard','ai_card_use')
+ai_skill_invoke['shilian']=wrap(ai_skill_invoke['shilian'],'shilian','ai_skill_invoke')
+ai_skill_invoke['shilianEX']=wrap(ai_skill_invoke['shilianEX'],'shilianEX','ai_skill_invoke')
+ai_skill_invoke['xianxuefeiteng']=wrap(ai_skill_invoke['xianxuefeiteng'],'xianxuefeiteng','ai_skill_invoke')
+ai_skill_choice['fengwang']=wrap(ai_skill_choice['fengwang'],'fengwang','ai_skill_choice')
 sgs.ai_skill_cardask['@fengwang_askforequip']=wrap(sgs.ai_skill_cardask['@fengwang_askforequip'],'@fengwang_askforequip','ai_skill_cardask')
-sgs.ai_fill_skill['fengwang']=wrap(sgs.ai_fill_skill['fengwang'],'fengwang','ai_fill_skill')
-sgs.ai_skill_use_func['#fengwang']=wrap(sgs.ai_skill_use_func['#fengwang'],'#fengwang','ai_skill_use_func')
-sgs.ai_skill_choice['newfengwang']=wrap(sgs.ai_skill_choice['newfengwang'],'newfengwang','ai_skill_choice')
-sgs.ai_fill_skill['newfengwang']=wrap(sgs.ai_fill_skill['newfengwang'],'newfengwang','ai_fill_skill')
-sgs.ai_skill_use_func['#newfengwang']=wrap(sgs.ai_skill_use_func['#newfengwang'],'#newfengwang','ai_skill_use_func')
-sgs.ai_fill_skill['wangzhe']=wrap(sgs.ai_fill_skill['wangzhe'],'wangzhe','ai_fill_skill')
-sgs.ai_skill_use_func['#wangzhe']=wrap(sgs.ai_skill_use_func['#wangzhe'],'#wangzhe','ai_skill_use_func')
-sgs.ai_skill_invoke['doubleslash']=wrap(sgs.ai_skill_invoke['doubleslash'],'doubleslash','ai_skill_invoke')
+ai_fill_skill['fengwang']=wrap(ai_fill_skill['fengwang'],'fengwang','ai_fill_skill')
+ai_card_use['#fengwang']=wrap(ai_card_use['#fengwang'],'#fengwang','ai_card_use')
+ai_skill_choice['newfengwang']=wrap(ai_skill_choice['newfengwang'],'newfengwang','ai_skill_choice')
+ai_fill_skill['newfengwang']=wrap(ai_fill_skill['newfengwang'],'newfengwang','ai_fill_skill')
+ai_card_use['#newfengwang']=wrap(ai_card_use['#newfengwang'],'#newfengwang','ai_card_use')
+ai_fill_skill['wangzhe']=wrap(ai_fill_skill['wangzhe'],'wangzhe','ai_fill_skill')
+ai_card_use['#wangzhe']=wrap(ai_card_use['#wangzhe'],'#wangzhe','ai_card_use')
+ai_skill_invoke['doubleslash']=wrap(ai_skill_invoke['doubleslash'],'doubleslash','ai_skill_invoke')
 sgs.ai_skill_cardask['@doubleslash']=wrap(sgs.ai_skill_cardask['@doubleslash'],'@doubleslash','ai_skill_cardask')
 sgs.ai_armor_value['doubleslash']=wrap(sgs.ai_armor_value['doubleslash'],'doubleslash','ai_armor_value')
 sgs.ai_skill_askforag['betacheater']=wrap(sgs.ai_skill_askforag['betacheater'],'betacheater','ai_skill_askforag')
-sgs.ai_fill_skill['handsonic']=wrap(sgs.ai_fill_skill['handsonic'],'handsonic','ai_fill_skill')
-sgs.ai_skill_use_func['#handsonicCard']=wrap(sgs.ai_skill_use_func['#handsonicCard'],'#handsonicCard','ai_skill_use_func')
+ai_fill_skill['handsonic']=wrap(ai_fill_skill['handsonic'],'handsonic','ai_fill_skill')
+ai_card_use['#handsonicCard']=wrap(ai_card_use['#handsonicCard'],'#handsonicCard','ai_card_use')
 sgs.ai_skill_discard['handsonic']=wrap(sgs.ai_skill_discard['handsonic'],'handsonic','ai_skill_discard')
 sgs.ai_skill_cardask['@defencefieldask']=wrap(sgs.ai_skill_cardask['@defencefieldask'],'@defencefieldask','ai_skill_cardask')
 sgs.ai_cardneed['defencefield']=wrap(sgs.ai_cardneed['defencefield'],'defencefield','ai_cardneed')
-sgs.ai_fill_skill['frozenpuppet']=wrap(sgs.ai_fill_skill['frozenpuppet'],'frozenpuppet','ai_fill_skill')
-sgs.ai_skill_use_func['#frozenpuppetCard']=wrap(sgs.ai_skill_use_func['#frozenpuppetCard'],'#frozenpuppetCard','ai_skill_use_func')
+ai_fill_skill['frozenpuppet']=wrap(ai_fill_skill['frozenpuppet'],'frozenpuppet','ai_fill_skill')
+ai_card_use['#frozenpuppetCard']=wrap(ai_card_use['#frozenpuppetCard'],'#frozenpuppetCard','ai_card_use')
 sgs.ai_target_revises['@frozenpuppettarg']=wrap(sgs.ai_target_revises['@frozenpuppettarg'],'@frozenpuppettarg','ai_target_revises')
 sgs.ai_skill_discard['chuszy']=wrap(sgs.ai_skill_discard['chuszy'],'chuszy','ai_skill_discard')
 sgs.ai_slash_prohibit['htms_xiaoshi']=wrap(sgs.ai_slash_prohibit['htms_xiaoshi'],'htms_xiaoshi','ai_slash_prohibit')
-sgs.ai_fill_skill['mie']=wrap(sgs.ai_fill_skill['mie'],'mie','ai_fill_skill')
-sgs.ai_skill_use_func['#mie']=wrap(sgs.ai_skill_use_func['#mie'],'#mie','ai_skill_use_func')
-sgs.ai_fill_skill['diancp']=wrap(sgs.ai_fill_skill['diancp'],'diancp','ai_fill_skill')
-sgs.ai_skill_use_func['#diancp']=wrap(sgs.ai_skill_use_func['#diancp'],'#diancp','ai_skill_use_func')
+ai_fill_skill['mie']=wrap(ai_fill_skill['mie'],'mie','ai_fill_skill')
+ai_card_use['#mie']=wrap(ai_card_use['#mie'],'#mie','ai_card_use')
+ai_fill_skill['diancp']=wrap(ai_fill_skill['diancp'],'diancp','ai_fill_skill')
+ai_card_use['#diancp']=wrap(ai_card_use['#diancp'],'#diancp','ai_card_use')
 sgs.ai_ajustdamage_to['leij']=wrap(sgs.ai_ajustdamage_to['leij'],'leij','ai_ajustdamage_to')
 sgs.ai_skill_cardask['@emeng']=wrap(sgs.ai_skill_cardask['@emeng'],'@emeng','ai_skill_cardask')
 sgs.ai_ajustdamage_from['Luayezhan']=wrap(sgs.ai_ajustdamage_from['Luayezhan'],'Luayezhan','ai_ajustdamage_from')
-sgs.ai_skill_use['@@jiasugaobai']=wrap(sgs.ai_skill_use['@@jiasugaobai'],'@@jiasugaobai','ai_skill_use')
-sgs.ai_skill_invoke['juedoujiasu']=wrap(sgs.ai_skill_invoke['juedoujiasu'],'juedoujiasu','ai_skill_invoke')
+ai_skill_use['@@jiasugaobai']=wrap(ai_skill_use['@@jiasugaobai'],'@@jiasugaobai','ai_skill_use')
+ai_skill_invoke['juedoujiasu']=wrap(ai_skill_invoke['juedoujiasu'],'juedoujiasu','ai_skill_invoke')
 sgs.ai_cardneed['juedoujiasu']=wrap(sgs.ai_cardneed['juedoujiasu'],'juedoujiasu','ai_cardneed')
-sgs.ai_skill_invoke['jiasuduijue']=wrap(sgs.ai_skill_invoke['jiasuduijue'],'jiasuduijue','ai_skill_invoke')
+ai_skill_invoke['jiasuduijue']=wrap(ai_skill_invoke['jiasuduijue'],'jiasuduijue','ai_skill_invoke')
 do local f=sgs.ai_view_as['xiangy'];sgs.ai_view_as['xiangy']=function(...)return proposal(f(...))end end
 sgs.ai_skill_playerchosen['xiangy']=wrap(sgs.ai_skill_playerchosen['xiangy'],'xiangy','ai_skill_playerchosen')
-sgs.ai_skill_choice['xiangy']=wrap(sgs.ai_skill_choice['xiangy'],'xiangy','ai_skill_choice')
-sgs.ai_fill_skill['jiujideqiyuan']=wrap(sgs.ai_fill_skill['jiujideqiyuan'],'jiujideqiyuan','ai_fill_skill')
-sgs.ai_skill_use_func['#jiujideqiyuan']=wrap(sgs.ai_skill_use_func['#jiujideqiyuan'],'#jiujideqiyuan','ai_skill_use_func')
+ai_skill_choice['xiangy']=wrap(ai_skill_choice['xiangy'],'xiangy','ai_skill_choice')
+ai_fill_skill['jiujideqiyuan']=wrap(ai_fill_skill['jiujideqiyuan'],'jiujideqiyuan','ai_fill_skill')
+ai_card_use['#jiujideqiyuan']=wrap(ai_card_use['#jiujideqiyuan'],'#jiujideqiyuan','ai_card_use')
 sgs.ai_use_revises['jiujideqiyuan']=wrap(sgs.ai_use_revises['jiujideqiyuan'],'jiujideqiyuan','ai_use_revises')
-sgs.ai_skill_choice['fazededizao']=wrap(sgs.ai_skill_choice['fazededizao'],'fazededizao','ai_skill_choice')
-sgs.ai_skill_invoke['gonglzs']=wrap(sgs.ai_skill_invoke['gonglzs'],'gonglzs','ai_skill_invoke')
+ai_skill_choice['fazededizao']=wrap(ai_skill_choice['fazededizao'],'fazededizao','ai_skill_choice')
+ai_skill_invoke['gonglzs']=wrap(ai_skill_invoke['gonglzs'],'gonglzs','ai_skill_invoke')
 sgs.ai_skill_cardchosen['gonglzs']=wrap(sgs.ai_skill_cardchosen['gonglzs'],'gonglzs','ai_skill_cardchosen')
-sgs.ai_skill_invoke['shens']=wrap(sgs.ai_skill_invoke['shens'],'shens','ai_skill_invoke')
+ai_skill_invoke['shens']=wrap(ai_skill_invoke['shens'],'shens','ai_skill_invoke')
 sgs.ai_skill_playerchosen['hunq']=wrap(sgs.ai_skill_playerchosen['hunq'],'hunq','ai_skill_playerchosen')
-sgs.ai_fill_skill['pojgj']=wrap(sgs.ai_fill_skill['pojgj'],'pojgj','ai_fill_skill')
-sgs.ai_skill_use_func['#pojgjCard']=wrap(sgs.ai_skill_use_func['#pojgjCard'],'#pojgjCard','ai_skill_use_func')
-sgs.ai_fill_skill['LuamuguanVS']=wrap(sgs.ai_fill_skill['LuamuguanVS'],'LuamuguanVS','ai_fill_skill')
-sgs.ai_skill_use_func['#LuamuguanCard']=wrap(sgs.ai_skill_use_func['#LuamuguanCard'],'#LuamuguanCard','ai_skill_use_func')
+ai_fill_skill['pojgj']=wrap(ai_fill_skill['pojgj'],'pojgj','ai_fill_skill')
+ai_card_use['#pojgjCard']=wrap(ai_card_use['#pojgjCard'],'#pojgjCard','ai_card_use')
+ai_fill_skill['LuamuguanVS']=wrap(ai_fill_skill['LuamuguanVS'],'LuamuguanVS','ai_fill_skill')
+ai_card_use['#LuamuguanCard']=wrap(ai_card_use['#LuamuguanCard'],'#LuamuguanCard','ai_card_use')
 sgs.ai_ajustdamage_from['Luamuguan']=wrap(sgs.ai_ajustdamage_from['Luamuguan'],'Luamuguan','ai_ajustdamage_from')
 sgs.ai_ajustdamage_to['Luamuguan']=wrap(sgs.ai_ajustdamage_to['Luamuguan'],'Luamuguan','ai_ajustdamage_to')
 do local f=sgs.ai_view_as['soulfire'];sgs.ai_view_as['soulfire']=function(...)return proposal(f(...))end end
-sgs.ai_skill_invoke['soulfire']=wrap(sgs.ai_skill_invoke['soulfire'],'soulfire','ai_skill_invoke')
-sgs.ai_fill_skill['soulfire']=wrap(sgs.ai_fill_skill['soulfire'],'soulfire','ai_fill_skill')
-sgs.ai_fill_skill['jfxl']=wrap(sgs.ai_fill_skill['jfxl'],'jfxl','ai_fill_skill')
-sgs.ai_skill_use_func['#jfxl']=wrap(sgs.ai_skill_use_func['#jfxl'],'#jfxl','ai_skill_use_func')
+ai_skill_invoke['soulfire']=wrap(ai_skill_invoke['soulfire'],'soulfire','ai_skill_invoke')
+ai_fill_skill['soulfire']=wrap(ai_fill_skill['soulfire'],'soulfire','ai_fill_skill')
+ai_fill_skill['jfxl']=wrap(ai_fill_skill['jfxl'],'jfxl','ai_fill_skill')
+ai_card_use['#jfxl']=wrap(ai_card_use['#jfxl'],'#jfxl','ai_card_use')
 do local f=sgs.ai_view_as['zhenhong'];sgs.ai_view_as['zhenhong']=function(...)return proposal(f(...))end end
-sgs.ai_skill_invoke['tprs']=wrap(sgs.ai_skill_invoke['tprs'],'tprs','ai_skill_invoke')
+ai_skill_invoke['tprs']=wrap(ai_skill_invoke['tprs'],'tprs','ai_skill_invoke')
 sgs.ai_ajustdamage_from['tprs']=wrap(sgs.ai_ajustdamage_from['tprs'],'tprs','ai_ajustdamage_from')
-sgs.ai_skill_invoke['duanzui']=wrap(sgs.ai_skill_invoke['duanzui'],'duanzui','ai_skill_invoke')
-sgs.ai_skill_invoke['meihuomoyan']=wrap(sgs.ai_skill_invoke['meihuomoyan'],'meihuomoyan','ai_skill_invoke')
+ai_skill_invoke['duanzui']=wrap(ai_skill_invoke['duanzui'],'duanzui','ai_skill_invoke')
+ai_skill_invoke['meihuomoyan']=wrap(ai_skill_invoke['meihuomoyan'],'meihuomoyan','ai_skill_invoke')
 sgs.ai_skill_playerchosen['meihuomoyan']=wrap(sgs.ai_skill_playerchosen['meihuomoyan'],'meihuomoyan','ai_skill_playerchosen')
 sgs.ai_skill_playerchosen['kaleidoscope']=wrap(sgs.ai_skill_playerchosen['kaleidoscope'],'kaleidoscope','ai_skill_playerchosen')
 sgs.ai_skill_cardask['@haniel']=wrap(sgs.ai_skill_cardask['@haniel'],'@haniel','ai_skill_cardask')
-sgs.ai_fill_skill['guancha']=wrap(sgs.ai_fill_skill['guancha'],'guancha','ai_fill_skill')
-sgs.ai_skill_use_func['#guancha']=wrap(sgs.ai_skill_use_func['#guancha'],'#guancha','ai_skill_use_func')
-sgs.ai_skill_invoke['jiyi']=wrap(sgs.ai_skill_invoke['jiyi'],'jiyi','ai_skill_invoke')
-sgs.ai_skill_use['@@jiyi']=wrap(sgs.ai_skill_use['@@jiyi'],'@@jiyi','ai_skill_use')
-sgs.ai_skill_choice['jiyi']=wrap(sgs.ai_skill_choice['jiyi'],'jiyi','ai_skill_choice')
+ai_fill_skill['guancha']=wrap(ai_fill_skill['guancha'],'guancha','ai_fill_skill')
+ai_card_use['#guancha']=wrap(ai_card_use['#guancha'],'#guancha','ai_card_use')
+ai_skill_invoke['jiyi']=wrap(ai_skill_invoke['jiyi'],'jiyi','ai_skill_invoke')
+ai_skill_use['@@jiyi']=wrap(ai_skill_use['@@jiyi'],'@@jiyi','ai_skill_use')
+ai_skill_choice['jiyi']=wrap(ai_skill_choice['jiyi'],'jiyi','ai_skill_choice')
 sgs.ai_can_damagehp['jiyi']=wrap(sgs.ai_can_damagehp['jiyi'],'jiyi','ai_can_damagehp')
-sgs.ai_skill_invoke['Luachicheng']=wrap(sgs.ai_skill_invoke['Luachicheng'],'Luachicheng','ai_skill_invoke')
+ai_skill_invoke['Luachicheng']=wrap(ai_skill_invoke['Luachicheng'],'Luachicheng','ai_skill_invoke')
 sgs.ai_ajustdamage_from['lianjiqudong']=wrap(sgs.ai_ajustdamage_from['lianjiqudong'],'lianjiqudong','ai_ajustdamage_from')
-sgs.ai_skill_invoke['lunhui1']=wrap(sgs.ai_skill_invoke['lunhui1'],'lunhui1','ai_skill_invoke')
-sgs.ai_skill_use['@@lunhui']=wrap(sgs.ai_skill_use['@@lunhui'],'@@lunhui','ai_skill_use')
+ai_skill_invoke['lunhui1']=wrap(ai_skill_invoke['lunhui1'],'lunhui1','ai_skill_invoke')
+ai_skill_use['@@lunhui']=wrap(ai_skill_use['@@lunhui'],'@@lunhui','ai_skill_use')
 sgs.ai_hasTuntianEffect_skill['lunhui']=wrap(sgs.ai_hasTuntianEffect_skill['lunhui'],'lunhui','ai_hasTuntianEffect_skill')
-sgs.ai_fill_skill['pocdsf']=wrap(sgs.ai_fill_skill['pocdsf'],'pocdsf','ai_fill_skill')
-sgs.ai_skill_use_func['#pocdsf']=wrap(sgs.ai_skill_use_func['#pocdsf'],'#pocdsf','ai_skill_use_func')
+ai_fill_skill['pocdsf']=wrap(ai_fill_skill['pocdsf'],'pocdsf','ai_fill_skill')
+ai_card_use['#pocdsf']=wrap(ai_card_use['#pocdsf'],'#pocdsf','ai_card_use')
 sgs.ai_can_damagehp['moxing']=wrap(sgs.ai_can_damagehp['moxing'],'moxing','ai_can_damagehp')
-sgs.ai_skill_invoke['xiangrui']=wrap(sgs.ai_skill_invoke['xiangrui'],'xiangrui','ai_skill_invoke')
-sgs.ai_skill_use['@@xiangrui']=wrap(sgs.ai_skill_use['@@xiangrui'],'@@xiangrui','ai_skill_use')
+ai_skill_invoke['xiangrui']=wrap(ai_skill_invoke['xiangrui'],'xiangrui','ai_skill_invoke')
+ai_skill_use['@@xiangrui']=wrap(ai_skill_use['@@xiangrui'],'@@xiangrui','ai_skill_use')
 sgs.ai_can_damagehp['xiangrui']=wrap(sgs.ai_can_damagehp['xiangrui'],'xiangrui','ai_can_damagehp')
 sgs.ai_ajustdamage_to['wnlz']=wrap(sgs.ai_ajustdamage_to['wnlz'],'wnlz','ai_ajustdamage_to')
-sgs.ai_fill_skill['hxss']=wrap(sgs.ai_fill_skill['hxss'],'hxss','ai_fill_skill')
-sgs.ai_fill_skill['Luachuyi']=wrap(sgs.ai_fill_skill['Luachuyi'],'Luachuyi','ai_fill_skill')
+ai_fill_skill['hxss']=wrap(ai_fill_skill['hxss'],'hxss','ai_fill_skill')
+ai_fill_skill['Luachuyi']=wrap(ai_fill_skill['Luachuyi'],'Luachuyi','ai_fill_skill')
 do local f=sgs.ai_view_as['Luachuyi'];sgs.ai_view_as['Luachuyi']=function(...)return proposal(f(...))end end
 sgs.ai_cardneed['Luachuyi']=wrap(sgs.ai_cardneed['Luachuyi'],'Luachuyi','ai_cardneed')
-sgs.ai_skill_invoke['Lualianji']=wrap(sgs.ai_skill_invoke['Lualianji'],'Lualianji','ai_skill_invoke')
-sgs.ai_fill_skill['geass']=wrap(sgs.ai_fill_skill['geass'],'geass','ai_fill_skill')
-sgs.ai_skill_use_func['#geasstarget']=wrap(sgs.ai_skill_use_func['#geasstarget'],'#geasstarget','ai_skill_use_func')
+ai_skill_invoke['Lualianji']=wrap(ai_skill_invoke['Lualianji'],'Lualianji','ai_skill_invoke')
+ai_fill_skill['geass']=wrap(ai_fill_skill['geass'],'geass','ai_fill_skill')
+ai_card_use['#geasstarget']=wrap(ai_card_use['#geasstarget'],'#geasstarget','ai_card_use')
 sgs.ai_skill_askforag['geass']=wrap(sgs.ai_skill_askforag['geass'],'geass','ai_skill_askforag')
-sgs.ai_skill_use['@@geass']=wrap(sgs.ai_skill_use['@@geass'],'@@geass','ai_skill_use')
-sgs.ai_skill_invoke['znai']=wrap(sgs.ai_skill_invoke['znai'],'znai','ai_skill_invoke')
-sgs.ai_skill_choice['znai']=wrap(sgs.ai_skill_choice['znai'],'znai','ai_skill_choice')
-sgs.ai_skill_use['@@znai']=wrap(sgs.ai_skill_use['@@znai'],'@@znai','ai_skill_use')
-sgs.ai_skill_invoke['changedfate']=wrap(sgs.ai_skill_invoke['changedfate'],'changedfate','ai_skill_invoke')
-sgs.ai_skill_invoke['tmsp']=wrap(sgs.ai_skill_invoke['tmsp'],'tmsp','ai_skill_invoke')
-sgs.ai_skill_invoke['wangzbk']=wrap(sgs.ai_skill_invoke['wangzbk'],'wangzbk','ai_skill_invoke')
+ai_skill_use['@@geass']=wrap(ai_skill_use['@@geass'],'@@geass','ai_skill_use')
+ai_skill_invoke['znai']=wrap(ai_skill_invoke['znai'],'znai','ai_skill_invoke')
+ai_skill_choice['znai']=wrap(ai_skill_choice['znai'],'znai','ai_skill_choice')
+ai_skill_use['@@znai']=wrap(ai_skill_use['@@znai'],'@@znai','ai_skill_use')
+ai_skill_invoke['changedfate']=wrap(ai_skill_invoke['changedfate'],'changedfate','ai_skill_invoke')
+ai_skill_invoke['tmsp']=wrap(ai_skill_invoke['tmsp'],'tmsp','ai_skill_invoke')
+ai_skill_invoke['wangzbk']=wrap(ai_skill_invoke['wangzbk'],'wangzbk','ai_skill_invoke')
 sgs.ai_skill_cardask['@bings-increase']=wrap(sgs.ai_skill_cardask['@bings-increase'],'@bings-increase','ai_skill_cardask')
 sgs.ai_skill_cardask['@bings-decrease']=wrap(sgs.ai_skill_cardask['@bings-decrease'],'@bings-decrease','ai_skill_cardask')
 sgs.ai_ajustdamage_to['bings']=wrap(sgs.ai_ajustdamage_to['bings'],'bings','ai_ajustdamage_to')
 sgs.ai_ajustdamage_from['bings']=wrap(sgs.ai_ajustdamage_from['bings'],'bings','ai_ajustdamage_from')
-sgs.ai_skill_choice['guailj']=wrap(sgs.ai_skill_choice['guailj'],'guailj','ai_skill_choice')
-sgs.ai_fill_skill['guailj']=wrap(sgs.ai_fill_skill['guailj'],'guailj','ai_fill_skill')
-sgs.ai_skill_use_func['#guailj']=wrap(sgs.ai_skill_use_func['#guailj'],'#guailj','ai_skill_use_func')
-sgs.ai_skill_invoke['guichan']=wrap(sgs.ai_skill_invoke['guichan'],'guichan','ai_skill_invoke')
-sgs.ai_skill_invoke['dafan']=wrap(sgs.ai_skill_invoke['dafan'],'dafan','ai_skill_invoke')
+ai_skill_choice['guailj']=wrap(ai_skill_choice['guailj'],'guailj','ai_skill_choice')
+ai_fill_skill['guailj']=wrap(ai_fill_skill['guailj'],'guailj','ai_fill_skill')
+ai_card_use['#guailj']=wrap(ai_card_use['#guailj'],'#guailj','ai_card_use')
+ai_skill_invoke['guichan']=wrap(ai_skill_invoke['guichan'],'guichan','ai_skill_invoke')
+ai_skill_invoke['dafan']=wrap(ai_skill_invoke['dafan'],'dafan','ai_skill_invoke')
 sgs.ai_skill_cardask['@dafanuj-give']=wrap(sgs.ai_skill_cardask['@dafanuj-give'],'@dafanuj-give','ai_skill_cardask')
-sgs.ai_skill_choice['juejian']=wrap(sgs.ai_skill_choice['juejian'],'juejian','ai_skill_choice')
+ai_skill_choice['juejian']=wrap(ai_skill_choice['juejian'],'juejian','ai_skill_choice')
 sgs.ai_skill_cardask['@smsy']=wrap(sgs.ai_skill_cardask['@smsy'],'@smsy','ai_skill_cardask')
 sgs.ai_ajustdamage_from['smsy']=wrap(sgs.ai_ajustdamage_from['smsy'],'smsy','ai_ajustdamage_from')
-sgs.ai_fill_skill['jiewq']=wrap(sgs.ai_fill_skill['jiewq'],'jiewq','ai_fill_skill')
-sgs.ai_skill_use_func['#jiewq']=wrap(sgs.ai_skill_use_func['#jiewq'],'#jiewq','ai_skill_use_func')
-sgs.ai_skill_choice['jiewq']=wrap(sgs.ai_skill_choice['jiewq'],'jiewq','ai_skill_choice')
+ai_fill_skill['jiewq']=wrap(ai_fill_skill['jiewq'],'jiewq','ai_fill_skill')
+ai_card_use['#jiewq']=wrap(ai_card_use['#jiewq'],'#jiewq','ai_card_use')
+ai_skill_choice['jiewq']=wrap(ai_skill_choice['jiewq'],'jiewq','ai_skill_choice')
 sgs.ai_ajustdamage_from['jiewq']=wrap(sgs.ai_ajustdamage_from['jiewq'],'jiewq','ai_ajustdamage_from')
 sgs.ai_can_damagehp['saiya']=wrap(sgs.ai_can_damagehp['saiya'],'saiya','ai_can_damagehp')
 sgs.ai_skill_cardask['@muou']=wrap(sgs.ai_skill_cardask['@muou'],'@muou','ai_skill_cardask')
 sgs.ai_skill_playerchosen['mozy']=wrap(sgs.ai_skill_playerchosen['mozy'],'mozy','ai_skill_playerchosen')
-sgs.ai_skill_invoke['zsmy']=wrap(sgs.ai_skill_invoke['zsmy'],'zsmy','ai_skill_invoke')
-sgs.ai_fill_skill['qsas']=wrap(sgs.ai_fill_skill['qsas'],'qsas','ai_fill_skill')
-sgs.ai_skill_use_func['#qsas']=wrap(sgs.ai_skill_use_func['#qsas'],'#qsas','ai_skill_use_func')
+ai_skill_invoke['zsmy']=wrap(ai_skill_invoke['zsmy'],'zsmy','ai_skill_invoke')
+ai_fill_skill['qsas']=wrap(ai_fill_skill['qsas'],'qsas','ai_fill_skill')
+ai_card_use['#qsas']=wrap(ai_card_use['#qsas'],'#qsas','ai_card_use')
 sgs.ai_ajustdamage_from['nirendao']=wrap(sgs.ai_ajustdamage_from['nirendao'],'nirendao','ai_ajustdamage_from')
-sgs.ai_fill_skill['nidaoren']=wrap(sgs.ai_fill_skill['nidaoren'],'nidaoren','ai_fill_skill')
-sgs.ai_skill_use_func['#nidaorenCard']=wrap(sgs.ai_skill_use_func['#nidaorenCard'],'#nidaorenCard','ai_skill_use_func')
-sgs.ai_skill_choice['nidaorendraw']=wrap(sgs.ai_skill_choice['nidaorendraw'],'nidaorendraw','ai_skill_choice')
-sgs.ai_fill_skill['badaozhai']=wrap(sgs.ai_fill_skill['badaozhai'],'badaozhai','ai_fill_skill')
-sgs.ai_skill_use_func['#badaozhaiCard']=wrap(sgs.ai_skill_use_func['#badaozhaiCard'],'#badaozhaiCard','ai_skill_use_func')
-sgs.ai_fill_skill['feils2']=wrap(sgs.ai_fill_skill['feils2'],'feils2','ai_fill_skill')
-sgs.ai_skill_use_func['#feils2']=wrap(sgs.ai_skill_use_func['#feils2'],'#feils2','ai_skill_use_func')
-sgs.ai_skill_invoke['jiushu']=wrap(sgs.ai_skill_invoke['jiushu'],'jiushu','ai_skill_invoke')
-sgs.ai_skill_use['@@jiushu']=wrap(sgs.ai_skill_use['@@jiushu'],'@@jiushu','ai_skill_use')
-sgs.ai_skill_invoke['xieheng']=wrap(sgs.ai_skill_invoke['xieheng'],'xieheng','ai_skill_invoke')
+ai_fill_skill['nidaoren']=wrap(ai_fill_skill['nidaoren'],'nidaoren','ai_fill_skill')
+ai_card_use['#nidaorenCard']=wrap(ai_card_use['#nidaorenCard'],'#nidaorenCard','ai_card_use')
+ai_skill_choice['nidaorendraw']=wrap(ai_skill_choice['nidaorendraw'],'nidaorendraw','ai_skill_choice')
+ai_fill_skill['badaozhai']=wrap(ai_fill_skill['badaozhai'],'badaozhai','ai_fill_skill')
+ai_card_use['#badaozhaiCard']=wrap(ai_card_use['#badaozhaiCard'],'#badaozhaiCard','ai_card_use')
+ai_fill_skill['feils2']=wrap(ai_fill_skill['feils2'],'feils2','ai_fill_skill')
+ai_card_use['#feils2']=wrap(ai_card_use['#feils2'],'#feils2','ai_card_use')
+ai_skill_invoke['jiushu']=wrap(ai_skill_invoke['jiushu'],'jiushu','ai_skill_invoke')
+ai_skill_use['@@jiushu']=wrap(ai_skill_use['@@jiushu'],'@@jiushu','ai_skill_use')
+ai_skill_invoke['xieheng']=wrap(ai_skill_invoke['xieheng'],'xieheng','ai_skill_invoke')
 sgs.ai_skill_playerchosen['xieheng']=wrap(sgs.ai_skill_playerchosen['xieheng'],'xieheng','ai_skill_playerchosen')
 sgs.ai_skill_cardask['@xieheng']=wrap(sgs.ai_skill_cardask['@xieheng'],'@xieheng','ai_skill_cardask')
-sgs.ai_skill_invoke['tjdzf']=wrap(sgs.ai_skill_invoke['tjdzf'],'tjdzf','ai_skill_invoke')
-sgs.ai_skill_invoke['qrdag']=wrap(sgs.ai_skill_invoke['qrdag'],'qrdag','ai_skill_invoke')
-sgs.ai_skill_choice['qrdag']=wrap(sgs.ai_skill_choice['qrdag'],'qrdag','ai_skill_choice')
-sgs.ai_skill_invoke['fenmao']=wrap(sgs.ai_skill_invoke['fenmao'],'fenmao','ai_skill_invoke')
+ai_skill_invoke['tjdzf']=wrap(ai_skill_invoke['tjdzf'],'tjdzf','ai_skill_invoke')
+ai_skill_invoke['qrdag']=wrap(ai_skill_invoke['qrdag'],'qrdag','ai_skill_invoke')
+ai_skill_choice['qrdag']=wrap(ai_skill_choice['qrdag'],'qrdag','ai_skill_choice')
+ai_skill_invoke['fenmao']=wrap(ai_skill_invoke['fenmao'],'fenmao','ai_skill_invoke')
 sgs.ai_skill_cardask['@fenmao-qp']=wrap(sgs.ai_skill_cardask['@fenmao-qp'],'@fenmao-qp','ai_skill_cardask')
-sgs.ai_fill_skill['changgui']=wrap(sgs.ai_fill_skill['changgui'],'changgui','ai_fill_skill')
-sgs.ai_skill_use_func['#changgui']=wrap(sgs.ai_skill_use_func['#changgui'],'#changgui','ai_skill_use_func')
-sgs.ai_fill_skill['heihua']=wrap(sgs.ai_fill_skill['heihua'],'heihua','ai_fill_skill')
-sgs.ai_skill_use_func['#heihua']=wrap(sgs.ai_skill_use_func['#heihua'],'#heihua','ai_skill_use_func')
-sgs.ai_skill_use['@@maware']=wrap(sgs.ai_skill_use['@@maware'],'@@maware','ai_skill_use')
-sgs.ai_skill_choice['samsara']=wrap(sgs.ai_skill_choice['samsara'],'samsara','ai_skill_choice')
-sgs.ai_skill_use['@@kuixin']=wrap(sgs.ai_skill_use['@@kuixin'],'@@kuixin','ai_skill_use')
-sgs.ai_skill_invoke['slash_defence']=wrap(sgs.ai_skill_invoke['slash_defence'],'slash_defence','ai_skill_invoke')
-sgs.ai_skill_invoke['zhanxianfanyu']=wrap(sgs.ai_skill_invoke['zhanxianfanyu'],'zhanxianfanyu','ai_skill_invoke')
+ai_fill_skill['changgui']=wrap(ai_fill_skill['changgui'],'changgui','ai_fill_skill')
+ai_card_use['#changgui']=wrap(ai_card_use['#changgui'],'#changgui','ai_card_use')
+ai_fill_skill['heihua']=wrap(ai_fill_skill['heihua'],'heihua','ai_fill_skill')
+ai_card_use['#heihua']=wrap(ai_card_use['#heihua'],'#heihua','ai_card_use')
+ai_skill_use['@@maware']=wrap(ai_skill_use['@@maware'],'@@maware','ai_skill_use')
+ai_skill_choice['samsara']=wrap(ai_skill_choice['samsara'],'samsara','ai_skill_choice')
+ai_skill_use['@@kuixin']=wrap(ai_skill_use['@@kuixin'],'@@kuixin','ai_skill_use')
+ai_skill_invoke['slash_defence']=wrap(ai_skill_invoke['slash_defence'],'slash_defence','ai_skill_invoke')
+ai_skill_invoke['zhanxianfanyu']=wrap(ai_skill_invoke['zhanxianfanyu'],'zhanxianfanyu','ai_skill_invoke')
 sgs.ai_skill_playerchosen['zhanxianfanyu']=wrap(sgs.ai_skill_playerchosen['zhanxianfanyu'],'zhanxianfanyu','ai_skill_playerchosen')
-sgs.ai_skill_invoke['jixieshen']=wrap(sgs.ai_skill_invoke['jixieshen'],'jixieshen','ai_skill_invoke')
-sgs.ai_skill_choice['jixieshen']=wrap(sgs.ai_skill_choice['jixieshen'],'jixieshen','ai_skill_choice')
+ai_skill_invoke['jixieshen']=wrap(ai_skill_invoke['jixieshen'],'jixieshen','ai_skill_invoke')
+ai_skill_choice['jixieshen']=wrap(ai_skill_choice['jixieshen'],'jixieshen','ai_skill_choice')
 sgs.ai_skill_playerchosen['jixieshen']=wrap(sgs.ai_skill_playerchosen['jixieshen'],'jixieshen','ai_skill_playerchosen')
-sgs.ai_skill_invoke['jixieshen:fixmachine']=wrap(sgs.ai_skill_invoke['jixieshen:fixmachine'],'jixieshen:fixmachine','ai_skill_invoke')
-sgs.ai_skill_choice['jixieshenfixmachine']=wrap(sgs.ai_skill_choice['jixieshenfixmachine'],'jixieshenfixmachine','ai_skill_choice')
-sgs.ai_fill_skill['jixieshenchain']=wrap(sgs.ai_fill_skill['jixieshenchain'],'jixieshenchain','ai_fill_skill')
+ai_skill_invoke['jixieshen:fixmachine']=wrap(ai_skill_invoke['jixieshen:fixmachine'],'jixieshen:fixmachine','ai_skill_invoke')
+ai_skill_choice['jixieshenfixmachine']=wrap(ai_skill_choice['jixieshenfixmachine'],'jixieshenfixmachine','ai_skill_choice')
+ai_fill_skill['jixieshenchain']=wrap(ai_fill_skill['jixieshenchain'],'jixieshenchain','ai_fill_skill')
 do local f=sgs.ai_view_as['jixieshenchain'];sgs.ai_view_as['jixieshenchain']=function(...)return proposal(f(...))end end
 sgs.ai_ajustdamage_to['jixieshendefense']=wrap(sgs.ai_ajustdamage_to['jixieshendefense'],'jixieshendefense','ai_ajustdamage_to')
-sgs.ai_skill_invoke['jixieshenslash']=wrap(sgs.ai_skill_invoke['jixieshenslash'],'jixieshenslash','ai_skill_invoke')
+ai_skill_invoke['jixieshenslash']=wrap(ai_skill_invoke['jixieshenslash'],'jixieshenslash','ai_skill_invoke')
 sgs.ai_skill_playerchosen['loyal_inu']=wrap(sgs.ai_skill_playerchosen['loyal_inu'],'loyal_inu','ai_skill_playerchosen')
-sgs.ai_skill_choice['kikann']=wrap(sgs.ai_skill_choice['kikann'],'kikann','ai_skill_choice')
-sgs.ai_skill_choice['jueduiyazhi']=wrap(sgs.ai_skill_choice['jueduiyazhi'],'jueduiyazhi','ai_skill_choice')
-sgs.ai_fill_skill['jueduiyazhi']=wrap(sgs.ai_fill_skill['jueduiyazhi'],'jueduiyazhi','ai_fill_skill')
-sgs.ai_skill_use_func['#jueduiyazhiCard']=wrap(sgs.ai_skill_use_func['#jueduiyazhiCard'],'#jueduiyazhiCard','ai_skill_use_func')
-sgs.ai_fill_skill['guangzijupao']=wrap(sgs.ai_fill_skill['guangzijupao'],'guangzijupao','ai_fill_skill')
-sgs.ai_skill_use_func['#guangzijupaoCard']=wrap(sgs.ai_skill_use_func['#guangzijupaoCard'],'#guangzijupaoCard','ai_skill_use_func')
-sgs.ai_skill_invoke['Luayanhu']=wrap(sgs.ai_skill_invoke['Luayanhu'],'Luayanhu','ai_skill_invoke')
-sgs.ai_skill_invoke['xinsuo']=wrap(sgs.ai_skill_invoke['xinsuo'],'xinsuo','ai_skill_invoke')
-sgs.ai_skill_choice['xinsuo']=wrap(sgs.ai_skill_choice['xinsuo'],'xinsuo','ai_skill_choice')
+ai_skill_choice['kikann']=wrap(ai_skill_choice['kikann'],'kikann','ai_skill_choice')
+ai_skill_choice['jueduiyazhi']=wrap(ai_skill_choice['jueduiyazhi'],'jueduiyazhi','ai_skill_choice')
+ai_fill_skill['jueduiyazhi']=wrap(ai_fill_skill['jueduiyazhi'],'jueduiyazhi','ai_fill_skill')
+ai_card_use['#jueduiyazhiCard']=wrap(ai_card_use['#jueduiyazhiCard'],'#jueduiyazhiCard','ai_card_use')
+ai_fill_skill['guangzijupao']=wrap(ai_fill_skill['guangzijupao'],'guangzijupao','ai_fill_skill')
+ai_card_use['#guangzijupaoCard']=wrap(ai_card_use['#guangzijupaoCard'],'#guangzijupaoCard','ai_card_use')
+ai_skill_invoke['Luayanhu']=wrap(ai_skill_invoke['Luayanhu'],'Luayanhu','ai_skill_invoke')
+ai_skill_invoke['xinsuo']=wrap(ai_skill_invoke['xinsuo'],'xinsuo','ai_skill_invoke')
+ai_skill_choice['xinsuo']=wrap(ai_skill_choice['xinsuo'],'xinsuo','ai_skill_choice')
 sgs.ai_skill_cardask['@fengfu-discard']=wrap(sgs.ai_skill_cardask['@fengfu-discard'],'@fengfu-discard','ai_skill_cardask')
-sgs.ai_fill_skill['yohane']=wrap(sgs.ai_fill_skill['yohane'],'yohane','ai_fill_skill')
-sgs.ai_skill_use_func['#yohane']=wrap(sgs.ai_skill_use_func['#yohane'],'#yohane','ai_skill_use_func')
+ai_fill_skill['yohane']=wrap(ai_fill_skill['yohane'],'yohane','ai_fill_skill')
+ai_card_use['#yohane']=wrap(ai_card_use['#yohane'],'#yohane','ai_card_use')
 sgs.ai_skill_cardask['#yohane-distribute']=wrap(sgs.ai_skill_cardask['#yohane-distribute'],'#yohane-distribute','ai_skill_cardask')
 sgs.ai_skill_playerchosen['yohane']=wrap(sgs.ai_skill_playerchosen['yohane'],'yohane','ai_skill_playerchosen')
-sgs.ai_skill_choice['yohane']=wrap(sgs.ai_skill_choice['yohane'],'yohane','ai_skill_choice')
-sgs.ai_skill_choice['fanyi']=wrap(sgs.ai_skill_choice['fanyi'],'fanyi','ai_skill_choice')
-sgs.ai_skill_invoke['jihang']=wrap(sgs.ai_skill_invoke['jihang'],'jihang','ai_skill_invoke')
+ai_skill_choice['yohane']=wrap(ai_skill_choice['yohane'],'yohane','ai_skill_choice')
+ai_skill_choice['fanyi']=wrap(ai_skill_choice['fanyi'],'fanyi','ai_skill_choice')
+ai_skill_invoke['jihang']=wrap(ai_skill_invoke['jihang'],'jihang','ai_skill_invoke')
 sgs.ai_skill_playerchosen['jihang']=wrap(sgs.ai_skill_playerchosen['jihang'],'jihang','ai_skill_playerchosen')
 sgs.ai_skill_playerchosen['anni']=wrap(sgs.ai_skill_playerchosen['anni'],'anni','ai_skill_playerchosen')
-sgs.ai_skill_choice['anni']=wrap(sgs.ai_skill_choice['anni'],'anni','ai_skill_choice')
-sgs.ai_skill_choice['jiaoxing']=wrap(sgs.ai_skill_choice['jiaoxing'],'jiaoxing','ai_skill_choice')
-sgs.ai_skill_use['@@jiaoxing']=wrap(sgs.ai_skill_use['@@jiaoxing'],'@@jiaoxing','ai_skill_use')
-sgs.ai_skill_choice['sandun']=wrap(sgs.ai_skill_choice['sandun'],'sandun','ai_skill_choice')
-sgs.ai_fill_skill['xieyan']=wrap(sgs.ai_fill_skill['xieyan'],'xieyan','ai_fill_skill')
-sgs.ai_skill_use_func['#xieyancard']=wrap(sgs.ai_skill_use_func['#xieyancard'],'#xieyancard','ai_skill_use_func')
-sgs.ai_skill_invoke['sugong']=wrap(sgs.ai_skill_invoke['sugong'],'sugong','ai_skill_invoke')
-sgs.ai_skill_choice['sugong']=wrap(sgs.ai_skill_choice['sugong'],'sugong','ai_skill_choice')
-sgs.ai_skill_invoke['fuzou']=wrap(sgs.ai_skill_invoke['fuzou'],'fuzou','ai_skill_invoke')
+ai_skill_choice['anni']=wrap(ai_skill_choice['anni'],'anni','ai_skill_choice')
+ai_skill_choice['jiaoxing']=wrap(ai_skill_choice['jiaoxing'],'jiaoxing','ai_skill_choice')
+ai_skill_use['@@jiaoxing']=wrap(ai_skill_use['@@jiaoxing'],'@@jiaoxing','ai_skill_use')
+ai_skill_choice['sandun']=wrap(ai_skill_choice['sandun'],'sandun','ai_skill_choice')
+ai_fill_skill['xieyan']=wrap(ai_fill_skill['xieyan'],'xieyan','ai_fill_skill')
+ai_card_use['#xieyancard']=wrap(ai_card_use['#xieyancard'],'#xieyancard','ai_card_use')
+ai_skill_invoke['sugong']=wrap(ai_skill_invoke['sugong'],'sugong','ai_skill_invoke')
+ai_skill_choice['sugong']=wrap(ai_skill_choice['sugong'],'sugong','ai_skill_choice')
+ai_skill_invoke['fuzou']=wrap(ai_skill_invoke['fuzou'],'fuzou','ai_skill_invoke')
 sgs.ai_skill_playerchosen['fuzou']=wrap(sgs.ai_skill_playerchosen['fuzou'],'fuzou','ai_skill_playerchosen')
 sgs.ai_card_priority['haiyin']=wrap(sgs.ai_card_priority['haiyin'],'haiyin','ai_card_priority')
-sgs.ai_skill_invoke['tianqu']=wrap(sgs.ai_skill_invoke['tianqu'],'tianqu','ai_skill_invoke')
+ai_skill_invoke['tianqu']=wrap(ai_skill_invoke['tianqu'],'tianqu','ai_skill_invoke')
 sgs.ai_skill_playerchosen['tianqu_from']=wrap(sgs.ai_skill_playerchosen['tianqu_from'],'tianqu_from','ai_skill_playerchosen')
 sgs.ai_skill_playerchosen['tianqu_to']=wrap(sgs.ai_skill_playerchosen['tianqu_to'],'tianqu_to','ai_skill_playerchosen')
 sgs.ai_can_damagehp['tianqu']=wrap(sgs.ai_can_damagehp['tianqu'],'tianqu','ai_can_damagehp')
-sgs.ai_skill_invoke['htms_wanlan']=wrap(sgs.ai_skill_invoke['htms_wanlan'],'htms_wanlan','ai_skill_invoke')
+ai_skill_invoke['htms_wanlan']=wrap(ai_skill_invoke['htms_wanlan'],'htms_wanlan','ai_skill_invoke')
 sgs.ai_skill_playerchosen['htms_wanlan']=wrap(sgs.ai_skill_playerchosen['htms_wanlan'],'htms_wanlan','ai_skill_playerchosen')
 sgs.ai_skill_discard['htms_wanlan']=wrap(sgs.ai_skill_discard['htms_wanlan'],'htms_wanlan','ai_skill_discard')
-sgs.ai_skill_choice['htms_wanlan']=wrap(sgs.ai_skill_choice['htms_wanlan'],'htms_wanlan','ai_skill_choice')
+ai_skill_choice['htms_wanlan']=wrap(ai_skill_choice['htms_wanlan'],'htms_wanlan','ai_skill_choice')
 sgs.ai_skill_playerchosen['huanggui']=wrap(sgs.ai_skill_playerchosen['huanggui'],'huanggui','ai_skill_playerchosen')
-sgs.ai_skill_invoke['fuqian']=wrap(sgs.ai_skill_invoke['fuqian'],'fuqian','ai_skill_invoke')
-sgs.ai_fill_skill['zangsong']=wrap(sgs.ai_fill_skill['zangsong'],'zangsong','ai_fill_skill')
-sgs.ai_skill_use_func['#zangsongCard']=wrap(sgs.ai_skill_use_func['#zangsongCard'],'#zangsongCard','ai_skill_use_func')
-sgs.ai_skill_invoke['jianwushu']=wrap(sgs.ai_skill_invoke['jianwushu'],'jianwushu','ai_skill_invoke')
-sgs.ai_skill_invoke['huoliquankai']=wrap(sgs.ai_skill_invoke['huoliquankai'],'huoliquankai','ai_skill_invoke')
+ai_skill_invoke['fuqian']=wrap(ai_skill_invoke['fuqian'],'fuqian','ai_skill_invoke')
+ai_fill_skill['zangsong']=wrap(ai_fill_skill['zangsong'],'zangsong','ai_fill_skill')
+ai_card_use['#zangsongCard']=wrap(ai_card_use['#zangsongCard'],'#zangsongCard','ai_card_use')
+ai_skill_invoke['jianwushu']=wrap(ai_skill_invoke['jianwushu'],'jianwushu','ai_skill_invoke')
+ai_skill_invoke['huoliquankai']=wrap(ai_skill_invoke['huoliquankai'],'huoliquankai','ai_skill_invoke')
 sgs.ai_skill_playerchosen['huoliquankai']=wrap(sgs.ai_skill_playerchosen['huoliquankai'],'huoliquankai','ai_skill_playerchosen')
 sgs.ai_skill_playerchosen['juexingmoshen']=wrap(sgs.ai_skill_playerchosen['juexingmoshen'],'juexingmoshen','ai_skill_playerchosen')
-sgs.ai_skill_invoke['wujinzhishu']=wrap(sgs.ai_skill_invoke['wujinzhishu'],'wujinzhishu','ai_skill_invoke')
-sgs.ai_fill_skill['chunrijilu']=wrap(sgs.ai_fill_skill['chunrijilu'],'chunrijilu','ai_fill_skill')
-sgs.ai_skill_use_func['#chunrijilu']=wrap(sgs.ai_skill_use_func['#chunrijilu'],'#chunrijilu','ai_skill_use_func')
-sgs.ai_skill_use['@@chunrijilu!']=wrap(sgs.ai_skill_use['@@chunrijilu!'],'@@chunrijilu!','ai_skill_use')
-sgs.ai_skill_use['@@haite']=wrap(sgs.ai_skill_use['@@haite'],'@@haite','ai_skill_use')
-sgs.ai_fill_skill['yueying']=wrap(sgs.ai_fill_skill['yueying'],'yueying','ai_fill_skill')
-sgs.ai_skill_use_func['#yueying']=wrap(sgs.ai_skill_use_func['#yueying'],'#yueying','ai_skill_use_func')
+ai_skill_invoke['wujinzhishu']=wrap(ai_skill_invoke['wujinzhishu'],'wujinzhishu','ai_skill_invoke')
+ai_fill_skill['chunrijilu']=wrap(ai_fill_skill['chunrijilu'],'chunrijilu','ai_fill_skill')
+ai_card_use['#chunrijilu']=wrap(ai_card_use['#chunrijilu'],'#chunrijilu','ai_card_use')
+ai_skill_use['@@chunrijilu!']=wrap(ai_skill_use['@@chunrijilu!'],'@@chunrijilu!','ai_skill_use')
+ai_skill_use['@@haite']=wrap(ai_skill_use['@@haite'],'@@haite','ai_skill_use')
+ai_fill_skill['yueying']=wrap(ai_fill_skill['yueying'],'yueying','ai_fill_skill')
+ai_card_use['#yueying']=wrap(ai_card_use['#yueying'],'#yueying','ai_card_use')
 sgs.ai_cardneed['yueying']=wrap(sgs.ai_cardneed['yueying'],'yueying','ai_cardneed')
 sgs.ai_ajustdamage_to['hmrleiji']=wrap(sgs.ai_ajustdamage_to['hmrleiji'],'hmrleiji','ai_ajustdamage_to')
-sgs.ai_skill_invoke['jiyidiejia']=wrap(sgs.ai_skill_invoke['jiyidiejia'],'jiyidiejia','ai_skill_invoke')
-sgs.ai_skill_invoke['dushe']=wrap(sgs.ai_skill_invoke['dushe'],'dushe','ai_skill_invoke')
-sgs.ai_fill_skill['zuzhou']=wrap(sgs.ai_fill_skill['zuzhou'],'zuzhou','ai_fill_skill')
-sgs.ai_skill_use_func['#zuzhouCard']=wrap(sgs.ai_skill_use_func['#zuzhouCard'],'#zuzhouCard','ai_skill_use_func')
-sgs.ai_skill_use['@@xiangyangshi']=wrap(sgs.ai_skill_use['@@xiangyangshi'],'@@xiangyangshi','ai_skill_use')
+ai_skill_invoke['jiyidiejia']=wrap(ai_skill_invoke['jiyidiejia'],'jiyidiejia','ai_skill_invoke')
+ai_skill_invoke['dushe']=wrap(ai_skill_invoke['dushe'],'dushe','ai_skill_invoke')
+ai_fill_skill['zuzhou']=wrap(ai_fill_skill['zuzhou'],'zuzhou','ai_fill_skill')
+ai_card_use['#zuzhouCard']=wrap(ai_card_use['#zuzhouCard'],'#zuzhouCard','ai_card_use')
+ai_skill_use['@@xiangyangshi']=wrap(ai_skill_use['@@xiangyangshi'],'@@xiangyangshi','ai_skill_use')
 sgs.ai_cardneed['xiangyangshi']=wrap(sgs.ai_cardneed['xiangyangshi'],'xiangyangshi','ai_cardneed')
-sgs.ai_fill_skill['shengdanny']=wrap(sgs.ai_fill_skill['shengdanny'],'shengdanny','ai_fill_skill')
-sgs.ai_skill_use_func['#shengdanny']=wrap(sgs.ai_skill_use_func['#shengdanny'],'#shengdanny','ai_skill_use_func')
+ai_fill_skill['shengdanny']=wrap(ai_fill_skill['shengdanny'],'shengdanny','ai_fill_skill')
+ai_card_use['#shengdanny']=wrap(ai_card_use['#shengdanny'],'#shengdanny','ai_card_use')
 sgs.ai_cardneed['shengdanny']=wrap(sgs.ai_cardneed['shengdanny'],'shengdanny','ai_cardneed')
-sgs.ai_skill_invoke['leijijingyan']=wrap(sgs.ai_skill_invoke['leijijingyan'],'leijijingyan','ai_skill_invoke')
+ai_skill_invoke['leijijingyan']=wrap(ai_skill_invoke['leijijingyan'],'leijijingyan','ai_skill_invoke')
 sgs.ai_cardneed['leijijingyan']=wrap(sgs.ai_cardneed['leijijingyan'],'leijijingyan','ai_cardneed')
-sgs.ai_skill_invoke['suoersiman']=wrap(sgs.ai_skill_invoke['suoersiman'],'suoersiman','ai_skill_invoke')
+ai_skill_invoke['suoersiman']=wrap(ai_skill_invoke['suoersiman'],'suoersiman','ai_skill_invoke')
 sgs.ai_skill_playerchosen['suoersiman']=wrap(sgs.ai_skill_playerchosen['suoersiman'],'suoersiman','ai_skill_playerchosen')
-sgs.ai_skill_invoke['yinbiman']=wrap(sgs.ai_skill_invoke['yinbiman'],'yinbiman','ai_skill_invoke')
-sgs.ai_skill_invoke['jujiman']=wrap(sgs.ai_skill_invoke['jujiman'],'jujiman','ai_skill_invoke')
+ai_skill_invoke['yinbiman']=wrap(ai_skill_invoke['yinbiman'],'yinbiman','ai_skill_invoke')
+ai_skill_invoke['jujiman']=wrap(ai_skill_invoke['jujiman'],'jujiman','ai_skill_invoke')
 sgs.ai_skill_playerchosen['jujiman']=wrap(sgs.ai_skill_playerchosen['jujiman'],'jujiman','ai_skill_playerchosen')
 sgs.ai_skill_playerchosen['mingduan_put']=wrap(sgs.ai_skill_playerchosen['mingduan_put'],'mingduan_put','ai_skill_playerchosen')
 sgs.ai_skill_cardask['@mingduanqiuh']=wrap(sgs.ai_skill_cardask['@mingduanqiuh'],'@mingduanqiuh','ai_skill_cardask')
-sgs.ai_fill_skill['yushicp']=wrap(sgs.ai_fill_skill['yushicp'],'yushicp','ai_fill_skill')
-sgs.ai_skill_use_func['#yushicp']=wrap(sgs.ai_skill_use_func['#yushicp'],'#yushicp','ai_skill_use_func')
+ai_fill_skill['yushicp']=wrap(ai_fill_skill['yushicp'],'yushicp','ai_fill_skill')
+ai_card_use['#yushicp']=wrap(ai_card_use['#yushicp'],'#yushicp','ai_card_use')
 sgs.ai_guhuo_card['yushicp']=wrap(sgs.ai_guhuo_card['yushicp'],'yushicp','ai_guhuo_card')
-sgs.ai_skill_invoke['wushitexing']=wrap(sgs.ai_skill_invoke['wushitexing'],'wushitexing','ai_skill_invoke')
-sgs.ai_skill_invoke['shanyao']=wrap(sgs.ai_skill_invoke['shanyao'],'shanyao','ai_skill_invoke')
+ai_skill_invoke['wushitexing']=wrap(ai_skill_invoke['wushitexing'],'wushitexing','ai_skill_invoke')
+ai_skill_invoke['shanyao']=wrap(ai_skill_invoke['shanyao'],'shanyao','ai_skill_invoke')
 sgs.ai_card_priority['shanyao']=wrap(sgs.ai_card_priority['shanyao'],'shanyao','ai_card_priority')
 sgs.ai_skill_playerchosen['jiansu']=wrap(sgs.ai_skill_playerchosen['jiansu'],'jiansu','ai_skill_playerchosen')
-sgs.ai_fill_skill['yugao']=wrap(sgs.ai_fill_skill['yugao'],'yugao','ai_fill_skill')
-sgs.ai_skill_use_func['#yugao']=wrap(sgs.ai_skill_use_func['#yugao'],'#yugao','ai_skill_use_func')
-sgs.ai_skill_use['@@yugao']=wrap(sgs.ai_skill_use['@@yugao'],'@@yugao','ai_skill_use')
-sgs.ai_skill_invoke['yugao']=wrap(sgs.ai_skill_invoke['yugao'],'yugao','ai_skill_invoke')
+ai_fill_skill['yugao']=wrap(ai_fill_skill['yugao'],'yugao','ai_fill_skill')
+ai_card_use['#yugao']=wrap(ai_card_use['#yugao'],'#yugao','ai_card_use')
+ai_skill_use['@@yugao']=wrap(ai_skill_use['@@yugao'],'@@yugao','ai_skill_use')
+ai_skill_invoke['yugao']=wrap(ai_skill_invoke['yugao'],'yugao','ai_skill_invoke')
 sgs.ai_skill_askforag['yugao']=wrap(sgs.ai_skill_askforag['yugao'],'yugao','ai_skill_askforag')
 sgs.ai_card_priority['guaidao']=wrap(sgs.ai_card_priority['guaidao'],'guaidao','ai_card_priority')
-sgs.ai_skill_invoke['weituo']=wrap(sgs.ai_skill_invoke['weituo'],'weituo','ai_skill_invoke')
-sgs.ai_skill_invoke['weituo11']=wrap(sgs.ai_skill_invoke['weituo11'],'weituo11','ai_skill_invoke')
+ai_skill_invoke['weituo']=wrap(ai_skill_invoke['weituo'],'weituo','ai_skill_invoke')
+ai_skill_invoke['weituo11']=wrap(ai_skill_invoke['weituo11'],'weituo11','ai_skill_invoke')
 sgs.ai_skill_playerchosen['zhihouz']=wrap(sgs.ai_skill_playerchosen['zhihouz'],'zhihouz','ai_skill_playerchosen')
-sgs.ai_skill_invoke['zhengdao']=wrap(sgs.ai_skill_invoke['zhengdao'],'zhengdao','ai_skill_invoke')
+ai_skill_invoke['zhengdao']=wrap(ai_skill_invoke['zhengdao'],'zhengdao','ai_skill_invoke')
 sgs.ai_skill_playerchosen['zhengdao']=wrap(sgs.ai_skill_playerchosen['zhengdao'],'zhengdao','ai_skill_playerchosen')
-sgs.ai_skill_invoke['jiqiangs']=wrap(sgs.ai_skill_invoke['jiqiangs'],'jiqiangs','ai_skill_invoke')
+ai_skill_invoke['jiqiangs']=wrap(ai_skill_invoke['jiqiangs'],'jiqiangs','ai_skill_invoke')
 sgs.ai_cardneed['lanyushanbi']=wrap(sgs.ai_cardneed['lanyushanbi'],'lanyushanbi','ai_cardneed')
-sgs.ai_fill_skill['jibanvs']=wrap(sgs.ai_fill_skill['jibanvs'],'jibanvs','ai_fill_skill')
-sgs.ai_skill_use_func['#jibanhyCard']=wrap(sgs.ai_skill_use_func['#jibanhyCard'],'#jibanhyCard','ai_skill_use_func')
+ai_fill_skill['jibanvs']=wrap(ai_fill_skill['jibanvs'],'jibanvs','ai_fill_skill')
+ai_card_use['#jibanhyCard']=wrap(ai_card_use['#jibanhyCard'],'#jibanhyCard','ai_card_use')
 sgs.ai_skill_playerchosen['weixiaojn']=wrap(sgs.ai_skill_playerchosen['weixiaojn'],'weixiaojn','ai_skill_playerchosen')
 sgs.ai_skill_playerchosen['nvzidao']=wrap(sgs.ai_skill_playerchosen['nvzidao'],'nvzidao','ai_skill_playerchosen')
-sgs.ai_skill_use['@@nvzidao']=wrap(sgs.ai_skill_use['@@nvzidao'],'@@nvzidao','ai_skill_use')
+ai_skill_use['@@nvzidao']=wrap(ai_skill_use['@@nvzidao'],'@@nvzidao','ai_skill_use')
 sgs.ai_skill_cardchosen['nvzidaoCard']=wrap(sgs.ai_skill_cardchosen['nvzidaoCard'],'nvzidaoCard','ai_skill_cardchosen')
 sgs.ai_skill_playerchosen['nvzidaoCard']=wrap(sgs.ai_skill_playerchosen['nvzidaoCard'],'nvzidaoCard','ai_skill_playerchosen')
 sgs.ai_card_priority['nvzidao']=wrap(sgs.ai_card_priority['nvzidao'],'nvzidao','ai_card_priority')
 sgs.ai_card_priority['weixiaojn']=wrap(sgs.ai_card_priority['weixiaojn'],'weixiaojn','ai_card_priority')
-sgs.ai_skill_invoke['chuanxiao']=wrap(sgs.ai_skill_invoke['chuanxiao'],'chuanxiao','ai_skill_invoke')
-sgs.ai_fill_skill['duandai']=wrap(sgs.ai_fill_skill['duandai'],'duandai','ai_fill_skill')
-sgs.ai_skill_use_func['#duandai']=wrap(sgs.ai_skill_use_func['#duandai'],'#duandai','ai_skill_use_func')
+ai_skill_invoke['chuanxiao']=wrap(ai_skill_invoke['chuanxiao'],'chuanxiao','ai_skill_invoke')
+ai_fill_skill['duandai']=wrap(ai_fill_skill['duandai'],'duandai','ai_fill_skill')
+ai_card_use['#duandai']=wrap(ai_card_use['#duandai'],'#duandai','ai_card_use')
 sgs.ai_skill_cardask['@duandai']=wrap(sgs.ai_skill_cardask['@duandai'],'@duandai','ai_skill_cardask')
-sgs.ai_skill_choice['duandai']=wrap(sgs.ai_skill_choice['duandai'],'duandai','ai_skill_choice')
+ai_skill_choice['duandai']=wrap(ai_skill_choice['duandai'],'duandai','ai_skill_choice')
 sgs.ai_skill_cardchosen['duandai']=wrap(sgs.ai_skill_cardchosen['duandai'],'duandai','ai_skill_cardchosen')
 do local f=sgs.ai_view_as['tucao'];sgs.ai_view_as['tucao']=function(...)return proposal(f(...))end end
 sgs.ai_skill_playerchosen['tucao']=wrap(sgs.ai_skill_playerchosen['tucao'],'tucao','ai_skill_playerchosen')
-sgs.ai_skill_choice['#tucaoxx']=wrap(sgs.ai_skill_choice['#tucaoxx'],'#tucaoxx','ai_skill_choice')
+ai_skill_choice['#tucaoxx']=wrap(ai_skill_choice['#tucaoxx'],'#tucaoxx','ai_skill_choice')
 sgs.ai_cardneed['tucao']=wrap(sgs.ai_cardneed['tucao'],'tucao','ai_cardneed')
-sgs.ai_fill_skill['wangwei']=wrap(sgs.ai_fill_skill['wangwei'],'wangwei','ai_fill_skill')
-sgs.ai_skill_use_func['#wangwei']=wrap(sgs.ai_skill_use_func['#wangwei'],'#wangwei','ai_skill_use_func')
-sgs.ai_skill_choice['qidao']=wrap(sgs.ai_skill_choice['qidao'],'qidao','ai_skill_choice')
+ai_fill_skill['wangwei']=wrap(ai_fill_skill['wangwei'],'wangwei','ai_fill_skill')
+ai_card_use['#wangwei']=wrap(ai_card_use['#wangwei'],'#wangwei','ai_card_use')
+ai_skill_choice['qidao']=wrap(ai_skill_choice['qidao'],'qidao','ai_skill_choice')
 sgs.ai_skill_playerchosen['qiyuan']=wrap(sgs.ai_skill_playerchosen['qiyuan'],'qiyuan','ai_skill_playerchosen')
-sgs.ai_fill_skill['qiyuan']=wrap(sgs.ai_fill_skill['qiyuan'],'qiyuan','ai_fill_skill')
-sgs.ai_skill_use_func['#qiyuan']=wrap(sgs.ai_skill_use_func['#qiyuan'],'#qiyuan','ai_skill_use_func')
+ai_fill_skill['qiyuan']=wrap(ai_fill_skill['qiyuan'],'qiyuan','ai_fill_skill')
+ai_card_use['#qiyuan']=wrap(ai_card_use['#qiyuan'],'#qiyuan','ai_card_use')
 do local f=sgs.ai_view_as['LuaLeishi'];sgs.ai_view_as['LuaLeishi']=function(...)return proposal(f(...))end end
-sgs.ai_fill_skill['LuaLeishi']=wrap(sgs.ai_fill_skill['LuaLeishi'],'LuaLeishi','ai_fill_skill')
-sgs.ai_skill_invoke['Luayuanxing']=wrap(sgs.ai_skill_invoke['Luayuanxing'],'Luayuanxing','ai_skill_invoke')
-sgs.ai_skill_use['@@Luayuanling']=wrap(sgs.ai_skill_use['@@Luayuanling'],'@@Luayuanling','ai_skill_use')
-sgs.ai_skill_invoke['Luashenyi']=wrap(sgs.ai_skill_invoke['Luashenyi'],'Luashenyi','ai_skill_invoke')
+ai_fill_skill['LuaLeishi']=wrap(ai_fill_skill['LuaLeishi'],'LuaLeishi','ai_fill_skill')
+ai_skill_invoke['Luayuanxing']=wrap(ai_skill_invoke['Luayuanxing'],'Luayuanxing','ai_skill_invoke')
+ai_skill_use['@@Luayuanling']=wrap(ai_skill_use['@@Luayuanling'],'@@Luayuanling','ai_skill_use')
+ai_skill_invoke['Luashenyi']=wrap(ai_skill_invoke['Luashenyi'],'Luashenyi','ai_skill_invoke')
 sgs.ai_skill_playerchosen['Luashenyi']=wrap(sgs.ai_skill_playerchosen['Luashenyi'],'Luashenyi','ai_skill_playerchosen')
-sgs.ai_skill_invoke['luajiejie']=wrap(sgs.ai_skill_invoke['luajiejie'],'luajiejie','ai_skill_invoke')
-sgs.ai_fill_skill['luakuaiqing']=wrap(sgs.ai_fill_skill['luakuaiqing'],'luakuaiqing','ai_fill_skill')
-sgs.ai_skill_use_func['#luakuaiqing']=wrap(sgs.ai_skill_use_func['#luakuaiqing'],'#luakuaiqing','ai_skill_use_func')
-sgs.ai_fill_skill['luajieao']=wrap(sgs.ai_fill_skill['luajieao'],'luajieao','ai_fill_skill')
-sgs.ai_skill_use_func['#luajieao']=wrap(sgs.ai_skill_use_func['#luajieao'],'#luajieao','ai_skill_use_func')
-sgs.ai_skill_invoke['luajinlun']=wrap(sgs.ai_skill_invoke['luajinlun'],'luajinlun','ai_skill_invoke')
+ai_skill_invoke['luajiejie']=wrap(ai_skill_invoke['luajiejie'],'luajiejie','ai_skill_invoke')
+ai_fill_skill['luakuaiqing']=wrap(ai_fill_skill['luakuaiqing'],'luakuaiqing','ai_fill_skill')
+ai_card_use['#luakuaiqing']=wrap(ai_card_use['#luakuaiqing'],'#luakuaiqing','ai_card_use')
+ai_fill_skill['luajieao']=wrap(ai_fill_skill['luajieao'],'luajieao','ai_fill_skill')
+ai_card_use['#luajieao']=wrap(ai_card_use['#luajieao'],'#luajieao','ai_card_use')
+ai_skill_invoke['luajinlun']=wrap(ai_skill_invoke['luajinlun'],'luajinlun','ai_skill_invoke')
 sgs.ai_skill_playerchosen['luajinlun']=wrap(sgs.ai_skill_playerchosen['luajinlun'],'luajinlun','ai_skill_playerchosen')
-sgs.ai_skill_invoke['empaidui']=wrap(sgs.ai_skill_invoke['empaidui'],'empaidui','ai_skill_invoke')
-sgs.ai_skill_use['@@empaidui']=wrap(sgs.ai_skill_use['@@empaidui'],'@@empaidui','ai_skill_use')
-sgs.ai_skill_invoke['yftuji']=wrap(sgs.ai_skill_invoke['yftuji'],'yftuji','ai_skill_invoke')
+ai_skill_invoke['empaidui']=wrap(ai_skill_invoke['empaidui'],'empaidui','ai_skill_invoke')
+ai_skill_use['@@empaidui']=wrap(ai_skill_use['@@empaidui'],'@@empaidui','ai_skill_use')
+ai_skill_invoke['yftuji']=wrap(ai_skill_invoke['yftuji'],'yftuji','ai_skill_invoke')
 sgs.ai_can_damagehp['zhongerhx']=wrap(sgs.ai_can_damagehp['zhongerhx'],'zhongerhx','ai_can_damagehp')
-sgs.ai_skill_invoke['zhongerhx']=wrap(sgs.ai_skill_invoke['zhongerhx'],'zhongerhx','ai_skill_invoke')
+ai_skill_invoke['zhongerhx']=wrap(ai_skill_invoke['zhongerhx'],'zhongerhx','ai_skill_invoke')
 sgs.ai_skill_askforag['zhongerhx']=wrap(sgs.ai_skill_askforag['zhongerhx'],'zhongerhx','ai_skill_askforag')
-sgs.ai_skill_use['@@zhongerhx']=wrap(sgs.ai_skill_use['@@zhongerhx'],'@@zhongerhx','ai_skill_use')
-sgs.ai_skill_invoke['hanrenzd']=wrap(sgs.ai_skill_invoke['hanrenzd'],'hanrenzd','ai_skill_invoke')
-sgs.ai_skill_invoke['bingfengzd']=wrap(sgs.ai_skill_invoke['bingfengzd'],'bingfengzd','ai_skill_invoke')
+ai_skill_use['@@zhongerhx']=wrap(ai_skill_use['@@zhongerhx'],'@@zhongerhx','ai_skill_use')
+ai_skill_invoke['hanrenzd']=wrap(ai_skill_invoke['hanrenzd'],'hanrenzd','ai_skill_invoke')
+ai_skill_invoke['bingfengzd']=wrap(ai_skill_invoke['bingfengzd'],'bingfengzd','ai_skill_invoke')
 sgs.ai_can_damagehp['bingfengzd']=wrap(sgs.ai_can_damagehp['bingfengzd'],'bingfengzd','ai_can_damagehp')
-sgs.ai_skill_choice['hezibz']=wrap(sgs.ai_skill_choice['hezibz'],'hezibz','ai_skill_choice')
+ai_skill_choice['hezibz']=wrap(ai_skill_choice['hezibz'],'hezibz','ai_skill_choice')
 sgs.ai_skill_cardask['@duancai']=wrap(sgs.ai_skill_cardask['@duancai'],'@duancai','ai_skill_cardask')
 sgs.ai_skill_cardask['@duancaiex']=wrap(sgs.ai_skill_cardask['@duancaiex'],'@duancaiex','ai_skill_cardask')
-sgs.ai_skill_invoke['midie']=wrap(sgs.ai_skill_invoke['midie'],'midie','ai_skill_invoke')
+ai_skill_invoke['midie']=wrap(ai_skill_invoke['midie'],'midie','ai_skill_invoke')
 sgs.ai_canNiepan_skill['midie']=wrap(sgs.ai_canNiepan_skill['midie'],'midie','ai_canNiepan_skill')
-sgs.ai_skill_invoke['tongzhouqg']=wrap(sgs.ai_skill_invoke['tongzhouqg'],'tongzhouqg','ai_skill_invoke')
+ai_skill_invoke['tongzhouqg']=wrap(ai_skill_invoke['tongzhouqg'],'tongzhouqg','ai_skill_invoke')
 sgs.ai_skill_cardask['@tongzhouqg']=wrap(sgs.ai_skill_cardask['@tongzhouqg'],'@tongzhouqg','ai_skill_cardask')
-sgs.ai_skill_use['@@qgjiesi']=wrap(sgs.ai_skill_use['@@qgjiesi'],'@@qgjiesi','ai_skill_use')
-sgs.ai_fill_skill['zjyizhen']=wrap(sgs.ai_fill_skill['zjyizhen'],'zjyizhen','ai_fill_skill')
-sgs.ai_skill_use_func['#zjyizhenCard']=wrap(sgs.ai_skill_use_func['#zjyizhenCard'],'#zjyizhenCard','ai_skill_use_func')
+ai_skill_use['@@qgjiesi']=wrap(ai_skill_use['@@qgjiesi'],'@@qgjiesi','ai_skill_use')
+ai_fill_skill['zjyizhen']=wrap(ai_fill_skill['zjyizhen'],'zjyizhen','ai_fill_skill')
+ai_card_use['#zjyizhenCard']=wrap(ai_card_use['#zjyizhenCard'],'#zjyizhenCard','ai_card_use')
 sgs.ai_use_revises['zjyizhen']=wrap(sgs.ai_use_revises['zjyizhen'],'zjyizhen','ai_use_revises')
 sgs.ai_cardneed['zjyizhen']=wrap(sgs.ai_cardneed['zjyizhen'],'zjyizhen','ai_cardneed')
-sgs.ai_skill_invoke['zjmoshuxif']=wrap(sgs.ai_skill_invoke['zjmoshuxif'],'zjmoshuxif','ai_skill_invoke')
+ai_skill_invoke['zjmoshuxif']=wrap(ai_skill_invoke['zjmoshuxif'],'zjmoshuxif','ai_skill_invoke')
 sgs.ai_skill_cardask['@zjmoshuxif']=wrap(sgs.ai_skill_cardask['@zjmoshuxif'],'@zjmoshuxif','ai_skill_cardask')
-sgs.ai_skill_invoke['zjruoshi']=wrap(sgs.ai_skill_invoke['zjruoshi'],'zjruoshi','ai_skill_invoke')
-sgs.ai_skill_choice['zjruoshi']=wrap(sgs.ai_skill_choice['zjruoshi'],'zjruoshi','ai_skill_choice')
-sgs.ai_skill_choice['zjaojiaol']=wrap(sgs.ai_skill_choice['zjaojiaol'],'zjaojiaol','ai_skill_choice')
+ai_skill_invoke['zjruoshi']=wrap(ai_skill_invoke['zjruoshi'],'zjruoshi','ai_skill_invoke')
+ai_skill_choice['zjruoshi']=wrap(ai_skill_choice['zjruoshi'],'zjruoshi','ai_skill_choice')
+ai_skill_choice['zjaojiaol']=wrap(ai_skill_choice['zjaojiaol'],'zjaojiaol','ai_skill_choice')
 sgs.ai_skill_cardchosen['zjaojiaol']=wrap(sgs.ai_skill_cardchosen['zjaojiaol'],'zjaojiaol','ai_skill_cardchosen')
-sgs.ai_fill_skill['zjaojiaol']=wrap(sgs.ai_fill_skill['zjaojiaol'],'zjaojiaol','ai_fill_skill')
-sgs.ai_skill_use_func['#zjaojiaol']=wrap(sgs.ai_skill_use_func['#zjaojiaol'],'#zjaojiaol','ai_skill_use_func')
-sgs.ai_skill_choice['puzou']=wrap(sgs.ai_skill_choice['puzou'],'puzou','ai_skill_choice')
-sgs.ai_skill_choice['htms_weiyi']=wrap(sgs.ai_skill_choice['htms_weiyi'],'htms_weiyi','ai_skill_choice')
+ai_fill_skill['zjaojiaol']=wrap(ai_fill_skill['zjaojiaol'],'zjaojiaol','ai_fill_skill')
+ai_card_use['#zjaojiaol']=wrap(ai_card_use['#zjaojiaol'],'#zjaojiaol','ai_card_use')
+ai_skill_choice['puzou']=wrap(ai_skill_choice['puzou'],'puzou','ai_skill_choice')
+ai_skill_choice['htms_weiyi']=wrap(ai_skill_choice['htms_weiyi'],'htms_weiyi','ai_skill_choice')
 sgs.ai_skill_cardask['lualushouC']=wrap(sgs.ai_skill_cardask['lualushouC'],'lualushouC','ai_skill_cardask')
 sgs.ai_skill_cardask['lualushouB']=wrap(sgs.ai_skill_cardask['lualushouB'],'lualushouB','ai_skill_cardask')
 sgs.ai_skill_playerchosen['lualushou']=wrap(sgs.ai_skill_playerchosen['lualushou'],'lualushou','ai_skill_playerchosen')
 sgs.ai_skill_cardask['lualushouA']=wrap(sgs.ai_skill_cardask['lualushouA'],'lualushouA','ai_skill_cardask')
-sgs.ai_skill_invoke['huazang']=wrap(sgs.ai_skill_invoke['huazang'],'huazang','ai_skill_invoke')
-sgs.ai_fill_skill['zchize']=wrap(sgs.ai_fill_skill['zchize'],'zchize','ai_fill_skill')
-sgs.ai_skill_use_func['#zchizeCard']=wrap(sgs.ai_skill_use_func['#zchizeCard'],'#zchizeCard','ai_skill_use_func')
-sgs.ai_skill_invoke['gaoling']=wrap(sgs.ai_skill_invoke['gaoling'],'gaoling','ai_skill_invoke')
+ai_skill_invoke['huazang']=wrap(ai_skill_invoke['huazang'],'huazang','ai_skill_invoke')
+ai_fill_skill['zchize']=wrap(ai_fill_skill['zchize'],'zchize','ai_fill_skill')
+ai_card_use['#zchizeCard']=wrap(ai_card_use['#zchizeCard'],'#zchizeCard','ai_card_use')
+ai_skill_invoke['gaoling']=wrap(ai_skill_invoke['gaoling'],'gaoling','ai_skill_invoke')
 sgs.ai_target_revises['gaoling']=wrap(sgs.ai_target_revises['gaoling'],'gaoling','ai_target_revises')
-sgs.ai_skill_invoke['zhengjiu']=wrap(sgs.ai_skill_invoke['zhengjiu'],'zhengjiu','ai_skill_invoke')
+ai_skill_invoke['zhengjiu']=wrap(ai_skill_invoke['zhengjiu'],'zhengjiu','ai_skill_invoke')
 sgs.ai_skill_playerchosen['zhengjiu']=wrap(sgs.ai_skill_playerchosen['zhengjiu'],'zhengjiu','ai_skill_playerchosen')
-sgs.ai_fill_skill['molwf']=wrap(sgs.ai_fill_skill['molwf'],'molwf','ai_fill_skill')
-sgs.ai_skill_use_func['#molwf']=wrap(sgs.ai_skill_use_func['#molwf'],'#molwf','ai_skill_use_func')
+ai_fill_skill['molwf']=wrap(ai_fill_skill['molwf'],'molwf','ai_fill_skill')
+ai_card_use['#molwf']=wrap(ai_card_use['#molwf'],'#molwf','ai_card_use')
 sgs.ai_ajustdamage_from['molwf']=wrap(sgs.ai_ajustdamage_from['molwf'],'molwf','ai_ajustdamage_from')
-sgs.ai_fill_skill['html_shisheng']=wrap(sgs.ai_fill_skill['html_shisheng'],'html_shisheng','ai_fill_skill')
-sgs.ai_skill_use_func['#html_shishengCard']=wrap(sgs.ai_skill_use_func['#html_shishengCard'],'#html_shishengCard','ai_skill_use_func')
-sgs.ai_fill_skill['ujyaozhan']=wrap(sgs.ai_fill_skill['ujyaozhan'],'ujyaozhan','ai_fill_skill')
-sgs.ai_skill_use_func['#ujyaozhanCard']=wrap(sgs.ai_skill_use_func['#ujyaozhanCard'],'#ujyaozhanCard','ai_skill_use_func')
-sgs.ai_skill_choice['Sdorica_FuWei']=wrap(sgs.ai_skill_choice['Sdorica_FuWei'],'Sdorica_FuWei','ai_skill_choice')
+ai_fill_skill['html_shisheng']=wrap(ai_fill_skill['html_shisheng'],'html_shisheng','ai_fill_skill')
+ai_card_use['#html_shishengCard']=wrap(ai_card_use['#html_shishengCard'],'#html_shishengCard','ai_card_use')
+ai_fill_skill['ujyaozhan']=wrap(ai_fill_skill['ujyaozhan'],'ujyaozhan','ai_fill_skill')
+ai_card_use['#ujyaozhanCard']=wrap(ai_card_use['#ujyaozhanCard'],'#ujyaozhanCard','ai_card_use')
+ai_skill_choice['Sdorica_FuWei']=wrap(ai_skill_choice['Sdorica_FuWei'],'Sdorica_FuWei','ai_skill_choice')
 sgs.ai_skill_discard['Sdorica_FuWei']=wrap(sgs.ai_skill_discard['Sdorica_FuWei'],'Sdorica_FuWei','ai_skill_discard')
-sgs.ai_fill_skill['Sdorica_MiLing']=wrap(sgs.ai_fill_skill['Sdorica_MiLing'],'Sdorica_MiLing','ai_fill_skill')
-sgs.ai_skill_use_func['#Sdorica_MiLingCard']=wrap(sgs.ai_skill_use_func['#Sdorica_MiLingCard'],'#Sdorica_MiLingCard','ai_skill_use_func')
-sgs.ai_fill_skill['void']=wrap(sgs.ai_fill_skill['void'],'void','ai_fill_skill')
-sgs.ai_skill_use_func['#void']=wrap(sgs.ai_skill_use_func['#void'],'#void','ai_skill_use_func')
+ai_fill_skill['Sdorica_MiLing']=wrap(ai_fill_skill['Sdorica_MiLing'],'Sdorica_MiLing','ai_fill_skill')
+ai_card_use['#Sdorica_MiLingCard']=wrap(ai_card_use['#Sdorica_MiLingCard'],'#Sdorica_MiLingCard','ai_card_use')
+ai_fill_skill['void']=wrap(ai_fill_skill['void'],'void','ai_fill_skill')
+ai_card_use['#void']=wrap(ai_card_use['#void'],'#void','ai_card_use')
 sgs.ai_card_priority['void']=wrap(sgs.ai_card_priority['void'],'void','ai_card_priority')
-sgs.ai_skill_choice['wangguo']=wrap(sgs.ai_skill_choice['wangguo'],'wangguo','ai_skill_choice')
-sgs.ai_skill_invoke['lsqd']=wrap(sgs.ai_skill_invoke['lsqd'],'lsqd','ai_skill_invoke')
-sgs.ai_skill_choice['lsqd']=wrap(sgs.ai_skill_choice['lsqd'],'lsqd','ai_skill_choice')
+ai_skill_choice['wangguo']=wrap(ai_skill_choice['wangguo'],'wangguo','ai_skill_choice')
+ai_skill_invoke['lsqd']=wrap(ai_skill_invoke['lsqd'],'lsqd','ai_skill_invoke')
+ai_skill_choice['lsqd']=wrap(ai_skill_choice['lsqd'],'lsqd','ai_skill_choice')
 sgs.ai_skill_cardask['@lsqd']=wrap(sgs.ai_skill_cardask['@lsqd'],'@lsqd','ai_skill_cardask')
 sgs.ai_skill_playerchosen['tscg']=wrap(sgs.ai_skill_playerchosen['tscg'],'tscg','ai_skill_playerchosen')
-sgs.ai_fill_skill['wzgz']=wrap(sgs.ai_fill_skill['wzgz'],'wzgz','ai_fill_skill')
-sgs.ai_skill_use_func['#wzgzcard']=wrap(sgs.ai_skill_use_func['#wzgzcard'],'#wzgzcard','ai_skill_use_func')
+ai_fill_skill['wzgz']=wrap(ai_fill_skill['wzgz'],'wzgz','ai_fill_skill')
+ai_card_use['#wzgzcard']=wrap(ai_card_use['#wzgzcard'],'#wzgzcard','ai_card_use')
 sgs.ai_ajustdamage_from['tcmfs']=wrap(sgs.ai_ajustdamage_from['tcmfs'],'tcmfs','ai_ajustdamage_from')
 sgs.ai_skill_discard['tcmfs']=wrap(sgs.ai_skill_discard['tcmfs'],'tcmfs','ai_skill_discard')
 sgs.ai_cardneed['blmf']=wrap(sgs.ai_cardneed['blmf'],'blmf','ai_cardneed')
 sgs.ai_cardneed['tcmfs']=wrap(sgs.ai_cardneed['tcmfs'],'tcmfs','ai_cardneed')
-sgs.ai_fill_skill['blmf']=wrap(sgs.ai_fill_skill['blmf'],'blmf','ai_fill_skill')
+ai_fill_skill['blmf']=wrap(ai_fill_skill['blmf'],'blmf','ai_fill_skill')
 sgs.ai_ajustdamage_from['blmf']=wrap(sgs.ai_ajustdamage_from['blmf'],'blmf','ai_ajustdamage_from')
 sgs.ai_skill_playerchosen['pomiehb']=wrap(sgs.ai_skill_playerchosen['pomiehb'],'pomiehb','ai_skill_playerchosen')
 sgs.ai_playerchosen_intention['pomiehb']=wrap(sgs.ai_playerchosen_intention['pomiehb'],'pomiehb','ai_playerchosen_intention')
-sgs.ai_skill_invoke['yiban']=wrap(sgs.ai_skill_invoke['yiban'],'yiban','ai_skill_invoke')
-sgs.ai_skill_use['@@yiban']=wrap(sgs.ai_skill_use['@@yiban'],'@@yiban','ai_skill_use')
+ai_skill_invoke['yiban']=wrap(ai_skill_invoke['yiban'],'yiban','ai_skill_invoke')
+ai_skill_use['@@yiban']=wrap(ai_skill_use['@@yiban'],'@@yiban','ai_skill_use')
 sgs.ai_card_intention['#yiban']=wrap(sgs.ai_card_intention['#yiban'],'#yiban','ai_card_intention')
 sgs.ai_skill_playerchosen['tonghh']=wrap(sgs.ai_skill_playerchosen['tonghh'],'tonghh','ai_skill_playerchosen')
 sgs.ai_card_priority['zhumyb']=wrap(sgs.ai_card_priority['zhumyb'],'zhumyb','ai_card_priority')
@@ -10173,87 +10547,182 @@ sgs.ai_skill_playerchosen['luashouhuo']=wrap(sgs.ai_skill_playerchosen['luashouh
 sgs.ai_playerchosen_intention['luashouhuo']=wrap(sgs.ai_playerchosen_intention['luashouhuo'],'luashouhuo','ai_playerchosen_intention')
 sgs.ai_skill_playerchosen['luahongyu']=wrap(sgs.ai_skill_playerchosen['luahongyu'],'luahongyu','ai_skill_playerchosen')
 sgs.ai_playerchosen_intention['luahongyu']=wrap(sgs.ai_playerchosen_intention['luahongyu'],'luahongyu','ai_playerchosen_intention')
-sgs.ai_skill_invoke['pinkdevil']=wrap(sgs.ai_skill_invoke['pinkdevil'],'pinkdevil','ai_skill_invoke')
+ai_skill_invoke['pinkdevil']=wrap(ai_skill_invoke['pinkdevil'],'pinkdevil','ai_skill_invoke')
 sgs.ai_skill_playerchosen['pinkdevil']=wrap(sgs.ai_skill_playerchosen['pinkdevil'],'pinkdevil','ai_skill_playerchosen')
 sgs.ai_ajustdamage_from['khztbuff']=wrap(sgs.ai_ajustdamage_from['khztbuff'],'khztbuff','ai_ajustdamage_from')
 sgs.ai_skill_playerchosen['gxzhiliao']=wrap(sgs.ai_skill_playerchosen['gxzhiliao'],'gxzhiliao','ai_skill_playerchosen')
 sgs.ai_playerchosen_intention['gxzhiliao']=wrap(sgs.ai_playerchosen_intention['gxzhiliao'],'gxzhiliao','ai_playerchosen_intention')
 sgs.ai_skill_playerchosen['shenpan']=wrap(sgs.ai_skill_playerchosen['shenpan'],'shenpan','ai_skill_playerchosen')
-sgs.ai_skill_invoke['shenpan']=wrap(sgs.ai_skill_invoke['shenpan'],'shenpan','ai_skill_invoke')
-sgs.ai_skill_invoke['nxlieren']=wrap(sgs.ai_skill_invoke['nxlieren'],'nxlieren','ai_skill_invoke')
-sgs.ai_skill_invoke['nxlieren_damage']=wrap(sgs.ai_skill_invoke['nxlieren_damage'],'nxlieren_damage','ai_skill_invoke')
-sgs.ai_skill_choice['nxlieren']=wrap(sgs.ai_skill_choice['nxlieren'],'nxlieren','ai_skill_choice')
-sgs.ai_skill_invoke['zhanshubuju']=wrap(sgs.ai_skill_invoke['zhanshubuju'],'zhanshubuju','ai_skill_invoke')
-sgs.ai_fill_skill['zhachang']=wrap(sgs.ai_fill_skill['zhachang'],'zhachang','ai_fill_skill')
-sgs.ai_skill_use_func['#zhachang']=wrap(sgs.ai_skill_use_func['#zhachang'],'#zhachang','ai_skill_use_func')
-sgs.ai_skill_invoke['hongshui']=wrap(sgs.ai_skill_invoke['hongshui'],'hongshui','ai_skill_invoke')
-sgs.ai_fill_skill['zhufu']=wrap(sgs.ai_fill_skill['zhufu'],'zhufu','ai_fill_skill')
-sgs.ai_skill_use_func['#zhufu']=wrap(sgs.ai_skill_use_func['#zhufu'],'#zhufu','ai_skill_use_func')
-sgs.ai_skill_invoke['afuhuo']=wrap(sgs.ai_skill_invoke['afuhuo'],'afuhuo','ai_skill_invoke')
+ai_skill_invoke['shenpan']=wrap(ai_skill_invoke['shenpan'],'shenpan','ai_skill_invoke')
+ai_skill_invoke['nxlieren']=wrap(ai_skill_invoke['nxlieren'],'nxlieren','ai_skill_invoke')
+ai_skill_invoke['nxlieren_damage']=wrap(ai_skill_invoke['nxlieren_damage'],'nxlieren_damage','ai_skill_invoke')
+ai_skill_choice['nxlieren']=wrap(ai_skill_choice['nxlieren'],'nxlieren','ai_skill_choice')
+ai_skill_invoke['zhanshubuju']=wrap(ai_skill_invoke['zhanshubuju'],'zhanshubuju','ai_skill_invoke')
+ai_fill_skill['zhachang']=wrap(ai_fill_skill['zhachang'],'zhachang','ai_fill_skill')
+ai_card_use['#zhachang']=wrap(ai_card_use['#zhachang'],'#zhachang','ai_card_use')
+ai_skill_invoke['hongshui']=wrap(ai_skill_invoke['hongshui'],'hongshui','ai_skill_invoke')
+ai_fill_skill['zhufu']=wrap(ai_fill_skill['zhufu'],'zhufu','ai_fill_skill')
+ai_card_use['#zhufu']=wrap(ai_card_use['#zhufu'],'#zhufu','ai_card_use')
+ai_skill_invoke['afuhuo']=wrap(ai_skill_invoke['afuhuo'],'afuhuo','ai_skill_invoke')
 sgs.ai_canNiepan_skill['afuhuo']=wrap(sgs.ai_canNiepan_skill['afuhuo'],'afuhuo','ai_canNiepan_skill')
-sgs.ai_skill_choice['afuhuo']=wrap(sgs.ai_skill_choice['afuhuo'],'afuhuo','ai_skill_choice')
-sgs.ai_skill_invoke['tonghua']=wrap(sgs.ai_skill_invoke['tonghua'],'tonghua','ai_skill_invoke')
+ai_skill_choice['afuhuo']=wrap(ai_skill_choice['afuhuo'],'afuhuo','ai_skill_choice')
+ai_skill_invoke['tonghua']=wrap(ai_skill_invoke['tonghua'],'tonghua','ai_skill_invoke')
 sgs.ai_skill_playerchosen['tonghua']=wrap(sgs.ai_skill_playerchosen['tonghua'],'tonghua','ai_skill_playerchosen')
 sgs.ai_playerchosen_intention['tonghua']=wrap(sgs.ai_playerchosen_intention['tonghua'],'tonghua','ai_playerchosen_intention')
 sgs.ai_skill_playerchosen['lingbo']=wrap(sgs.ai_skill_playerchosen['lingbo'],'lingbo','ai_skill_playerchosen')
 sgs.ai_playerchosen_intention['lingbo']=wrap(sgs.ai_playerchosen_intention['lingbo'],'lingbo','ai_playerchosen_intention')
 sgs.ai_cardneed['lingbo']=wrap(sgs.ai_cardneed['lingbo'],'lingbo','ai_cardneed')
 sgs.ai_ajustdamage_from['chaogz']=wrap(sgs.ai_ajustdamage_from['chaogz'],'chaogz','ai_ajustdamage_from')
-sgs.ai_fill_skill['paojixj']=wrap(sgs.ai_fill_skill['paojixj'],'paojixj','ai_fill_skill')
-sgs.ai_skill_use_func['#paojixj']=wrap(sgs.ai_skill_use_func['#paojixj'],'#paojixj','ai_skill_use_func')
-sgs.ai_skill_invoke['dqjt']=wrap(sgs.ai_skill_invoke['dqjt'],'dqjt','ai_skill_invoke')
+ai_fill_skill['paojixj']=wrap(ai_fill_skill['paojixj'],'paojixj','ai_fill_skill')
+ai_card_use['#paojixj']=wrap(ai_card_use['#paojixj'],'#paojixj','ai_card_use')
+ai_skill_invoke['dqjt']=wrap(ai_skill_invoke['dqjt'],'dqjt','ai_skill_invoke')
 sgs.ai_skill_playerchosen['dqjt']=wrap(sgs.ai_skill_playerchosen['dqjt'],'dqjt','ai_skill_playerchosen')
-sgs.ai_skill_invoke['lianxie']=wrap(sgs.ai_skill_invoke['lianxie'],'lianxie','ai_skill_invoke')
-sgs.ai_skill_invoke['huanzhaung']=wrap(sgs.ai_skill_invoke['huanzhaung'],'huanzhaung','ai_skill_invoke')
+ai_skill_invoke['lianxie']=wrap(ai_skill_invoke['lianxie'],'lianxie','ai_skill_invoke')
+ai_skill_invoke['huanzhaung']=wrap(ai_skill_invoke['huanzhaung'],'huanzhaung','ai_skill_invoke')
 sgs.ai_skill_cardchosen['huanzhaung']=wrap(sgs.ai_skill_cardchosen['huanzhaung'],'huanzhaung','ai_skill_cardchosen')
-sgs.ai_skill_invoke['xinshengll']=wrap(sgs.ai_skill_invoke['xinshengll'],'xinshengll','ai_skill_invoke')
-sgs.ai_fill_skill['xinshengll']=wrap(sgs.ai_fill_skill['xinshengll'],'xinshengll','ai_fill_skill')
-sgs.ai_skill_use_func['#xinshengll']=wrap(sgs.ai_skill_use_func['#xinshengll'],'#xinshengll','ai_skill_use_func')
+ai_skill_invoke['xinshengll']=wrap(ai_skill_invoke['xinshengll'],'xinshengll','ai_skill_invoke')
+ai_fill_skill['xinshengll']=wrap(ai_fill_skill['xinshengll'],'xinshengll','ai_fill_skill')
+ai_card_use['#xinshengll']=wrap(ai_card_use['#xinshengll'],'#xinshengll','ai_card_use')
 sgs.ai_skill_askforag['xinshengll']=wrap(sgs.ai_skill_askforag['xinshengll'],'xinshengll','ai_skill_askforag')
-sgs.ai_skill_invoke['llpj']=wrap(sgs.ai_skill_invoke['llpj'],'llpj','ai_skill_invoke')
-sgs.ai_fill_skill['shejiao']=wrap(sgs.ai_fill_skill['shejiao'],'shejiao','ai_fill_skill')
-sgs.ai_skill_use_func['#shejiao']=wrap(sgs.ai_skill_use_func['#shejiao'],'#shejiao','ai_skill_use_func')
-sgs.ai_skill_choice['shejiao']=wrap(sgs.ai_skill_choice['shejiao'],'shejiao','ai_skill_choice')
-sgs.ai_skill_use['@@shejiaofuka']=wrap(sgs.ai_skill_use['@@shejiaofuka'],'@@shejiaofuka','ai_skill_use')
-sgs.ai_skill_invoke['wanxian']=wrap(sgs.ai_skill_invoke['wanxian'],'wanxian','ai_skill_invoke')
+ai_skill_invoke['llpj']=wrap(ai_skill_invoke['llpj'],'llpj','ai_skill_invoke')
+ai_fill_skill['shejiao']=wrap(ai_fill_skill['shejiao'],'shejiao','ai_fill_skill')
+ai_card_use['#shejiao']=wrap(ai_card_use['#shejiao'],'#shejiao','ai_card_use')
+ai_skill_choice['shejiao']=wrap(ai_skill_choice['shejiao'],'shejiao','ai_skill_choice')
+ai_skill_use['@@shejiaofuka']=wrap(ai_skill_use['@@shejiaofuka'],'@@shejiaofuka','ai_skill_use')
+ai_skill_invoke['wanxian']=wrap(ai_skill_invoke['wanxian'],'wanxian','ai_skill_invoke')
 sgs.ai_skill_playerchosen['wanxian']=wrap(sgs.ai_skill_playerchosen['wanxian'],'wanxian','ai_skill_playerchosen')
-sgs.ai_skill_invoke['liantan']=wrap(sgs.ai_skill_invoke['liantan'],'liantan','ai_skill_invoke')
+ai_skill_invoke['liantan']=wrap(ai_skill_invoke['liantan'],'liantan','ai_skill_invoke')
 sgs.ai_skill_playerchosen['liantan']=wrap(sgs.ai_skill_playerchosen['liantan'],'liantan','ai_skill_playerchosen')
 sgs.ai_playerchosen_intention['liantan']=wrap(sgs.ai_playerchosen_intention['liantan'],'liantan','ai_playerchosen_intention')
-sgs.ai_skill_choice['liantan']=wrap(sgs.ai_skill_choice['liantan'],'liantan','ai_skill_choice')
+ai_skill_choice['liantan']=wrap(ai_skill_choice['liantan'],'liantan','ai_skill_choice')
 sgs.ai_cardneed['s_yanyu']=wrap(sgs.ai_cardneed['s_yanyu'],'s_yanyu','ai_cardneed')
 sgs.ai_can_damagehp['s_yanyu']=wrap(sgs.ai_can_damagehp['s_yanyu'],'s_yanyu','ai_can_damagehp')
-sgs.ai_fill_skill['s_yanmojianglin']=wrap(sgs.ai_fill_skill['s_yanmojianglin'],'s_yanmojianglin','ai_fill_skill')
-sgs.ai_skill_use_func['#s_yanmojianglin']=wrap(sgs.ai_skill_use_func['#s_yanmojianglin'],'#s_yanmojianglin','ai_skill_use_func')
-sgs.ai_skill_choice['s_yanmojianglin']=wrap(sgs.ai_skill_choice['s_yanmojianglin'],'s_yanmojianglin','ai_skill_choice')
-sgs.ai_fill_skill['s_lianjie']=wrap(sgs.ai_fill_skill['s_lianjie'],'s_lianjie','ai_fill_skill')
-sgs.ai_skill_use_func['#s_lianjie']=wrap(sgs.ai_skill_use_func['#s_lianjie'],'#s_lianjie','ai_skill_use_func')
-sgs.ai_fill_skill['s_polie']=wrap(sgs.ai_fill_skill['s_polie'],'s_polie','ai_fill_skill')
-sgs.ai_skill_use_func['#s_polie']=wrap(sgs.ai_skill_use_func['#s_polie'],'#s_polie','ai_skill_use_func')
+ai_fill_skill['s_yanmojianglin']=wrap(ai_fill_skill['s_yanmojianglin'],'s_yanmojianglin','ai_fill_skill')
+ai_card_use['#s_yanmojianglin']=wrap(ai_card_use['#s_yanmojianglin'],'#s_yanmojianglin','ai_card_use')
+ai_skill_choice['s_yanmojianglin']=wrap(ai_skill_choice['s_yanmojianglin'],'s_yanmojianglin','ai_skill_choice')
+ai_fill_skill['s_lianjie']=wrap(ai_fill_skill['s_lianjie'],'s_lianjie','ai_fill_skill')
+ai_card_use['#s_lianjie']=wrap(ai_card_use['#s_lianjie'],'#s_lianjie','ai_card_use')
+ai_fill_skill['s_polie']=wrap(ai_fill_skill['s_polie'],'s_polie','ai_fill_skill')
+ai_card_use['#s_polie']=wrap(ai_card_use['#s_polie'],'#s_polie','ai_card_use')
 sgs.ai_skill_playerchosen['s_polie']=wrap(sgs.ai_skill_playerchosen['s_polie'],'s_polie','ai_skill_playerchosen')
-sgs.ai_skill_choice['s_shuimian']=wrap(sgs.ai_skill_choice['s_shuimian'],'s_shuimian','ai_skill_choice')
+ai_skill_choice['s_shuimian']=wrap(ai_skill_choice['s_shuimian'],'s_shuimian','ai_skill_choice')
 sgs.ai_skill_playerchosen['s_jieshu']=wrap(sgs.ai_skill_playerchosen['s_jieshu'],'s_jieshu','ai_skill_playerchosen')
-sgs.ai_skill_choice['s_jieshu']=wrap(sgs.ai_skill_choice['s_jieshu'],'s_jieshu','ai_skill_choice')
-sgs.ai_skill_choice['s_fudao']=wrap(sgs.ai_skill_choice['s_fudao'],'s_fudao','ai_skill_choice')
-sgs.ai_fill_skill['s_fudao']=wrap(sgs.ai_fill_skill['s_fudao'],'s_fudao','ai_fill_skill')
-sgs.ai_skill_use_func['#s_fudao']=wrap(sgs.ai_skill_use_func['#s_fudao'],'#s_fudao','ai_skill_use_func')
-sgs.ai_skill_invoke['s_douM']=wrap(sgs.ai_skill_invoke['s_douM'],'s_douM','ai_skill_invoke')
-sgs.ai_skill_choice['s_kongyi']=wrap(sgs.ai_skill_choice['s_kongyi'],'s_kongyi','ai_skill_choice')
+ai_skill_choice['s_jieshu']=wrap(ai_skill_choice['s_jieshu'],'s_jieshu','ai_skill_choice')
+ai_skill_choice['s_fudao']=wrap(ai_skill_choice['s_fudao'],'s_fudao','ai_skill_choice')
+ai_fill_skill['s_fudao']=wrap(ai_fill_skill['s_fudao'],'s_fudao','ai_fill_skill')
+ai_card_use['#s_fudao']=wrap(ai_card_use['#s_fudao'],'#s_fudao','ai_card_use')
+ai_skill_invoke['s_douM']=wrap(ai_skill_invoke['s_douM'],'s_douM','ai_skill_invoke')
+ai_skill_choice['s_kongyi']=wrap(ai_skill_choice['s_kongyi'],'s_kongyi','ai_skill_choice')
 sgs.ai_skill_cardchosen['s_kongyi']=wrap(sgs.ai_skill_cardchosen['s_kongyi'],'s_kongyi','ai_skill_cardchosen')
 sgs.ai_skill_playerchosen['s_kongyi_getfield']=wrap(sgs.ai_skill_playerchosen['s_kongyi_getfield'],'s_kongyi_getfield','ai_skill_playerchosen')
-sgs.ai_fill_skill['s_kongyi']=wrap(sgs.ai_fill_skill['s_kongyi'],'s_kongyi','ai_fill_skill')
-sgs.ai_skill_use_func['#s_kongyi']=wrap(sgs.ai_skill_use_func['#s_kongyi'],'#s_kongyi','ai_skill_use_func')
-sgs.ai_skill_invoke['s_yueqian']=wrap(sgs.ai_skill_invoke['s_yueqian'],'s_yueqian','ai_skill_invoke')
+ai_fill_skill['s_kongyi']=wrap(ai_fill_skill['s_kongyi'],'s_kongyi','ai_fill_skill')
+ai_card_use['#s_kongyi']=wrap(ai_card_use['#s_kongyi'],'#s_kongyi','ai_card_use')
+ai_skill_invoke['s_yueqian']=wrap(ai_skill_invoke['s_yueqian'],'s_yueqian','ai_skill_invoke')
 sgs.ai_skill_cardchosen['s_yueqian']=wrap(sgs.ai_skill_cardchosen['s_yueqian'],'s_yueqian','ai_skill_cardchosen')
 sgs.ai_skill_playerchosen['s_yueqian']=wrap(sgs.ai_skill_playerchosen['s_yueqian'],'s_yueqian','ai_skill_playerchosen')
-sgs.ai_skill_invoke['s_newtype']=wrap(sgs.ai_skill_invoke['s_newtype'],'s_newtype','ai_skill_invoke')
-sgs.ai_skill_use['@@s_newtype']=wrap(sgs.ai_skill_use['@@s_newtype'],'@@s_newtype','ai_skill_use')
-sgs.ai_skill_choice['s_newtype']=wrap(sgs.ai_skill_choice['s_newtype'],'s_newtype','ai_skill_choice')
-sgs.ai_skill_use['@@s_newtypeOther']=wrap(sgs.ai_skill_use['@@s_newtypeOther'],'@@s_newtypeOther','ai_skill_use')
-sgs.ai_skill_use['@@htms_nisheng']=wrap(sgs.ai_skill_use['@@htms_nisheng'],'@@htms_nisheng','ai_skill_use')
-sgs.ai_skill_choice['htms_sanqi']=wrap(sgs.ai_skill_choice['htms_sanqi'],'htms_sanqi','ai_skill_choice')
-sgs.ai_skill_invoke['htms_ranxin']=wrap(sgs.ai_skill_invoke['htms_ranxin'],'htms_ranxin','ai_skill_invoke')
+ai_skill_invoke['s_newtype']=wrap(ai_skill_invoke['s_newtype'],'s_newtype','ai_skill_invoke')
+ai_skill_use['@@s_newtype']=wrap(ai_skill_use['@@s_newtype'],'@@s_newtype','ai_skill_use')
+ai_skill_choice['s_newtype']=wrap(ai_skill_choice['s_newtype'],'s_newtype','ai_skill_choice')
+ai_skill_use['@@s_newtypeOther']=wrap(ai_skill_use['@@s_newtypeOther'],'@@s_newtypeOther','ai_skill_use')
+ai_skill_use['@@htms_nisheng']=wrap(ai_skill_use['@@htms_nisheng'],'@@htms_nisheng','ai_skill_use')
+ai_skill_choice['htms_sanqi']=wrap(ai_skill_choice['htms_sanqi'],'htms_sanqi','ai_skill_choice')
+ai_skill_invoke['htms_ranxin']=wrap(ai_skill_invoke['htms_ranxin'],'htms_ranxin','ai_skill_invoke')
 sgs.ai_target_revises['htms_coffee']=wrap(sgs.ai_target_revises['htms_coffee'],'htms_coffee','ai_target_revises')
 sgs.ai_canNiepan_skill['htms_beihai']=wrap(sgs.ai_canNiepan_skill['htms_beihai'],'htms_beihai','ai_canNiepan_skill')
 sgs.ai_skill_discard['htms_lunbian']=wrap(sgs.ai_skill_discard['htms_lunbian'],'htms_lunbian','ai_skill_discard')
 sgs.ai_skill_playerchosen['htms_godot']=wrap(sgs.ai_skill_playerchosen['htms_godot'],'htms_godot','ai_skill_playerchosen')
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(from, "hasSkill", "nirendao") and card and damage_call(card, "isKindOf", "Slash") and dmg >= damage_call(to, "getHp") then
+            dmg = 0
+        end
+        return dmg, nature
+    end
+    local function policy_2(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(to, "hasSkill", "DSTP") and dmg > 1 then
+            dmg = 1
+        end
+        return dmg, nature
+    end
+    local function policy_3(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(to, "getMark", "@inu_to") and dmg > 1 then
+            dmg = dmg - 1
+        end
+        return dmg, nature
+    end
+    local previous_1 = sgs.ai_ajustdamage_to["nirendao"]
+    sgs.ai_ajustdamage_to["nirendao"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "after_to" and context.rule == "nirendao" then
+                local damage, next_nature, terminal = policy_1(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "nirendao", {
+        {phase="after_to", rule="nirendao", order=6200},
+    })
+    local previous_2 = sgs.ai_ajustdamage_to["DSTP"]
+    sgs.ai_ajustdamage_to["DSTP"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "after_to" and context.rule == "DSTP" then
+                local damage, next_nature, terminal = policy_2(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_2) == "function" then return previous_2(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "DSTP", {
+        {phase="after_to", rule="DSTP", order=6300},
+    })
+    local previous_3 = sgs.ai_ajustdamage_to["inu_to"]
+    sgs.ai_ajustdamage_to["inu_to"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "after_to" and context.rule == "inu_to" then
+                local damage, next_nature, terminal = policy_3(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_3) == "function" then return previous_3(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "inu_to", {
+        {phase="after_to", rule="inu_to", order=6400},
+    })
+end)()
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["wugshashou"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(from,"hasSkill","wugshashou") then
+        		return nil, true
+        	end
+        return value
+    end
+    sgs.ai_need_damaged["wugshashou"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_before_damage" and context.rule == "wugshashou" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "wugshashou", {
+        {phase="need_hp_before_damage", order=2, rule="wugshashou"},
+    })
+end)()
+end

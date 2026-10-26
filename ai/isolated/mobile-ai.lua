@@ -1,5 +1,16 @@
--- Fixed b6025acc mobile-ai.lua:2154–2159, exact damagehp predicate order.
--- Other mobile callbacks are outside this focused frozen-ID implementation.
+-- Existing source default; the package may replace it below.
+if sgs.ai_ajustdamage_to.mobilemoujinjiu == nil then
+    sgs.ai_ajustdamage_to.mobilemoujinjiu = function(self,from,to,card,nature)
+        local damage_call, helpers = self:getDamageValueContext()
+        local damage_card_flag = helpers.card_flag
+        local damage_card_value = helpers.card_value
+        if card and card:isKindOf("Slash") and damage_card_flag(self,card,"drank") then
+            return -damage_card_value(self,card,"drank_amount",0)
+        end
+    end
+end
+
+-- Source: b6025acc ai/mobile-ai.lua.
 
 sgs.ai_can_damagehp.mobilemouganglie = function(self, from, card, to)
     if from and to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
@@ -11,7 +22,6 @@ sgs.ai_can_damagehp.mobilemouganglie = function(self, from, card, to)
 end
 
 
--- R49: complete fixed named damage/card-priority callbacks.
 do
 
 sgs.ai_can_damagehp.mobilemouzongshi = function(self, from, card, to)
@@ -31,9 +41,7 @@ sgs.ai_can_damagehp.mobilemoujieming = function(self,from,card,to)
 end
 
 end
--- End R49 named damage/card-priority callbacks.
 
--- R49: fixed mobilemouwushuang damage adjustment, mobile-ai.lua2336–2340.
 do
 
  sgs.ai_ajustdamage_from.mobilemouwushuang=function(self,from,to,card,nature)
@@ -42,4 +50,7 @@ do
   end
  end
 end
--- End R49 mobilemouwushuang.
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+end)()

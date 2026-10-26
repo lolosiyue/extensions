@@ -1,4 +1,4 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/blood-ai.lua.
 
 
 local function paid(self,skill,selector,request,old)
@@ -11,11 +11,12 @@ local function selected_names(names)
     for name in names:gmatch("[^+]+") do result[#result+1]=name end
     return result
 end
-sgs.ai_skill_invoke["blood_gudan"] = function(self, data)
+ai_skill_invoke["blood_gudan"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
 	local peaches = 1 - dying.who:getHp()
 
-	return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
+	return (self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches) or false
 end
 
 
@@ -32,12 +33,14 @@ sgs.ai_canNiepan_skill.blood_gudan = function(player)
 end
 
 
-sgs.ai_fill_skill.blood_hj = function(self,inclusive,request)
+ai_fill_skill.blood_hj = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#blood_hj") then return end
 	return self:legacySkillSeed("blood_hj", "#blood_hj", request)
 end
 
-sgs.ai_skill_use_func["#blood_hj"] = function(card, use, self,request)
+ai_card_use["#blood_hj"] = function(self, card, use, request)
 	local max_card = self:getMaxCard()
 	if not max_card then return end
 	local max_point = max_card:getNumber()
@@ -125,14 +128,13 @@ end
 sgs.ai_playerchosen_intention.luaangyang = -60
 
 
---[[
-sgs.ai_skill_choice.changeToWu = function(self,choices)
-	return "yes"
-end]]
-sgs.ai_skill_choice["changeToWu"] = function(self, choices, data)
+ai_skill_choice["changeToWu"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 
-	return items[math.random(1, #items)]
+	return ai_choice_result((items[math.random(1, #items)]), options)
 end
 
 
@@ -359,15 +361,20 @@ end
 
 
 
-sgs.ai_skill_choice.luaxiongfeng = function(self, choices)
-	return (self:getStrategyMemory("blood_luaxiongfeng_choice"))
+ai_skill_choice.luaxiongfeng = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	return ai_choice_result(((self:getStrategyMemory("blood_luaxiongfeng_choice"))), options)
 end
 
 
-sgs.ai_skill_invoke.luajuying = function(self, data)
+ai_skill_invoke.luajuying = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if self.room:getTurnCount() > 1 then
-		return true
+		return (true) or false
 	end
+	return false
+
 end
 
 ai_skill_use["@@luaxiongfeng"] = function(self,prompt,request)

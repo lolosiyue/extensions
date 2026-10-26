@@ -1,15 +1,11 @@
--- Standard-card package policies. Source: b6025acc ai/standard_cards-ai.lua.
--- Family planners, shared helpers, and Slash/Peach/Duel intentions remain in
--- their common modules; this file supplies the remaining effective registries.
+-- Source: b6025acc ai/standard_cards-ai.lua.
 local known = AIValue.requireKnown
-local function query(object, method, ...)
-    if not object or type(object[method])~="function" then ai_unsupported("standard equipment method is unavailable",method) end
-    local provider=object[method]
-    local value=provider(object,...)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil and SmartAIView.isKnownNilStrategyResult(object,method,provider) then return nil end
-    return known(value,method)
-end
+local query = AIValue.bindQuery {
+    missing = function(method) ai_unsupported("standard equipment method is unavailable", method) end,
+    known_nil = SmartAIView.isKnownNilStrategyResult,
+    known = known,
+}
+
 local dummy = AIUsePlan.dummy
 local function visible_card(self, id)
     local card = self:getChoiceCard(id)
@@ -98,7 +94,9 @@ function turnUse_spear(self,skill,request)
     return #slashes>0 and slashes or false
 end
 
-sgs.ai_fill_skill.spear=function(self,inclusive,request) return turnUse_spear(self,"spear",request) end
+ai_fill_skill.spear=function(self, options, request)
+    local inclusive = options and options.inclusive
+ return turnUse_spear(self,"spear",request) end
 sgs.ai_weapon_value.spear=function(self,enemy,player)
     if enemy and getCardsNum("Slash",player,self.player)==0 then
         if query(self,"getOverflow",player)>0 then return 2
@@ -342,42 +340,47 @@ function sgs.ai_armor_value.silver_lion(player,self)
 end
 
 
-sgs.ai_skill_invoke.double_sword = function(self,data)
-	return not query(self,"needKongcheng",self.player,true)
+ai_skill_invoke.double_sword = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (not query(self,"needKongcheng",self.player,true)) or false
 end
 
 
-sgs.ai_skill_invoke.ice_sword = function(self,data)
+ai_skill_invoke.ice_sword = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = known(data:toDamage(), "decision damage")
 	local target = damage.to
 	if query(self,"isFriend",target) then
-		if query(self,"needToLoseHp",target,self.player,damage.card) then return false
-		elseif target:isChained() and query(self,"isGoodChainTarget",target,damage.card) then return false
-		elseif query(self,"isWeak",target) or damage.damage>1 then return true
-		elseif query(target,"getLostHp")<1 then return false end
-		return true
+		if query(self,"needToLoseHp",target,self.player,damage.card) then return (false) or false
+		elseif target:isChained() and query(self,"isGoodChainTarget",target,damage.card) then return (false) or false
+		elseif query(self,"isWeak",target) or damage.damage>1 then return (true) or false
+		elseif query(target,"getLostHp")<1 then return (false) or false end
+		return (true) or false
 	else
-		if query(self,"isWeak",target) then return false end
-		if damage.damage>1 or query(self,"ajustDamage",self.player,target,1,damage.card)>1 then return false end
-		if query(target,"hasSkill","lirang") and #query(self,"getFriends",target,true)>0 then return false end
-		if target:getArmor() and query(self,"evaluateArmor",target:getArmor(),target)>3 and not (query(target,"hasArmorEffect","SilverLion") and query(target,"isWounded")) then return true end
+		if query(self,"isWeak",target) then return (false) or false end
+		if damage.damage>1 or query(self,"ajustDamage",self.player,target,1,damage.card)>1 then return (false) or false end
+		if query(target,"hasSkill","lirang") and #query(self,"getFriends",target,true)>0 then return (false) or false end
+		if target:getArmor() and query(self,"evaluateArmor",target:getArmor(),target)>3 and not (query(target,"hasArmorEffect","SilverLion") and query(target,"isWounded")) then return (true) or false end
 		local num = query(target,"getHandcardNum")
-		if query(self.player,"hasSkill","tieji") or query(self,"canLiegong",target,self.player) then return false end
-		if hasTuntianEffect(target, true) and query(target,"getPhase")==sgs.Player_NotActive then return false end
-		if query(self,"hasSkills",sgs.need_kongcheng,target) then return false end
-		if (query(target,"getHandcardNum")+query(target,"getEquips"):length())<4 and (query(target,"getHandcardNum")+query(target,"getEquips"):length())>1 then return true end
-		return false
+		if query(self.player,"hasSkill","tieji") or query(self,"canLiegong",target,self.player) then return (false) or false end
+		if hasTuntianEffect(target, true) and query(target,"getPhase")==sgs.Player_NotActive then return (false) or false end
+		if query(self,"hasSkills",sgs.need_kongcheng,target) then return (false) or false end
+		if (query(target,"getHandcardNum")+query(target,"getEquips"):length())<4 and (query(target,"getHandcardNum")+query(target,"getEquips"):length())>1 then return (true) or false end
+		return (false) or false
 	end
+	return false
+
 end
 
 
-sgs.ai_skill_invoke.kylin_bow = function(self,data)
+ai_skill_invoke.kylin_bow = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = known(data:toDamage(), "decision damage")
-	if query(damage.from,"hasSkill","kuangfu") and query(damage.to,"getCards","e"):length()==1 then return false end
+	if query(damage.from,"hasSkill","kuangfu") and query(damage.to,"getCards","e"):length()==1 then return (false) or false end
 	if query(self,"hasSkills",sgs.lose_equip_skill,damage.to) then
-		return query(self,"isFriend",damage.to)
+		return (query(self,"isFriend",damage.to)) or false
 	end
-	return query(self,"isEnemy",damage.to)
+	return (query(self,"isEnemy",damage.to)) or false
 end
 
 
@@ -671,23 +674,38 @@ sgs.ai_skill_cardask["archery-attack-jink"] = function(self,data,pattern,target)
 end
 
 
-sgs.ai_skill_cardask["duel-slash"] = function(self,data,pattern,target)
+function SmartAIView:selectDuelSlash(options, request, target, card)
+    if not target then ai_unsupported("Duel response source is unknown", "duel-slash") end
+	local function no_damage()
+		local effect = self:getDecisionContext().effect
+		local duel = known(card or effect and effect.card, "current Duel response card")
+		return query(self,"ajustDamage",target,self.player,1,duel) == 0
+	end
+	local function relation(expected)
+		local value = known(self:relationTo(target), "Duel source relation")
+		if value == "unknown" then ai_unsupported("Duel source relation is unknown", "duel-slash") end
+		return value == expected
+	end
+	local function has_other_friend()
+		for _, friend in ipairs(query(self,"getFriends")) do if friend ~= self.player then return true end end
+		return false
+	end
 	if query(self.player,"getStrategyFlag","AIGlobal_NeedToWake") and query(self.player,"getHp")>1
-	or (query(target,"hasSkill","wuyan") or query(self.player,"hasSkill","wuyan")) and not query(target,"hasSkill","jueqing")
-	or query(self.player,"hasSkill","wuhun") and query(self,"isEnemy",target) and query(target,"isLord") and #self.friends_noself>0
+	or no_damage()
+	or query(self.player,"hasSkill","wuhun") and relation("enemy") and query(target,"isLord") and has_other_friend()
 	or query(target,"hasSkill","wushuang") and not query(self.player,"getStrategyFlag","wushuangSlash") and query(self,"getCardsNum","Slash")<2
 	or query(target,"hasSkill","mobilemouwushuang") and not query(self.player,"getStrategyFlag","mobilemouwushuangSlash") and query(self,"getCardsNum","Slash")<2
 	or query(target,"hasSkill","sfofl_wushuang") and not query(self.player,"getStrategyFlag","sfofl_wushuangSlash") and query(self,"getCardsNum","Slash")<2
 	or query(target,"hasSkill","rushB_wushuang") and not query(self.player,"getStrategyFlag","rushB_wushuangSlash") and query(self,"getCardsNum","Slash")<2
 	or query(target,"hasSkill","tc_wuqian") and not query(self.player,"getStrategyFlag","tc_wuqianSlash") and query(self,"getCardsNum","Slash")<2
-	or query(self,"isFriend",target) and query(target,"hasSkill","rende") and query(self.player,"hasSkill","jieming")
-	or query(self,"isEnemy",target) and not query(self,"isWeak") and query(self,"needToLoseHp",self.player,target)
-	or query(self.player,"getStrategyMark","@fenyong")>0 and not query(target,"hasSkill","jueqing")
-	or self:standardNullFilter(data,pattern,target)=="."
+	or relation("friend") and query(target,"hasSkill","rende") and query(self.player,"hasSkill","jieming")
+	or relation("enemy") and not query(self,"isWeak") and query(self,"needToLoseHp",self.player,target)
+	or query(self.player,"getStrategyMark","@fenyong")>0 and not query(self,"hasJueqingEffect",target,self.player)
+	or self:shouldDeclineCardResponse(options, request)
 	or query(self,"cantbeHurt",target)
 	then return "." end
 
-	if query(self,"isFriend",target) then
+	if relation("friend") then
 		if target:objectName()==self.player:objectName()
 		or query(self,"needToLoseHp",self.player,target)
 		then return "." end
@@ -698,6 +716,24 @@ sgs.ai_skill_cardask["duel-slash"] = function(self,data,pattern,target)
 	elseif query(self,"getCardsNum","Slash")>=getCardsNum("Slash",target,self.player)
 	or query(self,"isWeak") then return self:getCard("Slash") end
 	return "."
+end
+
+ai_skill_cardask["duel-slash"] = function(self, options, request)
+    local effect = options.context and options.context.effect
+    local opponent = (request.prompt or ""):match("^duel%-slash:([^:]+)")
+    if type(effect) ~= "table" or not opponent then
+        ai_unsupported("current Duel effect or opponent is not projected", "duel-slash")
+    end
+    -- Duel alternates responders; effect.from remains the original initiator.
+    local target = self.room:findPlayerByObjectName(opponent, true)
+    return self:cardResponseAnswer(self:selectDuelSlash(options, request, target), options)
+end
+
+-- Other packages still call this positional hook directly; the native Duel
+-- inquiry above always enters the pure-value registry.
+sgs.ai_skill_cardask["duel-slash"] = function(self, data, pattern, target)
+    local effect = data and data:toCardEffect()
+    return self:selectDuelSlash(self.request.options or {}, self.request, target, effect and effect.card)
 end
 
 
@@ -711,14 +747,15 @@ function SmartAIView:getHujiaRequester(data)
     return name and self.room:findPlayerByObjectName(name,false) or nil
 end
 
-sgs.ai_skill_invoke.eight_diagram = function(self,data)
+ai_skill_invoke.eight_diagram = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local lianlisource,SevenJiujia,tongpaoJink,tongpao = response_source(self,"lianlisource"),response_source(self,"SevenJiujia"),response_source(self,"tongpaoJink"),response_source(self,"tongpao")
 	local dying = 0
 	local handang = self.room:findPlayerBySkillName("nosjiefan")
 	for _,aplayer in sgs.list(query(self.room,"getAlivePlayers"))do
 		if query(aplayer,"getHp")<1 and not query(aplayer,"hasSkill","nosbuqu") then dying = 1 break end
 	end
-	if handang and query(self,"isFriend",handang) and dying>0 then return false end
+	if handang and query(self,"isFriend",handang) and dying>0 then return (false) or false end
 
 	local heart_jink = false
 	for _,card in sgs.list(query(self.player,"getCards","he"))do
@@ -730,31 +767,31 @@ sgs.ai_skill_invoke.eight_diagram = function(self,data)
 
 	local hujia_requester=self:getHujiaRequester(data)
 	if query(self,"hasSkills","tiandu|leiji|nosleiji|gushou") then
-		if query(self.player,"getStrategyFlag","dahe") and not heart_jink then return true end
-		if hujia_requester and not query(self,"isFriend",hujia_requester) and (query(hujia_requester,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return true end
-		if lianlisource and not query(self,"isFriend",lianlisource) and (query(lianlisource,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return true end
-		if query(self.player,"getStrategyFlag","dahe") and handang and query(self,"isFriend",handang) and dying>0 then return true end
+		if query(self.player,"getStrategyFlag","dahe") and not heart_jink then return (true) or false end
+		if hujia_requester and not query(self,"isFriend",hujia_requester) and (query(hujia_requester,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return (true) or false end
+		if lianlisource and not query(self,"isFriend",lianlisource) and (query(lianlisource,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return (true) or false end
+		if query(self.player,"getStrategyFlag","dahe") and handang and query(self,"isFriend",handang) and dying>0 then return (true) or false end
 	end
 	if query(self.player,"getHandcardNum")==1 and query(self,"getCardsNum","Jink")==1 and query(self.player,"hasSkills","zhiji|beifa") and query(self,"needKongcheng") then
 		local enemy_num = query(self,"getEnemyNumBySeat",self.room:getCurrent(),self.player,self.player)
-		if query(self.player,"getHp")>enemy_num and enemy_num<=1 then return false end
+		if query(self.player,"getHp")>enemy_num and enemy_num<=1 then return (false) or false end
 	end
-	if handang and query(self,"isFriend",handang) and dying>0 then return false end
-	if query(self.player,"getStrategyFlag","dahe") then return false end
-	if hujia_requester and (not query(self,"isFriend",hujia_requester) or query(hujia_requester,"getStrategyFlag","dahe")) then return false end
-	if lianlisource and (not query(self,"isFriend",lianlisource) or query(lianlisource,"getStrategyFlag","dahe")) then return false end
-	if SevenJiujia and (not query(self,"isFriend",SevenJiujia) or query(SevenJiujia,"getStrategyFlag","dahe")) then return false end
-	if tongpaoJink and (not query(self,"isFriend",tongpaoJink) or query(tongpaoJink,"getStrategyFlag","dahe")) then return false end
-	if tongpao and (not query(self,"isFriend",tongpao) or query(tongpao,"getStrategyFlag","dahe")) then return false end
-	if query(self,"needToLoseHp",self.player,nil,query(self,"getEvaluationCard","slash"),true) then return false end
-	if query(self,"getCardsNum","Jink")==0 then return true end
+	if handang and query(self,"isFriend",handang) and dying>0 then return (false) or false end
+	if query(self.player,"getStrategyFlag","dahe") then return (false) or false end
+	if hujia_requester and (not query(self,"isFriend",hujia_requester) or query(hujia_requester,"getStrategyFlag","dahe")) then return (false) or false end
+	if lianlisource and (not query(self,"isFriend",lianlisource) or query(lianlisource,"getStrategyFlag","dahe")) then return (false) or false end
+	if SevenJiujia and (not query(self,"isFriend",SevenJiujia) or query(SevenJiujia,"getStrategyFlag","dahe")) then return (false) or false end
+	if tongpaoJink and (not query(self,"isFriend",tongpaoJink) or query(tongpaoJink,"getStrategyFlag","dahe")) then return (false) or false end
+	if tongpao and (not query(self,"isFriend",tongpao) or query(tongpao,"getStrategyFlag","dahe")) then return (false) or false end
+	if query(self,"needToLoseHp",self.player,nil,query(self,"getEvaluationCard","slash"),true) then return (false) or false end
+	if query(self,"getCardsNum","Jink")==0 then return (true) or false end
 	local zhangjiao = self.room:findPlayerBySkillName("guidao")
 	if zhangjiao and query(self,"isEnemy",zhangjiao) then
-		if getKnownCard(zhangjiao,self.player,"black",false,"he")>1 then return false end
-		if query(self,"getCardsNum","Jink")>1 and getKnownCard(zhangjiao,self.player,"black",false,"he")>0 then return false end
+		if getKnownCard(zhangjiao,self.player,"black",false,"he")>1 then return (false) or false end
+		if query(self,"getCardsNum","Jink")>1 and getKnownCard(zhangjiao,self.player,"black",false,"he")>0 then return (false) or false end
 	end
-	if query(self,"getCardsNum","Jink")>0 and query(self.player,"getPile","incantation"):length()>0 then return false end
-	return true
+	if query(self,"getCardsNum","Jink")>0 and query(self.player,"getPile","incantation"):length()>0 then return (false) or false end
+	return (true) or false
 end
 
 
@@ -792,7 +829,6 @@ end
 sgs.ai_skill_playerchosen.zero_card_as_slash = function(self,targets)
 	local slash = extra_slash(self)
 	local targetlist = sgs.QList2Table(targets)
-	--add
 	local function finalChecking(player)
 		local use = dummy()
 		use.card = query(self,"getEvaluationCard","slash")
@@ -917,7 +953,9 @@ sgs.ai_use_revises.ganlu=function(self,card,use)
         and query(self,"aiUseCard",standard_skill_card(self,"ganlu","GanluCard",{})).card then return false end
 end
 
-sgs.ai_fill_skill.wooden_ox=function(self,inclusive,request)
+ai_fill_skill.wooden_ox=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     self.wooden_ox_assist=nil
     self:setStrategyMemory("wooden_ox_assist",nil)
     local cards=query(self,"sortByUseValue",query(self.player,"getHandcards"),true)
@@ -933,7 +971,7 @@ sgs.ai_fill_skill.wooden_ox=function(self,inclusive,request)
         return standard_skill_card(self,"wooden_ox","WoodenOxCard",{query(card,"getEffectiveId")},request)
     end
 end
-sgs.ai_skill_use_func.WoodenOxCard=function(card,use,self) use.card=card end
+ai_card_use.WoodenOxCard=function(self, card, use, request) use.card=card end
 sgs.ai_skill_playerchosen.wooden_ox=function(self,targets)
     local name,known_memory=self:getStrategyMemory("wooden_ox_assist")
     if known_memory and name then return self.room:findPlayerByObjectName(name,true) end
@@ -1152,4 +1190,156 @@ if ai_audited_aliases then
  ai_audited_aliases.register{id="ai_skill_invoke.kenewbazhen",registry="ai_skill_invoke",path={"kenewbazhen"},canonical_registry="ai_skill_invoke",canonical_path={"eight_diagram"},self_index=1}
  ai_audited_aliases.register{id="ai_skill_invoke.sfofl_young_eight_diagram",registry="ai_skill_invoke",path={"sfofl_young_eight_diagram"},canonical_registry="ai_skill_invoke",canonical_path={"eight_diagram"},self_index=1}
  ai_audited_aliases.register{id="ai_skill_cardask.shoot-jink",registry="ai_skill_cardask",path={"shoot-jink"},canonical_registry="ai_skill_cardask",canonical_path={"archery-attack-jink"},self_index=1}
+end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, to, value, damage_call, from, helpers, context)
+        if damage_call(to,"getMark","@silver_lion") > 0 and not damage_call(self,"ignoreArmor",from,to) then return true, true end
+        return value
+    end
+    local previous_1 = sgs.ai_ajustdamage_to["@silver_lion"]
+    sgs.ai_ajustdamage_to["@silver_lion"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "cap" and context.rule == "silver_lion_mark" then
+                return policy_1(self, to, context.value, context.query, from, context.extra[3], context)
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "@silver_lion", {
+        {phase="cap", rule="silver_lion_mark", order=3700},
+    })
+end)()
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_defense_slash["EightDiagram"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        state.diagram = not state.ignore and call(to, "hasArmorEffect", "EightDiagram")
+        if state.diagram then defense = defense + 1.3 end
+        return defense
+    end
+    sgs.ai_defense_slash["EightDiagram"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "base" and context.rule == "slash_defense.diagram" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "EightDiagram", {
+        {phase="base", order=10, rule="slash_defense.diagram"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["slash_defense.known_tuntian"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if state.knownJink > 0 then
+            if call(self, "hasTuntianEffect", to, true) then defense = defense + 1.5 end
+        end
+        return defense
+    end
+    sgs.ai_defense_slash["slash_defense.known_tuntian"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "known_jink" and context.rule == "slash_defense.known_tuntian" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "slash_defense.known_tuntian", {
+        {phase="known_jink", order=12, rule="slash_defense.known_tuntian"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["slash_defense.liegong"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if call(self, "canLiegong", to) then defense = 0 end
+        return defense
+    end
+    sgs.ai_defense_slash["slash_defense.liegong"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "special_1" and context.rule == "slash_defense.liegong" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "slash_defense.liegong", {
+        {phase="special_1", order=20, rule="slash_defense.liegong"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["slash_defense.masochism"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        local strategy_known = state.strategy_known
+        if state.masochismEligible then
+            local names = strategy_known(sgs.masochism_skill, "masochism_skill")
+            for name in names:gmatch("[^|]+") do
+                if call(to, "hasSkill", name) and call(self, "isGoodHp", to) then defense = defense + 1 end
+            end
+        end
+        return defense
+    end
+    sgs.ai_defense_slash["slash_defense.masochism"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "health" and context.rule == "slash_defense.masochism" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "slash_defense.masochism", {
+        {phase="health", order=20, rule="slash_defense.masochism"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["Indulgence"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if call(to, "containsTrick", "indulgence") and not call(to, "containsTrick", "YanxiaoCard") then defense = defense - .15 end
+        return defense
+    end
+    sgs.ai_defense_slash["Indulgence"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "final" and context.rule == "slash_defense.indulgence" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "Indulgence", {
+        {phase="final", order=44, rule="slash_defense.indulgence"},
+    })
+end)()
 end

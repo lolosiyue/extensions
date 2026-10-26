@@ -1,4 +1,4 @@
--- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
+-- Source: b6025acc ai/special3v3-ai.lua.
 
 
 local function paid(self,skill,selector,request,old)
@@ -24,10 +24,15 @@ local function ganglie_effect(self)
     if known then return value end
     return self:useKnowledgeEstimate({value=false,status="estimate",basis="special3v3.ganglie_effect_unobserved_viewer_history"}, "vsganglie.intention")
 end
-sgs.ai_skill_choice["3v3_direction"] = function(self,choices,data)
+ai_skill_choice["3v3_direction"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local card = data:toCard()
 	local aggressive = (card and card:isKindOf("AOE"))
-	if self:isFriend(self.player:getNextAlive())==aggressive then return "cw" else return "ccw" end
+	if self:isFriend(self.player:getNextAlive())==aggressive then return ai_choice_result(("cw"), options) else return ai_choice_result(("ccw"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 sgs.ai_skill_cardask["@huanshi-card"] = function(self,data)
@@ -47,22 +52,23 @@ sgs.ai_skill_cardask["@huanshi-card"] = function(self,data)
 	return "."
 end
 
-sgs.ai_skill_invoke.huanshi = function(self,data)
+ai_skill_invoke.huanshi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local judge = data:toJudge()
 
 	if self:needRetrial(judge) then
 		local cards = sgs.QList2Table(self.player:getCards("he"))
 		if self:isFriend(judge.who) then
 			local card_id = self:getRetrialCardId(cards, judge)
-			if card_id~=-1 then return true end
+			if card_id~=-1 then return (true) or false end
 		elseif self:isEnemy(judge.who) then
 			for _,card in sgs.list(cards)do
-				if judge:isGood(card) or self:isValuableCard(card) then return false end
+				if judge:isGood(card) or self:isValuableCard(card) then return (false) or false end
 			end
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_askforag.huanshi = function(self,card_ids)
@@ -122,16 +128,17 @@ function sgs.ai_cardneed.huanshi(to,card,self)
 	end
 end
 
-sgs.ai_skill_invoke.hongyuan = function(self,data)
+ai_skill_invoke.hongyuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local count = 0
 	for i = 1,#self.friends_noself do
 		if self:needKongcheng(self.friends_noself[i], true) or self.friends_noself[i]:hasSkill("manjuan") then
 		else
 			count = count+1
 		end
-		if count==2 then return true end
+		if count==2 then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
 function sgs.ai_cardneed.mingzhe(to,card,self)
@@ -250,7 +257,9 @@ function sgs.ai_slash_prohibit.vsganglie(self,from,to)
 	return false
 end
 
-sgs.ai_fill_skill.zhongyi = function(self,inclusive,request)
+ai_fill_skill.zhongyi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() or self.room:getTurnCount()<=1 then return end
 
 	local cards = sgs.QList2Table(self.player:getHandcards())
@@ -300,15 +309,16 @@ sgs.ai_fill_skill.zhongyi = function(self,inclusive,request)
 	if ratio>0.85 then return self:evaluateTurnSkillCard("zhongyi", "ZhongyiCard", {red_card:getKnownEffectiveId()}, request) end
 end
 
-sgs.ai_skill_use_func.ZhongyiCard = function(card,use,self)
+ai_card_use.ZhongyiCard = function(self, card, use, request)
 	use.card = card
 end
 
 sgs.ai_use_priority.ZhongyiCard = 10
 
-sgs.ai_skill_invoke.zhongyi = function(self,data)
+ai_skill_invoke.zhongyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	return self:isEnemy(damage.to)
+	return (self:isEnemy(damage.to)) or false
 end
 
 function sgs.ai_cardsview.jiuzhu(self,class_name,player)
@@ -331,10 +341,11 @@ end
 
 sgs.ai_card_intention.JiuzhuCard = sgs.ai_card_intention.Peach
 
-sgs.ai_skill_invoke.zhanshen = function(self,data)
+ai_skill_invoke.zhanshen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local obj = data:toString():split(":")[2]
 	local lvbu = self.room:findPlayerByObjectName(obj)
-	return self:isFriend(lvbu)
+	return (self:isFriend(lvbu)) or false
 end
 
 ai_skill_use["@@zhenwei"] = function(self,prompt,request)
@@ -369,3 +380,89 @@ end
 
 sgs.weapon_range.VSCrossbow = sgs.weapon_range.Crossbow
 sgs.ai_use_priority.VSCrossbow = sgs.ai_use_priority.Crossbow
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        local guanyu=self.room:findPlayerBySkillName("zhongyi")
+        if guanyu and damage_call(guanyu,"getPile","loyal"):length()>0 and damage_call(self,"isFriend",guanyu,from) then dmg=dmg+1 end
+        return dmg, nature
+    end
+    local previous_1 = sgs.ai_ajustdamage_from["zhongyi"]
+    sgs.ai_ajustdamage_from["zhongyi"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "slash_card" and context.rule == "zhongyi" then
+                local damage, next_nature, terminal = policy_1(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_from", "zhongyi", {
+        {phase="slash_card", rule="zhongyi", order=5207},
+    })
+end)()
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_target_damage["vsganglie"]
+    local policy = function(self, to, context)
+        local strategy_call = context.query
+        local source, strategy_known = context.extra[1], context.extra[2]
+        local result, killlord = context.value.result, context.value.killlord
+        if strategy_call(to, "hasSkill", "vsganglie") then
+                        for _, enemy in ipairs(strategy_call(self, "getEnemies", to)) do
+                            if strategy_call(enemy, "getHp") + strategy_known(getKnownCard(enemy, self.player, "Peach", true, "he"), "Peach estimate")
+                                + strategy_call(enemy, "getHandcardNum") < 3
+                                and strategy_call(self, "damageIsEffective", enemy, nil, to) then
+                                result = result + 3
+                                if strategy_call(enemy, "isLord") then result, killlord = result + 5, true end
+                            end
+                        end
+                    end
+        return {result=result, killlord=killlord}
+    end
+    sgs.ai_target_damage["vsganglie"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "chain_retaliation" and context.rule == "vsganglie" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "vsganglie", {
+        {phase="chain_retaliation", order=2, rule="vsganglie"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["mingzhe"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        if state.knownJink > 0 then
+            if call(to, "hasSkill", "mingzhe") then defense = defense + .2 end
+        end
+        return defense
+    end
+    sgs.ai_defense_slash["mingzhe"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "known_jink" and context.rule == "slash_defense.known_mingzhe" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "mingzhe", {
+        {phase="known_jink", order=10, rule="slash_defense.known_mingzhe"},
+    })
+end)()
+end

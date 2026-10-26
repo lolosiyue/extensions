@@ -1,4 +1,4 @@
--- Fixed b6025acc hayate. Preserve source terminal errors; no private priors.
+-- Source: b6025acc ai/hayate-ai.lua.
 local known = AIValue.requireKnown
 local nullable={findPlayerToDamage=true,findPlayerToDraw=true,findPlayerToDiscard=true,findPlayerBySkillName=true,setStrategyPlayerFlag=true,toPlayer=true}
 local sorted={sort=true,sortByKeepValue=true,sortByUseValue=true}
@@ -67,15 +67,18 @@ end
 
 sgs.ai_keep_value.DoubleSword = 8
 
-sgs.ai_skill_invoke.diansuo = function(self, data)
+ai_skill_invoke.diansuo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage.from:objectName() == self.player:objectName() then
-		if self:isFriend(damage.to) and self.player:getKnownRole() ~= "renegade" then return false end
-		return true
+		if self:isFriend(damage.to) and self.player:getKnownRole() ~= "renegade" then return (false) or false end
+		return (true) or false
 	else
-		if self:isFriend(damage.to) then return true end
-		return false
+		if self:isFriend(damage.to) then return (true) or false end
+		return (false) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_playerchosen.diansuo = function(self, targets)
@@ -104,27 +107,30 @@ sgs.ai_skill_playerchosen.diansuo = function(self, targets)
 
 end
 
-sgs.ai_skill_invoke.bimie = function(self, data)
+ai_skill_invoke.bimie = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local target = damage.to
 	if self:isEnemy(target) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_invoke.gangqu = function(self, data)
+ai_skill_invoke.gangqu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	for _,card in sgs.qlist(self.player:getHandcards()) do
 		if card:isKindOf("BasicCard") or card:isKindOf("TrickCard") then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_invoke.gangquPrevent = function(self, data)
+ai_skill_invoke.gangquPrevent = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
-	return not (effect.card:isKindOf("Peach") or effect.card:isKindOf("AmazingGrace") or effect.card:isKindOf("KeyTrick") or effect.card:isKindOf("GodSalvation") or (effect.card:isKindOf("MapoTofu") and effect.from and self:isFriend(effect.from)))
+	return (not (effect.card:isKindOf("Peach") or effect.card:isKindOf("AmazingGrace") or effect.card:isKindOf("KeyTrick") or effect.card:isKindOf("GodSalvation") or (effect.card:isKindOf("MapoTofu") and effect.from and self:isFriend(effect.from)))) or false
 end
 
 sgs.ai_skill_cardchosen.gangqu = function(self, who, flags)
@@ -143,7 +149,9 @@ sgs.ai_skill_cardchosen.gangqu = function(self, who, flags)
 end
 
 
-sgs.ai_fill_skill.tiaojiao=function(self,inclusive,request)
+ai_fill_skill.tiaojiao=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("TiaojiaoCard") then return end
 	for _,friend in ipairs(self.friends) do
 		if friend:getJudgingArea():length() > 0 then
@@ -155,7 +163,7 @@ sgs.ai_fill_skill.tiaojiao=function(self,inclusive,request)
 	return self:legacySkillSeed("tiaojiao", "TiaojiaoCard", request or self.request)
 end
 
-sgs.ai_skill_use_func.TiaojiaoCard = function(card,use,self,request)
+ai_card_use.TiaojiaoCard = function(self, card, use, request)
 	local target
 	local source = self.player
 	for _,enemy in ipairs(self.enemies) do
@@ -216,36 +224,44 @@ sgs.ai_view_as.yaojing = function(card, player, card_place)
 	return {name="god_salvation",skill="yaojing",suit=card:getSuit(),number=card:getNumber(),subcards={card_id}}
 end
 
-sgs.ai_skill_invoke.yaojing = function(self, data)
-	return true
+ai_skill_invoke.yaojing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 sgs.ai_use_value.yaojing = 9
 sgs.ai_use_priority.yaojing  = 6
 
-sgs.ai_skill_choice.gongming = function(self, choices, data)
+ai_skill_choice.gongming = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
 
 
 
-	return  "youdraw"
+
+	return  ai_choice_result(("youdraw"), options)
 end
 
-sgs.ai_skill_invoke.kurimu = function(self, data)
-	return true
+ai_skill_invoke.kurimu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.minatsu = function(self, data)
-	if #self.enemies == 0 then return false end
-	return true
+ai_skill_invoke.minatsu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.chizuru = function(self, data)
-	return true
+ai_skill_invoke.chizuru = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.mafuyu = function(self, data)
-	if #self.enemies == 0 then return false end
-	return true
+ai_skill_invoke.mafuyu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.enemies == 0 then return (false) or false end
+	return (true) or false
 end
 
 sgs.ai_skill_playerchosen.kurimu = function(self, targets)
@@ -364,25 +380,34 @@ ai_skill_use["@@haremu"] = function(self,prompt,request)
 	return "."
 end
 
-sgs.ai_skill_choice.haremu = function(self, choices, data)
+ai_skill_choice.haremu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local player = data:toPlayer()
 
-	if not self:isEnemy(player) then return "haremu_accept" end
-	if self.player:getKnownRole() == "lord" then return "haremu_accept" end
-	return "cancel"
+	if not self:isEnemy(player) then return ai_choice_result(("haremu_accept"), options) end
+	if self.player:getKnownRole() == "lord" then return ai_choice_result(("haremu_accept"), options) end
+	return ai_choice_result(("cancel"), options)
 end
 
-sgs.ai_skill_invoke.gaokang = function(self, data)
+ai_skill_invoke.gaokang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if self:isFriend(damage.to) then
-		if self.player:getHandcardNum() == 1 and damage.to:objectName() == self.player:objectName() then return true end
-		if self:hasSkills(sgs.masochism_skill, damage.to) and damage.to:getHp() > 1 then return false end
-		if self.player:getHandcardNum() == 1 and damage.to:getHp() > 2 then return false end
-		return true
+		if self.player:getHandcardNum() == 1 and damage.to:objectName() == self.player:objectName() then return (true) or false end
+		if self:hasSkills(sgs.masochism_skill, damage.to) and damage.to:getHp() > 1 then return (false) or false end
+		if self.player:getHandcardNum() == 1 and damage.to:getHp() > 2 then return (false) or false end
+		return (true) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_choice.rennai = function(self, choices, data)
+ai_skill_choice.rennai = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	choices = choices:split("+")
 	local tp = 1
 	for _,choice in ipairs(choices) do
@@ -479,35 +504,44 @@ sgs.ai_skill_choice.rennai = function(self, choices, data)
 	if tp == 0 then
 
 		if isHp then
-			return "rennai_hp"
+			return ai_choice_result(("rennai_hp"), options)
 		else
-			return "rennai_lose"
+			return ai_choice_result(("rennai_lose"), options)
 		end
 	elseif tp == 1 then
-		return hp_or_hand
+		return ai_choice_result((hp_or_hand), options)
 	else
-		return "rennai_gain"
+		return ai_choice_result(("rennai_gain"), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_invoke.zhanfang = function(self, data)
+ai_skill_invoke.zhanfang = function(self, options, request)
 
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	if use.card and self:isEnemy(use.to:first()) then return true end
-	return false
+	if use.card and self:isEnemy(use.to:first()) then return (true) or false end
+	return (false) or false
 end
 
-sgs.ai_skill_choice.zhanfang = function(self, choices, data)
+ai_skill_choice.zhanfang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	if self.player:getStrategyMark("@Frozen_Eu") > 1 then
-		return "cancel"
+		return ai_choice_result(("cancel"), options)
 	else
-		return "zhanfang_discard"
+		return ai_choice_result(("zhanfang_discard"), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_invoke.huajian = function(self, data)
-	if #self.friends > 1 then return true end
-	return false
+ai_skill_invoke.huajian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if #self.friends > 1 then return (true) or false end
+	return (false) or false
 end
 
 sgs.ai_skill_playerchosen.huajian = function(self, targets)
@@ -533,25 +567,29 @@ sgs.ai_skill_playerchosen.huajian = function(self, targets)
 	return self.friends[1]
 end
 
-sgs.ai_skill_choice.guiyin = function(self, choices, data)
+ai_skill_choice.guiyin = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local k1 = self.room:findPlayerBySkillName("guiyin")
-	if k1 and self:isFriend(k1) then return "guiyin_give" end
-	return "cancel"
+	if k1 and self:isFriend(k1) then return ai_choice_result(("guiyin_give"), options) end
+	return ai_choice_result(("cancel"), options)
 end
 
-sgs.ai_skill_invoke.qiubang = function(self, data)
+ai_skill_invoke.qiubang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	if owner_tag(self,"QiubangUsed") >= 4 then return true end
-	if use.card:isKindOf("Duel") then return true end
+	if owner_tag(self,"QiubangUsed") >= 4 then return (true) or false end
+	if use.card:isKindOf("Duel") then return (true) or false end
 	if use.from and self:isEnemy(use.from) then
-		if use.card:isKindOf("Slash") and self:getCardsNum("Jink") == 0 then return true end
-		if use.card:isKindOf("Dismantlement") or use.card:isKindOf("Snatch") and (self:getCardsNum("Peach") > 0 or self:getCardsNum("Analeptic") > 0) then return true end
+		if use.card:isKindOf("Slash") and self:getCardsNum("Jink") == 0 then return (true) or false end
+		if use.card:isKindOf("Dismantlement") or use.card:isKindOf("Snatch") and (self:getCardsNum("Peach") > 0 or self:getCardsNum("Analeptic") > 0) then return (true) or false end
 		if self:getCardsNum("Slash") + self.player:getHp() > 3 then
-			return true
+			return (true) or false
 		end
-		if self:isWeak(use.from) and self:getCardsNum("Slash") > 0 then return true end
+		if self:isWeak(use.from) and self:getCardsNum("Slash") > 0 then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
 ai_skill_use["@@youshui"] = function(self,prompt,request)
@@ -584,74 +622,90 @@ ai_skill_use["@@youshui"] = function(self,prompt,request)
 	end
 end
 
-sgs.ai_skill_invoke["zuozhan"] = true
+ai_skill_invoke["zuozhan"] = true
 
-sgs.ai_skill_choice["zuozhan1"] = function(self, choices, data)
+ai_skill_choice["zuozhan1"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local room = self.room
 	local p = room:getCurrent()
 	if self:isEnemy(p) then
-		return "1_Zuozhan"
+		return ai_choice_result(("1_Zuozhan"), options)
 	else
-		if p:getHandcardNum() <= p:getHp() then return "4_Zuozhan" else return "2_Zuozhan" end
+		if p:getHandcardNum() <= p:getHp() then return ai_choice_result(("4_Zuozhan"), options) else return ai_choice_result(("2_Zuozhan"), options) end
 	end
-	return "1_Zuozhan"
+	return ai_choice_result(("1_Zuozhan"), options)
 end
 
-sgs.ai_skill_choice["zuozhan2"] = function(self, choices, data)
-	local room = self.room
-	local p = room:getCurrent()
-	if self:isEnemy(p) then
-		if p:getHandcardNum() <= 1 and p:getHp() <= 2 then
-			return "3_Zuozhan"
-		else
-			return "2_Zuozhan"
-		end
-	else
-		if p:getHandcardNum() <= p:getHp() then return "2_Zuozhan" else return "3_Zuozhan" end
-	end
-	return "2_Zuozhan"
-end
+ai_skill_choice["zuozhan2"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
 
-sgs.ai_skill_choice["zuozhan3"] = function(self, choices, data)
 	local room = self.room
 	local p = room:getCurrent()
 	if self:isEnemy(p) then
 		if p:getHandcardNum() <= 1 and p:getHp() <= 2 then
-			return "2_Zuozhan"
+			return ai_choice_result(("3_Zuozhan"), options)
 		else
-			return "4_Zuozhan"
+			return ai_choice_result(("2_Zuozhan"), options)
 		end
 	else
-		if p:getHandcardNum() <= p:getHp() then return "3_Zuozhan" else return "4_Zuozhan" end
+		if p:getHandcardNum() <= p:getHp() then return ai_choice_result(("2_Zuozhan"), options) else return ai_choice_result(("3_Zuozhan"), options) end
 	end
-	return "3_Zuozhan"
+	return ai_choice_result(("2_Zuozhan"), options)
 end
 
-sgs.ai_skill_choice["zuozhan4"] = function(self, choices, data)
+ai_skill_choice["zuozhan3"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local room = self.room
 	local p = room:getCurrent()
 	if self:isEnemy(p) then
 		if p:getHandcardNum() <= 1 and p:getHp() <= 2 then
-			return "4_Zuozhan"
+			return ai_choice_result(("2_Zuozhan"), options)
 		else
-			return "3_Zuozhan"
+			return ai_choice_result(("4_Zuozhan"), options)
 		end
 	else
-		return "1_Zuozhan"
+		if p:getHandcardNum() <= p:getHp() then return ai_choice_result(("3_Zuozhan"), options) else return ai_choice_result(("4_Zuozhan"), options) end
 	end
-	return "4_Zuozhan"
+	return ai_choice_result(("3_Zuozhan"), options)
 end
 
-sgs.ai_skill_invoke.nishen = function(self, data)
+ai_skill_choice["zuozhan4"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	local room = self.room
+	local p = room:getCurrent()
+	if self:isEnemy(p) then
+		if p:getHandcardNum() <= 1 and p:getHp() <= 2 then
+			return ai_choice_result(("4_Zuozhan"), options)
+		else
+			return ai_choice_result(("3_Zuozhan"), options)
+		end
+	else
+		return ai_choice_result(("1_Zuozhan"), options)
+	end
+	return ai_choice_result(("4_Zuozhan"), options)
+end
+
+ai_skill_invoke.nishen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
-	if not self:isEnemy(dying.who) then return true end
+	if not self:isEnemy(dying.who) then return (true) or false end
 	for _,p in ipairs(self.friends) do
-		if self:isWeak(p) then return false end
+		if self:isWeak(p) then return (false) or false end
 	end
-	return true
+	return (true) or false
 end
 
-sgs.ai_skill_choice.nishen = function(self, choices, data)
+ai_skill_choice.nishen = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	choices = choices:split("+")
 	local on_join = false
 	for _,choice in ipairs(choices) do
@@ -661,26 +715,34 @@ sgs.ai_skill_choice.nishen = function(self, choices, data)
 	end
 	if on_join then
 		local yuri = self.room:findPlayerBySkillName("nishen")
-		if not yuri then return "cancel" end
-		if self.player:getKnownRole() == "renegade" then return "cancel" end
-		if not self:isEnemy(yuri) then return "nishen_accept" end
-		return "cancel"
+		if not yuri then return ai_choice_result(("cancel"), options) end
+		if self.player:getKnownRole() == "renegade" then return ai_choice_result(("cancel"), options) end
+		if not self:isEnemy(yuri) then return ai_choice_result(("nishen_accept"), options) end
+		return ai_choice_result(("cancel"), options)
 	else
-		if self.player:getHandcardNum() < self.player:getHp() * 2 then return "draw" end
-		return "recover"
+		if self.player:getHandcardNum() < self.player:getHp() * 2 then return ai_choice_result(("draw"), options) end
+		return ai_choice_result(("recover"), options)
 	end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_choice["mengxian"] = function(self, choices, data)
-	if self.player:getHandcardNum() > self.player:getHp() + 3 then return "equip" end
-	return "trick"
+ai_skill_choice["mengxian"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	if self.player:getHandcardNum() > self.player:getHp() + 3 then return ai_choice_result(("equip"), options) end
+	return ai_choice_result(("trick"), options)
 end
 
-sgs.ai_skill_choice.yuanwang = function(self, choices, data)
+ai_skill_choice.yuanwang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local haruhi = self.room:findPlayerBySkillName("yuanwang")
-	if not haruhi then return "cancel" end
-	if self:isFriend(haruhi) then return "yuanwang_accept" end
-	return "cancel"
+	if not haruhi then return ai_choice_result(("cancel"), options) end
+	if self:isFriend(haruhi) then return ai_choice_result(("yuanwang_accept"), options) end
+	return ai_choice_result(("cancel"), options)
 end
 
 sgs.ai_skill_playerchosen.yuanwang = function(self, targets)
@@ -691,10 +753,11 @@ sgs.ai_skill_playerchosen.yuanwang = function(self, targets)
 end
 
 
-sgs.ai_skill_invoke.hayate_jiejie = function(self, targets)
+ai_skill_invoke.hayate_jiejie = function(self, options, request)
+	local targets = request and self:getDecisionData(request) or nil
 	local hakaze = self.room:findPlayerBySkillName("hayate_jiejie")
-	if not hakaze then return false end
-	return not self:isEnemy(hakaze)
+	if not hakaze then return (false) or false end
+	return (not self:isEnemy(hakaze)) or false
 end
 
 
@@ -778,16 +841,20 @@ sgs.ai_skill_playerchosen.vector = function(self, targets)
 	end
 end
 
-sgs.ai_skill_invoke.juhe = function(self, data)
-	if self.player:getHandcardNum() <= self.player:getHp() then return true end
-	return false
+ai_skill_invoke.juhe = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:getHandcardNum() <= self.player:getHp() then return (true) or false end
+	return (false) or false
 end
 
-sgs.ai_skill_choice.juhe = function(self, choices, data)
-	if #choices:split("+") == 1 then return "juhe_skip" end
+ai_skill_choice.juhe = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	if #choices:split("+") == 1 then return ai_choice_result(("juhe_skip"), options) end
 	local pe = self:findPlayerToDamage(self.player:getStrategyMark("@xuli"))
-	if pe and self:isEnemy(pe) and (pe:getHp() <= self.player:getStrategyMark("@xuli") or self:isWeak()) then return "juhe_lose" end
-	return "juhe_skip"
+	if pe and self:isEnemy(pe) and (pe:getHp() <= self.player:getStrategyMark("@xuli") or self:isWeak()) then return ai_choice_result(("juhe_lose"), options) end
+	return ai_choice_result(("juhe_skip"), options)
 end
 
 sgs.ai_skill_playerchosen.juhe = function(self, targets)
@@ -804,15 +871,17 @@ sgs.qifen_keep_value =
     Analeptic 	= 8,
 }
 
-sgs.ai_skill_invoke.qifen = function(self, data)
-	if self.player:getHp() < self.player:getMaxHp() then return true end
+ai_skill_invoke.qifen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:getHp() < self.player:getMaxHp() then return (true) or false end
 	if self.player:getHp() == self.player:getMaxHp() then
-		if #self.friends >= #self.enemies then return true end
+		if #self.friends >= #self.enemies then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_invoke.mishi = function(self, data)
+ai_skill_invoke.mishi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying_data = data:toDying()
 	local source = dying_data.who
 	local mygod= mishi_first_holder(self)
@@ -820,7 +889,7 @@ sgs.ai_skill_invoke.mishi = function(self, data)
 	if (self:isFriend(source) and not self:isFriend(mygod)) or (not self:isFriend(source) and self:isFriend(mygod)) then
 		good = true
 	end
-	if not good then return false end
+	if not good then return (false) or false end
 	local peach_num = 0
 	local jink_num = 0
 	local hand,missing=mishi_hand(self,mygod)
@@ -832,16 +901,16 @@ sgs.ai_skill_invoke.mishi = function(self, data)
 			jink_num = jink_num + 1
 		end
 	end
-	if missing>0 then return mishi_partial_result(mygod:getHp(),peach_num,jink_num,missing)end
+	if missing>0 then return (mishi_partial_result(mygod:getHp(),peach_num,jink_num,missing)) or false end
 	if good then
-		if mygod:getHp() > 0 and peach_num > 2 then return true end
-		if mygod:getHp() > 0 and peach_num > 1 and jink_num > 0 then return true end
-		if mygod:getHp() > 1 and peach_num > 1 then return true end
-		if mygod:getHp() > 1 and peach_num > 0 and jink_num > 0 then return true end
-		if mygod:getHp() > 2 and peach_num > 0 then return true end
-		if mygod:getHp() > 2 and jink_num > 0 then return true end
+		if mygod:getHp() > 0 and peach_num > 2 then return (true) or false end
+		if mygod:getHp() > 0 and peach_num > 1 and jink_num > 0 then return (true) or false end
+		if mygod:getHp() > 1 and peach_num > 1 then return (true) or false end
+		if mygod:getHp() > 1 and peach_num > 0 and jink_num > 0 then return (true) or false end
+		if mygod:getHp() > 2 and peach_num > 0 then return (true) or false end
+		if mygod:getHp() > 2 and jink_num > 0 then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
 ai_skill_use["@@hayate_zhufu"] = function(self,prompt,request)

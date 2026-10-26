@@ -1,4 +1,4 @@
--- Happy2v2 source b6025acc; package policy only, no mode/rule changes.
+-- Source: b6025acc ai/happy2v2-ai.lua.
 local known = AIValue.requireKnown
 
 local function discard(self,target,flags)
@@ -23,10 +23,12 @@ local function team_friend(self,target)
     end
     return value
 end
-sgs.ai_fill_skill.kuiji=function(self,inclusive,request)
+ai_fill_skill.kuiji=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:legacySkillSeed("kuiji", "KuijiCard", request)
 end
-sgs.ai_skill_use_func.KuijiCard=function(card,use,self,request)
+ai_card_use.KuijiCard=function(self, card, use, request)
     local cards={}
     for _,c in ipairs(self.player:getCards("he")) do
         if c:isKindOf("BasicCard") and c:isBlack() then cards[#cards+1]=c end
@@ -65,7 +67,10 @@ sgs.ai_skill_playerchosen.happycuorui=function(self,targets)
     if #enemies>0 then return self:sort(enemies, "defense")[1] end
     return targets[1]
 end
-sgs.ai_skill_choice.happycuorui=function(self,choices,data)
+ai_skill_choice.happycuorui=function(self, native_options, native_request)
+    local choices = native_options and native_options.choices ~= nil and table.concat(native_options.choices, "+") or native_options and (native_options.inquiry_scope == "ordinary_top_level" or native_options.inquiry_scope == "original_top_level") and "" or nil
+    local data = native_request and self:getDecisionData(native_request) or nil
+
     local context=self.request and self.request.options and self.request.options.context
     local row=type(context)=="table" and context.happycuorui_card
     if type(row)~="table" then ai_unsupported("HappyCuorui paid public card face is missing","happycuorui") end
@@ -79,7 +84,7 @@ sgs.ai_skill_choice.happycuorui=function(self,choices,data)
             end
         end
     end
-    return found and "discard" or "show"
+    return ai_choice_result((found and "discard" or "show"), native_options)
 end
 sgs.ai_skill_playerchosen.happycuorui2=function(self,targets)
     return self:findPlayerToDiscard("e", false, true, targets)[1]

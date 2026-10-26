@@ -1,5 +1,4 @@
--- Fixed b6025acc NyarzThird source policies. Hypothetical clones are readonly;
--- only the selected @@ response binds its actual owner V2 action.
+-- Source: b6025acc ai/NyarzThird-ai.lua.
 local known = AIValue.requireKnown
 
 local function property(self,key)
@@ -191,13 +190,16 @@ sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
     return disCards
 end
 
-sgs.ai_skill_choice.nyarz_yuheng = function(self, choices, data)
+ai_skill_choice.nyarz_yuheng = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local num = known(self:getDecisionContext().nyarz_yuheng_count,"nyarz_yuheng count")
     local target = self.room:getKnownCurrent()
 
     if (not self.player:hasSkill("nyarz_tongye")) then
-        if self:isEnemy(target) then return "discard"
-        else return "draw" end
+        if self:isEnemy(target) then return ai_choice_result(("discard"), options)
+        else return ai_choice_result(("draw"), options) end
     end
 
     local value = {0,0}
@@ -236,13 +238,16 @@ sgs.ai_skill_choice.nyarz_yuheng = function(self, choices, data)
         end
     end
 
-    if value[2] > value[1] then return "discard"
-    else return "draw" end
+    if value[2] > value[1] then return ai_choice_result(("discard"), options)
+    else return ai_choice_result(("draw"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 --天下负我
 
 function SmartAIView:useCardRetribution(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	self:sortInPlace(known(self.enemies, "enemies"))
 	local enemies = {}
 	for _,enemy in ipairs(self.enemies)do
@@ -255,7 +260,7 @@ function SmartAIView:useCardRetribution(card,use)
 
 	local extraTarget = card:getKnownTargetModExtra(self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-    for _,enemy in ipairs(enemies)do
+    for _,enemy in ipairs(self:orderTargetsByRecommend(enemies, recommend))do
 		use.to:append(enemy)
 		if use.to:length()>extraTarget
 		then
@@ -264,6 +269,7 @@ function SmartAIView:useCardRetribution(card,use)
         end
 	end
 end
+sgs.registerSkillCardType("Retribution", "debuff")
 
 sgs.ai_use_value.Retribution = 4.9
 sgs.ai_keep_value.Retribution = 3.4
@@ -289,7 +295,7 @@ end
 ai_card_use.Retribution=SmartAIView.useCardRetribution
 
 -- 治世
-sgs.ai_skill_use["@@nyarz_zhishi"]=function(self,prompt)
+ai_skill_use["@@nyarz_zhishi"]=function(self, prompt, request)
     if self:isWeak()and self.player:getPhase()==sgs.Player_Finish then return "."end
     local card=clone(self,"nyarz_zhishi",property(self,"nyarz_zhishi"))
     local use={isDummy=true,to=AIList.new({})}
@@ -305,30 +311,39 @@ local function choose_slash(self,skill)
     end
     return "slash"
 end
-sgs.ai_skill_choice.nyarz_zhishi_slash=function(self,choices,data)
-    return choose_slash(self,"nyarz_zhishi")
+ai_skill_choice.nyarz_zhishi_slash=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+    return ai_choice_result((choose_slash(self,"nyarz_zhishi")), options)
 end
-sgs.ai_skill_choice.nyarz_zhishi=function(self,choices,data)
+ai_skill_choice.nyarz_zhishi=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local patterns=choices:split("+")
     if self.player:getPhase()==sgs.Player_Finish then
         if table.contains(patterns,"cancel")and table.contains(patterns,"slash")then
-            if #patterns==2 then return "cancel"else table.removeOne(patterns,"slash")end
+            if #patterns==2 then return ai_choice_result(("cancel"), options)else table.removeOne(patterns,"slash")end
         end
     elseif table.contains(patterns,"cancel")then table.removeOne(patterns,"cancel")end
     for _,name in ipairs(patterns)do
         local card=clone(self,"nyarz_zhishi",name)
         local use={isDummy=true,to=AIList.new({})}
         use_clone(self,card,use)
-        if use.card then return name end
+        if use.card then return ai_choice_result((name), options) end
     end
-    return patterns[math.random(1,#patterns)]
+    return ai_choice_result((patterns[math.random(1,#patterns)]), options)
 end
-sgs.ai_skill_invoke.nyarz_yangwu=true
-sgs.ai_skill_invoke.nyarz_baguan=true
-sgs.ai_skill_choice.nyarz_baguan_slash=function(self,choices,data)
-    return choose_slash(self,"nyarz_baguan")
+ai_skill_invoke.nyarz_yangwu=true
+ai_skill_invoke.nyarz_baguan=true
+ai_skill_choice.nyarz_baguan_slash=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+    return ai_choice_result((choose_slash(self,"nyarz_baguan")), options)
 end
-sgs.ai_skill_use["@@nyarz_baguan"]=function(self,prompt)
+ai_skill_use["@@nyarz_baguan"]=function(self, prompt, request)
     local card=clone(self,"nyarz_baguan",property(self,"nyarz_baguan"))
     local use={isDummy=true,to=AIList.new({})}
     use_clone(self,card,use)

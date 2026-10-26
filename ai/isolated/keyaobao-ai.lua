@@ -1,4 +1,4 @@
--- Fixed b6025acc keyaobao, server QSAN_ENGINE_BUILD domain.
+-- Source: b6025acc ai/keyaobao-ai.lua.
 local known = AIValue.requireKnown
 
 local dummy = AIUsePlan.dummy
@@ -19,28 +19,23 @@ local function convert(self,skill,name,ids,first,request)
 end
 --change
 
-sgs.ai_skill_invoke.yaochangetupo = function(self, data)
-    --[[local num = math.random(0,1)
-    if (num == 0) then
-        return true
-    else
-        return false
-    end]]
-    return false
+ai_skill_invoke.yaochangetupo = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (false) or false
 end
 
 --张角
 
-sgs.ai_skill_invoke.keyaotuzhong = function(self, data)
-    if self:isWeak() then return true end
+ai_skill_invoke.keyaotuzhong = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    if self:isWeak() then return (true) or false end
     if self:ImitateResult_DrawNCards(self.player, self.player:getVisibleSkillList(true)) > 2 then
-        return false
+        return (false) or false
     end
-    return sgs.ai_skill_playerchosen.keyaotuzhong(self) ~= nil
+    return (sgs.ai_skill_playerchosen.keyaotuzhong(self) ~= nil) or false
 end
 
 sgs.ai_skill_playerchosen.keyaotuzhong = function(self, targets)
-    --targets = sgs.QList2Table(targets)
     local arr1, arr2 = self:getWoundedFriend(false, true)
     local target = nil
     if #arr1 > 0 and (self:isWeak(arr1[1]) or self:getOverflow() >= 1) and arr1[1]:getHp() < getBestHp(arr1[1]) then
@@ -63,7 +58,9 @@ sgs.ai_playerchosen_intention.keyaotuzhong = function(self, from, to)
 end
 
 
-sgs.ai_fill_skill.keyaotaiping = function(self,inclusive,request)
+ai_fill_skill.keyaotaiping = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local first_found, second_found = false, false
     local first_card, second_card
     if self.player:getHandcardNum() + self.player:getPile("wooden_ox"):length() >= 2 and not self.player:getStrategyFlag("useyaotaiping") then
@@ -270,12 +267,13 @@ end
 --界张角
 
 
-sgs.ai_skill_invoke.kejieyaotuzhong = function(self, data)
-    if self:isWeak() then return true end
+ai_skill_invoke.kejieyaotuzhong = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    if self:isWeak() then return (true) or false end
     if self:ImitateResult_DrawNCards(self.player, self.player:getVisibleSkillList(true)) > 2 then
-        return false
+        return (false) or false
     end
-    return sgs.ai_skill_playerchosen.kejieyaotuzhong(self) ~= nil
+    return (sgs.ai_skill_playerchosen.kejieyaotuzhong(self) ~= nil) or false
 end
 
 sgs.ai_skill_playerchosen.kejieyaotuzhong = function(self, targets)
@@ -301,7 +299,9 @@ sgs.ai_playerchosen_intention.kejieyaotuzhong = function(self, from, to)
 end
 
 
-sgs.ai_fill_skill.kejieyaotaiping = function(self,inclusive,request)
+ai_fill_skill.kejieyaotaiping = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local first_found, second_found = false, false
     local first_card, second_card
     if self.player:getHandcardNum() + self.player:getPile("wooden_ox"):length() >= 2 then
@@ -508,14 +508,15 @@ end
 
 --司马懿
 
-sgs.ai_skill_invoke.keyaozhabing = function(self, data)
+ai_skill_invoke.keyaozhabing = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     if self:isWeak() and self:getAllPeachNum() > 0 then
-        return true
+        return (true) or false
     end
     if self.player:getHp() > getBestHp(self.player) then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 
 sgs.ai_ajustdamage_to["&keyaozhabing"] = function(self, from, to, card, nature)
@@ -528,14 +529,15 @@ end
 
 --界司马懿
 
-sgs.ai_skill_invoke.kejieyaozhabing = function(self, data)
+ai_skill_invoke.kejieyaozhabing = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     if self:isWeak() and self:getAllPeachNum() > 0 then
-        return true
+        return (true) or false
     end
     if self.player:getHp() > getBestHp(self.player) then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 
 sgs.ai_getBestHp_skill.kejieyaoguimou = function(owner)
@@ -543,8 +545,9 @@ sgs.ai_getBestHp_skill.kejieyaoguimou = function(owner)
 end
 
 --周泰
-sgs.ai_skill_invoke.kejieyaofenwei = function(self, data)
-    return sgs.ai_skill_playerchosen.kejieyaofenwei(self, self.room:getOtherPlayers(self.player)) ~= nil
+ai_skill_invoke.kejieyaofenwei = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (sgs.ai_skill_playerchosen.kejieyaofenwei(self, self.room:getOtherPlayers(self.player)) ~= nil) or false
 end
 sgs.ai_skill_playerchosen.kejieyaofenwei = function(self, targets)
     targets = sgs.QList2Table(targets)
@@ -561,25 +564,29 @@ sgs.ai_playerchosen_intention.kejieyaofenwei = function(self, from, to)
     self:updateIntention(from,to,-50)
 end
 
-sgs.ai_skill_invoke.kejieyaofenwei_shouhui = function(self, data)
-    return true
+ai_skill_invoke.kejieyaofenwei_shouhui = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
-sgs.ai_skill_invoke.kejieyaofenwei_mopai = function(self, data)
+ai_skill_invoke.kejieyaofenwei_mopai = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if target and self:isEnemy(target) then
-        return false
+        return (false) or false
     end
-    return true
+    return (true) or false
 end
 
 --小乔
 
-sgs.ai_fill_skill.keyaoquwu = function(self,inclusive,request)
+ai_fill_skill.keyaoquwu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getStrategyHasUsed("#keyaoquwuCard") then return end
     return self:legacySkillSeed("keyaoquwu", "#keyaoquwuCard", request)
 end
 
-sgs.ai_skill_use_func["#keyaoquwuCard"] = function(card, use, self,request)
+ai_card_use["#keyaoquwuCard"] = function(self, card, use, request)
     if not self.player:getStrategyHasUsed("#keyaoquwuCard") then
         self:sort(self.enemies)
         self.enemies = sgs.reverse(self.enemies)
@@ -616,13 +623,14 @@ sgs.ai_target_revises.keyaotongque = function(to, card, self, use)
     if card:isKindOf("IronChain") then return true end
 end
 
-sgs.ai_fill_skill.kejieyaoquwu = function(self,inclusive,request)
+ai_fill_skill.kejieyaoquwu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if (self.player:getStrategyMark("canusequwucishu") <= 0) then return end
-    --if self.player:usedTimes("#kejieyaoquwuCard") < q(self.player,"getMark","canusequwucishu") then
     return self:legacySkillSeed("kejieyaoquwu", "#kejieyaoquwuCard", request)
 end
 
-sgs.ai_skill_use_func["#kejieyaoquwuCard"] = function(card, use, self,request)
+ai_card_use["#kejieyaoquwuCard"] = function(self, card, use, request)
     self:sort(self.enemies)
     self.enemies = sgs.reverse(self.enemies)
     for _, enemy in ipairs(self.enemies) do
@@ -654,12 +662,14 @@ sgs.ai_cardneed.kejieyaotongque = function(to, card, self)
 end
 
 
-sgs.ai_skill_invoke.kejieyaoquwutwo = function(self, data)
-    return true
+ai_skill_invoke.kejieyaoquwutwo = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
-sgs.ai_skill_invoke.kejieyaotongquetwo = function(self, data)
-    return true
+ai_skill_invoke.kejieyaotongquetwo = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
 sgs.ai_skill_discard.kejieyaotongquetwo = function(self, discard_num, min_num, optional, include_equip)
@@ -671,16 +681,21 @@ sgs.ai_skill_discard.kejieyaotongquetwo = function(self, discard_num, min_num, o
     return to_discard
 end
 
-sgs.ai_skill_choice.kejieyaozhongshangtwo = function(self, choices, data)
+ai_skill_choice.kejieyaozhongshangtwo = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     if self.player:getHp() < getBestHp(self.player) then
-        return "maxhp"
+        return ai_choice_result(("maxhp"), options)
     end
-    return "handmax"
+    return ai_choice_result(("handmax"), options)
 end
 
 --卞氏
 
-sgs.ai_fill_skill.keyaojiahuo = function(self,inclusive,request)
+ai_fill_skill.keyaojiahuo = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getHandcardNum() < 1 then return end
     if self.player:getStrategyFlag("usedyaojiahuo") then return end
     local cards = sgs.QList2Table(self.player:getCards("h"))
@@ -706,27 +721,32 @@ sgs.ai_cardneed.keyaojiahuo = function(to, card, self)
     return card:isBlack() and to:getHandcardNum() <= 3
 end
 
-sgs.ai_skill_choice.keyaoyaohou = function(self, choices, data)
+ai_skill_choice.keyaoyaohou = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
     local damage = data:toDamage()
     if self:isEnemy(damage.to) then
-        return "huode"
+        return ai_choice_result(("huode"), options)
     else
-        return "mopai"
+        return ai_choice_result(("mopai"), options)
     end
-    return "mopai"
+    return ai_choice_result(("mopai"), options)
 end
 
 
 --吉平
 
-sgs.ai_fill_skill.keyaoshidu = function(self,inclusive,request)
+ai_fill_skill.keyaoshidu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if not self.player:isNude() then
         return self:legacySkillSeed("keyaoshidu", "#keyaoshiduCard", request)
     end
 end
 
-sgs.ai_skill_use_func["#keyaoshiduCard"] = function(card, use, self,request)
+ai_card_use["#keyaoshiduCard"] = function(self, card, use, request)
     local hand_weapon, cards
     cards = self.player:getHandcards()
     for _, card in sgs.qlist(cards) do
@@ -784,13 +804,15 @@ end
 
 --界妖吉平
 
-sgs.ai_fill_skill.kejieyaoshidu = function(self,inclusive,request)
+ai_fill_skill.kejieyaoshidu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:canDiscard(self.player, "he") then
         return self:legacySkillSeed("kejieyaoshidu", "#kejieyaoshiduCard", request)
     end
 end
 
-sgs.ai_skill_use_func["#kejieyaoshiduCard"] = function(card, use, self,request)
+ai_card_use["#kejieyaoshiduCard"] = function(self, card, use, request)
     local hand_weapon, cards
     cards = self.player:getHandcards()
     for _, card in sgs.qlist(cards) do
@@ -844,8 +866,9 @@ end
 
 --凌统
 
-sgs.ai_skill_invoke.keyaozhongyi = function(self, data)
-    return true
+ai_skill_invoke.keyaozhongyi = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
 sgs.ai_getLeastHandcardNum_skill.keyaozhongyi = function(self, player, least)
@@ -869,22 +892,27 @@ sgs.ai_skill_playerchosen.keyaoxieqin = function(self, targets)
     return nil
 end
 
-sgs.ai_skill_choice["keyaoshiwei"] = function(self, choices, data)
+ai_skill_choice["keyaoshiwei"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
-    return items[math.random(1, #items)]
+    return ai_choice_result((items[math.random(1, #items)]), options)
 end
 
 
 
-sgs.ai_skill_invoke.keyaoshiwei = function(self, data)
-    return true
+ai_skill_invoke.keyaoshiwei = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
 
 ai_audited_aliases.register{id="ai_choicemade_filter.cardChosen.kejieyaoxieqin",registry="ai_choicemade_filter",path={"cardChosen","kejieyaoxieqin"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","dismantlement"},self_index=1,defer_canonical=true}
 
-sgs.ai_skill_invoke.kejieyaoxieqin = function(self, data)
-    return sgs.ai_skill_playerchosen.kejieyaoxieqin(self, self.room:getOtherPlayers(data:toDamage().to)) ~= nil
+ai_skill_invoke.kejieyaoxieqin = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (sgs.ai_skill_playerchosen.kejieyaoxieqin(self, self.room:getOtherPlayers(data:toDamage().to)) ~= nil) or false
 end
 sgs.ai_skill_playerchosen.kejieyaoxieqin = function(self, targets)
     targets = sgs.QList2Table(targets)
@@ -898,12 +926,98 @@ end
 
 sgs.ai_playerchosen_intention.kejieyaoxieqin = 80
 
-sgs.ai_skill_invoke.kejieyaoshiwei = function(self, data)
-    return true
+ai_skill_invoke.kejieyaoshiwei = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
-sgs.ai_skill_choice["kejieyaoshiwei"] = function(self, choices, data)
+ai_skill_choice["kejieyaoshiwei"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
-    return items[math.random(1, #items)]
+    return ai_choice_result((items[math.random(1, #items)]), options)
 end
 
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, to, value, damage_call, from, helpers, context)
+        if damage_call(to,"hasSkill","keyaoliandu") then return true, true end
+        return value
+    end
+    local function policy_2(self, to, value, damage_call, from, helpers, context)
+        if damage_call(to,"hasSkill","kejieyaoliandu") then return true, true end
+        return value
+    end
+    local function policy_3(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(from, "hasSkill", "keyaoleimu") then
+            nature = "T"
+        end
+        return dmg, nature
+    end
+    local function policy_4(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(to, "hasSkill", "keyaoliandu") and dmg > 1 then
+            dmg = 1
+        end
+        return dmg, nature
+    end
+    local function policy_5(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(to, "hasSkill", "kejieyaoliandu") and dmg > 1 then
+            dmg = 1
+        end
+        return dmg, nature
+    end
+    local previous_1 = sgs.ai_ajustdamage_to["keyaoliandu"]
+    sgs.ai_ajustdamage_to["keyaoliandu"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "cap" and context.rule == "keyaoliandu" then
+                return policy_1(self, to, context.value, context.query, from, context.extra[3], context)
+            end
+            if context.phase == "after_to" and context.rule == "keyaoliandu" then
+                local damage, next_nature, terminal = policy_4(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "keyaoliandu", {
+        {phase="cap", rule="keyaoliandu", order=3600},
+        {phase="after_to", rule="keyaoliandu", order=5900},
+    })
+    local previous_2 = sgs.ai_ajustdamage_to["kejieyaoliandu"]
+    sgs.ai_ajustdamage_to["kejieyaoliandu"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "cap" and context.rule == "kejieyaoliandu" then
+                return policy_2(self, to, context.value, context.query, from, context.extra[3], context)
+            end
+            if context.phase == "after_to" and context.rule == "kejieyaoliandu" then
+                local damage, next_nature, terminal = policy_5(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_2) == "function" then return previous_2(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "kejieyaoliandu", {
+        {phase="cap", rule="kejieyaoliandu", order=3601},
+        {phase="after_to", rule="kejieyaoliandu", order=6000},
+    })
+    local previous_3 = sgs.ai_ajustdamage_from["keyaoleimu"]
+    sgs.ai_ajustdamage_from["keyaoleimu"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "before_from" and context.rule == "keyaoleimu" then
+                local damage, next_nature, terminal = policy_3(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_3) == "function" then return previous_3(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_from", "keyaoleimu", {
+        {phase="before_from", rule="keyaoleimu", order=4200},
+    })
+end)()

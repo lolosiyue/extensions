@@ -2244,10 +2244,15 @@ addToSkills(OnSkillTrigger, IsProhibited)
 
 function createMode(spec)
 	spec = spec or {}
-	-- Metadata-only modes also load in clients, whose content omits server AI.
-	-- Load the VM-local policy module only when the definition registers AI hooks.
-	if (spec.ai ~= nil or spec.teams ~= nil) and not sgs.registerModeAI then
-		dofile("lua/ai/mode-ai.lua")
+	-- Modes also load in clients, whose content omits server AI; there a mode keeps only its metadata.
+	-- Load the VM-local policy module only when the definition registers AI hooks and the module exists.
+	local wantsAI = spec.ai ~= nil or spec.teams ~= nil
+	if wantsAI and not sgs.registerModeAI then
+		local modeAI = io.open("lua/ai/mode-ai.lua")
+		if modeAI then
+			modeAI:close()
+			dofile("lua/ai/mode-ai.lua")
+		end
 	end
 	sgs.GameModeCallbacks = sgs.GameModeCallbacks or {}
 	local name = spec.name or "預設模式"
@@ -2322,7 +2327,7 @@ function createMode(spec)
 		end
 		generated_set[id] = true
 
-		if spec.ai ~= nil or spec.teams ~= nil then
+		if wantsAI and sgs.registerModeAI then
 			local aiSpec = {}
 			assert(spec.ai == nil or type(spec.ai) == "table", "ai must be a table")
 			for key, value in pairs(spec.ai or {}) do aiSpec[key] = value end

@@ -4,7 +4,6 @@ local known = AIValue.requireKnown
 
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
 local function visible_hand(self,p)local cards=known(p:getKnownCards(),"known hand");if #cards~=p:getHandcardNum()then ai_unsupported("source enumerates undisclosed dead hand","mobilexingshang")end;return cards end
--- The viewer's own dynamic property, converted like the donor's QVariant read (absent reads empty).
 local function property(self,k,kind)
  local v=self.player:getPropertyValue(k)
  if kind=="Bool"then return v==true elseif kind=="Int"then return tonumber(v)or 0 end
@@ -228,11 +227,13 @@ local function save_override(self,kind,key,v)
 end
 --制衡
 
-sgs.ai_fill_skill["tenyearzhiheng"] = function(self,inclusive,request)
+ai_fill_skill["tenyearzhiheng"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearZhihengCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearZhihengCard=function(card,use,self)
+ai_card_use.TenyearZhihengCard=function(self, card, use, request)
  local ids=self:selectZhihengCosts();if #ids>0 then use.card=self:bindSkillCard("tenyearzhiheng",ids,nil,nil,"TenyearZhihengCard")end
 end
 
@@ -298,11 +299,13 @@ local function getTenyearJieyinId(self,male,equips,cards)
 end
 
 
-sgs.ai_fill_skill["tenyearjieyin"] = function(self,inclusive,request)
+ai_fill_skill["tenyearjieyin"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearJieyinCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearJieyinCard = function(card,use,self)
+ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 	local cards,equips = {},{}
 	for _,c in sgs.qlist(self.player:getCards("h"))do
 		if self.player:canDiscard(self.player,c:getKnownEffectiveId()) then
@@ -465,12 +468,14 @@ sgs.ai_use_priority.TenyearJieyinCard = 0
 local function tenyearRendeV2Card(self,ids,request)
  return self:evaluateTurnSkillCard("tenyearrende","ActiveSkillCard",ids or{},request)
 end
-sgs.ai_fill_skill.tenyearrende = function(self,inclusive,request)
+ai_fill_skill.tenyearrende = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return end
 	return tenyearRendeV2Card(self,{},request)
 end
 
-sgs.ai_skill_use_func.tenyearrende = function(card,use,self)
+ai_card_use.tenyearrende = function(self, card, use, request)
     local others = self.room:getOtherPlayers(self.player)
     local friends,enemies,unknowns = {},{},{}
     local arrange = {}
@@ -572,9 +577,10 @@ sgs.ai_skill_askforag.tenyearrende = function(self,card_ids)
 	return card_ids[1]
 end
 
-sgs.ai_skill_invoke.tenyearrende = true
+ai_skill_invoke.tenyearrende = true
 
-sgs.ai_skill_use["@@tenyearrende"] = function(self,prompt,method)
+ai_skill_use["@@tenyearrende"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local name = prompt:split(":")[2]
 	if not name then return "." end
 	local card = clone(self,"tenyearrende","_tenyearrende",name,sgs.Card_NoSuit,0,{})
@@ -599,7 +605,9 @@ sgs.ai_view_as.tenyearwusheng = function(card,player,card_place)
 end
 
 
-sgs.ai_fill_skill["tenyearwusheng"] = function(self,inclusive,request)
+ai_fill_skill["tenyearwusheng"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile("he")
 	local red_card
 	cards = self:sortByUseValue(cards,true)
@@ -715,13 +723,15 @@ local function hasRedHandcard(self,target)
 end
 
 
-sgs.ai_fill_skill["tenyearyijue"] = function(self,inclusive,request)
+ai_fill_skill["tenyearyijue"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:canDiscard(self.player,"he") then
 		return parse_policy(self,"@TenyearYijueCard=.")
 	end
 end
 
-sgs.ai_skill_use_func.TenyearYijueCard = function(card,use,self)
+ai_card_use.TenyearYijueCard = function(self, card, use, request)
 	local id = -1
 	if self:needToThrowArmor() and self.player:canDiscard(self.player,self.player:getArmor():getEffectiveId()) then
 		id = self.player:getArmor():getEffectiveId()
@@ -787,16 +797,18 @@ sgs.ai_cardshow.tenyearyijue = function(self,requestor)
 	return cards[1]
 end
 
-sgs.ai_skill_invoke.tenyearyijue = function(self,data)
+ai_skill_invoke.tenyearyijue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local name = data:toString():split(":")
-	if #name<=1 or name[2]=="" or name[2]==nil then return false end
+	if #name<=1 or name[2]=="" or name[2]==nil then return (false) or false end
 	local player = self.room:findPlayerByObjectName(name[2])
-	if not player or player:isDead() then return false end
-	return self:isFriend(player)
+	if not player or player:isDead() then return (false) or false end
+	return (self:isFriend(player)) or false
 end
 
 --替身
-sgs.ai_skill_invoke.tenyeartishen = function(self,data)
+ai_skill_invoke.tenyeartishen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local hascard = false
 	for _,c in sgs.qlist(self.player:getCards("he"))do
 		if c:isKindOf("TrickCard") or c:isKindOf("OffensiveHorse") or c:isKindOf("DefensiveHorse") then  --没有相应区域不能使用坐骑牌暂时未考虑
@@ -804,16 +816,16 @@ sgs.ai_skill_invoke.tenyeartishen = function(self,data)
 			break
 		end
 	end
-	if not hascard then return true end
-	if self:getCardsNum("Jink")==0 then return false end
-	return true  --偷懒
+	if not hascard then return (true) or false end
+	if self:getCardsNum("Jink")==0 then return (false) or false end
+	return (true) or false  --偷懒
 end
 
 --观星
-sgs.ai_skill_invoke.tenyearguanxing = true
+ai_skill_invoke.tenyearguanxing = true
 
 --涯角
-sgs.ai_skill_invoke.tenyearyajiao = true
+ai_skill_invoke.tenyearyajiao = true
 
 sgs.ai_skill_playerchosen.tenyearyajiao = function(self,targets)
 	local id = self.player:getStrategyMark("tenyearyajiao")
@@ -849,33 +861,39 @@ sgs.ai_skill_discard.tenyearyajiao = function(self,discard_num,min_num,optional,
 end
 
 --集智
-sgs.ai_skill_invoke.tenyearjizhi = function(self,choices,data)
-	return self:canDraw()
+ai_skill_invoke.tenyearjizhi = function(self, options, request)
+	local choices = request and self:getDecisionData(request) or nil
+	local data = nil
+	return (self:canDraw()) or false
 end
 
-sgs.ai_skill_invoke.tenyearjizhi_discard = function(self,choices,data)
-	if self.player:getHandcardNum()<=self.player:getMaxCards() then return false end
+ai_skill_invoke.tenyearjizhi_discard = function(self, options, request)
+	local choices = request and self:getDecisionData(request) or nil
+	local data = nil
+	if self.player:getHandcardNum()<=self.player:getMaxCards() then return (false) or false end
 	local id = tag(self,"tenyearjizhi_id","Int")
 	local card = known_card(self,id)
-	if card:isKindOf("Jink") and self:getCardsNum("Jink")<=1 then return false end
-	if card:isKindOf("Peach") then return false end
-	if not self.player:canUse(card) then return true end
-	if card:isKindOf("Analeptic") and self:willUse(self.player,card) then return false end
+	if card:isKindOf("Jink") and self:getCardsNum("Jink")<=1 then return (false) or false end
+	if card:isKindOf("Peach") then return (false) or false end
+	if not self.player:canUse(card) then return (true) or false end
+	if card:isKindOf("Analeptic") and self:willUse(self.player,card) then return (false) or false end
 	local dummy_use = dummy_plan()
 	self:useCardByClassName(card,dummy_use)
-	if not dummy_use.card or dummy_use.to:isEmpty() then return true end
-	if card:isKindOf("Slash") and self:getCardsNum("Slash")>1 and (self.player:canSlashWithoutCrossbow() or self.player:hasWeapon("Crossbow")) then return false end
-	return false
+	if not dummy_use.card or dummy_use.to:isEmpty() then return (true) or false end
+	if card:isKindOf("Slash") and self:getCardsNum("Slash")>1 and (self.player:canSlashWithoutCrossbow() or self.player:hasWeapon("Crossbow")) then return (false) or false end
+	return (false) or false
 end
 
 --奸雄
-sgs.ai_skill_invoke.tenyearjianxiong = function(self,choices,data)
-	return self:canDraw()
+ai_skill_invoke.tenyearjianxiong = function(self, options, request)
+	local choices = request and self:getDecisionData(request) or nil
+	local data = nil
+	return (self:canDraw()) or false
 end
 
 --清俭
-sgs.ai_skill_use["@@tenyearqingjian"] = function(self,prompt,method)
-	--if known(self.world.turn_count,"turn count")<=1 then return "." end
+ai_skill_use["@@tenyearqingjian"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	if not self.room:hasCurrent() then return "." end
 	local current = self.room:getCurrent()
 	if current:isDead() or not self:isFriend(current) then return "." end
@@ -927,20 +945,20 @@ sgs.ai_skill_use["@@tenyearqingjian"] = function(self,prompt,method)
 end
 
 --裸衣
-sgs.ai_skill_invoke.tenyearluoyi = function(self)
-	if self.player:getPile("yiji"):length()>1 then return false end
+ai_skill_invoke.tenyearluoyi = function(self, options, request)
+	if self.player:getPile("yiji"):length()>1 then return (false) or false end
 	local diaochans,nosdiaochans = self.room:findPlayersBySkillName("lijian"),self.room:findPlayersBySkillName("noslijian")
 	for _,diaochan in sgs.qlist(diaochans)do
 		if self:isEnemy(diaochan) then
 			for _,friend in ipairs(self.friends_noself)do
-				if self:isWeak(friend) or friend:getHp()<=2 then return false end
+				if self:isWeak(friend) or friend:getHp()<=2 then return (false) or false end
 			end
 		end
 	end
 	for _,diaochan in sgs.qlist(nosdiaochans)do
 		if self:isEnemy(diaochan) then
 			for _,friend in ipairs(self.friends_noself)do
-				if self:isWeak(friend) or friend:getHp()<=2 then return false end
+				if self:isWeak(friend) or friend:getHp()<=2 then return (false) or false end
 			end
 		end
 	end
@@ -957,12 +975,12 @@ sgs.ai_skill_invoke.tenyearluoyi = function(self)
 		elseif c:isKindOf("Analeptic") and (slash or self:getCardsNum("Slash")>0) then num = num+1
 		end
 	end
-	return num>=2
+	return (num>=2) or false
 end
 
 --遗计
-sgs.ai_skill_invoke.tenyearyiji = function(self)
-	return sgs.ai_skill_invoke.nosyiji(self)
+ai_skill_invoke.tenyearyiji = function(self, options, request)
+	return (ai_skill_invoke.nosyiji(self, {}, nil)) or false
 end
 
 sgs.ai_skill_askforyiji.tenyearyiji = function(self,card_ids,tos)
@@ -979,35 +997,36 @@ sgs.ai_can_damagehp.tenyearyiji = function(self,from,card,to)
 end
 
 --洛神
-sgs.ai_skill_invoke.tenyearluoshen = function(self,data)
+ai_skill_invoke.tenyearluoshen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	if self.player:getStrategyFlag("AI_doNotInvoke_tenyearluoshen") then
 		self:setStrategyPlayerFlag(self.player,"AI_doNotInvoke_tenyearluoshen",false)
-		return false
+		return (false) or false
 	end
-	if self.player:getStrategyFlag("AI_TenyearLuoshen_Conflict_With_Guanxing") and self.player:getStrategyMark("AI_tenyearluoshen_times")==0 then return false end
+	if self.player:getStrategyFlag("AI_TenyearLuoshen_Conflict_With_Guanxing") and self.player:getStrategyMark("AI_tenyearluoshen_times")==0 then return (false) or false end
 	if self:willSkipPlayPhase() then
 		local erzhang = self.room:findPlayerBySkillName("guzheng")
-		if erzhang and self:isEnemy(erzhang) and self:getOverflow()>1 then return false end
+		if erzhang and self:isEnemy(erzhang) and self:getOverflow()>1 then return (false) or false end
 		if self.player:getPile("incantation"):length()>0 then
 			local card = known_card(self,self.player:getPile("incantation"):first())
 			if not self.player:getJudgingArea():isEmpty() and not self.player:containsTrick("YanxiaoCard") and not self:hasWizard(self.enemies,true) then
 				local trick = self.player:getJudgingArea():last()
 				if trick:isKindOf("Indulgence") then
-					if card:getSuit()==sgs.Card_Heart or (self.player:hasSkill("hongyan") and card:getSuit()==sgs.Card_Spade) then return false end
+					if card:getSuit()==sgs.Card_Heart or (self.player:hasSkill("hongyan") and card:getSuit()==sgs.Card_Spade) then return (false) or false end
 				elseif trick:isKindOf("SupplyShortage") then
-					if card:getSuit()==sgs.Card_Club then return false end
+					if card:getSuit()==sgs.Card_Club then return (false) or false end
 				end
 			end
 			local zhangbao = self.room:findPlayerBySkillName("yingbing")
 			if zhangbao and self:isEnemy(zhangbao) and not zhangbao:hasSkill("manjuan")
-				and (card:isRed() or (self.player:hasSkill("hongyan") and card:getSuit()==sgs.Card_Spade)) then return false end
+				and (card:isRed() or (self.player:hasSkill("hongyan") and card:getSuit()==sgs.Card_Spade)) then return (false) or false end
 		end
 	end
-	return true
+	return (true) or false
 end
 
 --突袭
-sgs.ai_skill_use["@@tenyeartuxi"] = function(self,prompt)
+ai_skill_use["@@tenyeartuxi"] = function(self, prompt, request)
 	self.enemies = self:sort(self.enemies,"handcard_defense")
 	local tuxi_mark = self.player:getStrategyMark("tenyeartuxi")
 	local targets = {}
@@ -1120,7 +1139,8 @@ sgs.ai_skill_use["@@tenyeartuxi"] = function(self,prompt)
 		local x = p:getHandcardNum()
 		local good_target = true
 		if x==1 and self:needKongcheng(p) then good_target = false end
-		if x>=2 and p:hasSkill("tuntian") and p:hasSkill("zaoxian") then good_target = false end
+		-- 屯田類收益統一由 helper 判斷，涵蓋技能變體與回合外條件。
+		if x>=2 and self:hasTuntianEffect(p, true) then good_target = false end
 		if good_target and add_player(p)==tuxi_mark then return parseTenyearTuxiCard() end
 	end
 
@@ -1135,13 +1155,13 @@ sgs.ai_skill_use["@@tenyeartuxi"] = function(self,prompt)
 
 	local others = self.room:getOtherPlayers(self.player)
 	for _,other in sgs.qlist(others)do
-		if self:objectiveLevel(other)>=0 and not (other:hasSkill("tuntian") and other:hasSkill("zaoxian")) and add_player(other)==tuxi_mark then
+		if self:objectiveLevel(other)>=0 and not (self:hasTuntianEffect(other, true)) and add_player(other)==tuxi_mark then
 			return parseTenyearTuxiCard()
 		end
 	end
 
 	for _,other in sgs.qlist(others)do
-		if self:objectiveLevel(other)>=0 and not (other:hasSkill("tuntian") and other:hasSkill("zaoxian")) and math.random(0,5)<=1 and not self:hasSkills("qiaobian") then
+		if self:objectiveLevel(other)>=0 and not (self:hasTuntianEffect(other, true)) and math.random(0,5)<=1 and not self:hasSkills("qiaobian") then
 			add_player(other)
 		end
 	end
@@ -1155,14 +1175,14 @@ sgs.ai_card_intention.TenyearTuxiCard = function(self,card,from,tos)
 	if known(self:getRoleEstimate(from),"role estimate")=="neutral" and known(self:getRoleEstimate(tos[1]),"role estimate")=="neutral" and
 		(not tos[2] or known(self:getRoleEstimate(tos[2]),"role estimate")=="neutral") and lord and not lord:isKongcheng() and
 		not (self:needKongcheng(lord) and lord:getHandcardNum()==1 ) and
-		self:hasLoseHandcardEffective(lord) and not (lord:hasSkill("tuntian") and lord:hasSkill("zaoxian")) and from:aliveCount()>=4 then
+		self:hasLoseHandcardEffective(lord) and not (self:hasTuntianEffect(lord, true)) and from:aliveCount()>=4 then
 			self:updateIntention(from,lord,-80)
 		return
 	end
 	if from:getState()=="online" then
 		for _,to in ipairs(tos)do
 			if to:hasSkill("kongcheng") or to:hasSkill("lianying") or to:hasSkill("zhiji")
-				or (to:hasSkill("tuntian") and to:hasSkill("zaoxian")) then
+				or (self:hasTuntianEffect(to, true)) then
 			else
 				self:updateIntention(from,to,80)
 			end
@@ -1181,7 +1201,9 @@ end
 
 --青囊
 
-sgs.ai_fill_skill["tenyearqingnang"] = function(self,inclusive,request)
+ai_fill_skill["tenyearqingnang"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getHandcards()
 	cards = sgs.QList2Table(cards)
 	local compare_func = function(a,b)
@@ -1193,7 +1215,7 @@ sgs.ai_fill_skill["tenyearqingnang"] = function(self,inclusive,request)
 	return parse_policy(self,("@TenyearQingnangCard=%d"):format(cards[1]:getId()))
 end
 
-sgs.ai_skill_use_func.TenyearQingnangCard = function(card,use,self)
+ai_card_use.TenyearQingnangCard = function(self, card, use, request)
 	local friends = {}
 	for _,p in ipairs(self.friends)do
 		if p:getStrategyMark("tenyearqingnang_target-PlayClear")>0 or p:getLostHp()<=0 then continue end
@@ -1226,11 +1248,14 @@ sgs.ai_card_intention.TenyearQingnangCard = sgs.ai_card_intention.QingnangCard
 sgs.dynamic_value.benefit.TenyearQingnangCard = true
 
 --利驭
-sgs.ai_skill_invoke.tenyearliyu = function(self,data)
+ai_skill_invoke.tenyearliyu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
     if self:isFriend(to)
-	then return self:doDisCard(to,"ej") or #self.enemies>0
-	else return to:hasEquip() end
+	then return (self:doDisCard(to,"ej") or #self.enemies>0) or false
+	else return (to:hasEquip()) or false end
+	return false
+
 end
 
 sgs.ai_skill_playerchosen.tenyearliyu = function(self,players)
@@ -1249,49 +1274,57 @@ end
 
 
 --闭月
-sgs.ai_skill_invoke.tenyearbiyue = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.tenyearbiyue = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 --耀武
-sgs.ai_skill_choice.tenyearyaowu = function(self,choices)
-	return sgs.ai_skill_choice.yaowu(self,choices)
+ai_skill_choice.tenyearyaowu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	return ai_choice_result((ai_skill_choice.yaowu(self,{reason="yaowu",choices=options and options.choices or (choices~=nil and {} or nil),inquiry_scope="nested"},nil)), options)
 end
 
 --烈弓
-sgs.ai_skill_invoke.tenyearliegong = function(self,data)
-	return sgs.ai_skill_invoke.liegong(self,data)
+ai_skill_invoke.tenyearliegong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.liegong(self, options, request)) or false
 end
 
 --狂骨
-sgs.ai_skill_choice.tenyearkuanggu = function(self,choices)
+ai_skill_choice.tenyearkuanggu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	choices = choices:split("+")
 	if table.contains(choices,"draw") and #self.enemies>0
 	and self.player:getPhase()==sgs.Player_Play and sgs.Slash_IsAvailable(self.player) then
-		return "draw"
+		return ai_choice_result(("draw"), options)
 	end
 	if table.contains(choices,"recover") and self.player:getLostHp()>0 and self:isWeak() then
-		return "recover"
+		return ai_choice_result(("recover"), options)
 	end
 	if table.contains(choices,"draw") and self:needBear() then
-		return "draw"
+		return ai_choice_result(("draw"), options)
 	end
 	if table.contains(choices,"recover") and self.player:getLostHp()>0 then
-		return "recover"
+		return ai_choice_result(("recover"), options)
 	end
-    return "draw"
+    return ai_choice_result(("draw"), options)
 end
 
 --奇谋
 
-sgs.ai_fill_skill["tenyearqimou"] = function(self,inclusive,request)
+ai_fill_skill["tenyearqimou"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies<=0 then return end
 	write(self,"qm_lose",math.min(self:getCardsNum("Slash")-1,self.player:getHp()+self:getCardsNum("Analeptic,Peach")-1))
 	if read(self,"qm_lose")<2 then return end
 	return parse_policy(self,"@TenyearQimouCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearQimouCard = function(card,use,self)
+ai_card_use.TenyearQimouCard = function(self, card, use, request)
 	hypothetical_distance(self,-read(self,"qm_lose"))
 	local slash = self:getCard("Slash")
 	if not slash then hypothetical_distance(self,read(self,"qm_lose")) return end
@@ -1302,30 +1335,32 @@ sgs.ai_skill_use_func.TenyearQimouCard = function(card,use,self)
 	use.card = card
 end
 
-sgs.ai_skill_choice.tenyearqimou = function(self,choices)
+ai_skill_choice.tenyearqimou = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	choices = choices:split("+")
 	for _,choice in ipairs(choices)do
-		if tonumber(choice)==read(self,"qm_lose") then return choice end
+		if tonumber(choice)==read(self,"qm_lose") then return ai_choice_result((choice), options) end
 	end
-	return choices[1]
+	return ai_choice_result((choices[1]), options)
 end
 
 sgs.ai_use_priority.TenyearQimouCard = sgs.ai_use_priority.Slash+0.1
 
 --神速
-sgs.ai_skill_use["@@tenyearshensu1"] = function(self,prompt)
+ai_skill_use["@@tenyearshensu1"] = function(self, prompt, request)
 	local card_str = raw_shensu1(self,prompt)
 	if not card_str or card_str=="." then return "." end
 	return string.gsub(card_str,"@ShensuCard","@TenyearShensuCard")
 end
 
-sgs.ai_skill_use["@@tenyearshensu2"] = function(self,prompt)
+ai_skill_use["@@tenyearshensu2"] = function(self, prompt, request)
 	local card_str = raw_shensu2(self,prompt,method)
 	if not card_str or card_str=="." then return "." end
 	return string.gsub(card_str,"@ShensuCard","@TenyearShensuCard")
 end
 
-sgs.ai_skill_use["@@tenyearshensu3"] = function(self,prompt)
+ai_skill_use["@@tenyearshensu3"] = function(self, prompt, request)
 	self.enemies = self:sort(self.enemies,"defense")
 	if self:needBear() then return "." end
 	local selfSub = self:getOverflow()
@@ -1364,8 +1399,9 @@ sgs.ai_card_intention.TenyearShensuCard = sgs.ai_card_intention.ShensuCard
 sgs.tenyearshensu_keep_value = sgs.shensu_keep_value
 
 --据守
-sgs.ai_skill_invoke.tenyearjushou = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.tenyearjushou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 sgs.ai_skill_cardask["@tenyearjushou"] = function(self,data)
@@ -1453,7 +1489,7 @@ sgs.ai_skill_cardask["@tenyearjiewei"] = function(self,data)
 end
 
 --天香
-sgs.ai_skill_use["@@tenyeartianxiang"] = function(self,prompt)
+ai_skill_use["@@tenyeartianxiang"] = function(self, prompt, request)
 	local cards = self.player:getCards("h")
 	local str = "@TenyearTianxiangCard="
 	local reason = "tenyeartianxiang"
@@ -1479,27 +1515,27 @@ sgs.ai_skill_use["@@tenyeartianxiang"] = function(self,prompt)
 
 	for _,friend in ipairs(self.friends_noself)do
 		if not hasZhaxiangEffect(friend) or self:willSkipPlayPhase(friend) or self:isWeak(friend) then continue end
-		sgs.ai_skill_choice[reason] = "losehp"
+		ai_skill_choice[reason] = "losehp"
 		return str..card_id.."->"..friend:objectName()
 	end
 
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:getHp()<=1 and enemy:isAlive() and not hasZhaxiangEffect(enemy) then
-			sgs.ai_skill_choice[reason] = "losehp"
+			ai_skill_choice[reason] = "losehp"
 			return str..card_id.."->"..enemy:objectName()
 		end
 	end
 
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:isAlive() and not hasZhaxiangEffect(enemy) then
-			sgs.ai_skill_choice[reason] = "losehp"
+			ai_skill_choice[reason] = "losehp"
 			return str..card_id.."->"..enemy:objectName()
 		end
 	end
 
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:getHp()<=1 and enemy:isAlive() and not hasBuquEffect(enemy) and self:damageIsEffective(enemy) then
-			sgs.ai_skill_choice[reason] = "damage"
+			ai_skill_choice[reason] = "damage"
 			return str..card_id.."->"..enemy:objectName()
 		end
 	end
@@ -1510,38 +1546,38 @@ sgs.ai_skill_use["@@tenyeartianxiang"] = function(self,prompt)
 			or self:needToLoseHp(friend)
 			or (friend:getHandcardNum()<3 and (friend:hasSkill("nosrende") or friend:hasSkill("rende") and not friend:hasUsed("RendeCard"))))
 		then
-			sgs.ai_skill_choice[reason] = "damage"
+			ai_skill_choice[reason] = "damage"
 			return str..card_id.."->"..friend:objectName()
 		elseif hasBuquEffect(friend) then
-			sgs.ai_skill_choice[reason] = "damage"
+			ai_skill_choice[reason] = "damage"
 			return str..card_id.."->"..friend:objectName()
 		end
 	end
 
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:getLostHp()==0 and enemy:isAlive() and self:damageIsEffective(enemy) and not self:canDraw(enemy) then
-			sgs.ai_skill_choice[reason] = "damage"
+			ai_skill_choice[reason] = "damage"
 			return str..card_id.."->"..enemy:objectName()
 		end
 	end
 
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:getLostHp()==0 and enemy:isAlive() and not self:canDraw(enemy) then
-			sgs.ai_skill_choice[reason] = "damage"
+			ai_skill_choice[reason] = "damage"
 			return str..card_id.."->"..enemy:objectName()
 		end
 	end
 
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:isAlive() and self:damageIsEffective(enemy) and not self:canDraw(enemy) then
-			sgs.ai_skill_choice[reason] = "damage"
+			ai_skill_choice[reason] = "damage"
 			return str..card_id.."->"..enemy:objectName()
 		end
 	end
 
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:isAlive() and self:damageIsEffective(enemy) then
-			sgs.ai_skill_choice[reason] = "damage"
+			ai_skill_choice[reason] = "damage"
 			return str..card_id.."->"..enemy:objectName()
 		end
 	end
@@ -1549,19 +1585,22 @@ sgs.ai_skill_use["@@tenyeartianxiang"] = function(self,prompt)
 end
 
 --鞬出
-sgs.ai_skill_invoke.tenyearjianchu = function(self,data)
+ai_skill_invoke.tenyearjianchu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not target then return false end
-	return not self:isFriend(target) and self:doDisCard(target,"he")
+	if not target then return (false) or false end
+	return (not self:isFriend(target) and self:doDisCard(target,"he")) or false
 end
 
 --散谣
 
-sgs.ai_fill_skill["tenyearsanyao"] = function(self,inclusive,request)
+ai_fill_skill["tenyearsanyao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearSanyaoCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearSanyaoCard = function(card,use,self)
+ai_card_use.TenyearSanyaoCard = function(self, card, use, request)
 	local alives = self.room:getAlivePlayers()
 	local max_hp = -1000
 	for _,p in sgs.qlist(alives)do
@@ -1632,8 +1671,9 @@ sgs.ai_use_value.TenyearSanyaoCard = sgs.ai_use_value.SanyaoCard
 sgs.ai_card_intention.TenyearSanyaoCard = sgs.ai_card_intention.SanyaoCard
 
 --制蛮
-sgs.ai_skill_invoke.tenyearzhiman = function(self,data)
-	return sgs.ai_skill_invoke.zhiman(self,data)
+ai_skill_invoke.tenyearzhiman = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.zhiman(self, options, request)) or false
 end
 
 --镇军
@@ -1695,21 +1735,23 @@ sgs.ai_skill_discard.tenyearzhenjun = function(self,discard_num,min_num,optional
 end
 
 --精策
-sgs.ai_skill_invoke.tenyearjingce = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.tenyearjingce = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 --当先
-sgs.ai_skill_invoke.tenyeardangxian = function(self,data)
-	if self:isWeak() then return false end
-	if self:getCardsNum("Slash")>1 then return false end
+ai_skill_invoke.tenyeardangxian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self:isWeak() then return (false) or false end
+	if self:getCardsNum("Slash")>1 then return (false) or false end
 	local slashs = AIList.new({})
 	for _,id in sgs.qlist(self.room:getDiscardPile())do
 		if known_card(self,id):isKindOf("Slash") then
 			slashs:append(known_card(self,id))
 		end
 	end
-	if slashs:isEmpty() then return false end
+	if slashs:isEmpty() then return (false) or false end
 	local slash
 	if slashs:length()==1 then
 		slash = slashs:first()
@@ -1719,13 +1761,13 @@ sgs.ai_skill_invoke.tenyeardangxian = function(self,data)
 	local dummy_use = dummy_plan()
 	self:useCardSlash(slash,dummy_use)
 	if dummy_use.card and dummy_use.to:length()>0 then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 --伏枥
-sgs.ai_skill_invoke.tenyearfuli = true
+ai_skill_invoke.tenyearfuli = true
 
 --醇醪
 sgs.ai_cardneed.tenyearchunlao = function(to,card)
@@ -1735,7 +1777,7 @@ end
 sgs.ai_card_intention.TenyearChunlaoWineCard = sgs.ai_card_intention.ChunlaoWineCard
 sgs.tenyearchunlao_keep_value = sgs.chunlao_keep_value
 
-sgs.ai_skill_use["@@tenyearchunlao"] = function(self,prompt)
+ai_skill_use["@@tenyearchunlao"] = function(self, prompt, request)
 	local str = raw_chunlao(self,prompt)
 	if not str or str=="" or str=="." then return "." end
 	return string.gsub(str,"ChunlaoCard","TenyearChunlaoCard")
@@ -1770,9 +1812,10 @@ function sgs.ai_cardneed.secondtenyearlihuo(to,card,self)
 	return sgs.ai_cardneed.lihuo(to,card,self)
 end
 
-sgs.ai_skill_invoke.secondtenyearlihuo = function(self,data)
-	if data:toString()=="put" then return true end
-	return sgs.ai_skill_invoke.lihuo(self,data)
+ai_skill_invoke.secondtenyearlihuo = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if data:toString()=="put" then return (true) or false end
+	return (ai_skill_invoke.lihuo(self, options, request)) or false
 end
 
 sgs.ai_view_as.secondtenyearlihuo = function(card,player,card_place)
@@ -1783,7 +1826,9 @@ sgs.ai_view_as.secondtenyearlihuo = function(card,player,card_place)
 end
 
 
-sgs.ai_fill_skill["secondtenyearlihuo"] = function(self,inclusive,request)
+ai_fill_skill["secondtenyearlihuo"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local slash_card
 	for _,card in ipairs(self:addHandPile())do
 		if card:isKindOf("Slash") and not card:isKindOf("NatureSlash") then
@@ -1799,9 +1844,7 @@ sgs.ai_fill_skill["secondtenyearlihuo"] = function(self,inclusive,request)
 		use.from = self.player
 		use.to = dummy_use.to
 		use.card = slash_card
-		local data = value_variant()
-		data:setValue(use)
-		if not sgs.ai_skill_invoke.secondtenyearlihuo(self,data) then return nil end
+		if not ai_skill_invoke.secondtenyearlihuo(self,self:inquiryInput("skill_invoke","secondtenyearlihuo",{use=use})) then return nil end
 	else return nil end
 	local suit = slash_card:getSuitString()
 	local number = slash_card:getNumberString()
@@ -1817,7 +1860,7 @@ end
 sgs.ai_card_intention.SecondTenyearChunlaoWineCard = sgs.ai_card_intention.ChunlaoWineCard
 sgs.secondtenyearchunlao_keep_value = sgs.chunlao_keep_value
 
-sgs.ai_skill_use["@@secondtenyearchunlao"] = function(self,prompt)
+ai_skill_use["@@secondtenyearchunlao"] = function(self, prompt, request)
 	local str = raw_chunlao(self,prompt)
 	if not str or str=="" or str=="." then return "." end
 	return string.gsub(str,"ChunlaoCard","SecondTenyearChunlaoCard")
@@ -1831,8 +1874,8 @@ sgs.ai_cardsview_valuable.secondtenyearchunlao = function(self,class_name,player
 end
 
 --将驰
-sgs.ai_skill_use["@@tenyearjiangchi"] = function(self,prompt)
-	local choice = sgs.ai_skill_choice.jiangchi(self)
+ai_skill_use["@@tenyearjiangchi"] = function(self, prompt, request)
+	local choice = ai_skill_choice.jiangchi(self,{reason="jiangchi",choices=nil,inquiry_scope="nested"},nil)
 	if choice=="cancel" then return "." end
 	if choice=="jiang" then
 		return "@TenyearJiangchiCard=."
@@ -1851,12 +1894,14 @@ function sgs.ai_cardneed.tenyearjiangchi(to,card,self)
 end
 
 --怃戎
-sgs.ai_fill_skill.tenyearwurong = function(self,inclusive,request)
+ai_fill_skill.tenyearwurong = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:isKongcheng() then return end
     return parse_policy(self,"@TenyearWurongCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearWurongCard = function(card,use,self)
+ai_card_use.TenyearWurongCard = function(self, card, use, request)
     local handcards = self.player:getHandcards()
     local my_slashes,my_cards = {},{}
     for _,c in sgs.qlist(handcards)do
@@ -2111,17 +2156,18 @@ sgs.ai_playerchosen_intention.tenyearyaoming = function(self,from,to)
 end
 
 --胆守
-sgs.ai_skill_invoke.tenyeardanshou = function(self,data)
+ai_skill_invoke.tenyeardanshou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local name = data:toString():split(":")
-	if #name<2 then return false end
+	if #name<2 then return (false) or false end
 	if name[1]=="tenyeardanshou_invoke" then
 		local target = self.room:getCurrent()
-		return self:isFriend(target) or target:getHandcardNum()>self.player:getHandcardNum()
+		return (self:isFriend(target) or target:getHandcardNum()>self.player:getHandcardNum()) or false
 	end
 	local target = self.room:findPlayerByObjectName(name[2])
-	if not target or target:isDead() then return false end
-	return self:isFriend(target) and self:needToLoseHp(target,self.player)
-	or not self:isFriend(target) and self:canAttack(target)
+	if not target or target:isDead() then return (false) or false end
+	return (self:isFriend(target) and self:needToLoseHp(target,self.player)
+	or not self:isFriend(target) and self:canAttack(target)) or false
 end
 
 sgs.ai_skill_discard.tenyeardanshou = function(self,x,n)
@@ -2348,7 +2394,7 @@ sgs.ai_skill_cardask["@tenyearjiaojin"] = function(self,data)
 end
 
 --奔袭
-sgs.ai_skill_use["@@tenyearbenxi!"] = function(self,prompt)
+ai_skill_use["@@tenyearbenxi!"] = function(self, prompt, request)
 	local valid = property(self,"extra_collateral"):split("+")
 	local destlist = self.room:getOtherPlayers(self.player)
     destlist = sgs.QList2Table(destlist) -- 将列表转换为表
@@ -2363,11 +2409,13 @@ end
 
 --狂斧
 
-sgs.ai_fill_skill["tenyearkuangfu"] = function(self,inclusive,request)
+ai_fill_skill["tenyearkuangfu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearKuangfuCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearKuangfuCard = function(card,use,self)
+ai_card_use.TenyearKuangfuCard = function(self, card, use, request)
 	local target = self:findPlayerToDiscard("e",true,true,self.room:getAlivePlayers())[1]
 	if target then
 		use.card = card
@@ -2377,7 +2425,7 @@ end
 
 sgs.ai_use_priority.TenyearKuangfuCard = sgs.ai_use_priority.Slash-0.1
 
-sgs.ai_skill_use["@@tenyearkuangfu!"] = function(self,prompt)
+ai_skill_use["@@tenyearkuangfu!"] = function(self, prompt, request)
 	local slash = clone(self,"tenyearkuangfu","_tenyearkuangfu","slash",sgs.Card_NoSuit,0,{})
    	local d = self:aiUseCard(slash)
     if slash:isAvailable(self.player)
@@ -2395,15 +2443,19 @@ sgs.ai_skill_discard.tenyearkuangfu = function(self,discard_num,min_num,optional
 end
 
 --破军
-sgs.ai_skill_invoke.tenyearpojun = function(self,data)
+ai_skill_invoke.tenyearpojun = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return true end
-    return false
+    if not self:isFriend(target) then return (true) or false end
+    return (false) or false
 end
 
-sgs.ai_skill_choice.tenyearpojun_num = function(self,choices,data)
+ai_skill_choice.tenyearpojun_num = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-	return items[#items]
+	return ai_choice_result((items[#items]), options)
 end
 
 sgs.ai_use_revises.tenyearpojun = function(self,card,use)
@@ -2414,7 +2466,9 @@ end
 
 --断粮
 
-sgs.ai_fill_skill["tenyearduanliang"] = function(self,inclusive,request)
+ai_fill_skill["tenyearduanliang"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local card = raw_duanliang(self)
 	if card then
 		local str = card:getLegacyStringKey()
@@ -2427,8 +2481,9 @@ sgs.ai_cardneed.tenyearduanliang = sgs.ai_cardneed.duanliang
 sgs.tenyearduanliang_suit_value = sgs.duanliang_suit_value
 
 --残蚀
-sgs.ai_skill_invoke.tenyearcanshi = function(self,data)
-	return sgs.ai_skill_invoke.canshi(self,data)
+ai_skill_invoke.tenyearcanshi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.canshi(self, options, request)) or false
 end
 
 sgs.ai_skill_discard.tenyearcanshi = function(self,discard_num,min_num,optional,include_equip)
@@ -2437,11 +2492,13 @@ end
 
 --宴诛
 
-sgs.ai_fill_skill["tenyearyanzhu"] = function(self,inclusive,request)
+ai_fill_skill["tenyearyanzhu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearYanzhuCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearYanzhuCard = function(card,use,self)
+ai_card_use.TenyearYanzhuCard = function(self, card, use, request)
 	if property(self,"tenyearyanzhu_level_up","Bool") then
 		self.enemies = self:sort(self.enemies,"defense")
 		for _,p in ipairs(self.enemies)do
@@ -2485,7 +2542,7 @@ sgs.ai_skill_discard.tenyearyanzhu = function(self,_,__,optional)
 end
 
 --兴学
-sgs.ai_skill_use["@@tenyearxingxue"] = function(self)
+ai_skill_use["@@tenyearxingxue"] = function(self, prompt, request)
     local n = (property(self,"tenyearyanzhu_level_up","Bool")) and self.player:getMaxHp() or self.player:getHp()
     n = math.min(n,#self.friends)
 	if n<=0 then return "." end
@@ -2507,7 +2564,7 @@ sgs.ai_skill_discard.tenyearxingxue = function(self,discard_num,min_num,optional
 end
 
 --倾袭
-sgs.ai_skill_invoke.tenyearqingxi = sgs.ai_skill_invoke.tenyearpojun
+ai_skill_invoke.tenyearqingxi = ai_skill_invoke.tenyearpojun
 
 sgs.ai_skill_discard.tenyearqingxi = function(self,discard_num,min_num,optional,include_equip)
 	return self:askForDiscard("dummyreason",discard_num,min_num,false,include_equip)
@@ -2525,7 +2582,6 @@ sgs.ai_skill_cardask["@tenyearduodao"] = function(self,data)
 			return "."
 		end
 	end
-	--return sgs.ai_skill_cardask["@duodao-get"](self,data)
 	local function getLeastValueCard(from)
 		if self:needToThrowArmor() then return "$"..self.player:getArmor():getEffectiveId() end
 		local cards = sgs.QList2Table(self.player:getHandcards())
@@ -2594,7 +2650,7 @@ sgs.ai_skill_cardask["@tenyearduodao"] = function(self,data)
 end
 
 --慎断
-sgs.ai_skill_use["@@tenyearshenduan"] = function(self)
+ai_skill_use["@@tenyearshenduan"] = function(self, prompt, request)
 	for _,id in sgs.list(tag(self,"tenyearshenduanForAI","IntList"))do
 		local ss = clone(self,"tenyearshenduan","tenyearshenduan","supply_shortage",sgs.Card_NoSuit,0,{id})
 		if self.player:isCardLimited(ss,sgs.Card_MethodUse) then continue end
@@ -2608,41 +2664,46 @@ sgs.ai_skill_use["@@tenyearshenduan"] = function(self)
 end
 
 --勇略
-sgs.ai_skill_invoke.tenyearyonglve = function(self,data)
+ai_skill_invoke.tenyearyonglve = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local name = data:toString():split(":")[2]
-	if not name then return false end
+	if not name then return (false) or false end
 	local current = self.room:findPlayerByObjectName(name)
-	if not current or current:isDead() then return false end
+	if not current or current:isDead() then return (false) or false end
 	local slash = clone(self,"tenyearyonglve","_tenyearyonglve","slash",sgs.Card_NoSuit,0,{})
 	if self:isFriend(current) and self:doDisCard(current,"j") then
-		if self.player:inMyAttackRange(current) then return true end
-		if not self:slashIsEffective(slash,current,self.player) then return true end
-		if not self:isWeak(current) or getKnownCard(current,self.player,"Jink")>0 then return true end
+		if self.player:inMyAttackRange(current) then return (true) or false end
+		if not self:slashIsEffective(slash,current,self.player) then return (true) or false end
+		if not self:isWeak(current) or getKnownCard(current,self.player,"Jink")>0 then return (true) or false end
 	elseif self:isEnemy(current)
 	then
-		if self:doDisCard(current,"j") then return true end
+		if self:doDisCard(current,"j") then return (true) or false end
 		for _,card in sgs.qlist(current:getJudgingArea())do
 			if card:isKindOf("SupplyShortage") and (current:getHandcardNum()>4 or current:containsTrick("indulgence"))
 			then
 				save_override(self,"cardchosen","tenyearyonglve",card:getKnownEffectiveId())
-				return true
+				return (true) or false
 			elseif card:isKindOf("Indulgence") and current:getHandcardNum()+self:ImitateResult_DrawNCards(current)<=self:getOverflow(current,true)
 			then
 				save_override(self,"cardchosen","tenyearyonglve",card:getKnownEffectiveId())
-				return true
+				return (true) or false
 			end
 		end
-		if self.player:inMyAttackRange(current) and self.player:getHandcardNum()<3 then return true end
+		if self.player:inMyAttackRange(current) and self.player:getHandcardNum()<3 then return (true) or false end
 		if self:isWeak(current) and current:getHp()<2 and getCardsNum("Jink",current,self.player)<1
 		and self:slashIsEffective(slash,current,self.player) then
 			save_override(self,"cardchosen","tenyearyonglve",source_random_card(self,current,"j"))
-			return true
+			return (true) or false
 		end
 	end
+	return false
+
 end
 
 --巧说
-sgs.ai_fill_skill["tenyearqiaoshui"] = function(self,inclusive,request)
+ai_fill_skill["tenyearqiaoshui"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = sgs.QList2Table(self.player:getCards("h"))
 	cards = self:sortByKeepValue(cards)
   	for _,c in sgs.list(cards)do
@@ -2653,7 +2714,7 @@ sgs.ai_fill_skill["tenyearqiaoshui"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["TenyearQiaoshuiCard"] = function(card,use,self)
+ai_card_use["TenyearQiaoshuiCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,ep in sgs.list(self.enemies)do
 		if self.player:canPindian(ep)
@@ -2668,7 +2729,10 @@ end
 sgs.ai_use_value.TenyearQiaoshuiCard = 3.4
 sgs.ai_use_priority.TenyearQiaoshuiCard = 4.8
 
-sgs.ai_skill_choice.tenyearqiaoshui = function(self,choices,data)
+ai_skill_choice.tenyearqiaoshui = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local use = data:toCardUse()
 	if table.contains(items,"add")
@@ -2682,7 +2746,7 @@ sgs.ai_skill_choice.tenyearqiaoshui = function(self,choices,data)
 			then
 				write(self,"tenyearqiaoshui_to",{d.to:at(0),d.to:at(1)})
 			end
-			return "add"
+			return ai_choice_result(("add"), options)
 		end
 	end
 	if table.contains(items,"remove")
@@ -2694,7 +2758,7 @@ sgs.ai_skill_choice.tenyearqiaoshui = function(self,choices,data)
 				and self:hasTrickEffective(use.card,to,use.from)
 				then
 					write(self,"tenyearqiaoshui_to",{to})
-					return "remove"
+					return ai_choice_result(("remove"), options)
 				end
 			end
 		elseif use.card:isDamageCard()
@@ -2704,7 +2768,7 @@ sgs.ai_skill_choice.tenyearqiaoshui = function(self,choices,data)
 				and self:hasTrickEffective(use.card,to,use.from)
 				then
 					write(self,"tenyearqiaoshui_to",{to})
-					return "remove"
+					return ai_choice_result(("remove"), options)
 				end
 			end
 			for _,to in sgs.list(use.to)do
@@ -2712,15 +2776,15 @@ sgs.ai_skill_choice.tenyearqiaoshui = function(self,choices,data)
 				and self:hasTrickEffective(use.card,to,use.from)
 				then
 					write(self,"tenyearqiaoshui_to",{to})
-					return "remove"
+					return ai_choice_result(("remove"), options)
 				end
 			end
 		end
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
-sgs.ai_skill_use["@@tenyearqiaoshui1"] = function(self)
+ai_skill_use["@@tenyearqiaoshui1"] = function(self, prompt, request)
     local s = {}
 	for _,to in sgs.list(read(self,"tenyearqiaoshui_to"))do
         table.insert(s,to:objectName())
@@ -2729,7 +2793,7 @@ sgs.ai_skill_use["@@tenyearqiaoshui1"] = function(self)
     return "@TenyearQiaoshuiTargetCard=.->"..table.concat(s,"+")
 end
 
-sgs.ai_skill_use["@@tenyearqiaoshui2"] = function(self)
+ai_skill_use["@@tenyearqiaoshui2"] = function(self, prompt, request)
     local s = {}
 	for _,to in sgs.list(read(self,"tenyearqiaoshui_to"))do
         table.insert(s,to:objectName())
@@ -2743,11 +2807,12 @@ sgs.ai_guhuo_card.tenyearaocai = function(self,toname,class_name)
     return "@TenyearAocaiCard=.:"..toname
 end
 
-sgs.ai_skill_invoke.tenyearaocai = function(self,data)
-	return sgs.ai_skill_invoke.aocai(self,data)
+ai_skill_invoke.tenyearaocai = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.aocai(self, options, request)) or false
 end
 
-sgs.ai_skill_use["@@tenyearaocai"] = function(self,prompt)
+ai_skill_use["@@tenyearaocai"] = function(self, prompt, request)
     local c = self.player:getStrategyMark("tenyearaocaiId")
 	c = known_card(self,c)
     local dummy = self:aiUseCard(c)
@@ -2772,12 +2837,14 @@ end
 
 --黩武
 
-sgs.ai_fill_skill["tenyearduwu"] = function(self,inclusive,request)
+ai_fill_skill["tenyearduwu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies==0 then return end
 	return parse_policy(self,"@TenyearDuwuCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearDuwuCard = function(card,use,self)
+ai_card_use.TenyearDuwuCard = function(self, card, use, request)
 	local cmp = function(a,b)
 		if a:getHp()<b:getHp() then
 			if a:getHp()==1 and b:getHp()==2 then return false else return true end
@@ -2891,26 +2958,32 @@ sgs.dynamic_value.damage_card.TenyearDuwuCard = sgs.dynamic_value.damage_card.Du
 sgs.ai_card_intention.TenyearDuwuCard = sgs.ai_card_intention.DuwuCard
 
 --啖酪
-sgs.ai_skill_invoke.tenyeardanlao = function(self,data)
-	return sgs.ai_skill_invoke.danlao(self,data)
+ai_skill_invoke.tenyeardanlao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.danlao(self, options, request)) or false
 end
 
 --鸡肋
-sgs.ai_skill_invoke.tenyearjilei = function(self,data)
-	return sgs.ai_skill_invoke.jilei(self,data)
+ai_skill_invoke.tenyearjilei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.jilei(self, options, request)) or false
 end
 
-sgs.ai_skill_choice.tenyearjilei = function(self,choices)
-	return sgs.ai_skill_choice.jilei(self,choices)
+ai_skill_choice.tenyearjilei = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	return ai_choice_result((ai_skill_choice.jilei(self,{reason="jilei",choices=options and options.choices or (choices~=nil and {} or nil),inquiry_scope="nested"},nil)), options)
 end
 
 --陷阵
 
-sgs.ai_fill_skill["tenyearxianzhen"] = function(self,inclusive,request)
+ai_fill_skill["tenyearxianzhen"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearXianzhenCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearXianzhenCard = function(card,use,self)
+ai_card_use.TenyearXianzhenCard = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
@@ -2985,11 +3058,13 @@ sgs.ai_use_value.TenyearXianzhenCard = sgs.ai_use_value.XianzhenCard
 sgs.ai_use_priority.TenyearXianzhenCard = sgs.ai_use_priority.XianzhenCard
 
 --陷阵
-sgs.ai_fill_skill.secondtenyearxianzhen = function(self,inclusive,request)
+ai_fill_skill.secondtenyearxianzhen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@SecondTenyearXianzhenCard=.")
 end
 
-sgs.ai_skill_use_func.SecondTenyearXianzhenCard = function(card,use,self)
+ai_card_use.SecondTenyearXianzhenCard = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
@@ -3066,24 +3141,29 @@ function sgs.ai_cardneed.tenyearbiluan(to,card)
 end
 
 --礼下
-sgs.ai_skill_choice.tenyearlixia = function(self,choices,data)
+ai_skill_choice.tenyearlixia = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local player = data:toPlayer()
-	if not player or player:isDead() then return "self" end
-	if self:isFriend(player) and self:canDraw(player) then return "other" end
-	if not self:isFriend(player) and self:canDraw() then return "self" end
+	if not player or player:isDead() then return ai_choice_result(("self"), options) end
+	if self:isFriend(player) and self:canDraw(player) then return ai_choice_result(("other"), options) end
+	if not self:isFriend(player) and self:canDraw() then return ai_choice_result(("self"), options) end
 	if self:isFriend(player) and not self:canDraw(player) then
-		if self:canDraw() then return "self" end
-		return "other"
+		if self:canDraw() then return ai_choice_result(("self"), options) end
+		return ai_choice_result(("other"), options)
 	end
-	return "self"
+	return ai_choice_result(("self"), options)
 end
 
 --自守
-sgs.ai_skill_invoke.tenyearzishou = function(self,data)
-	return sgs.ai_skill_invoke.noszishou(self,data)
+ai_skill_invoke.tenyearzishou = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.noszishou(self, options, request)) or false
 end
 
-sgs.ai_skill_use["@@tenyearzishou"] = function(self,prompt,method)
+ai_skill_use["@@tenyearzishou"] = function(self, prompt, request)
+	local method = request and request.handling_method
 	local cards = sgs.QList2Table(self.player:getCards("h"))
 	cards = self:sortByKeepValue(cards)
 
@@ -3123,8 +3203,9 @@ sgs.ai_target_revises.tenyearzongshi = function(to,card)
 end
 
 --旋风
-sgs.ai_skill_invoke.tenyearxuanfeng = function(self,data)
-	return sgs.ai_skill_invoke.xuanfeng(self,data)
+ai_skill_invoke.tenyearxuanfeng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.xuanfeng(self, options, request)) or false
 end
 
 sgs.ai_skill_playerchosen.tenyearxuanfeng = function(self,targets)
@@ -3144,11 +3225,13 @@ sgs.ai_cardneed.tenyearxuanfeng = sgs.ai_cardneed.xuanfeng
 
 --勇进
 
-sgs.ai_fill_skill["tenyearyongjin"] = function(self,inclusive,request)
+ai_fill_skill["tenyearyongjin"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearyongjinCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearyongjinCard = function(card,use,self)
+ai_card_use.TenyearyongjinCard = function(self, card, use, request)
 	local from,card,to = self:moveField(nil,"e")
 	if from and card and to then
 		use.card = parse_policy(self,"@TenyearyongjinCard=.")
@@ -3173,8 +3256,9 @@ sgs.ai_skill_playerchosen.tenyearyongjin_to = function(self,targets)
 end
 
 --恩怨
-sgs.ai_skill_invoke.tenyearenyuan = function(self,data)
-	return sgs.ai_skill_invoke.enyuan(self,data)
+ai_skill_invoke.tenyearenyuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (ai_skill_invoke.enyuan(self, options, request)) or false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.tenyearenyuan = function(self,player,promptlist)
@@ -3271,7 +3355,7 @@ sgs.ai_skill_discard.tenyearenyuan = function(self,discard_num,min_num,optional,
 end
 
 --眩惑
-sgs.ai_skill_use["@@tenyearxuanhuo"] = function(self,prompt)
+ai_skill_use["@@tenyearxuanhuo"] = function(self, prompt, request)
 	local valid,to = {},nil
     for _,p in sgs.list(self.player:getAliveSiblings())do
       	if not self:isFriend(p) and self:isWeak(p)
@@ -3309,18 +3393,23 @@ sgs.ai_skill_playerchosen.tenyearxuanhuo = function(self,players)
 	return destlist[1]
 end
 
-sgs.ai_skill_choice.tenyearxuanhuo = function(self,choices)
+ai_skill_choice.tenyearxuanhuo = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
     for _,item in sgs.list(items)do
-		if item~="duel" then return item end
+		if item~="duel" then return ai_choice_result((item), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 --惴恐
-sgs.ai_skill_invoke.tenyearzhuikong = function(self,data)
-	if self.player:getHandcardNum()<=(self:isWeak() and 2 or 1) then return false end
+ai_skill_invoke.tenyearzhuikong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:getHandcardNum()<=(self:isWeak() and 2 or 1) then return (false) or false end
 	local current = self.room:getCurrent()
-	if not current or self:isFriend(current) then return false end
+	if not current or self:isFriend(current) then return (false) or false end
 
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
@@ -3332,14 +3421,14 @@ sgs.ai_skill_invoke.tenyearzhuikong = function(self,data)
 		if enemy_max_card and current:hasSkill("yingyang") then enemy_max_point = math.min(enemy_max_point+3,13) end
 		if max_point>enemy_max_point or max_point>10 then
 			self:remember("tenyearzhuikong_card",max_card:getKnownEffectiveId())
-			return true
+			return (true) or false
 		end
 	end
 	if current:distanceTo(self.player)==1 and not self:isValuableCard(max_card) then
 		self:remember("tenyearzhuikong_card",max_card:getKnownEffectiveId())
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 --求援
@@ -3385,7 +3474,7 @@ sgs.ai_skill_cardask["@tenyearsidi-put"] = function(self,data,pattern,target)
 	return cards[1]:getLegacyStringKey()
 end
 
-sgs.ai_skill_use["@@tenyearsidi"] = function(self,prompt)
+ai_skill_use["@@tenyearsidi"] = function(self, prompt, request)
 	local name = prompt:split(":")[2]
 	if not name then return "." end
 	local player = self.room:findPlayerByObjectName(name)
@@ -3402,12 +3491,14 @@ sgs.ai_card_intention.TenyearSidiCard = 50
 
 --怀异
 
-sgs.ai_fill_skill["tenyearhuaiyi"] = function(self,inclusive,request)
+ai_fill_skill["tenyearhuaiyi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return nil end
 	return parse_policy(self,"@TenyearHuaiyiCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearHuaiyiCard = function(card,use,self)
+ai_card_use.TenyearHuaiyiCard = function(self, card, use, request)
     local handcards = self.player:getHandcards()
     local reds,blacks = {},{}
     for _,c in sgs.qlist(handcards)do
@@ -3441,15 +3532,18 @@ sgs.ai_skill_use_func.TenyearHuaiyiCard = function(card,use,self)
     elseif n_reds-n_targets>=2 and n_blacks-n_targets>=2 and handcards:length()-n_targets>=5 then
         return
     end
-    --------------------
     use.card = card
 end
 
-sgs.ai_skill_choice.tenyearhuaiyi = function(self,choices,data)
-    return sgs.ai_skill_choice.huaiyi(self,choices,data)
+ai_skill_choice.tenyearhuaiyi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+    return ai_choice_result((ai_skill_choice.huaiyi(self,{reason="huaiyi",choices=options and options.choices or (choices~=nil and {} or nil),inquiry_scope="nested"},request)), options)
 end
 
-sgs.ai_skill_use["@@tenyearhuaiyi"] = function(self,prompt,method)
+ai_skill_use["@@tenyearhuaiyi"] = function(self, prompt, request)
+    local method = request and request.handling_method
     local n = self.player:getStrategyMark("tenyearhuaiyi_num-PlayClear")
     if n>=2 then
         if self:needToLoseHp() then
@@ -3473,18 +3567,21 @@ sgs.ai_skill_use["@@tenyearhuaiyi"] = function(self,prompt,method)
 end
 
 --绝情
-sgs.ai_skill_invoke.tenyearjueqing = function(self,data)
+ai_skill_invoke.tenyearjueqing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = tag(self,"tenyearjueqing_data","Damage")
-	if not damage or damage.to:isDead() or self:isFriend(damage.to) then return false end
-	if self:cantDamageMore(self.player,damage.to) then return false end
+	if not damage or damage.to:isDead() or self:isFriend(damage.to) then return (false) or false end
+	if self:cantDamageMore(self.player,damage.to) then return (false) or false end
 	local n = damage.damage-self.player:getHp()
-        if n<0 or hasBuquEffect(self.player) or self:getSaveNum(true)>=n then return true end
-	return false
+        if n<0 or hasBuquEffect(self.player) or self:getSaveNum(true)>=n then return (true) or false end
+	return (false) or false
 end
 
 --弓骑
 
-sgs.ai_fill_skill["tenyeargongqi"] = function(self,inclusive,request)
+ai_fill_skill["tenyeargongqi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:needBear() then return end
 	if #self.enemies==0 then return end
 	local cards = self.player:getCards("he")
@@ -3536,7 +3633,6 @@ sgs.ai_fill_skill["tenyeargongqi"] = function(self,inclusive,request)
 				or (isCard("Jink",c,self.player) and self:getCardsNum("Jink")<2)
 				or (isCard("Nullification",c,self.player) and self:getCardsNum("Nullification")<2)
 				or (isCard("Slash",c,self.player) and self:getCardsNum("Slash")==1) then
-				-- do nothing
 			elseif not c:isKindOf("EquipCard") and #self.enemies>0 and self.player:inMyAttackRange(self.enemies[1]) then
 			else
 				return parse_policy(self,"@TenyearGongqiCard="..c:getKnownEffectiveId())
@@ -3545,7 +3641,7 @@ sgs.ai_fill_skill["tenyeargongqi"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.TenyearGongqiCard = function(card,use,self)
+ai_card_use.TenyearGongqiCard = function(self, card, use, request)
 	local id = card:getSubcards():first()
 	local subcard = known_card(self,id)
 	if subcard:isKindOf("SilverLion") and self.room:getCardPlace(id)==sgs.Player_PlaceHand and self:isWounded() and self.player:canUse(subcard) then
@@ -3565,11 +3661,13 @@ sgs.ai_use_priority.TenyearGongqiCard = sgs.ai_use_priority.GongqiCard
 
 --解烦
 
-sgs.ai_fill_skill["tenyearjiefan"] = function(self,inclusive,request)
+ai_fill_skill["tenyearjiefan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearJiefanCard=.")
 end
 
-sgs.ai_skill_use_func.TenyearJiefanCard = function(card,use,self)
+ai_card_use.TenyearJiefanCard = function(self, card, use, request)
 	local target
 	local use_value = 0
 	local max_value = -10000
@@ -3633,19 +3731,23 @@ sgs.ai_skill_playerchosen.tenyearzhongyong = function(self,players)
 end
 
 --急攻
-sgs.ai_skill_invoke.tenyearjigong = function(self,data)
-    return true
+ai_skill_invoke.tenyearjigong = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
-sgs.ai_skill_choice.tenyearjigong = function(self,choices)
-	return ""..math.random(2,3)
+ai_skill_choice.tenyearjigong = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	return ai_choice_result((""..math.random(2,3)), options)
 end
 
 
 
 --竭忠
-sgs.ai_skill_invoke.tenyearjiezhong = function(self,data)
-	return self:canDraw() and self.player:getHp()-self.player:getHandcardNum()>1
+ai_skill_invoke.tenyearjiezhong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw() and self.player:getHp()-self.player:getHandcardNum()>1) or false
 end
 
 --龙吟
@@ -3676,58 +3778,73 @@ end
 
 
 --二版精策
-sgs.ai_skill_invoke.secondtenyearjingce = function(self,data)
-	return true
+ai_skill_invoke.secondtenyearjingce = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_choice.secondtenyearjingce = function(self,choices)
+ai_skill_choice.secondtenyearjingce = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"draw")
 	and self.player:getHandcardNum()<2
-	then return "draw" end
+	then return ai_choice_result(("draw"), options) end
 	if table.contains(items,"play")
-	then return "play" end
+	then return ai_choice_result(("play"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 --二版将驰
-sgs.ai_skill_invoke.secondtenyearjiangchi = function(self,data)
-	return true
+ai_skill_invoke.secondtenyearjiangchi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
-sgs.ai_skill_choice.secondtenyearjingce = function(self,choices)
+ai_skill_choice.secondtenyearjingce = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"two")
 	and self:getCardsNum("Slash")<1
-	then return "two" end
+	then return ai_choice_result(("two"), options) end
 	if self:getCardsNum("Slash")>1
 	and items[3]
 	then
 		for _,ep in sgs.list(self.enemies)do
 			if self.player:canSlash(ep)
 			then
-				return items[3]
+				return ai_choice_result((items[3]), options)
 			end
 		end
 	end
 	if table.contains(items,"one")
-	then return "one" end
+	then return ai_choice_result(("one"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 
-sgs.ai_skill_invoke.tenyearqieting = function(self,data)
+ai_skill_invoke.tenyearqieting = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local items = data:toString():split(":")
     local target = self.room:findPlayerByObjectName(items[2])
-	if target then return not self:isFriend(target) end
+	if target then return (not self:isFriend(target)) or false end
+	return false
+
 end
 
-sgs.ai_fill_skill["tenyearxianzhou"] = function(self,inclusive,request)
+ai_fill_skill["tenyearxianzhou"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getEquips():length()>#self.enemies/2
 	then
 		return parse_policy(self,"@TenyearXianzhouCard=.")
 	end
 end
 
-sgs.ai_skill_use_func["TenyearXianzhouCard"] = function(card,use,self)
+ai_card_use["TenyearXianzhouCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	local x = self.player:getEquips():length()
 	for _,fp in sgs.list(self.friends_noself)do
@@ -3764,7 +3881,7 @@ end
 sgs.ai_use_value.TenyearXianzhouCard = 9.4
 sgs.ai_use_priority.TenyearXianzhouCard = -4.8
 
-sgs.ai_skill_use["@@tenyearxianzhou"] = function(self,prompt)
+ai_skill_use["@@tenyearxianzhou"] = function(self, prompt, request)
 	local valid = {}
 	local destlist = self.room:getOtherPlayers(self.player)
     destlist = sgs.QList2Table(destlist) -- 将列表转换为表
@@ -3790,7 +3907,9 @@ sgs.ai_skill_use["@@tenyearxianzhou"] = function(self,prompt)
 	end
 end
 
-sgs.ai_fill_skill["tenyearshenxing"] = function(self,inclusive,request)
+ai_fill_skill["tenyearshenxing"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	cards = self:sortByKeepValue(cards)
 	local n = math.min(2,self.player:usedTimes("TenyearShenxingCard"))
@@ -3806,14 +3925,14 @@ sgs.ai_fill_skill["tenyearshenxing"] = function(self,inclusive,request)
 	if #toids>=n then return parse_policy(self,"@TenyearShenxingCard="..ids) end
 end
 
-sgs.ai_skill_use_func["TenyearShenxingCard"] = function(card,use,self)
+ai_card_use["TenyearShenxingCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 sgs.ai_use_value.TenyearShenxingCard = 4.4
 sgs.ai_use_priority.TenyearShenxingCard = 2.8
 
-sgs.ai_skill_use["@@tenyearbingyi"] = function(self,prompt)
+ai_skill_use["@@tenyearbingyi"] = function(self, prompt, request)
 	local valid,n = {},0
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
@@ -3844,7 +3963,7 @@ sgs.ai_skill_playerchosen.tenyearzongxuan = function(self,players)
 	end
 end
 
-sgs.ai_skill_use["@@tenyearzongxuan"] = function(self,prompt)
+ai_skill_use["@@tenyearzongxuan"] = function(self, prompt, request)
 	local zx_help = tag(self,"tenyearzongxuanForAI","IntList")
 	local n1,n2 = {},{}
 	for c,id in sgs.list(zx_help)do
@@ -3863,7 +3982,7 @@ sgs.ai_skill_use["@@tenyearzongxuan"] = function(self,prompt)
 	return #n2>0 and ("@TenyearZongxuanCard="..table.concat(n2,"+"))
 end
 
-sgs.ai_skill_use["@@tenyearzongxuan!"] = function(self,prompt)
+ai_skill_use["@@tenyearzongxuan!"] = function(self, prompt, request)
 	local zx_help = tag(self,"tenyearzongxuanForAI","IntList")
 	local n1,n2 = {},{}
 	for c,id in sgs.list(zx_help)do
@@ -3895,12 +4014,15 @@ sgs.ai_skill_playerchosen.tenyearzhiyan = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.tenyearqiaoshi = function(self,data)
+ai_skill_invoke.tenyearqiaoshi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return not self:isEnemy(target)
+		return (not self:isEnemy(target)) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_playerchosen.tenyearyjyanyu = function(self,players)
@@ -3916,7 +4038,9 @@ sgs.ai_skill_playerchosen.tenyearyjyanyu = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill["tenyearyjyanyu"] = function(self,inclusive,request)
+ai_fill_skill["tenyearyjyanyu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	cards = self:sortByKeepValue(cards)
   	for _,c in sgs.list(cards)do
@@ -3928,15 +4052,16 @@ sgs.ai_fill_skill["tenyearyjyanyu"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["TenyearYjYanyuCard"] = function(card,use,self)
+ai_card_use["TenyearYjYanyuCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 sgs.ai_use_value.TenyearYjYanyuCard = 5.4
 sgs.ai_use_priority.TenyearYjYanyuCard = 5.8
 
-sgs.ai_skill_invoke.tenyearqianxi = function(self,data)
-    return true
+ai_skill_invoke.tenyearqianxi = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
 sgs.ai_skill_playerchosen.tenyearqianxi = function(self,players)
@@ -3952,7 +4077,9 @@ sgs.ai_skill_playerchosen.tenyearqianxi = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill["tenyearjiaozhao"] = function(self,inclusive,request)
+ai_fill_skill["tenyearjiaozhao"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards)
 	local basic = self.player:getStrategyMark("tenyearjiaozhao_basic-Clear")-1
@@ -4004,7 +4131,7 @@ sgs.ai_guhuo_card.tenyearjiaozhao = function(self,toname,class_name)
 	end
 end
 
-sgs.ai_skill_use_func["TenyearJiaozhaoCard"] = function(card,use,self)
+ai_card_use["TenyearJiaozhaoCard"] = function(self, card, use, request)
 	local level = property(self,"tenyearjiaozhao_level","Int")
 	level = type(level)=="number" and level or 0
 	if level>1 then use.card = card return end
@@ -4083,11 +4210,13 @@ sgs.ai_skill_askforag.tenyearjiaozhao = function(self,card_ids)
 	return cards[1]:getKnownEffectiveId() or "."
 end
 
-sgs.ai_fill_skill["tenyearganlu"] = function(self,inclusive,request)
+ai_fill_skill["tenyearganlu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearGanluCard=.")
 end
 
-sgs.ai_skill_use_func["TenyearGanluCard"] = function(card,use,self)
+ai_card_use["TenyearGanluCard"] = function(self, card, use, request)
 	self.friends = self:sort(self.friends,"equip")
 	self.enemies = self:sort(self.enemies,"equip",true)
 	for _,fp in sgs.list(self.friends)do
@@ -4121,12 +4250,15 @@ end
 sgs.ai_use_value.TenyearGanluCard = 9.4
 sgs.ai_use_priority.TenyearGanluCard = 6.8
 
-sgs.ai_skill_invoke.tenyearbuyi = function(self,data)
+ai_skill_invoke.tenyearbuyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dy = data:toDying()
 	if dy
 	then
-		return self:isFriend(dy.who)
+		return (self:isFriend(dy.who)) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_cardchosen.tenyearbuyi = function(self,who,flags,method)
@@ -4153,35 +4285,41 @@ sgs.ai_skill_cardask["@tenyearzhuhai"] = function(self,data)
     return self:isEnemy(target) and (self:isWeak(target) or self.player:getHandcardNum()>1)
 end
 
-sgs.ai_fill_skill["tenyearjianyan"] = function(self,inclusive,request)
+ai_fill_skill["tenyearjianyan"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearJianyanCard=.")
 end
 
-sgs.ai_skill_use_func["TenyearJianyanCard"] = function(card,use,self)
+ai_card_use["TenyearJianyanCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 sgs.ai_use_value.TenyearJianyanCard = 3.4
 sgs.ai_use_priority.TenyearJianyanCard = 5.8
 
-sgs.ai_skill_choice.tenyearjianyan = function(self,choices)
+ai_skill_choice.tenyearjianyan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if self:isWeak()
 	and math.random()>0.4
 	and table.contains(items,"red")
-	then return "red" end
+	then return ai_choice_result(("red"), options) end
 	if self:isWeak()
 	and math.random()>0.5
 	and table.contains(items,"basic")
-	then return "basic" end
+	then return ai_choice_result(("basic"), options) end
 	if not self:isWeak()
 	and math.random()>0.4
 	and table.contains(items,"black")
-	then return "black" end
+	then return ai_choice_result(("black"), options) end
 	if self:isWeak()
 	and math.random()>0.5
 	and table.contains(items,"trick")
-	then return "trick" end
+	then return ai_choice_result(("trick"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 sgs.ai_skill_playerchosen.tenyearjianyan = function(self,players)
@@ -4214,11 +4352,13 @@ sgs.ai_skill_playerchosen.tenyearjianyan = function(self,players)
 	return destlist[1]
 end
 
-sgs.ai_fill_skill["tenyearanxu"] = function(self,inclusive,request)
+ai_fill_skill["tenyearanxu"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse_policy(self,"@TenyearAnxuCard=.")
 end
 
-sgs.ai_skill_use_func["TenyearAnxuCard"] = function(card,use,self)
+ai_card_use["TenyearAnxuCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,ep in sgs.list(self.enemies)do
 		for _,fp in sgs.list(self.friends_noself)do
@@ -4302,8 +4442,9 @@ sgs.ai_skill_playerchosen.tenyearzhuiyi = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.TenyearJianying = function(self,data)
-    return true
+ai_skill_invoke.TenyearJianying = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
 sgs.ai_use_revises.TenyearJianying = function(self,card,use)
@@ -4328,7 +4469,9 @@ sgs.ai_skill_defense.tenyearshibei = function(self,to)
 	or to:getStrategyMark("shibei")<2 and -3
 end
 
-sgs.ai_fill_skill["tenyearzhanjue"] = function(self,inclusive,request)
+ai_fill_skill["tenyearzhanjue"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local ids = {}
   	for _,c in sgs.list(self.player:getHandcards())do
 		if self.player:getStrategyMark("tenyearzhanjueIgnore_"..c:getId().."-Clear")<1
@@ -4353,13 +4496,15 @@ sgs.ai_use_revises.tenyearzhanjue = function(self,card,use)
 	end
 end
 
-sgs.ai_fill_skill["tenyearqinwang"] = function(self,inclusive,request)
+ai_fill_skill["tenyearqinwang"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.room:getLieges("shu",self.player):length()>0 then
 		return parse_policy(self,"@TenyearQinwangCard=.")
 	end
 end
 
-sgs.ai_skill_use_func["TenyearQinwangCard"] = function(card,use,self)
+ai_card_use["TenyearQinwangCard"] = function(self, card, use, request)
 	use.card = card
 end
 
@@ -4397,7 +4542,9 @@ sgs.ai_skill_playerschosen.tenyearxiansi = function(self,targets,max_num,min_num
 	return tos
 end
 
-sgs.ai_fill_skill["tenyearxiansi"] = function(self,inclusive,request)
+ai_fill_skill["tenyearxiansi"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
   	local ids = self.player:getPile("counter")
 	if ids:length()>self.player:getHp()
 	then
@@ -4413,7 +4560,7 @@ sgs.ai_fill_skill["tenyearxiansi"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["TenyearXiansiCard"] = function(card,use,self)
+ai_card_use["TenyearXiansiCard"] = function(self, card, use, request)
 	if read(self,"tenyearxiansi_to")
 	then
 		use.card = card
@@ -4424,7 +4571,9 @@ end
 sgs.ai_use_value.TenyearXiansiCard = 5.4
 sgs.ai_use_priority.TenyearXiansiCard = 2.8
 
-sgs.ai_fill_skill["tenyearxiansi_slash"] = function(self,inclusive,request)
+ai_fill_skill["tenyearxiansi_slash"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	for _,owner in sgs.list(self.room:findPlayersBySkillName("tenyearxiansi"))do
 		local ids = owner:getPile("counter")
 		if ids:length()<2 then continue end
@@ -4451,7 +4600,7 @@ sgs.ai_fill_skill["tenyearxiansi_slash"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["TenyearXiansiSlashCard"] = function(card,use,self)
+ai_card_use["TenyearXiansiSlashCard"] = function(self, card, use, request)
 	if read(self,"tenyearxiansi_to")
 	then
 		use.card = card
@@ -4463,23 +4612,26 @@ sgs.ai_use_value.TenyearXiansiSlashCard = 5.4
 sgs.ai_use_priority.TenyearXiansiSlashCard = 2.8
 
 
-sgs.ai_skill_invoke.tenyearfenli = function(self,data)
+ai_skill_invoke.tenyearfenli = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local pstring = data:toString()
 	if pstring=="judge"
 	then
-		return #self.enemies>0
+		return (#self.enemies>0) or false
 	end
 	if pstring=="play"
 	then
 		pstring = self:getTurnUse()
-		return #self.enemies>0
-		and #pstring<4
+		return (#self.enemies>0
+		and #pstring<4) or false
 	end
 	if pstring=="discard"
 	then
-		return #self.enemies>0
-		or self.player:getHandcardNum()>0
+		return (#self.enemies>0
+		or self.player:getHandcardNum()>0) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_playerschosen.tenyearpingkou = function(self,targets,max_num,min_num)
@@ -4519,7 +4671,9 @@ sgs.ai_skill_playerchosen.tenyearpingkou = function(self,targets)
 	return enemies[1]
 end
 
-sgs.ai_fill_skill["tenyearmingce"] = function(self,inclusive,request)
+ai_fill_skill["tenyearmingce"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do
@@ -4529,7 +4683,7 @@ sgs.ai_fill_skill["tenyearmingce"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["TenyearMingceCard"] = function(card,use,self)
+ai_card_use["TenyearMingceCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"hp")
 	local dc = clone(self,"tenyearmingce","tenyearmingce","slash",sgs.Card_NoSuit,0,{})
 	for _,ep in sgs.list(self.enemies)do
@@ -4597,31 +4751,36 @@ sgs.ai_skill_playerchosen.tenyearmingce = function(self,targets)
 	return enemies[1]
 end
 
-sgs.ai_skill_choice.tenyearmingce = function(self,choices)
+ai_skill_choice.tenyearmingce = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"use")
 	and read(self,"mingce_to") then
 		local dc = clone(self,"tenyearmingce","tenyearmingce","slash",sgs.Card_NoSuit,0,{})
 		if not self:isFriend(read(self,"mingce_to")) and self:isWeak(read(self,"mingce_to"))
 		and self:slashIsEffective(dc,read(self,"mingce_to"),self.player)
-		then return "use" end
+		then return ai_choice_result(("use"), options) end
 		if not self:isFriend(read(self,"mingce_to")) and read(self,"mingce_to"):getHandcardNum()<2
 		and self:slashIsEffective(dc,read(self,"mingce_to"),self.player)
-		then return "use" end
+		then return ai_choice_result(("use"), options) end
 	end
-	return "draw"
+	return ai_choice_result(("draw"), options)
 end
 
-sgs.ai_skill_invoke.tenyearzhiyu = function(self,data)
+ai_skill_invoke.tenyearzhiyu = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     if self:canDraw() then
 		local hs = self.player:getHandcards()
 		for _,h in sgs.list(hs)do
 			if hs:first():getColor()~=h:getColor()
-			then return true end
+			then return (true) or false end
 		end
 		local damage = data:toDamage()
-		return not(damage.from and self:isFriend(damage.from))
+		return (not(damage.from and self:isFriend(damage.from))) or false
 	end
+    return false
+
 end
 
 sgs.ai_can_damagehp.tenyearzhiyu = function(self,from,card,to)
@@ -4630,7 +4789,9 @@ sgs.ai_can_damagehp.tenyearzhiyu = function(self,from,card,to)
 	and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 end
 
-sgs.ai_fill_skill["tenyearfencheng"] = function(self,inclusive,request)
+ai_fill_skill["tenyearfencheng"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local can = 0
 	for _,ep in sgs.list(self.enemies)do
 		if self:isWeak(ep) then can = can+1 end
@@ -4639,7 +4800,7 @@ sgs.ai_fill_skill["tenyearfencheng"] = function(self,inclusive,request)
 	return parse_policy(self,"@TenyearFenchengCard=.")
 end
 
-sgs.ai_skill_use_func["TenyearFenchengCard"] = function(card,use,self)
+ai_card_use["TenyearFenchengCard"] = function(self, card, use, request)
 	self.friends = self:sort(self.friends,"card",true)
 	for _,ep in sgs.list(self.friends)do
 		if self:isEnemy(ep:getNextAlive()) then
@@ -4682,7 +4843,9 @@ sgs.ai_skill_discard.tenyearfencheng = function(self,max,min)
 	return to_cards
 end
 
-sgs.ai_fill_skill["tenyearmieji"] = function(self,inclusive,request)
+ai_fill_skill["tenyearmieji"] = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
 	cards = self:sortByKeepValue(cards)
@@ -4692,7 +4855,7 @@ sgs.ai_fill_skill["tenyearmieji"] = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["TenyearMiejiCard"] = function(card,use,self)
+ai_card_use["TenyearMiejiCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	for _,ep in sgs.list(self.enemies)do
 		if ep:getHandcardNum()>0
@@ -4738,7 +4901,7 @@ end
 
 -- V2 target selection reuses the existing Tenyear Tuxi strategy without parsing
 -- or executing its legacy card. Intersect its reply with the current candidates.
-raw_tenyeartuxi=sgs.ai_skill_use["@@tenyeartuxi"]
+raw_tenyeartuxi=ai_skill_use["@@tenyeartuxi"]
 sgs.ai_skill_playerschosen.tenyeartuxi = function(self, candidates, max_num, min_num)
     local strategy = raw_tenyeartuxi
     if type(strategy) ~= "function" then return {} end
@@ -4756,32 +4919,32 @@ sgs.ai_skill_playerschosen.tenyeartuxi = function(self, candidates, max_num, min
     return result
 end
 
-local raw_use={};for k,v in pairs(sgs.ai_skill_use)do raw_use[k]=v end
-do local f=raw_use['@@tenyearrende'];sgs.ai_skill_use['@@tenyearrende']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearqingjian'];sgs.ai_skill_use['@@tenyearqingjian']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyeartuxi'];sgs.ai_skill_use['@@tenyeartuxi']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearshensu1'];sgs.ai_skill_use['@@tenyearshensu1']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearshensu2'];sgs.ai_skill_use['@@tenyearshensu2']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearshensu3'];sgs.ai_skill_use['@@tenyearshensu3']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyeartianxiang'];sgs.ai_skill_use['@@tenyeartianxiang']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearchunlao'];sgs.ai_skill_use['@@tenyearchunlao']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@secondtenyearchunlao'];sgs.ai_skill_use['@@secondtenyearchunlao']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearjiangchi'];sgs.ai_skill_use['@@tenyearjiangchi']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearbenxi!'];sgs.ai_skill_use['@@tenyearbenxi!']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearkuangfu!'];sgs.ai_skill_use['@@tenyearkuangfu!']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearxingxue'];sgs.ai_skill_use['@@tenyearxingxue']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearshenduan'];sgs.ai_skill_use['@@tenyearshenduan']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearqiaoshui1'];sgs.ai_skill_use['@@tenyearqiaoshui1']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearqiaoshui2'];sgs.ai_skill_use['@@tenyearqiaoshui2']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearaocai'];sgs.ai_skill_use['@@tenyearaocai']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearzishou'];sgs.ai_skill_use['@@tenyearzishou']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearxuanhuo'];sgs.ai_skill_use['@@tenyearxuanhuo']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearsidi'];sgs.ai_skill_use['@@tenyearsidi']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearhuaiyi'];sgs.ai_skill_use['@@tenyearhuaiyi']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearxianzhou'];sgs.ai_skill_use['@@tenyearxianzhou']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearbingyi'];sgs.ai_skill_use['@@tenyearbingyi']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearzongxuan'];sgs.ai_skill_use['@@tenyearzongxuan']=function(self,...)return response_wire(self,f(self,...))end end
-do local f=raw_use['@@tenyearzongxuan!'];sgs.ai_skill_use['@@tenyearzongxuan!']=function(self,...)return response_wire(self,f(self,...))end end
+local raw_use={};for k,v in pairs(ai_skill_use)do raw_use[k]=v end
+do local f=raw_use['@@tenyearrende'];ai_skill_use['@@tenyearrende']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearqingjian'];ai_skill_use['@@tenyearqingjian']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyeartuxi'];ai_skill_use['@@tenyeartuxi']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearshensu1'];ai_skill_use['@@tenyearshensu1']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearshensu2'];ai_skill_use['@@tenyearshensu2']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearshensu3'];ai_skill_use['@@tenyearshensu3']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyeartianxiang'];ai_skill_use['@@tenyeartianxiang']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearchunlao'];ai_skill_use['@@tenyearchunlao']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@secondtenyearchunlao'];ai_skill_use['@@secondtenyearchunlao']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearjiangchi'];ai_skill_use['@@tenyearjiangchi']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearbenxi!'];ai_skill_use['@@tenyearbenxi!']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearkuangfu!'];ai_skill_use['@@tenyearkuangfu!']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearxingxue'];ai_skill_use['@@tenyearxingxue']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearshenduan'];ai_skill_use['@@tenyearshenduan']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearqiaoshui1'];ai_skill_use['@@tenyearqiaoshui1']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearqiaoshui2'];ai_skill_use['@@tenyearqiaoshui2']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearaocai'];ai_skill_use['@@tenyearaocai']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearzishou'];ai_skill_use['@@tenyearzishou']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearxuanhuo'];ai_skill_use['@@tenyearxuanhuo']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearsidi'];ai_skill_use['@@tenyearsidi']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearhuaiyi'];ai_skill_use['@@tenyearhuaiyi']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearxianzhou'];ai_skill_use['@@tenyearxianzhou']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearbingyi'];ai_skill_use['@@tenyearbingyi']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearzongxuan'];ai_skill_use['@@tenyearzongxuan']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
+do local f=raw_use['@@tenyearzongxuan!'];ai_skill_use['@@tenyearzongxuan!']=function(self, prompt, request)return response_wire(self,f(self,prompt, request))end end
 do local f=sgs.ai_cardsview_valuable.tenyearchunlao;sgs.ai_cardsview_valuable.tenyearchunlao=function(self,...)local v=f(self,...);if type(v)~="string"then return v end;local cl,skill,ids=decode(v);return{legacy_class=cl,skill=skill,subcards=ids}end end
 do local f=sgs.ai_cardsview_valuable.secondtenyearchunlao;sgs.ai_cardsview_valuable.secondtenyearchunlao=function(self,...)local v=f(self,...);if type(v)~="string"then return v end;local cl,skill,ids=decode(v);return{legacy_class=cl,skill=skill,subcards=ids}end end
 
@@ -4792,3 +4955,29 @@ sgs.ai_skill_cardchosen.tenyearjiewei=function(self) local v,ok=self:getStrategy
 sgs.ai_skill_playerchosen.tenyearjiewei_to=function(self) local v,ok=self:getStrategyMemory("tenyear_override:playerchosen:tenyearjiewei_to");if not ok then ai_unsupported("dynamic source writer not observed","tenyearjiewei_to")end;return known(self.room:findPlayerByObjectName(v,true),"source chosen target")end
 
 sgs.ai_skill_cardchosen.tenyearyonglve=function(self) local v,ok=self:getStrategyMemory("tenyear_override:cardchosen:tenyearyonglve");if not ok then ai_unsupported("dynamic source writer not observed","tenyearyonglve")end;self:setStrategyMemory("tenyear_override:cardchosen:tenyearyonglve",nil);return v end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_target_damage["just_damage_after_relation.zhiman"]
+    local policy = function(self, to, context)
+        local value, strategy_call = context.value, context.query
+        local from, is_slash, lock, same_player, strategy_known = context.extra[1], context.extra[2], context.extra[3], context.extra[4], context.extra[5]
+        if strategy_call(from, "hasSkills", "zhiman|tenyearzhiman") and strategy_call(self, "doDisCard", to, "e") then return true, true end
+        return value
+    end
+    sgs.ai_target_damage["just_damage_after_relation.zhiman"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "just_damage_after_relation" and context.rule == "zhiman" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "just_damage_after_relation.zhiman", {
+        {phase="just_damage_after_relation", order=6, rule="zhiman"},
+    })
+end)()
+end

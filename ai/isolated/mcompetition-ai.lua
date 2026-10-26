@@ -1,8 +1,4 @@
--- mcompetition 隔離 AI。SmartAI 相等函式在 smart-ai-functions.lua，
--- 本檔只擴充技能名單與各技能 handler，不把武將判斷寫進基礎層。
--- 舊版 lua/ai/mcompetition-ai.lua 仍留在 gameplay VM。
--- 字串 data、房間 tag、cloneCard 都沒有投影：那些詢問回 unsupported，
--- 不把缺資料猜成否或第一選項。
+-- Mcompetition package policies; shared queries are in smart-ai-functions.lua.
 
 sgs.append_skill_list("recover_hp_skill", "tianlai")
 sgs.append_skill_list("recover_hp_skill", "lingyin")
@@ -147,8 +143,10 @@ local function female_player(player)
 end
 
 -- 神異的階段紀錄是字串 data，快照沒有這段，不能用選項順序代替。
-ai_skill_invoke.shenyi = function() return true end
-ai_skill_choice.shenyi = function(self, options)
+ai_skill_invoke.shenyi = function(self, options, request) if options and options.inquiry_scope == "original_internal" then return nil end; return true end
+ai_skill_choice.shenyi = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local items = options.choices
     local phases = choice_body(self, "shenyi_phases")
     local num = phases == "" and 1 or #phases:split("+") + 2
@@ -172,7 +170,8 @@ ai_skill_choice.shenyi = function(self, options)
     return items[1]
 end
 
-ai_skill_invoke.zhuanshan = function(self)
+ai_skill_invoke.zhuanshan = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local hand = self.player:getHandcardNum()
     local weak = self:isWeak()
     if type(hand) ~= "number" or weak == nil then
@@ -330,7 +329,9 @@ sgs.ai_ajustdamage_from.zhisimoyan = function(_, from)
     if from and from:getMark("zhisimoyan") > 0 then return "unknown" end
 end
 
-ai_skill_choice.zhisimoyan = function(self, options)
+ai_skill_choice.zhisimoyan = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local items = options and options.choices or {}
     if #items == 1 then return items[1] end
     if choose(options, "zhisimoyan_get") then return "zhisimoyan_get" end
@@ -404,7 +405,9 @@ sgs.ai_skill_discard.zhiluan = function(self, discard_num, optional, include_equ
     return result
 end
 
-ai_skill_choice.zhiluan = function(self, options)
+ai_skill_choice.zhiluan = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
+
     local source = self:getDecisionData():toPlayer()
     if source then
         local friend = self:isFriend(source)
@@ -414,7 +417,8 @@ ai_skill_choice.zhiluan = function(self, options)
     return choose(options, "reset") or (options.choices or {})[1]
 end
 
-ai_skill_invoke.caoduo = function(self)
+ai_skill_invoke.caoduo = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local name = choice_body(self, "caoduo_target")
     local target = name ~= false and self.room:findPlayerByObjectName(name) or nil
     if target and self:isEnemy(target) then return true end
@@ -586,7 +590,7 @@ ai_skill_activate.lingyin = function(self, request)
     return give_activate(self, request, "lingyin", false)
 end
 
-ai_skill_invoke.shengkong = function() return true end
+ai_skill_invoke.shengkong = function(self, options, request) if options and options.inquiry_scope == "original_internal" then return nil end; return true end
 
 ai_skill_playerchosen.shengkong = function(self, options)
     local targets = players_of(self, options, "shengkong")
@@ -654,7 +658,8 @@ ai_skill_activate.lingbian = function(self, request)
     })
 end
 
-ai_skill_invoke.xingyou = function(self)
+ai_skill_invoke.xingyou = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local damage = self:getDecisionData():toDamage()
     if not damage or not damage.to then
         ai_unsupported("xingyou needs the damage target", "xingyou")
@@ -781,7 +786,8 @@ ai_skill_cardask["@huanxing"] = function(self, _, request)
     return id
 end
 
-ai_skill_invoke.huanxing = function(self)
+ai_skill_invoke.huanxing = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     if choice_body(self, "huanxing_used") then
         local current = self.room:getCurrent()
         if current and self:isFriend(current) then return true end
@@ -838,7 +844,8 @@ ai_skill_activate.luahuojianzhuixi = function(self, request)
     return nil
 end
 
-ai_skill_invoke.luabaozhahuohua = function(self)
+ai_skill_invoke.luabaozhahuohua = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local damage = self:getDecisionData():toDamage()
     if not damage or not damage.to then
         ai_unsupported("luabaozhahuohua needs the damage target", "luabaozhahuohua")
@@ -855,7 +862,8 @@ ai_skill_invoke.luabaozhahuohua = function(self)
     return before_ok == true and next_ok == true
 end
 
-ai_skill_invoke.xuezou = function(self)
+ai_skill_invoke.xuezou = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local alive = self.room:getAlivePlayers()
     if not alive then ai_unsupported("xuezou players are unknown", "xuezou") end
     for _, player in ipairs(alive) do
@@ -943,7 +951,8 @@ sgs.ai_card_priority.feitianshuangzhan = function(_, card)
     if card and card:getSkillName() == "feitianshuangzhan" then return 0.08 end
 end
 
-ai_skill_invoke.jinyanmofa = function(self)
+ai_skill_invoke.jinyanmofa = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local use = self:getDecisionData():toCardUse()
     if not use or not use.card or type(use.card.getSuit) ~= "function" then
         ai_unsupported("jinyanmofa card use is not projected", "jinyanmofa")
@@ -991,7 +1000,8 @@ ai_skill_playerchosen.jinyanmofa = function(self, options)
     return first_discard_target(self, options, "ej", "jinyanmofa")
 end
 
-ai_skill_invoke.busizhixue = function(self)
+ai_skill_invoke.busizhixue = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local damage = self:getDecisionData():toDamage()
     if not damage or not damage.to then
         ai_unsupported("busizhixue needs the damage target", "busizhixue")
@@ -1013,7 +1023,8 @@ ai_skill_invoke.busizhixue = function(self)
     return not lose
 end
 
-ai_skill_invoke.boyi = function(self)
+ai_skill_invoke.boyi = function(self, options, request)
+    if options and options.inquiry_scope == "original_internal" then return nil end
     local use = self:getDecisionData():toCardUse()
     if not use or not use.from or not use.to then
         ai_unsupported("boyi card use is not projected", "boyi")

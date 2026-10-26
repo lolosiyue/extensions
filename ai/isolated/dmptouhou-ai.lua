@@ -1,4 +1,4 @@
--- Fixed b6025acc dmptouhou effective policies; no repair of absent old prototypes.
+-- Source: b6025acc ai/dmptouhou-ai.lua.
 local known = AIValue.requireKnown
 local function parse_nil(self,selector)
     -- Whether LuaSkillCard::Parse knows the old selector is not projected.
@@ -18,16 +18,17 @@ local function wounded(self)
     return known(a,"wounded first list"),b -- source returns before reading list2 when target is self
 end
 local function source_fangquan(self)
-    local callback=sgs.ai_skill_invoke.fangquan
+    local callback=ai_skill_invoke.fangquan
     if type(callback)~="function"then ai_unsupported("effective fangquan callback is unavailable","se_fuzhi")end
-    local value=callback(self);if AIUnsupported.is(value)then error(value,0)end;return value
+    local value=callback(self, {}, nil);if AIUnsupported.is(value)then error(value,0)end;return value
 end
 -- The shared immutable identity gate owns cardChosen.se_mingqie -> snatch.
-sgs.ai_skill_invoke.se_mingqie = function(self, data)
+ai_skill_invoke.se_mingqie = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = (data:toCardUse())
-	if (self:isEnemy(use.to:at(0))) and not skills(self,use.to:at(0),sgs.lose_equip_skill) then return true end
-	if (self:isFriend(use.to:at(0))) and skills(self,use.to:at(0),sgs.lose_equip_skill) then return true end
-	return false
+	if (self:isEnemy(use.to:at(0))) and not skills(self,use.to:at(0),sgs.lose_equip_skill) then return (true) or false end
+	if (self:isFriend(use.to:at(0))) and skills(self,use.to:at(0),sgs.lose_equip_skill) then return (true) or false end
+	return (false) or false
 end
 
 sgs.ai_cardneed.se_mingqie = function(to, card, self)
@@ -37,7 +38,9 @@ end
 
 
 
-sgs.ai_fill_skill.se_mopao = function(self, inclusive)
+ai_fill_skill.se_mopao = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if (self.player:getStrategyHasUsed("#se_mopaocard")) then return end
 	if #self.enemies < 1 then return end
 	if (self.player:getMark("@p_point")) < 4 then return end
@@ -51,7 +54,7 @@ sgs.ai_fill_skill.se_mopao = function(self, inclusive)
 	return
 end
 
-sgs.ai_skill_use_func["#se_mopaocard"] = function(card, use, self)
+ai_card_use["#se_mopaocard"] = function(self, card, use, request)
 	local target
 	self:updatePlayers()
 	self:sortInPlace(self.enemies, "hp")
@@ -85,10 +88,12 @@ sgs.ai_skill_use_func["#se_mopaocard"] = function(card, use, self)
 	end
 end
 
-sgs.ai_skill_choice["se_mopaocard"] = function(self, choices)
+ai_skill_choice["se_mopaocard"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local value,present=self:getStrategyMemory("dmptouhou.mopao_direction")
     if not present or(value~="left"and value~="right")then ai_unsupported("source global direction has no viewer-local observation","se_mopaocard")end
-    return value
+    return ai_choice_result((value), options)
 end
 
 
@@ -144,7 +149,9 @@ end
 sgs.ai_playerchosen_intention.se_wuyi_recover = -40
 
 --小五
-sgs.ai_fill_skill.se_kuixin = function(self, inclusive)
+ai_fill_skill.se_kuixin = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	for _, p in sgs.qlist((self.room:getOtherPlayers(self.player))) do
 		if (self.player:distanceTo(p)) == 1 and not kuixin_used(self,p) and (p:getHandcardNum()) > 0 then
 			if math.random(1, 5) > 1 then
@@ -154,7 +161,7 @@ sgs.ai_fill_skill.se_kuixin = function(self, inclusive)
 	end
 	return
 end
-sgs.ai_skill_use_func["#se_kuixincard"] = function(card, use, self)
+ai_card_use["#se_kuixincard"] = function(self, card, use, request)
 	for _, p in sgs.qlist((self.room:getOtherPlayers(self.player))) do
 		if (self.player:distanceTo(p)) == 1 and not kuixin_used(self,p) and (p:getHandcardNum()) > 0 then
 			use.card = card
@@ -207,14 +214,13 @@ sgs.ai_skill_askforag["se_huixiang"] = function(self, card_ids)
 end
 
 
-ai_skill_use["@@se_huixiang"] = function(self, prompt, method)
+ai_skill_use["@@se_huixiang"] = function(self, prompt, request)
 	local cards = {}
 	if (self.player:getPile("satori_memory")):length() < 1 then return "." end
 	for _, id in sgs.qlist((self.player:getPile("satori_memory"))) do
 		table.insert(cards, (self:getKnownCardById(id)))
 	end
 	cards=(self:sortByUseValue(cards))
-	--local card_str = string.format("#LuaMeilingCard:%d:->%s", card:getId(), (target:objectName()))
 	local give_all_cards = {}
 	local max = math.ceil((self.player:getHp()) / 2)
 	for _, c in ipairs(cards) do
@@ -223,7 +229,6 @@ ai_skill_use["@@se_huixiang"] = function(self, prompt, method)
 		end
 	end
 	local card_str = string.format("#se_huixiang:%s:", table.concat(give_all_cards, "+"))
-	--local card_str = "#se_huixiang:"..cardx:getId()..":"
 	parse_nil(self,"#se_huixiang")
     local signal=AIUnsupported.new("dmptouhou donor response prototype is unavailable","@@se_huixiang")
     signal.terminal_response_selection=true;signal.donor_terminal_unavailable=true
@@ -255,7 +260,6 @@ sgs.ai_skill_playerchosen.se_fuzhi = function(self, targets)
 				return friend
 			end
 		end
-		--return self.friends_noself[1]
 	end
 	return nil
 end

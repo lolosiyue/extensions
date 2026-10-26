@@ -1,7 +1,8 @@
--- Lolihime source b6025acc. Preserve the fixed first-201 discard scan and the
--- source's ordered table.remove(1) behavior; neither is a suit-count heuristic.
+-- Source: b6025acc ai/lolihime-ai.lua.
 local known = AIValue.requireKnown
-sgs.ai_fill_skill.shouji=function(self,inclusive,request)
+ai_fill_skill.shouji=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if (self.player:getStrategyHasUsed("#shoujicard")) then return end
     if (self.player:getHandcardNum())<(self.player:getHp())+1 then return end
     local black=0
@@ -9,7 +10,7 @@ sgs.ai_fill_skill.shouji=function(self,inclusive,request)
     if black*3<(self.player:getHandcardNum()) and #known(self.enemies,"enemies")<(self.player:getHp())+1 then return end
     return (self:legacySkillSeed("shouji","#shoujicard",request))
 end
-sgs.ai_skill_use_func["#shoujicard"]=function(card,use,self,request)
+ai_card_use["#shoujicard"]=function(self, card, use, request)
     local needed={}
     local cards=(self.player:getHandcards())
     for _,material in ipairs(cards)do
@@ -30,14 +31,14 @@ sgs.ai_skill_use_func["#shoujicard"]=function(card,use,self,request)
 end
 sgs.ai_use_value.shoujicard=8
 sgs.ai_use_priority.shoujicard=5
-sgs.ai_skill_invoke.SE_Xinyuan=function(self)return #known(self.friends,"friends")>1 end
+ai_skill_invoke.SE_Xinyuan=function(self, options, request)return (#known(self.friends,"friends")>1) or false end
 sgs.ai_skill_playerchosen.SE_Xinyuan=function(self)
     return self:findPlayerToDraw(false,(self.player:getMark("xinyuan_dis")))
 end
 local suitOrder={sgs.Card_Spade,sgs.Card_Heart,sgs.Card_Club,sgs.Card_Diamond}
 local suitNames={"spade","heart","club","diamond"}
 local function contains(list,value)for _,v in ipairs(list)do if v==value then return true end end;return false end
-sgs.ai_skill_invoke.dandiao=function(self)
+ai_skill_invoke.dandiao=function(self, options, request)
     local discard,hand={0,0,0,0},{0,0,0,0}
     local ids=(self.room:getDiscardPile())
     -- swig/list.i exposes QList.value(i), so missing IntList entries are 0.
@@ -56,10 +57,10 @@ sgs.ai_skill_invoke.dandiao=function(self)
     end
     for suit=1,4 do if hand[suit]==0 then hand[suit]=1000 end end
     local minimum=math.min(hand[1],hand[2],hand[3],hand[4])
-    if minimum~=1 then return end
+    if minimum~=1 then return false end
     -- This intentionally removes the first entry, not the named matching suit.
     for suit=1,4 do if hand[suit]>minimum and contains(condition,suitNames[suit])then table.remove(condition,1)end end
-    return #condition>0
+    return (#condition>0) or false
 end
 local function goodTarget(self,target)
     -- The donor's global sgs.isGoodTarget has one definer, the Original Hegemony AI
@@ -85,7 +86,7 @@ sgs.ai_skill_playerchosen.dandiao=function(self)
     for _,enemy in ipairs(enemies)do if (enemy:isAlive())then return enemy end end
     for _,player in ipairs((self.room:getAlivePlayers()))do if not (self:isFriend(player))then return player end end
 end
-sgs.ai_skill_choice.eastfast=function(self)
+ai_skill_choice.eastfast=function(self, native_options, native_request)
     local options=self.request and self.request.options
     local fact=options and options.context and options.context.eastfast
     if type(fact)~="table" or fact.known~=true or type(fact.card)~="table" or type(fact.draw_pile_count)~="number"then
@@ -98,18 +99,18 @@ sgs.ai_skill_choice.eastfast=function(self)
         for index,c in ipairs(judges)do
             if #(self.player:getPile("save"))==2+#(self.player:getCards("j"))-index then
                 if (c:isKindOf("Indulgence"))then
-                    if (card:getSuit())==sgs.Card_Heart then return "save"end
-                    return "drop"
+                    if (card:getSuit())==sgs.Card_Heart then return ai_choice_result(("save"), native_options)end
+                    return ai_choice_result(("drop"), native_options)
                 elseif (c:isKindOf("SupplyShortage"))then
-                    if (card:getSuit())==sgs.Card_Club then return "save"end
-                    return "drop"
+                    if (card:getSuit())==sgs.Card_Club then return ai_choice_result(("save"), native_options)end
+                    return ai_choice_result(("drop"), native_options)
                 elseif (c:isKindOf("Lightning"))then
-                    if (card:getSuit())==sgs.Card_Spade then return "drop"end
+                    if (card:getSuit())==sgs.Card_Spade then return ai_choice_result(("drop"), native_options)end
                 end
             end
         end
     end
-    if (card:isKindOf("Tacos"))then return "save"end
+    if (card:isKindOf("Tacos"))then return ai_choice_result(("save"), native_options)end
     local evaluation
     local function value()
         -- Enrich the already notified physical face only when source valuation
@@ -117,9 +118,9 @@ sgs.ai_skill_choice.eastfast=function(self)
         if not evaluation then evaluation=(self:getAcquiredCardEvaluation(card)) end
         return (self:getUseValue(evaluation))
     end
-    if value()>5 then return "save"end
-    if num>#(self.room:getAlivePlayers())*3 and value()>4.5 then return "save"end
-    if num>2 and value()>=5 then return "save"end
-    return "drop"
+    if value()>5 then return ai_choice_result(("save"), native_options)end
+    if num>#(self.room:getAlivePlayers())*3 and value()>4.5 then return ai_choice_result(("save"), native_options)end
+    if num>2 and value()>=5 then return ai_choice_result(("save"), native_options)end
+    return ai_choice_result(("drop"), native_options)
 end
 sgs.ai_cardneed.eastfast=function(to,card,self)return (card:isKindOf("Tacos"))end

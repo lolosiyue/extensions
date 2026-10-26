@@ -1,4 +1,4 @@
--- Fixed b6025acc LuaOldEnemyGirls policy. No native userdata or parsed action strings.
+-- Source: b6025acc ai/LuaOldEnemyGirls-ai.lua.
 local function context(self)
     local c=self.request and self.request.options and self.request.options.context
     local row=c and c.lua_old_enemy_girls
@@ -49,13 +49,15 @@ local function yanling(self)
     if type(row.yanling_card)~="table" then ai_unsupported("owner LuaYanling card tag unknown","LuaYanling") end
     return CardView.new(row.yanling_card)
 end
-sgs.ai_fill_skill.LuaFengxi = function(self,inclusive,request)
+ai_fill_skill.LuaFengxi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if not getOEList(self.player,self.room):isEmpty() and not self.player:getStrategyHasUsed("#LuaFengxiCard") then
         return self:legacySkillSeed("LuaFengxi", "#LuaFengxiCard", request)
     end
 end
 
-sgs.ai_skill_use_func["#LuaFengxiCard"] = function(card, use, self,request)
+ai_card_use["#LuaFengxiCard"] = function(self, card, use, request)
     self:sort(self.enemies, "handcard")
     for _, p in ipairs(self.enemies) do
         if getOEList(self.player,self.room):contains(p) and not p:isNude() then
@@ -69,9 +71,10 @@ end
 sgs.ai_use_priority["LuaFengxiCard"] = sgs.ai_use_priority.Dismantlement + 0.1
 sgs.ai_use_value["LuaFengxiCard"] = 8.5
 
-function sgs.ai_skill_invoke.LuaLinying(self, data)
-    return (self:isWeak() and self.player:getMaxHp() - self.player:getHandcardNum() > 2) or
-        sgs.ai_skill_playerchosen.LuaLinying(self, self.room:getOtherPlayers(self.player)) ~= nil
+function ai_skill_invoke.LuaLinying(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return ((self:isWeak() and self.player:getMaxHp() - self.player:getHandcardNum() > 2) or
+        sgs.ai_skill_playerchosen.LuaLinying(self, self.room:getOtherPlayers(self.player)) ~= nil) or false
 end
 
 sgs.ai_skill_playerchosen.LuaLinying = function(self, targets)
@@ -139,14 +142,16 @@ sgs.ai_playerchosen_intention.LuaLinying = function(self, from, to)
     sgs.updateIntention(from, to, intention)
 end
 
-sgs.ai_fill_skill.LuaLinlu = function(self,inclusive,request)
+ai_fill_skill.LuaLinlu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if mark(self.player,"@LuaLinlu") == 0 then return end
     if self.player:getStrategyHasUsed("#LuaLinluCard") then return end
     if #self.enemies < 1 then return end
     return self:legacySkillSeed("LuaLinlu", "#LuaLinluCard", request)
 end
 
-sgs.ai_skill_use_func["#LuaLinluCard"] = function(card, use, self,request)
+ai_card_use["#LuaLinluCard"] = function(self, card, use, request)
     local cards = sgs.QList2Table(self.player:getCards("he"))
     local to_discard_black = {}
     local to_discard_red = {}
@@ -270,16 +275,17 @@ function sgs.ai_cardneed.LuaHuowei(to,card,self)
 	and (getKnownCard(to,self.player,"heart",false)+getKnownCard(to,self.player,"diamond",false))<2
 end
 
-function sgs.ai_skill_invoke.LuaYinyan(self, data)
+function ai_skill_invoke.LuaYinyan(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     local maxcard = self:getMaxCard()
     local number = maxcard:getNumber()
     if target and self:isEnemy(target) and self.player:canPindian(target) and number >= 7
         and self:objectiveLevel(target) > 3 and not self:cantbeHurt(target)
         and self:damageIsEffective(target, sgs.DamageStruct_Fire, self.player) then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 sgs.ai_cardneed.LuaYinyan = sgs.ai_cardneed.bignumber
 
@@ -302,7 +308,9 @@ end
 sgs.ai_cardneed.LuaYanling = sgs.ai_cardneed.slash
 
 
-sgs.ai_fill_skill.LuaDuanjian = function(self,inclusive,request)
+ai_fill_skill.LuaDuanjian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isNude() then return end
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	local card
@@ -310,7 +318,7 @@ sgs.ai_fill_skill.LuaDuanjian = function(self,inclusive,request)
 	if card then return paid(self,"LuaDuanjian",{card:getKnownEffectiveId()},request) end
 end
 
-sgs.ai_skill_use_func["#LuaDuanjianCard"] = function(card, use, self,request)
+ai_card_use["#LuaDuanjianCard"] = function(self, card, use, request)
 	local target1, target2
 	local myoldenemy = findMyOE(self.player, self.room)
 	if myoldenemy then

@@ -1,6 +1,4 @@
--- Fixed b6025acc Arknights strategies. The two old Lua SkillCard prototypes
--- disappeared in the native V2 migration: retain source Card_Parse nil rather
--- than manufacture action receipts or claim an accepted activation.
+-- Source: b6025acc ai/arknights-ai.lua.
 local known = AIValue.requireKnown
 
 local function missing_source_prototype(self,name)
@@ -10,7 +8,9 @@ local function missing_source_prototype(self,name)
 end
 --过载
 
-sgs.ai_fill_skill.ark_guozai = function(self,inclusive,request)
+ai_fill_skill.ark_guozai = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getStrategyMark("&ark_guozai-PlayClear") >= self.player:getMaxHp() then return end
     local card = self:evaluateSkillCard("ark_guozai","slash",{})
     local d = self:aiUseCard(card)
@@ -24,7 +24,7 @@ sgs.ai_fill_skill.ark_guozai = function(self,inclusive,request)
     end
 end
 
-sgs.ai_skill_use_func["#ark_guozai"] = function(card, use, self)
+ai_card_use["#ark_guozai"] = function(self, card, use, request)
     local cached,present=self:getStrategyMemory("ark_guozai_to")
     local targets
     if present and cached~=false then
@@ -77,10 +77,11 @@ end
 
 --缄默
 
-sgs.ai_skill_invoke.ark_jianmo = function(self, data)
+ai_skill_invoke.ark_jianmo = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local name=known(self:getDecisionContext().ark_jianmo_target,"public ark_jianmotarget")
     local target=name~=false and known(self.room:findPlayerByObjectName(name),"Jianmo target")or nil
-    return target and self:isEnemy(target)
+    return (target and self:isEnemy(target)) or false
 end
 
 sgs.ai_skill_playerschosen.ark_jianmo = function(self, targets, max, min)
@@ -114,11 +115,13 @@ end
 
 --追猎
 
-sgs.ai_fill_skill.ark_zhuilie = function(self,inclusive,request)
+ai_fill_skill.ark_zhuilie = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return missing_source_prototype(self,"#ark_zhuilie")
 end
 
-sgs.ai_skill_use_func["#ark_zhuilie"] = function(card, use, self)
+ai_card_use["#ark_zhuilie"] = function(self, card, use, request)
     local target
     self.enemies = self:sort(self.enemies, "hp")
     if #self.enemies == 0 then return "." end
@@ -165,19 +168,23 @@ sgs.exclusive_skill = sgs.exclusive_skill .. "|ark_tanshuo"
 
 --止戈
 
-sgs.ai_skill_invoke.ark_zhige = function(self, data)
+ai_skill_invoke.ark_zhige = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    return target and self:isEnemy(target)
+    return (target and self:isEnemy(target)) or false
 end
 
 --万象
 
-sgs.ai_skill_choice["ark_wanxiang"] = function(self, choices, data)
+ai_skill_choice["ark_wanxiang"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
     if self.player:getStrategyMark("&ark_chongying") > 0 then table.removeOne(items, "ark_chongying") end
     if self.player:getStrategyMark("&ark_fuchen") > 0 then table.removeOne(items, "ark_fuchen") end
-    if math.random(1, 2) == 1 then return "ark_wowu" end
-    return items[math.random(1, #items)]
+    if math.random(1, 2) == 1 then return ai_choice_result(("ark_wowu"), options) end
+    return ai_choice_result((items[math.random(1, #items)]), options)
 end
 
 sgs.ai_ajustdamage_from["&ark_chongying"] = function(self, from, to, card, nature)
@@ -190,9 +197,10 @@ end
 
 --逐夜
 
-sgs.ai_skill_invoke.ark_zhuye = function(self, data)
+ai_skill_invoke.ark_zhuye = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local n = 1 - self.player:getHp()
-    return (self:getCardsNum("Peach") + self:getCardsNum("Analeptic")) < n
+    return ((self:getCardsNum("Peach") + self:getCardsNum("Analeptic")) < n) or false
 end
 
 --破晓
@@ -227,3 +235,28 @@ end
 sgs.ai_canNiepan_skill.ark_zhuye = function(player)
     return player:getStrategyMark("@ark_zhuye_mark") > 0
 end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, from, to, dmg, card, nature, damage_call, helpers, context)
+        if damage_call(to, "hasSkill", "ark_kewang") and dmg > 1 then
+            dmg = 0
+        end
+        return dmg, nature
+    end
+    local previous_1 = sgs.ai_ajustdamage_to["ark_kewang"]
+    sgs.ai_ajustdamage_to["ark_kewang"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "after_to" and context.rule == "ark_kewang" then
+                local damage, next_nature, terminal = policy_1(self, from, to, context.value.damage, card, context.value.nature, context.query, context.extra[3], context)
+                context.value.damage, context.value.nature = damage, next_nature
+                return context.value, terminal
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "ark_kewang", {
+        {phase="after_to", rule="ark_kewang", order=6700},
+    })
+end)()

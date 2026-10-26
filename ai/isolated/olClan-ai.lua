@@ -1,5 +1,4 @@
--- Fixed olClan policy over disclosed values. Runtime owns all card authority.
--- This file is being extended by dependency group; see the named /tmp inventory.
+-- OlClan package policies over disclosed values.
 local known = AIValue.requireKnown
 
 local function copy_list(values)
@@ -40,12 +39,14 @@ sgs.ai_skill_discard.zuyuzhi = function(self)
 end
 
 -- Source olClan-ai.lua:19
-sgs.ai_skill_choice.losehoorremoveskill = function(self,choices)
+ai_skill_choice.losehoorremoveskill = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"removes_zu_zhong_baozu")
 	and self:isWeak() and mark(self,self.player,"@zu_zhong_baozu")<1
-	then return "removes_zu_zhong_baozu" end
-	return items[1]
+	then return ai_choice_result(("removes_zu_zhong_baozu"), options) end
+	return ai_choice_result((items[1]), options)
 end
 
 -- Source olClan-ai.lua:27
@@ -65,10 +66,11 @@ sgs.ai_skill_discard.zuxieshu = function(self,max,min)
 end
 
 -- Source olClan-ai.lua:42
-sgs.ai_skill_invoke.zu_zhong_baozu = function(self,data)
+ai_skill_invoke.zu_zhong_baozu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data_value(self,"dying")
-	return self:isFriend(dying.who)
-	and self:getAllPeachNum()+dying.who:getHp()<1
+	return (self:isFriend(dying.who)
+	and self:getAllPeachNum()+dying.who:getHp()<1) or false
 end
 
 -- Source olClan-ai.lua:48
@@ -85,11 +87,12 @@ sgs.ai_skill_playerchosen.zujiejian = function(self,players)
 end
 
 -- Source olClan-ai.lua:75
-sgs.ai_skill_invoke.zuhuanghan = function(self,data)
+ai_skill_invoke.zuhuanghan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data_value(self,"damage")
 	local n = damage.card:nameLength()
-	return n>=self.player:getLostHp() or mark(self,self.player,"@zu_zhong_baozu")<1
-	and has_skill(self,self.player,"zu_zhong_baozu",true)
+	return (n>=self.player:getLostHp() or mark(self,self.player,"@zu_zhong_baozu")<1
+	and has_skill(self,self.player,"zu_zhong_baozu",true)) or false
 end
 
 -- Source olClan-ai.lua:166
@@ -129,7 +132,7 @@ end
 sgs.ai_skill_cardask["@zuqiajue-invoke"] = function(self,data,pattern)
 	local cards = self.player:getCards("he")
 	cards = copy_list(cards)
-    self:sortByKeepValueInPlace(cards)--按保留值排序
+    self:sortByKeepValueInPlace(cards)
 	local n = 0
    	for _,c in ipairs(cards)do
 		n = n+c:getNumber()
@@ -142,12 +145,17 @@ sgs.ai_skill_cardask["@zuqiajue-invoke"] = function(self,data,pattern)
 end
 
 -- Source olClan-ai.lua:325
-sgs.ai_skill_choice["kezudaojie"] = function(self, choices, data)
+ai_skill_choice["kezudaojie"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
     if table.contains(items,"hp")
-	and self.player:getHp()+self:getCardsNum("Peach,Analeptic")>1 then return "hp" end
-	if table.contains(items,"kezudaojie") then return "kezudaojie" end
-	if table.contains(items,"skill") then return "skill" end
+	and self.player:getHp()+self:getCardsNum("Peach,Analeptic")>1 then return ai_choice_result(("hp"), options) end
+	if table.contains(items,"kezudaojie") then return ai_choice_result(("kezudaojie"), options) end
+	if table.contains(items,"skill") then return ai_choice_result(("skill"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 -- Source olClan-ai.lua:333
@@ -168,21 +176,27 @@ sgs.ai_skill_playerchosen.kezudaojie = function(self, targets)
 end
 
 -- Source olClan-ai.lua:439
-sgs.ai_skill_choice["ny_baichu"] = function(self, choices, data)
-	if string.find(choices, "recover") then return "recover" end
+ai_skill_choice["ny_baichu"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+	if string.find(choices, "recover") then return ai_choice_result(("recover"), options) end
     local items = choices:split("+")
-    return items[math.random(1,#items)]
+    return ai_choice_result((items[math.random(1,#items)]), options)
 end
 
 -- Source olClan-ai.lua:518
-sgs.ai_skill_choice["kezulieshi"] = function(self, choices, data)
+ai_skill_choice["kezulieshi"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-    --if table.contains(items,"slash") then return "slash" end
-	--if table.contains(items,"jink") then return "jink" end
     for _,tr in ipairs(items) do
 		if tr:startsWith("lieshidamage") and not self:isWeak()
-		then return tr end
+		then return ai_choice_result((tr), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 -- Source olClan-ai.lua:528
@@ -200,12 +214,15 @@ sgs.ai_skill_playerchosen.kezulieshi = function(self, players)
 end
 
 -- Source olClan-ai.lua:556
-sgs.ai_skill_choice["kezufangzhen"] = function(self, choices, data)
+ai_skill_choice["kezufangzhen"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local to = data_value(self,"player")
     if self:isWeak(to) and to:isWounded()
-	then return items[2] end
-    return items[1]
+	then return ai_choice_result((items[2]), options) end
+    return ai_choice_result((items[1]), options)
 end
 
 -- Source olClan-ai.lua:564
@@ -213,7 +230,7 @@ sgs.ai_skill_playerchosen.kezuliuju = function(self, players)
     local cards = self.player:getCards("h")
     cards = copy_list(cards)--将列表转换为表
 	if #cards<2 then return end
-    self:sortByKeepValueInPlace(cards)--按保留值排序
+    self:sortByKeepValueInPlace(cards)
 	self:remember("kezuliuju_card",cards[1]:getEffectiveId())
 	local destlist = copy_list(players)--将列表转换为表
 	self:sortInPlace(destlist, "handcard")
@@ -249,16 +266,22 @@ sgs.ai_skill_playerschosen.kezulianhe = function(self,players,x,n)
 end
 
 -- Source olClan-ai.lua:655
-sgs.ai_skill_invoke.kezulianhe = function(self,data)
-	return #self.friends+#self.enemies>1
+ai_skill_invoke.kezulianhe = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.friends+#self.enemies>1) or false
 end
 
 -- Source olClan-ai.lua:676
-sgs.ai_skill_choice["kezuhuanjia"] = function(self, choices, data)
+ai_skill_choice["kezuhuanjia"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
     if table.contains(items,"kezuxumin")
 	and mark(self,self.player,"@kezuxumin")<1
-	then return "kezuxumin" end
+	then return ai_choice_result(("kezuxumin"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 -- Source olClan-ai.lua:683
@@ -266,7 +289,7 @@ sgs.ai_skill_playerchosen.kezuhuanjia = function(self, players)
     local cards = self.player:getCards("h")
     cards = copy_list(cards)--将列表转换为表
 	if #cards<2 then return end
-    self:sortByKeepValueInPlace(cards)--按保留值排序
+    self:sortByKeepValueInPlace(cards)
 	self:remember("kezuliuju_card",cards[1]:getEffectiveId())
 	local destlist = copy_list(players)--将列表转换为表
 	self:sortInPlace(destlist, "handcard")
@@ -281,31 +304,37 @@ sgs.ai_skill_playerchosen.kezuhuanjia = function(self, players)
 end
 
 -- Source olClan-ai.lua:902
-sgs.ai_skill_choice["kezubolong"] = function(self, choices, data)
+ai_skill_choice["kezubolong"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-	if self:isWeak() then return items[2] end
-    return items[1]
+	if self:isWeak() then return ai_choice_result((items[2]), options) end
+    return ai_choice_result((items[1]), options)
 end
 
 -- Source olClan-ai.lua:996
-sgs.ai_skill_invoke.kezuchenya = function(self,data)
+ai_skill_invoke.kezuchenya = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data_value(self,"player")
-	return self:isFriend(to)
-	or not self:isEnemy(to) and #self.enemies>0
+	return (self:isFriend(to)
+	or not self:isEnemy(to) and #self.enemies>0) or false
 end
 
 -- Source olClan-ai.lua:1102
-sgs.ai_skill_invoke.kezujianji = function(self,data)
+ai_skill_invoke.kezujianji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local cur = self.room:getCurrent()
-	return self:isFriend(cur)
-	or not self:isEnemy(cur) and #self.enemies>0
+	return (self:isFriend(cur)
+	or not self:isEnemy(cur) and #self.enemies>0) or false
 end
 
 -- Source olClan-ai.lua:1184
-sgs.ai_skill_invoke.kezujianyuan = function(self,data)
+ai_skill_invoke.kezujianyuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local cur = data_value(self,"player")
-	return self:isFriend(cur)
-	or not self:isEnemy(cur) and #self.enemies>0
+	return (self:isFriend(cur)
+	or not self:isEnemy(cur) and #self.enemies>0) or false
 end
 
 -- Source olClan-ai.lua:1304
@@ -365,8 +394,9 @@ sgs.ai_skill_cardchosen.zukaiji = function(self,who)
 end
 
 -- Source olClan-ai.lua:1473
-sgs.ai_skill_invoke.zuanran = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.zuanran = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 -- Source olClan-ai.lua:1477
@@ -384,8 +414,9 @@ sgs.ai_skill_playerschosen.zuanran = function(self, players,x,n)
 end
 
 -- Source olClan-ai.lua:1523
-sgs.ai_skill_invoke.zuqieyi = function(self,data)
-	return self:canDraw() and not self:isWeak()
+ai_skill_invoke.zuqieyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw() and not self:isWeak()) or false
 end
 
 -- Source olClan-ai.lua:1527
@@ -415,14 +446,17 @@ sgs.ai_skill_playerchosen.zujiewu = function(self, players)
 end
 
 -- Source olClan-ai.lua:1551
-sgs.ai_skill_invoke.zujiewu = function(self,data)
+ai_skill_invoke.zujiewu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data_value(self,"use")
 	self:writeOlClanSuitSlot(known(use.card:getSuitString(),"zujiewu.suit"))
 	for _,p in ipairs(self.room:getAlivePlayers())do
 		if mark(self,p,"&zujiewu+#"..self.player:objectName().."-PlayClear")>0
 		and getKnownCard(p,self.player,self:readOlClanSuitSlot())>0
-		then return true end
+		then return (true) or false end
 	end
+	return false
+
 end
 
 -- Source olClan-ai.lua:1561
@@ -435,19 +469,21 @@ sgs.ai_skill_cardchosen.zujiewu = function(self,who)
 end
 
 -- Source olClan-ai.lua:1569
-sgs.ai_skill_invoke.zugaoshi = function(self,data)
-	return self:canDraw() or self:isWeak()
+ai_skill_invoke.zugaoshi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw() or self:isWeak()) or false
 end
 
 -- Source olClan-ai.lua:1594
-sgs.ai_skill_invoke.zuyangji = function(self,data)
+ai_skill_invoke.zuyangji = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local n = 0
 	for _,h in ipairs(self.player:getHandcards())do
 		if h:isBlack() and h:isAvailable(self.player) then
 			if self:aiUseCard(h).card then n = n+1 end
 		end
 	end
-	return n>=self.player:getHandcardNum()/3
+	return (n>=self.player:getHandcardNum()/3) or false
 end
 
 -- Source olClan-ai.lua:1641
@@ -466,8 +502,9 @@ sgs.ai_skill_playerchosen.zujuetu = function(self, players)
 end
 
 -- Source olClan-ai.lua:1721
-sgs.ai_skill_invoke.zujiannan = function(self,data)
-	return self:canDraw() or self:isWeak()
+ai_skill_invoke.zujiannan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw() or self:isWeak()) or false
 end
 
 -- Source olClan-ai.lua:1725
@@ -491,11 +528,16 @@ sgs.ai_skill_playerchosen.zujiannan = function(self, players)
 end
 
 -- Source olClan-ai.lua:1744
-sgs.ai_skill_choice["zujiannan"] = function(self, choices, data)
+ai_skill_choice["zujiannan"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local to = data_value(self,"player")
     if self:isFriend(to) and table.contains(items,"zujiannan2")
-	then return "zujiannan2" end
+	then return ai_choice_result(("zujiannan2"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 -- Source olClan-ai.lua:1751
@@ -564,9 +606,10 @@ sgs.ai_skill_playerchosen.zuzelie = function(self, players)
 end
 
 -- Source olClan-ai.lua:1832
-sgs.ai_skill_invoke.zutanfeng = function(self,data)
+ai_skill_invoke.zutanfeng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data_value(self,"player")
-	return self:isEnemy(to)
+	return (self:isEnemy(to)) or false
 end
 
 -- Source olClan-ai.lua:1837
@@ -595,33 +638,43 @@ sgs.ai_skill_playerschosen.zudingan = function(self, players)
 end
 
 -- Source olClan-ai.lua:1882
-sgs.ai_skill_invoke.zuheta = function(self,data)
+ai_skill_invoke.zuheta = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	for i,c in ipairs(self:getTurnUse())do
 		if c:isKindOf("BasicCard") or c:isNDTrick() then
-			return true
+			return (true) or false
 		end
 	end
+	return false
+
 end
 
 -- Source olClan-ai.lua:1909
-sgs.ai_skill_invoke.zuyingxiang = function(self,data)
-	return true
+ai_skill_invoke.zuyingxiang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (true) or false
 end
 
 -- Source olClan-ai.lua:1928
-sgs.ai_skill_choice["zuyingxiang"] = function(self, choices, data)
+ai_skill_choice["zuyingxiang"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	for _,s in ipairs(items)do
 		if self.player:hasSkill(s,true) then
-			return items[#items]
+			return ai_choice_result((items[#items]), options)
 		end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
 -- Source olClan-ai.lua:1937
-sgs.ai_skill_invoke.zugezhi = function(self,data)
+ai_skill_invoke.zugezhi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data_value(self,"damage")
-	return self:doDisCard(damage.to,"he")
+	return (self:doDisCard(damage.to,"he")) or false
 end
 
 -- Source olClan-ai.lua:2000
@@ -635,9 +688,13 @@ sgs.ai_skill_playerchosen.zushize = function(self, players)
 end
 
 -- Source olClan-ai.lua:2009
-sgs.ai_skill_choice.zujianzhi = function(self,choices)
+ai_skill_choice.zujianzhi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if not self:isWeak() then return items[#items] end
+	if not self:isWeak() then return ai_choice_result((items[#items]), options) end
+
+    return ai_choice_result(nil, options)
 end
 
 -- Source olClan-ai.lua:2014
@@ -647,8 +704,8 @@ end
 
 -- Donor callbacks write these choices during selection, even if no target is
 -- ultimately selected. Keep that observational state in this viewer only.
-sgs.ai_skill_choice.zuzelie=function(self)return recall(self,"choice.zuzelie")end
-sgs.ai_skill_choice.zujuewei=function(self)return recall(self,"choice.zujuewei")end
+ai_skill_choice.zuzelie=function(self, options, request)return ai_choice_result((recall(self,"choice.zuzelie")), options)end
+ai_skill_choice.zujuewei=function(self, options, request)return ai_choice_result((recall(self,"choice.zujuewei")), options)end
 
 -- Zero-cost legacy prototypes and source target orchestration.
 local function action_request(self,request)
@@ -666,7 +723,9 @@ local function bind_selected(self,skill,prototype,input,use,request,costs,user_s
 end
 
 -- Source olClan-ai.lua:82
-sgs.ai_fill_skill.zuguangu=function(self,inclusive,request)
+ai_fill_skill.zuguangu=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return seed(self,"zuguangu","#zuguanguCard",request)
 end
 
@@ -700,7 +759,7 @@ local function select_zuguangu(card,use,self)
 		end
 	end
 end
-sgs.ai_skill_use_func["#zuguanguCard"]=function(card,use,self,request)
+ai_card_use["#zuguanguCard"]=function(self, card, use, request)
     select_zuguangu(card,use,self)
     bind_selected(self,"zuguangu","#zuguanguCard",card,use,request)
 end
@@ -708,7 +767,9 @@ sgs.ai_use_priority.zuguanguCard = 6.2
 sgs.ai_use_value.zuguanguCard = 3.4
 
 -- Source olClan-ai.lua:204
-sgs.ai_fill_skill.zuyirong=function(self,inclusive,request)
+ai_fill_skill.zuyirong=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return seed(self,"zuyirong","#zuyirongCard",request)
 end
 
@@ -724,13 +785,15 @@ local function select_zuyirong(card,use,self)
 		use.card = card
 	end
 end
-sgs.ai_skill_use_func["#zuyirongCard"]=function(card,use,self,request)
+ai_card_use["#zuyirongCard"]=function(self, card, use, request)
     select_zuyirong(card,use,self)
     bind_selected(self,"zuyirong","#zuyirongCard",card,use,request)
 end
 
 -- Source olClan-ai.lua:447
-sgs.ai_fill_skill.kezuyunshen=function(self,inclusive,request)
+ai_fill_skill.kezuyunshen=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return seed(self,"kezuyunshen","#kezuyunshenCard",request)
 end
 
@@ -762,7 +825,7 @@ local function select_kezuyunshen(card,use,self)
 		end
 	end
 end
-sgs.ai_skill_use_func["#kezuyunshenCard"]=function(card,use,self,request)
+ai_card_use["#kezuyunshenCard"]=function(self, card, use, request)
     select_kezuyunshen(card,use,self)
     bind_selected(self,"kezuyunshen","#kezuyunshenCard",card,use,request)
 end
@@ -770,7 +833,9 @@ sgs.ai_use_priority.kezuyunshenCard = 6.2
 sgs.ai_use_value.kezuyunshenCard = 3.4
 
 -- Source olClan-ai.lua:496
-sgs.ai_fill_skill.kezulieshi=function(self,inclusive,request)
+ai_fill_skill.kezulieshi=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return #self.enemies>0
 	and seed(self,"kezulieshi","#kezulieshiCard",request)
 end
@@ -789,7 +854,7 @@ local function select_kezulieshi(card,use,self)
 		end
 	end
 end
-sgs.ai_skill_use_func["#kezulieshiCard"]=function(card,use,self,request)
+ai_card_use["#kezulieshiCard"]=function(self, card, use, request)
     select_kezulieshi(card,use,self)
     bind_selected(self,"kezulieshi","#kezulieshiCard",card,use,request)
 end
@@ -797,7 +862,9 @@ sgs.ai_use_priority.kezulieshiCard = 3.2
 sgs.ai_use_value.kezulieshiCard = 3.4
 
 -- Source olClan-ai.lua:1416
-sgs.ai_fill_skill.zukaiji=function(self,inclusive,request)
+ai_fill_skill.zukaiji=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if mark(self,self.player,"sgszukaijiTo_lun")<1 then
 		for _,h in ipairs(self.player:getHandcards())do
 			if h:isAvailable(self.player) and self:aiUseCard(h).card then
@@ -825,13 +892,13 @@ local function select_zukaiji(card,use,self)
 		break
 	end
 end
-sgs.ai_skill_use_func["#zukaijiCard"]=function(card,use,self,request)
+ai_card_use["#zukaijiCard"]=function(self, card, use, request)
     select_zukaiji(card,use,self)
     bind_selected(self,"zukaiji","#zukaijiCard",card,use,request)
 end
 sgs.ai_use_priority.zukaijiCard = 11.2
 sgs.ai_use_value.zukaijiCard = 3.4
-sgs.ai_skill_choice.kezuyunshen=function(self)return recall(self,"choice.kezuyunshen")end
+ai_skill_choice.kezuyunshen=function(self, options, request)return ai_choice_result((recall(self,"choice.kezuyunshen")), options)end
 
 -- Disclosed physical-card response planners. Preserve the donor tag order and
 -- evaluate only reached candidates. Read-only values cannot be submitted: the
@@ -883,22 +950,22 @@ local function choose_notified(self,skill,request,method,reverse)
     end
 end
 -- Source 136–155 and 1573–1592: descending use-value order, no RNG.
-sgs.ai_skill_use["@@zuguangu"]=function(self,prompt,request)
+ai_skill_use["@@zuguangu"]=function(self, prompt, request)
     return choose_notified(self,"zuguangu",request,"sortByUseValue")
 end
-sgs.ai_skill_use["@@zugaoshi"]=function(self,prompt,request)
+ai_skill_use["@@zugaoshi"]=function(self, prompt, request)
     return choose_notified(self,"zugaoshi",request,"sortByUseValue")
 end
 -- Source 582–601 / 701–720: the explicit *Ids tag and notification
 -- contain the same ordered IDs at these native askForUseCard call sites.
-sgs.ai_skill_use["@@kezuliuju"]=function(self,prompt,request)
+ai_skill_use["@@kezuliuju"]=function(self, prompt, request)
     return choose_notified(self,"kezuliuju",request,"sortByKeepValue",true)
 end
-sgs.ai_skill_use["@@kezuhuanjia"]=function(self,prompt,request)
+ai_skill_use["@@kezuhuanjia"]=function(self, prompt, request)
     return choose_notified(self,"kezuhuanjia",request,"sortByKeepValue",true)
 end
 -- Source 1447–1461: only the first original card; no availability precheck.
-sgs.ai_skill_use["@@zukaiji"]=function(self,prompt,request)
+ai_skill_use["@@zukaiji"]=function(self, prompt, request)
     local cards=notified_cards(self,"zukaiji")
     local c,candidate=notified_evaluation(self,known(cards[1],"zukaiji.first_notified_card"))
     local use=notified_plan(self,c,candidate)
@@ -909,7 +976,7 @@ sgs.ai_skill_use["@@zukaiji"]=function(self,prompt,request)
 end
 -- Source 1490–1521: two ordered passes. The second canSlash probe and
 -- enemy-before-neutral preference are retained even if aiUseCard declined.
-sgs.ai_skill_use["@@zugaobian"]=function(self,prompt,request)
+ai_skill_use["@@zugaobian"]=function(self, prompt, request)
     if mark(self,self.player,"&zuanran+#num")>2 and has_skill(self,self.player,"kezuzhongliu")
         and not self:isWeak()then return end
     local cards=notified_cards(self,"zugaobian")
@@ -937,8 +1004,10 @@ sgs.ai_skill_use["@@zugaobian"]=function(self,prompt,request)
     end
 end
 -- Source 157–160, static final choice body.
-sgs.ai_skill_choice.zuguangunum=function(self,choices)
-    local items=choices:split("+");return items[#items]
+ai_skill_choice.zuguangunum=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+    local items=choices:split("+");return ai_choice_result((items[#items]), options)
 end
 
 -- Source 60–74 compares serialized policy cards, not object identity. Keep the
@@ -959,7 +1028,9 @@ end
 
 -- Source 908–957. The donor mutates its fresh seed with at most one hand card;
 -- collect that exact payment before binding the authoritative nonthrow product.
-sgs.ai_fill_skill.kezufuxun=function(self,inclusive,request)
+ai_fill_skill.kezufuxun=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return seed(self,"kezufuxun","#kezufuxunCard",request)
 end
 local function select_kezufuxun(card,use,self)
@@ -994,7 +1065,7 @@ local function select_kezufuxun(card,use,self)
         end
     end
 end
-sgs.ai_skill_use_func["#kezufuxunCard"]=function(card,use,self,request)
+ai_card_use["#kezufuxunCard"]=function(self, card, use, request)
     local costs=select_kezufuxun(card,use,self)
     bind_selected(self,"kezufuxun","#kezufuxunCard",card,use,request,costs)
 end
@@ -1002,7 +1073,9 @@ sgs.ai_use_value.kezufuxunCard=3.4
 sgs.ai_use_priority.kezufuxunCard=6.2
 
 -- Source 805–834: count the actual ordered turn plan before scanning the roster.
-sgs.ai_fill_skill.kezumingjie=function(self,inclusive,request)
+ai_fill_skill.kezumingjie=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return seed(self,"kezumingjie","#kezumingjieCard",request)
 end
 local function select_kezumingjie(card,use,self)
@@ -1023,7 +1096,7 @@ local function select_kezumingjie(card,use,self)
         end
     end
 end
-sgs.ai_skill_use_func["#kezumingjieCard"]=function(card,use,self,request)
+ai_card_use["#kezumingjieCard"]=function(self, card, use, request)
     select_kezumingjie(card,use,self)
     bind_selected(self,"kezumingjie","#kezumingjieCard",card,use,request)
 end
@@ -1032,7 +1105,9 @@ sgs.ai_use_priority.kezumingjieCard=11.2
 
 -- Source 1109–1148: retain `i>1 and Slash or NDTrick` precedence, including
 -- the first planned non-delayed Trick. No sorting or random draw is introduced.
-sgs.ai_fill_skill.kezuqiuxin=function(self,inclusive,request)
+ai_fill_skill.kezuqiuxin=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return seed(self,"kezuqiuxin","#kezuqiuxinCard",request)
 end
 local function select_kezuqiuxin(card,use,self)
@@ -1060,7 +1135,7 @@ local function select_kezuqiuxin(card,use,self)
         use.card=card;use.to:append(p);return
     end
 end
-sgs.ai_skill_use_func["#kezuqiuxinCard"]=function(card,use,self,request)
+ai_card_use["#kezuqiuxinCard"]=function(self, card, use, request)
     select_kezuqiuxin(card,use,self)
     bind_selected(self,"kezuqiuxin","#kezuqiuxinCard",card,use,request)
 end
@@ -1124,10 +1199,10 @@ local function remembered_ag_answer(self,key,skill,request)
         return known(use:toAnswer(),"olClan.ag.answer")
     end
 end
-sgs.ai_skill_use["@@kezumingjiemark"]=function(self,prompt,request)
+ai_skill_use["@@kezumingjiemark"]=function(self, prompt, request)
     return remembered_ag_answer(self,"kezumingjieUse","kezumingjiemark",request)
 end
-sgs.ai_skill_use["@@kezulilunuse"]=function(self,prompt,request)
+ai_skill_use["@@kezulilunuse"]=function(self, prompt, request)
     return remembered_ag_answer(self,"kezulilunUse","kezulilunuse",request)
 end
 
@@ -1164,7 +1239,9 @@ local function shengmo_plan(self)
     return {card=self:restorePriorTurnPlan(known(row.card,"kezushengmo saved card")),to=targets}
 end
 
-sgs.ai_fill_skill.kezujiexuan=function(self,inclusive,request)
+ai_fill_skill.kezujiexuan=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local n=self.player:getChangeSkillState("kezujiexuan")
     local name=n==1 and "snatch" or "dismantlement"
     local class=n==1 and "Snatch" or "Dismantlement"
@@ -1200,7 +1277,9 @@ sgs.ai_fill_skill.kezujiexuan=function(self,inclusive,request)
     end
 end
 
-sgs.ai_fill_skill.kezushengmo=function(self,inclusive,request)
+ai_fill_skill.kezushengmo=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     for _,pn in ipairs(known(AICardCatalog.patternNames(),"pattern_names"))do
         if mark(self,self.player,"kezushengmo_guhuo_remove_"..pn)>0 then continue end
         local dc=self:cloneEvaluationCard(pn)
@@ -1220,7 +1299,7 @@ sgs.ai_fill_skill.kezushengmo=function(self,inclusive,request)
         end
     end
 end
-sgs.ai_skill_use_func["#kezushengmoCard"]=function(card,use,self)
+ai_card_use["#kezushengmoCard"]=function(self, card, use, request)
     local ut=shengmo_plan(self)
     if ut.card then use.card=card;use.to=ut.to end
 end
@@ -1231,7 +1310,9 @@ sgs.ai_guhuo_card.kezushengmo=function(self,toname,class_name)
     return "#kezushengmoCard:.:"..toname
 end
 
-sgs.ai_fill_skill.zukudu=function(self,inclusive,request)
+ai_fill_skill.zukudu=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards=copy_list(self.player:getCards("he"))
     self:sortByKeepValueInPlace(cards, nil, "j")
     local ids={}
@@ -1241,7 +1322,7 @@ sgs.ai_fill_skill.zukudu=function(self,inclusive,request)
         if #ids>1 then return remaining_seed(self,"zukudu","#zukuduCard",ids,request)end
     end
 end
-sgs.ai_skill_use_func["#zukuduCard"]=function(card,use,self)
+ai_card_use["#zukuduCard"]=function(self, card, use, request)
     local tps=self:sort(self.room:getAlivePlayers())
     for i,p in ipairs(tps)do
         if i>#tps/2 and p~=self.player and self:isFriend(p)then use.to:append(p);use.card=card;return end
@@ -1249,8 +1330,8 @@ sgs.ai_skill_use_func["#zukuduCard"]=function(card,use,self)
 end
 sgs.ai_use_value.zukuduCard=3.4
 sgs.ai_use_priority.zukuduCard=6.2
-sgs.ai_skill_use["@@zukudu"]=function(self,prompt,request)
-    local dc=sgs.ai_fill_skill.zukudu(self,nil,request)
+ai_skill_use["@@zukudu"]=function(self, prompt, request)
+    local dc=ai_fill_skill.zukudu(self,{inclusive=nil},request)
     if dc then
         local dummy=self:aiUseCard(dc)
         if dummy.card then
@@ -1277,7 +1358,9 @@ end
 
 -- Source 1017: the original zero-cost card is allocated before scanning. Its
 -- selected material mutation preserves that strategy identity, not its ticket.
-sgs.ai_fill_skill.kezulilun=function(self,inclusive,request)
+ai_fill_skill.kezulilun=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local dc=seed(self,"kezulilun","#kezulilunCard",request)
     local cards=copy_list(self.player:getCards("he"))
     self:sortByDynamicUsePriorityInPlace(cards)
@@ -1307,13 +1390,13 @@ sgs.ai_fill_skill.kezulilun=function(self,inclusive,request)
         end
     end
 end
-sgs.ai_skill_use_func["#kezulilunCard"]=function(card,use,self)use.card=card end
+ai_card_use["#kezulilunCard"]=function(self, card, use, request)use.card=card end
 sgs.ai_use_value.kezulilunCard=3.4
 sgs.ai_use_priority.kezulilunCard=11.2
 
 -- Source1002: name length compares to current hand count; sorted upper half
 -- exclusion is evaluated before Recast legality and length.
-sgs.ai_skill_use["@@kezuchenyacz"]=function(self,prompt,request)
+ai_skill_use["@@kezuchenyacz"]=function(self, prompt, request)
     local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid={}
     for i,h in ipairs(cards)do
@@ -1325,7 +1408,7 @@ sgs.ai_skill_use["@@kezuchenyacz"]=function(self,prompt,request)
     return a_response(self,"kezuchenyacz","#kezuchenyaCard",valid,{},request)
 end
 -- Source1170: same ordered mechanics but a distinct source mark and scope.
-sgs.ai_skill_use["@@kezujianyuancz"]=function(self,prompt,request)
+ai_skill_use["@@kezujianyuancz"]=function(self, prompt, request)
     local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid={}
     for i,h in ipairs(cards)do
@@ -1338,7 +1421,7 @@ sgs.ai_skill_use["@@kezujianyuancz"]=function(self,prompt,request)
 end
 -- Source1626: one first card per suit, covering every hand suit. There is no
 -- invented keep threshold, and final native selection validates the coverage.
-sgs.ai_skill_use["@@zujuetu!"]=function(self,prompt,request)
+ai_skill_use["@@zujuetu!"]=function(self, prompt, request)
     local cards=copy_list(self.player:getCards("h"));self:sortByKeepValueInPlace(cards)
     local valid,suits={},{}
     for _,h in ipairs(cards)do
@@ -1351,7 +1434,7 @@ sgs.ai_skill_use["@@zujuetu!"]=function(self,prompt,request)
 end
 -- Source1860: source thresholds are not the provider's LostHp threshold.
 -- Preserve a native rejection if the first chosen source cost count differs.
-sgs.ai_skill_use["@@zufuning"]=function(self,prompt,request)
+ai_skill_use["@@zufuning"]=function(self, prompt, request)
     local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid,first={},nil
     for _,h in ipairs(cards)do
@@ -1368,7 +1451,7 @@ sgs.ai_skill_use["@@zufuning"]=function(self,prompt,request)
     end
 end
 -- Source1962 and1977 intentionally differ only by the previous-plan exclusion.
-sgs.ai_skill_use["@@zumingdian"]=function(self,prompt,request)
+ai_skill_use["@@zumingdian"]=function(self, prompt, request)
     local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid={}
     for _,h in ipairs(cards)do
@@ -1380,7 +1463,9 @@ sgs.ai_skill_use["@@zumingdian"]=function(self,prompt,request)
     if #valid<1 then return end
     return a_response(self,"zumingdian","#zumingdianCard",valid,{},request)
 end
-sgs.ai_fill_skill.zumingdian=function(self,inclusive,request)
+ai_fill_skill.zumingdian=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid={}
     for _,h in ipairs(cards)do
@@ -1392,7 +1477,7 @@ sgs.ai_fill_skill.zumingdian=function(self,inclusive,request)
     if #valid<1 then return end
     return remaining_seed(self,"zumingdian","#zumingdianCard",valid,request)
 end
-sgs.ai_skill_use_func["#zumingdianCard"]=function(card,use,self)use.card=card end
+ai_card_use["#zumingdianCard"]=function(self, card, use, request)use.card=card end
 sgs.ai_use_value.zumingdianCard=3.4
 sgs.ai_use_priority.zumingdianCard=2.8
 
@@ -1424,7 +1509,9 @@ local function recast_card(self,card,cost,request)
 end
 -- 186: construct each exact material hypothesis before availability. The first
 -- available policy is returned; only the common final selection can pay it.
-sgs.ai_fill_skill.zuzhanding=function(self,inclusive,request)
+ai_fill_skill.zuzhanding=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self:getCardsNum('Slash')>0 and self.player:getHandcardNum()>self.player:getMaxCards()then return end
     local hand=self:sortByKeepValueInPlace(cards(self,'he'))
     for _,material in ipairs(hand)do
@@ -1433,10 +1520,12 @@ sgs.ai_fill_skill.zuzhanding=function(self,inclusive,request)
     end
 end
 -- 222/226: native normalizes the registered zulianzhuvs& to zulianzhuvs.
-sgs.ai_fill_skill.zulianzhuvs=function(self,inclusive,request)
+ai_fill_skill.zulianzhuvs=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return empty(self,'zulianzhuvs','#zulianzhuCard',request)
 end
-sgs.ai_skill_use_func['#zulianzhuCard']=function(card,use,self,request)
+ai_card_use['#zulianzhuCard']=function(self, card, use, request)
     self:sortInPlace(self.enemies, 'handcard')
     for _,p in ipairs(self:sort(self.room:getAlivePlayers(), 'handcard', true))do
         if has_parent(self,p) and self:isFriend(p)then
@@ -1485,8 +1574,10 @@ sgs.ai_skill_use_func['#zulianzhuCard']=function(card,use,self,request)
 end
 -- 603/607: the donor intentionally leaves the final SkillCard empty. Do not
 -- transfer the one-card AmazingGrace probe material into its final payment.
-sgs.ai_fill_skill.kezuxumin=function(self,inclusive,request)return empty(self,'kezuxumin','#kezuxuminCard',request)end
-sgs.ai_skill_use_func['#kezuxuminCard']=function(card,use,self)
+ai_fill_skill.kezuxumin=function(self, options, request)
+    local inclusive = options and options.inclusive
+return empty(self,'kezuxumin','#kezuxuminCard',request)end
+ai_card_use['#kezuxuminCard']=function(self, card, use, request)
     local hand=self:sortByKeepValueInPlace(cards(self,'he'))
     for _,h in ipairs(hand)do
         local grace=hypothesis(self,'kezuxumin','amazing_grace','kezuxumin',{h:getKnownEffectiveId()})
@@ -1502,8 +1593,10 @@ sgs.ai_skill_use_func['#kezuxuminCard']=function(card,use,self)
     end
 end
 -- 875/879: weak enemy early return precedes the ThunderSlash hypothesis.
-sgs.ai_fill_skill.kezubolong=function(self,inclusive,request)return empty(self,'kezubolong','#kezubolongCard',request)end
-sgs.ai_skill_use_func['#kezubolongCard']=function(card,use,self)
+ai_fill_skill.kezubolong=function(self, options, request)
+    local inclusive = options and options.inclusive
+return empty(self,'kezubolong','#kezubolongCard',request)end
+ai_card_use['#kezubolongCard']=function(self, card, use, request)
     for _,p in ipairs(self.enemies)do
         if self:isWeak(p)then use.to:append(p);use.card=card;return end
     end
@@ -1514,7 +1607,7 @@ sgs.ai_skill_use_func['#kezubolongCard']=function(card,use,self)
     end
 end
 -- 1604: select the original physical hand card, even if dummy.card was revised.
-sgs.ai_skill_use.zuyangji0=function(self,prompt)
+ai_skill_use.zuyangji0=function(self, prompt, request)
     local hand={}
     for _,h in ipairs(self.player:getHandcards())do if h:isBlack()then hand[#hand+1]=h end end
     self:sortByUseValueInPlace(hand)
@@ -1533,8 +1626,10 @@ sgs.ai_skill_use.zuyangji0=function(self,prompt)
 end
 -- 1814/1818: Qinggang is put on an issued native detached clone by the finite
 -- source constructor, then retained in its sealed recipe. No live flag write.
-sgs.ai_fill_skill.zutanfeng=function(self,inclusive,request)return empty(self,'zutanfeng','#zutanfengCard',request)end
-sgs.ai_skill_use_func['#zutanfengCard']=function(card,use,self)
+ai_fill_skill.zutanfeng=function(self, options, request)
+    local inclusive = options and options.inclusive
+return empty(self,'zutanfeng','#zutanfengCard',request)end
+ai_card_use['#zutanfengCard']=function(self, card, use, request)
     local dc=hypothesis(self,'zutanfeng','slash','',{})
     local d=self:aiUseCard(dc)
     if d.card then use.card=card;use.to:append(d.to:first());return end
@@ -1590,7 +1685,10 @@ local function seed(self,ids,r)return self:evaluateTurnSkillCard('zuchengqi','#z
 
 -- 351 / 370: choosing a name and the later actual use independently sort and
 -- select their own materials. They must not share a payment receipt.
-sgs.ai_skill_choice.ny_shenjun=function(self,choices,data)
+ai_skill_choice.ny_shenjun=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
  local cards=copy(self.player:getHandcards());self:sortByUseValue(cards)
  for _,ch in ipairs(choices:split('+'))do
   local base=clone(self,ch)
@@ -1599,11 +1697,11 @@ sgs.ai_skill_choice.ny_shenjun=function(self,choices,data)
   for _,h in ipairs(cards)do ids[#ids+1]=h:getKnownEffectiveId();if #ids>=n then break end end
   local dc=preview(self,'ny_shenjun',ch,'ny_shenjun',ids,base)
   local d=self:aiUseCard(dc)
-  if d.card then return ch end
+  if d.card then return ai_choice_result((ch), options) end
  end
- return 'cancel'
+ return ai_choice_result(('cancel'), options)
 end
-sgs.ai_skill_use['@@ny_shenjun']=function(self,prompt)
+ai_skill_use['@@ny_shenjun']=function(self, prompt, request)
  local n=self.player:getMark('ny_shenjun');local cards=copy(self.player:getCards('h'))
  if n>#cards/2 then return end
  local name=scoped(self,'ny_shenjun');local base=clone(self,name)
@@ -1633,10 +1731,10 @@ sgs.ai_skill_askforag.kezufuxun=function(self,ids)
  end end
  return -1
 end
-sgs.ai_skill_use['@@kezufuxunbasic']=function(self,prompt)
+ai_skill_use['@@kezufuxunbasic']=function(self, prompt, request)
  local d=saved(self,'kezufuxunUse');if d.card and d.to then return wire(d.card,d.to)end
 end
-sgs.ai_skill_use['@@kezujianji']=function(self,prompt)
+ai_skill_use['@@kezujianji']=function(self, prompt, request)
  local dc=preview(self,'kezujianji','slash','kezujianji',{})
  local d=self:aiUseCard(dc);if d.card and d.to then return wire(d.card,d.to)end
 end
@@ -1658,7 +1756,9 @@ end
 -- 1190: the recast break exits ONLY the inner loop, without clearSubcards.
 -- Therefore accumulated/repeated costs on the next h are deliberate donor
 -- semantics; readonly permits this finite history, final native payment does not.
-sgs.ai_fill_skill.zuchengqi=function(self,inclusive,request)
+ai_fill_skill.zuchengqi=function(self, options, request)
+    local inclusive = options and options.inclusive
+
  for pass=1,2 do
   for _,pn in ipairs(patterns(self))do
    if self.player:getMark(pn..'zuchengqiUse-Clear')<1 then
@@ -1690,10 +1790,10 @@ sgs.ai_fill_skill.zuchengqi=function(self,inclusive,request)
   end
  end
 end
-sgs.ai_skill_use_func['#zuchengqiCard']=function(card,use,self)use.card=card end
+ai_card_use['#zuchengqiCard']=function(self, card, use, request)use.card=card end
 sgs.ai_use_value.zuchengqiCard=3.4
 sgs.ai_use_priority.zuchengqiCard=9.2
-sgs.ai_skill_use['@@zuchengqi']=function(self,prompt)
+ai_skill_use['@@zuchengqi']=function(self, prompt, request)
  local d=saved(self,'zuchengqiUse');if d.card and d.to then return wire(d.card,d.to)end
 end
 sgs.ai_guhuo_card.zuchengqi=function(self,name,class_name)
@@ -1712,7 +1812,7 @@ sgs.ai_guhuo_card.zuchengqi=function(self,name,class_name)
   end
  end
 end
-sgs.ai_skill_use['@@zujuetu1!']=function(self,prompt)
+ai_skill_use['@@zujuetu1!']=function(self, prompt, request)
  local dc=preview(self,'zujuetu','dismantlement','_zujuetu',{self.player:getMark('zujuetuId')})
  local d=self:aiUseCard(dc)
  if d.card then return wire(dc,d.to)end
@@ -1720,7 +1820,7 @@ sgs.ai_skill_use['@@zujuetu1!']=function(self,prompt)
  for _,p in ipairs(self.room:getAlivePlayers())do if not self:isFriend(p)and #self.enemies>0 then return wire(dc,{p})end end
  for _,p in ipairs(self.room:getAlivePlayers())do if not self:isFriend(p)then return wire(dc,{p})end end
 end
-sgs.ai_skill_use['@@zuyingxiang!']=function(self,prompt)
+ai_skill_use['@@zuyingxiang!']=function(self, prompt, request)
  local dc=preview(self,'zuyingxiang',scoped(self,'zuyingxiangCn'),'_zuyingxiang',{})
  local d=self:aiUseCard(dc)
  if d.card then return wire(dc,d.to)end
@@ -1813,15 +1913,18 @@ sgs.ai_skill_playerchosen.ny_sankuang=function(self,targets)
     return rtarget
 end
 -- Source482: damage comes from the real SkillInvoke data, not a stale room tag.
-sgs.ai_skill_invoke.kezushangshen=function(self,data)
+ai_skill_invoke.kezushangshen=function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local damage=known(self:getDecisionData().toDamage(),"kezushangshen.damage")
     if self:isFriend(damage.to)and damage.to:getHandcardNum()<4 then
         local to=player(self,row(self,"fenchaiPlayer"))
-        if to and to:isAlive()and self.player:hasSkill("kezufenchai")then return true end
+        if to and to:isAlive()and self.player:hasSkill("kezufenchai")then return (true) or false end
         local finalRetrial=self:getFinalRetrial(nil,"lightning")
         known(finalRetrial,"kezushangshen.finalRetrial")
-        if finalRetrial<2 then return not to or to:isAlive()or not self.player:hasSkill("kezufenchai")end
+        if finalRetrial<2 then return (not to or to:isAlive()or not self.player:hasSkill("kezufenchai")) or false end
     end
+    return false
+
 end
 -- Source541: preserve the two separately ordered passes.
 sgs.ai_skill_playerchosen.kezufangzhen=function(self,players)
@@ -1846,14 +1949,17 @@ sgs.ai_skill_discard.kezulianhe=function(self,n,x)
     return cards
 end
 -- Source863: explicit actual input string, no modern-tag substitution.
-sgs.ai_skill_invoke.kezumingjie=function(self,data)
+ai_skill_invoke.kezumingjie=function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local st=known(row(self,"invoke_string"),"kezumingjie.string")
     local sts=st:split(":");local to=player(self,sts[2]);local use=use_data(self,"kezumingjieData")
-    if self:isFriend(to)and cardq(use.card,"targetFixed")then return true
-    elseif self:isEnemy(to)and cardq(use.card,"isDamageCard")then return true end
+    if self:isFriend(to)and cardq(use.card,"targetFixed")then return (true) or false
+    elseif self:isEnemy(to)and cardq(use.card,"isDamageCard")then return (true) or false end
+    return false
+
 end
 -- Source1332: costs stay h,c pairs and preserve both sort direction predicates.
-sgs.ai_skill_use["@@zujieli"]=function(self,prompt,request)
+ai_skill_use["@@zujieli"]=function(self, prompt, request)
     local valid={};local cards=faces(self,"zujieliForAI");local cns=faces(self,"zujieliNForAI")
     local to=self:readOlClanPlayerSlot("zujieliTo")
     sort(self,cards,"sortByKeepValue",self:isEnemy(to))
@@ -1879,7 +1985,7 @@ sgs.ai_skill_playerschosen.zuheta=function(self,players)
     return tps
 end
 -- Source1942: three source attempts; do not repair native's exact-two quota.
-sgs.ai_skill_use["@@zugezhi"]=function(self,prompt,request)
+ai_skill_use["@@zugezhi"]=function(self, prompt, request)
     local cards=faces(self,"zugezhiForAI");local tps={};local names={};local valid={}
     for i=0,2 do
         local c,p=self:getCardNeedPlayer(cards,true)
@@ -1900,14 +2006,17 @@ end
 -- getTurnUse has an isolated-only diagnostic third return. A partial source
 -- plan cannot prove either invocation or refusal; preserve that signal exactly.
 do
-sgs.ai_skill_invoke.zuheta = function(self, data)
+ai_skill_invoke.zuheta = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local cards, _, unknown = self:getTurnUse()
     if unknown ~= nil then error(unknown, 0) end
     if AIUnsupported.is(cards) then error(cards, 0) end
     for _, card in ipairs(cards) do
         if card:isKindOf("BasicCard") or card:isNDTrick() then
-            return true
+            return (true) or false
         end
     end
+    return false
+
 end
 end

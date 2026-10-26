@@ -31,7 +31,6 @@ if not sgs.ai_nullification then
 	sgs.ai_nullification = {}
 end
 
-------------
 function SmartAIView:useCardEXCard_WWJZ(card, use)
 	if self.room:alivePlayerCount() <= 2 or #self.friends == 0 and self.room:getTurnCount() > 1 then
 		use.card = card
@@ -51,7 +50,8 @@ function SmartAIView:useCardEXCard_WWJZ(card, use)
 		end
 	end
 end
-sgs.ai_skill_use.EXCard_WWJZ = function(self, prompt, method)
+ai_skill_use.EXCard_WWJZ = function(self, prompt, request)
+	local method = request and request.handling_method
 	local use = wwjz_use(self)
 	if not use or not use.from then return "." end
 	local id = self:getCardId("EXCard_WWJZ")
@@ -108,7 +108,6 @@ sgs.ai_card_intention.EXCard_WWJZ = function(self, card, from, tos)
 	for _,to in ipairs(tos)do self:updateIntention(from,to,20)end
 end
 
------------------
 
 sgs.weapon_range.EXCard_SJLRD = 3
 sgs.ai_use_priority.EXCard_SJLRD = 5.673
@@ -141,7 +140,6 @@ sgs.ai_skill_playerchosen.EXCard_SJLRD_Skill = function(self, targets)
 	return
 end
 
------------------------
 
 sgs.weapon_range.EXCard_WLJ = 2
 sgs.ai_use_priority.EXCard_WLJ = 5.673
@@ -150,7 +148,9 @@ function sgs.ai_weapon_value.EXCard_WLJ(self, enemy, player)
 	if #self:getFriends(player) > 0 then return 2.8 end
 end
 
-sgs.ai_fill_skill.EXCard_WLJ=function(self,inclusive,request)
+ai_fill_skill.EXCard_WLJ=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 		for _, player in sgs.qlist(self.room:getAlivePlayers()) do
 			if self:isFriend(player) then
 				if player:getStrategyMark("@EXCard_WLJ") == 0 then return self:legacySkillSeed("EXCard_WLJ", "#EXCard_WLJ_SkillCARD", request) end
@@ -159,7 +159,7 @@ sgs.ai_fill_skill.EXCard_WLJ=function(self,inclusive,request)
 			end
 		end
 end
-sgs.ai_skill_use_func["#EXCard_WLJ_SkillCARD"] = function(card, use, self,request)
+ai_card_use["#EXCard_WLJ_SkillCARD"] = function(self, card, use, request)
 	for _, friend in ipairs(self.friends) do
 		if not use.card then
             local bound=self:bindSkillCard("EXCard_WLJ", {}, request, nil, "#EXCard_WLJ_SkillCARD")
@@ -170,7 +170,6 @@ sgs.ai_skill_use_func["#EXCard_WLJ_SkillCARD"] = function(card, use, self,reques
 end
 sgs.ai_use_priority.EXCard_WLJ_SkillCARD = 10
 sgs.ai_card_intention.EXCard_WLJ_SkillCARD = -10
-------------------
 
 sgs.weapon_range.EXCard_FLDF = 2
 sgs.ai_use_priority.EXCard_FLDF = 5.400
@@ -184,17 +183,19 @@ function sgs.ai_slash_weaponfilter.EXCard_FLDF(self, to, player)
 	return getCardsNum("Peach", to, self.player) + getCardsNum("Jink", to, self.player) < 1
 		and getCardsNum("Jink", to, self.player) == 0
 end
-sgs.ai_skill_invoke.EXCard_FLDF_revive = function(self, data)
-	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return false end
-	return true
+ai_skill_invoke.EXCard_FLDF_revive = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return (false) or false end
+	return (true) or false
 end
-sgs.ai_skill_invoke.EXCard_FLDF = function(self, data)
+ai_skill_invoke.EXCard_FLDF = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	for _, to in sgs.qlist(use.to) do
 		local eff = self:doDisCard(to)
-		return eff and self:isEnemy(to)
+		return (eff and self:isEnemy(to)) or false
 	end
-	return
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.EXCard_FLDF=function(self,player,promptlist)
@@ -208,7 +209,6 @@ sgs.ai_choicemade_filter.skillInvoke.EXCard_FLDF=function(self,player,promptlist
     if #names>0 then ai_unsupported("FLDF legacy role_evaluation write transaction unavailable","EXCard_FLDF")end
 end
 
--------------------------------
 
 sgs.ai_slash_prohibit.EXCard_TPYS = function(self, from, enemy, card)
 	if enemy:hasArmorEffect("EXCard_TPYS") and card:isKindOf("NatureSlash") then return true end
@@ -224,23 +224,25 @@ sgs.ai_ajustdamage_to.EXCard_TPYS = function(self,from,to,card,nature)
 	then return -99 end
 end
 
--------------------------------
 
 function SmartAIView:useCardEXCard_YYDL(card, use)
+    local recommend = self:targetRecommendScorer(card)
+	if recommend(self.player, 0) == nil then return end
 	use.card = card
 	if use.to then use.to:append(self.player) end
-	for _, player in ipairs(self.friends_noself) do
+	for _, player in ipairs(self:orderTargetsByRecommend(self.friends_noself, recommend)) do
 		if use.to and not player:hasSkill("manjuan") and not player:isKongcheng() then
 			use.to:append(player)
 		end
 	end
-	for _, enemy in ipairs(self.enemies) do
+	for _, enemy in ipairs(self:orderTargetsByRecommend(self.enemies, recommend)) do
 		if use.to and enemy:hasSkill("manjuan") and not enemy:isKongcheng() then
 			use.to:append(enemy)
 		end
 	end
 	return
 end
+sgs.registerSkillCardType("EXCard_YYDL", "draw")
 sgs.ai_use_priority.EXCard_YYDL = 2.8
 sgs.ai_use_value.EXCard_YYDL = 4
 sgs.ai_keep_value.EXCard_YYDL = 1
@@ -265,27 +267,32 @@ sgs.ai_nullification.EXCard_YYDL = function(self, card, from, to, positive)
 	end
 	return
 end
--------------------------------
 
 function SmartAIView:useCardEXCard_YJJG(card, use)
+    local recommend = self:targetRecommendScorer(card)
 	local friend = self:findPlayerToDraw()
-	if friend then
+	if friend and recommend(friend, 0) ~= nil then
 		use.card = card
 		if use.to then use.to:append(friend) end
 		return
 	elseif #self.friends_noself > 0 then
 		self:sort(self.friends_noself)
+		local candidates = self:orderTargetsByRecommend(self.friends_noself, recommend)
+		if #candidates == 0 then return end
 		use.card = card
-		if use.to then use.to:append(self.friends_noself[1]) end
+		if use.to then use.to:append(candidates[1]) end
 		return
 	else
 		local players = sgs.QList2Table(self.room:getOtherPlayers(self.player))
 		self:sort(players)
+		players = self:orderTargetsByRecommend(players, recommend)
+		if #players == 0 then return end
 		use.card = card
 		if use.to then use.to:append(players[1]) end
 		return
 	end
 end
+sgs.registerSkillCardType("EXCard_YJJG", "draw")
 sgs.ai_use_priority.EXCard_YJJG = 9.28
 sgs.ai_use_value.EXCard_YJJG = 9
 sgs.ai_keep_value.EXCard_YJJG = 3.88
@@ -303,12 +310,12 @@ sgs.ai_nullification.EXCard_YJJG = function(self, card, from, to, positive)
 	return
 end
 
--------------------------------
 
 function SmartAIView:useCardEXCard_ZJZB(card, use)
+    local recommend = self:targetRecommendScorer(card)
 	set_choice(self,nil)
 	if not self:isRolePredictable() and not self:isRolePredictable(true) then
-		for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		for _, p in sgs.qlist(self:orderTargetsByRecommend(self.room:getOtherPlayers(self.player), recommend)) do
 			if not self:isFriend(p) and not self:isEnemy(p) and not p:isLord() then
 				use.card = card
 				if use.to then use.to:append(p) end
@@ -317,7 +324,7 @@ function SmartAIView:useCardEXCard_ZJZB(card, use)
 			end
 		end
 		if self:getRoleCountValue("rebel") == 0 then
-			for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+			for _, p in sgs.qlist(self:orderTargetsByRecommend(self.room:getOtherPlayers(self.player), recommend)) do
 				if not p:isLord() then
 					use.card = card
 					if use.to then use.to:append(p) end
@@ -329,7 +336,7 @@ function SmartAIView:useCardEXCard_ZJZB(card, use)
 	end
 	self:sort(self.enemies, "handcard")
 	self.enemies = sgs.reverse(self.enemies)
-	for _, enemy in ipairs(self.enemies) do
+	for _, enemy in ipairs(self:orderTargetsByRecommend(self.enemies, recommend)) do
 		if enemy:getHandcardNum() - self:getKnownNum(enemy) > 1 then
 			use.card = card
 			if use.to then use.to:append(enemy) end
@@ -340,9 +347,12 @@ function SmartAIView:useCardEXCard_ZJZB(card, use)
 	use.card = card
 	return
 end
-sgs.ai_skill_choice.EXCard_ZJZB = function(self, choices)
-	local choice=get_choice(self);if choice then return choice end
-	return "ZJZB_showhandcards"
+sgs.registerSkillCardType("EXCard_ZJZB", "debuff")
+ai_skill_choice.EXCard_ZJZB = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	local choice=get_choice(self);if choice then return ai_choice_result((choice), options) end
+	return ai_choice_result(("ZJZB_showhandcards"), options)
 end
 sgs.ai_use_priority.EXCard_ZJZB = 9.1
 sgs.ai_use_value.EXCard_ZJZB = 5.4
@@ -356,17 +366,17 @@ sgs.ai_nullification.EXCard_ZJZB = function(self, card, from, to, positive)
 	return
 end
 
-----------------------------
 
 function SmartAIView:useCardEXCard_DHLS(card, use)
+    local recommend = self:targetRecommendScorer(card)
 	if #self.friends_noself > 0 then
 		local nextp
 		for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
 			if self:isEnemy(p) then nextp = p break end
 		end
-		if nextp then
+		if nextp and recommend(nextp, 0) ~= nil then
 			self:sort(self.friends_noself, "chaofeng")
-			for _, friend in ipairs(self.friends_noself) do
+			for _, friend in ipairs(self:orderTargetsByRecommend(self.friends_noself, recommend)) do
 				if self:playerGetRound(friend) > self:playerGetRound(nextp) then
 					local range_fix = 1 + friend:getAttackRange() - nextp:getAttackRange()
 					for _, enemy in ipairs(self.enemies) do
@@ -379,7 +389,7 @@ function SmartAIView:useCardEXCard_DHLS(card, use)
 					end
 				end
 			end
-			for _, friend in ipairs(self.friends_noself) do
+			for _, friend in ipairs(self:orderTargetsByRecommend(self.friends_noself, recommend)) do
 				if self:playerGetRound(friend) > self:playerGetRound(nextp) and (getCardsNum("Weapon", friend, self.player) or friend:getHandcardNum() - friend:getKnownCard() >= 4) then
 					use.card = card
 					if use.to then use.to:append(friend) use.to:append(nextp) end
@@ -439,7 +449,6 @@ sgs.ai_nullification.EXCard_DHLS = function(self, card, from, to, positive)
 	return
 end
 
-------------------------------------
 
 function SmartAIView:useCardEXCard_TJBZ(card, use)
 	local good, bad = 0, 0

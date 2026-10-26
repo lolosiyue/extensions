@@ -1,4 +1,4 @@
--- Fixed b6025acc jiange-defense effective source, pure values only.
+-- Source: b6025acc ai/jiange-defense-ai.lua.
 local known = AIValue.requireKnown
 
 local dummy = AIUsePlan.dummy
@@ -22,7 +22,7 @@ local dummy = AIUsePlan.dummy
   QSanguosha-Rara
 *********************************************************************]]
 
-sgs.ai_skill_invoke.jglingfeng = true
+ai_skill_invoke.jglingfeng = true
 
 sgs.ai_skill_playerchosen.jglingfeng = function(self,targets)
 	self.enemies = self:sort(self.enemies,"hp")
@@ -33,34 +33,36 @@ end
 
 sgs.ai_playerchosen_intention.jglingfeng = 80
 
-sgs.ai_skill_invoke.jgbiantian = true
+ai_skill_invoke.jgbiantian = true
 
 sgs.ai_slash_prohibit.jgbiantian = function(self,from,enemy,card)
         if enemy:getStrategyMark("&dawu")>0 and not card:isKindOf("ThunderSlash") then return false end
 	return true
 end
 
-sgs.ai_skill_choice.jggongshen = function(self,choice)
+ai_skill_choice.jggongshen = function(self, options, request)
+    local choice = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	self.friends_noself = self:sort(self.friends_noself)
 	local target = nil
 	for _,enemy in ipairs(self.enemies)do
 		if string.find(enemy:getKnownGeneralName(),"machine") then
                         if enemy:hasArmorEffect("Vine") or enemy:getStrategyMark("&kuangfeng")>0 or enemy:getHp()==1 then
-				return "damage"
+				return ai_choice_result(("damage"), options)
 			end
 		end
 	end
 	for _,friend in ipairs(self.friends_noself)do
 		if string.find(friend:getKnownGeneralName(),"machine") and friend:getLostHp()>0 then
 			if self:isWeak(friend) then
-				return "recover"
+				return ai_choice_result(("recover"), options)
 			end
 		end
 	end
-	return "damage"
+	return ai_choice_result(("damage"), options)
 end
 
-sgs.ai_skill_invoke.jgzhinang = true
+ai_skill_invoke.jgzhinang = true
 
 sgs.ai_skill_playerchosen.jgzhinang = function(self,targets)
 	for _,friend in ipairs(self.friends_noself)do
@@ -77,9 +79,9 @@ sgs.ai_playerchosen_intention.jgzhinang = function(self,from,to)
 	if not self:needKongcheng(to,true)  then self:updateIntention(from,to,-50) end
 end
 
-sgs.ai_skill_invoke.jgjingmiao = true
+ai_skill_invoke.jgjingmiao = true
 
-sgs.ai_skill_invoke.jgqiwu = true
+ai_skill_invoke.jgqiwu = true
 
 sgs.ai_skill_playerchosen.jgqiwu = function(self,targets)
 	local target
@@ -118,7 +120,8 @@ end
 
 sgs.ai_playerchosen_intention.jgtianyun = 80
 
-function sgs.ai_skill_invoke.jglingyu(self,data)
+function ai_skill_invoke.jglingyu(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local weak = 0
 	for _,friend in ipairs(self.friends)do
 		if friend:getLostHp()>0 then
@@ -128,11 +131,11 @@ function sgs.ai_skill_invoke.jglingyu(self,data)
 			end
 		end
 	end
-	if not self.player:faceUp() then return true end
+	if not self.player:faceUp() then return (true) or false end
 	for _,friend in ipairs(self.friends)do
-		if friend:hasSkills("fangzhu") then return true end
+		if friend:hasSkills("fangzhu") then return (true) or false end
 	end
-	return weak>=2
+	return (weak>=2) or false
 end
 
 sgs.ai_skill_playerchosen.jgleili = function(self,targets)
@@ -216,7 +219,7 @@ end
 
 sgs.ai_playerchosen_intention.jghuodi = 80
 
-sgs.ai_skill_invoke.jgjueji = true
+ai_skill_invoke.jgjueji = true
 
 sgs.ai_skill_playerchosen.jgdidong = function(self,targets)
 	local target
@@ -249,28 +252,31 @@ end
 
 sgs.ai_playerchosen_intention.jgdidong = 80
 
-sgs.ai_skill_invoke.jglianyu = true
+ai_skill_invoke.jglianyu = true
 
-function sgs.ai_skill_invoke.jgdixian(self,data)
+function ai_skill_invoke.jgdixian(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local throw = 0
 	for _,enemy in ipairs(self.enemies)do
 		throw = throw+enemy:getCards("e"):length()
 	end
-	if not self.player:faceUp() then return true end
+	if not self.player:faceUp() then return (true) or false end
 	for _,friend in ipairs(self.friends)do
-		if friend:hasSkills("fangzhu") then return true end
+		if friend:hasSkills("fangzhu") then return (true) or false end
 	end
-	return throw>=3
+	return (throw>=3) or false
 end
 
-sgs.ai_skill_invoke.jgkonghun = true
+ai_skill_invoke.jgkonghun = true
 
 
-sgs.ai_fill_skill.jgjiaoxie = function(self,inclusive,request)
+ai_fill_skill.jgjiaoxie = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:legacySkillSeed("jgjiaoxie","JGJiaoxieCard",request)
 end
 
-sgs.ai_skill_use_func["JGJiaoxieCard"] = function(card,use,self)
+ai_card_use["JGJiaoxieCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	for _,p in sgs.list(self.enemies)do
 		if use.to:length()<2 and p:getKnownGeneralName():contains("jg_machine_") and p:getCardCount()>0 then
@@ -284,26 +290,32 @@ end
 sgs.ai_use_value.JGJiaoxieCard = 3.4
 sgs.ai_use_priority.JGJiaoxieCard = 9.2
 
-sgs.ai_skill_invoke.jgbashi = function(self,data)
+ai_skill_invoke.jgbashi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use.card:isKindOf("Slash") then
-		return self:getCardsNum("Jink")<1 and self:isWeak()
+		return (self:getCardsNum("Jink")<1 and self:isWeak()) or false
 	end
 	if use.card:isDamageCard() then
 		local tcn = sgs.aiResponse[use.card:getClassName()] or "Nullification"
-		return self:getCardsNum(tcn)<1 and self:isWeak()
+		return (self:getCardsNum(tcn)<1 and self:isWeak()) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.jgdanjing = function(self,data)
-	return self:getAllPeachNum()<1
+ai_skill_invoke.jgdanjing = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:getAllPeachNum()<1) or false
 end
 
-sgs.ai_fill_skill.jgyingji = function(self,inclusive,request)
+ai_fill_skill.jgyingji = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:legacySkillSeed("jgyingji","JGYingjiCard",request)
 end
 
-sgs.ai_skill_use_func["JGYingjiCard"] = function(card,use,self)
+ai_card_use["JGYingjiCard"] = function(self, card, use, request)
 	local dc = known(self:getEvaluationCard("slash"),"Slash")
 	local d = self:aiUseCard(dc)
 	if d.card then
@@ -322,11 +334,13 @@ sgs.ai_skill_cardask.jgweizhu = function(self,data,pattern,prompt)
 	return "."
 end
 
-sgs.ai_fill_skill.jghanjun = function(self,inclusive,request)
+ai_fill_skill.jghanjun = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:legacySkillSeed("jghanjun","JGHanjunCard",request)
 end
 
-sgs.ai_skill_use_func["JGHanjunCard"] = function(card,use,self)
+ai_card_use["JGHanjunCard"] = function(self, card, use, request)
 	local n = 0
 	for _,p in sgs.list(self.enemies)do
 		if p:getCardCount()>0 then
@@ -341,7 +355,7 @@ end
 sgs.ai_use_value.JGHanjunCard = 3.4
 sgs.ai_use_priority.JGHanjunCard = 9.2
 
-sgs.ai_skill_use["@@jgkeding"] = function(self,prompt)
+ai_skill_use["@@jgkeding"] = function(self, prompt, request)
 	local row=known(nil,"jgkedingUser") -- The Keding source parse is not projected.
     local user=known(row.parts,"jgkeding exact split")
     local face=known(row.card,"jgkeding source parse")
@@ -368,10 +382,33 @@ sgs.ai_skill_use["@@jgkeding"] = function(self,prompt)
     return {kind="use_card",card_spec=paid:toCardSpec(),targets=valid}
 end
 
-sgs.ai_skill_invoke.jglongwei = function(self,data)
-	return self:getAllPeachNum()<1
+ai_skill_invoke.jglongwei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:getAllPeachNum()<1) or false
 end
 
-
-
-
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, to, value, damage_call, from, helpers, context)
+        local damage_role = helpers.role
+        local protector = self.room:findPlayerBySkillName("jgchiying")
+        if protector then
+            local source, target = damage_role(self,protector), damage_role(self,to)
+            if source == target then return true, true end
+        end
+        return value
+    end
+    local previous_1 = sgs.ai_ajustdamage_to["jgchiying"]
+    sgs.ai_ajustdamage_to["jgchiying"] = function(self, from, to, card, nature, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "cap" and context.rule == "jgchiying" then
+                return policy_1(self, to, context.value, context.query, from, context.extra[3], context)
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, from, to, card, nature) end
+    end
+    sgs.declareValueHookStages("ai_ajustdamage_to", "jgchiying", {
+        {phase="cap", rule="jgchiying", order=3400},
+    })
+end)()

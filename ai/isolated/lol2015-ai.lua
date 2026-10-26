@@ -1,5 +1,4 @@
--- Fixed lol2015-ai.lua b6025acc983331337614289d8cac79b078c003af.
--- Decisions preserve donor loop/short-circuit order; native scopes own authority.
+-- Source: b6025acc ai/lol2015-ai.lua.
 local package_skills={}
 local known = AIValue.requireKnown
 
@@ -68,14 +67,16 @@ local function set_empty(self,value)local _,epoch=empty_state(self);self:setStra
 local lol_jwyh_q_skill = {}
 lol_jwyh_q_skill.name = "lol_jwyh_q"
 table.insert(package_skills, lol_jwyh_q_skill)
-lol_jwyh_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_jwyh_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return end
 	if not self.player:getStrategyHasUsed("#lol_jwyh_qCard") then
 		return parse(self,request,"#lol_jwyh_qCard:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#lol_jwyh_qCard"] = function(card,use,self,request)
+ai_card_use["#lol_jwyh_qCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortInPlace(self.enemies, "handcard")
@@ -110,12 +111,13 @@ sgs.ai_use_priority["lol_jwyh_qCard"] = 7
 sgs.ai_use_value["lol_jwyh_qCard"] = 7
 sgs.ai_card_intention["lol_jwyh_qCard"] = 30
 
-sgs.ai_skill_invoke["lol_jwyh_q"] = function(self, data)
+ai_skill_invoke["lol_jwyh_q"] = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isEnemy(target) and not self:cantbeHurt(target) and self:damageIsEffective(target) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_cardchosen["lol_jwyh_qCard"] = function(self, who, flags)
@@ -137,13 +139,15 @@ end
 local lol_jwyh_w_skill = {}
 lol_jwyh_w_skill.name = "lol_jwyh_w"
 table.insert(package_skills, lol_jwyh_w_skill)
-lol_jwyh_w_skill.getTurnUseCard=function(self,inclusive,request)
+lol_jwyh_w_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:getStrategyHasUsed("#lol_jwyh_wCard") then
 		return parse(self,request,"#lol_jwyh_wCard:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#lol_jwyh_wCard"] = function(card,use,self,request)
+ai_card_use["#lol_jwyh_wCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	local tos = AIList.new({})
 	for _,p in sgs.qlist(self.room:getAlivePlayers()) do
@@ -219,7 +223,9 @@ end
 local lol_jwyh_e_skill = {}
 lol_jwyh_e_skill.name = "lol_jwyh_e"
 table.insert(package_skills, lol_jwyh_e_skill)
-lol_jwyh_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_jwyh_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return end
 	if self:getOverflow() < 2 then return end
 	if not self.player:getStrategyHasUsed("#lol_jwyh_eCard") then
@@ -227,7 +233,7 @@ lol_jwyh_e_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lol_jwyh_eCard"] = function(card,use,self,request)
+ai_card_use["#lol_jwyh_eCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortInPlace(self.enemies, "handcard")
@@ -257,7 +263,7 @@ sgs.ai_use_priority["lol_jwyh_eCard"] = 8
 sgs.ai_use_value["lol_jwyh_eCard"] = 3
 sgs.ai_card_intention["lol_jwyh_eCard"] = 10
 
-sgs.ai_skill_use["@@lol_jwyh_r"] = function(self, prompt)
+ai_skill_use["@@lol_jwyh_r"] = function(self, prompt, request)
     local all_cards = AIList.new(self.player:getCards("h"))
 	self:sortByKeepValueInPlace(all_cards)
 	local use_card
@@ -287,7 +293,9 @@ end
 local lol_hbss_q_skill = {}
 lol_hbss_q_skill.name = "lol_hbss_q"
 table.insert(package_skills, lol_hbss_q_skill)
-lol_hbss_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_hbss_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return end
 	if self.player:hasFlag("lol_hbss_q") then return end
 	if self:getOverflow() < 1 then return end
@@ -297,7 +305,7 @@ lol_hbss_q_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lol_hbss_qCard"] = function(card,use,self,request)
+ai_card_use["#lol_hbss_qCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
@@ -332,7 +340,9 @@ sgs.ai_use_value["lol_hbss_qCard"] = 1
 local lol_hbss_w_skill = {}
 lol_hbss_w_skill.name = "lol_hbss_w"
 table.insert(package_skills, lol_hbss_w_skill)
-lol_hbss_w_skill.getTurnUseCard=function(self,inclusive,request)
+lol_hbss_w_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local archery = self:getEvaluationCard("archery_attack")
 	local first_found, second_found = false, false
 	local first_card, second_card
@@ -398,7 +408,9 @@ end
 local lol_hbss_e_skill = {}
 lol_hbss_e_skill.name = "lol_hbss_e"
 table.insert(package_skills, lol_hbss_e_skill)
-lol_hbss_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_hbss_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return end
 	if self:getOverflow() < 3 then return end
 	if not self.player:getStrategyHasUsed("#lol_hbss_eCard") then
@@ -406,7 +418,7 @@ lol_hbss_e_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lol_hbss_eCard"] = function(card,use,self,request)
+ai_card_use["#lol_hbss_eCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
@@ -438,7 +450,9 @@ sgs.ai_use_value["lol_hbss_eCard"] = 1
 lol_hbss_r_skill={}
 lol_hbss_r_skill.name="lol_hbss_r"
 table.insert(package_skills,lol_hbss_r_skill)
-lol_hbss_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_hbss_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 then return end
 	self:sortInPlace(self.enemies, "hp")
 	if self.player:getMark("@lol_hbss_r") < 1 then return end
@@ -463,7 +477,9 @@ end
 local lol_mzzw_q_skill = {}
 lol_mzzw_q_skill.name = "lol_mzzw_q"
 table.insert(package_skills, lol_mzzw_q_skill)
-lol_mzzw_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_mzzw_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self:isWeak() then return end
 	if  self.player:getMark("@lol_mzzw_t") < 50 then return end
 	if self.player:getMark("lol_mzzw_r_damage") == 1 then return end
@@ -472,7 +488,7 @@ lol_mzzw_q_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lol_mzzw_qCard"] = function(card,use,self,request)
+ai_card_use["#lol_mzzw_qCard"] = function(self, card, use, request)
 	self:updatePlayers()
 
 
@@ -487,7 +503,9 @@ sgs.ai_use_value["lol_mzzw_qCard"] = 1
 local lol_mzzw_w_skill = {}
 lol_mzzw_w_skill.name = "lol_mzzw_w"
 table.insert(package_skills, lol_mzzw_w_skill)
-lol_mzzw_w_skill.getTurnUseCard=function(self,inclusive,request)
+lol_mzzw_w_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 then return end 
 	local x = 0
 	for _, enemy in ipairs(self.enemies) do
@@ -500,7 +518,7 @@ lol_mzzw_w_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lol_mzzw_wCard"] = function(card,use,self,request)
+ai_card_use["#lol_mzzw_wCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	self:sortInPlace(self.enemies, "handcard")
 	for _, enemy in ipairs(self.enemies) do
@@ -611,7 +629,9 @@ end
 local lol_mzzw_r_skill = {}
 lol_mzzw_r_skill.name = "lol_mzzw_r"
 table.insert(package_skills, lol_mzzw_r_skill)
-lol_mzzw_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_mzzw_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self:isWeak() then return end
 	if  self.player:getMark("@lol_mzzw_r") < 1 then return end
 	if not self.player:getStrategyHasUsed("#lol_mzzw_rCard") then
@@ -619,7 +639,7 @@ lol_mzzw_r_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lol_mzzw_rCard"] = function(card,use,self,request)
+ai_card_use["#lol_mzzw_rCard"] = function(self, card, use, request)
 	self:updatePlayers()
 
 
@@ -639,7 +659,9 @@ end
 lol_tqz_q_skill={}
 lol_tqz_q_skill.name="lol_tqz_q"
 table.insert(package_skills,lol_tqz_q_skill)
-lol_tqz_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_tqz_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 then return end
 	self:sortInPlace(self.enemies, "hp")
 	
@@ -662,16 +684,19 @@ lol_tqz_q_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 
-sgs.ai_skill_choice["lol_tqz_q"] = function(self, choices, data)
+ai_skill_choice["lol_tqz_q"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	 if table.contains(items, "lol_tqz_q_draw") then
-		return "lol_tqz_q_draw"
+		return ai_choice_result(("lol_tqz_q_draw"), options)
    end
    if table.contains(items, "lol_tqz_q_damage") and self.player:getHandcardNum() > 2 then
-	return "lol_tqz_q_damage"
+	return ai_choice_result(("lol_tqz_q_damage"), options)
    end
    
-   return items[1]
+   return ai_choice_result((items[1]), options)
 end
 
 
@@ -679,7 +704,9 @@ end
 local lol_tqz_w_skill = {}
 lol_tqz_w_skill.name = "lol_tqz_w"
 table.insert(package_skills, lol_tqz_w_skill)
-lol_tqz_w_skill.getTurnUseCard=function(self,inclusive,request)
+lol_tqz_w_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return end
 	if self:getOverflow() < 1 then return end
 		if not self.player:getStrategyHasUsed("#lol_tqz_wCard") then
@@ -690,7 +717,7 @@ lol_tqz_w_skill.getTurnUseCard=function(self,inclusive,request)
 		end
 end
 
-sgs.ai_skill_use_func["#lol_tqz_wCard"] = function(card,use,self,request)
+ai_card_use["#lol_tqz_wCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
@@ -721,22 +748,27 @@ end
 sgs.ai_use_priority["lol_tqz_wCard"] = 3
 sgs.ai_use_value["lol_tqz_wCard"] = 1
 
-sgs.ai_skill_choice["lol_tqz_wCard"] = function(self, choices, data)
+ai_skill_choice["lol_tqz_wCard"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	 if table.contains(items, "lol_tqz_w_hp") and self.player:isWounded() then
-		return "lol_tqz_w_hp"
+		return ai_choice_result(("lol_tqz_w_hp"), options)
    end
    if table.contains(items, "lol_tqz_w_throw")  then
-	return "lol_tqz_w_throw"
+	return ai_choice_result(("lol_tqz_w_throw"), options)
    end
    
-   return items[1]
+   return ai_choice_result((items[1]), options)
 end
 
 local lol_tqz_e_skill = {}
 lol_tqz_e_skill.name = "lol_tqz_e"
 table.insert(package_skills, lol_tqz_e_skill)
-lol_tqz_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_tqz_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return end
 	if self.player:getMark("@lol_tqz_r") > 0 then
 		self:setPriorityValue("lol_tqz_rCard", self:getPriorityValue("lol_tqz_eCard")+0.1)
@@ -746,7 +778,7 @@ lol_tqz_e_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lol_tqz_eCard"] = function(card,use,self,request)
+ai_card_use["#lol_tqz_eCard"] = function(self, card, use, request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
@@ -785,16 +817,19 @@ end
 sgs.ai_use_priority["lol_tqz_eCard"] = 3
 sgs.ai_use_value["lol_tqz_eCard"] = 1
 
-sgs.ai_skill_choice["lol_tqz_eCard"] = function(self, choices, data)
+ai_skill_choice["lol_tqz_eCard"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	 if table.contains(items, "lol_tqz_e_hudun") then
-		return "lol_tqz_e_hudun"
+		return ai_choice_result(("lol_tqz_e_hudun"), options)
    end
    if table.contains(items, "lol_tqz_e_draw")  then
-	return "lol_tqz_e_draw"
+	return ai_choice_result(("lol_tqz_e_draw"), options)
    end
    
-   return items[1]
+   return ai_choice_result((items[1]), options)
 end
 
 
@@ -805,7 +840,9 @@ end
 local lol_tqz_r_skill = {}
 lol_tqz_r_skill.name = "lol_tqz_r"
 table.insert(package_skills, lol_tqz_r_skill)
-lol_tqz_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_tqz_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.enemies < 1 then return end
 	
 	if  self.player:getMark("@lol_tqz_r") < 1 then return end
@@ -814,7 +851,7 @@ lol_tqz_r_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#lol_tqz_rCard"] = function(card,use,self,request)
+ai_card_use["#lol_tqz_rCard"] = function(self, card, use, request)
 	self:updatePlayers()
 
 
@@ -837,7 +874,9 @@ end
 local lol_xlnw_q_skill={}
 lol_xlnw_q_skill.name="lol_xlnw_q"
 table.insert(package_skills,lol_xlnw_q_skill)
-lol_xlnw_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_xlnw_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getHandcardNum()<1 then return nil end
     if self.player:hasFlag("lol_xlnw_q") then return nil end
     local cards = self.player:getHandcards()
@@ -878,7 +917,9 @@ end
 local lol_xlnw_w_skill = {}
 lol_xlnw_w_skill.name = "lol_xlnw_w"
 table.insert(package_skills, lol_xlnw_w_skill)
-lol_xlnw_w_skill.getTurnUseCard=function(self,inclusive,request)
+lol_xlnw_w_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_xlnw_wCard") then return end
 
 	local card
@@ -902,7 +943,7 @@ lol_xlnw_w_skill.getTurnUseCard=function(self,inclusive,request)
 	return nil
 end
 
-sgs.ai_skill_use_func["#lol_xlnw_wCard"] = function(card,use,self,request)
+ai_card_use["#lol_xlnw_wCard"] = function(self, card, use, request)
 	local target
 	local friends = self.friends_noself
 	
@@ -936,27 +977,30 @@ sgs.ai_use_priority["lol_xlnw_wCard"] = 7
 sgs.ai_use_value["lol_xlnw_wCard"] = 3
 
 
-sgs.ai_skill_invoke.lol_xlnw_e = function(self, data)
+ai_skill_invoke.lol_xlnw_e = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not self:isEnemy(target) then return false end
+	if not self:isEnemy(target) then return (false) or false end
 	local pks
 	for _,pet in sgs.qlist(self.room:getAlivePlayers()) do
 		if is_pet(self,pet) then pks = pet end
 	end
 	if pks then
-		if self:doDisCard(pks, "h") then return true end
+		if self:doDisCard(pks, "h") then return (true) or false end
 		if self:isWeak(pks) then
-			return false
+			return (false) or false
 		end
 	end
-	if not self:isEnemy(target) then return false end
-	return true
+	if not self:isEnemy(target) then return (false) or false end
+	return (true) or false
 end
 
 local lol_xlnw_e_skill = {}
 lol_xlnw_e_skill.name = "lol_xlnw_e"
 table.insert(package_skills, lol_xlnw_e_skill)
-lol_xlnw_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_xlnw_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_xlnw_eCard") then return end
 	if #self.friends_noself < 1 then return end
 	local card = parse(self,request,"#lol_xlnw_eCard:.:")
@@ -965,7 +1009,7 @@ lol_xlnw_e_skill.getTurnUseCard=function(self,inclusive,request)
 	return card
 end
 
-sgs.ai_skill_use_func["#lol_xlnw_eCard"] = function(card,use,self,request)
+ai_card_use["#lol_xlnw_eCard"] = function(self, card, use, request)
 	local target
 	self:sortInPlace(self.friends_noself, "handcard", true)
 
@@ -998,7 +1042,9 @@ sgs.ai_card_intention["lol_xlnw_eCard"] = -40
 local lol_xlnw_r_skill = {}
 lol_xlnw_r_skill.name = "lol_xlnw_r"
 table.insert(package_skills, lol_xlnw_r_skill)
-lol_xlnw_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_xlnw_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_xlnw_rCard") then return end
 	if self.player:getMark("@lol_xlnw_r") < 1 then return end
 	if #self.friends_noself < 1 then return end
@@ -1008,7 +1054,7 @@ lol_xlnw_r_skill.getTurnUseCard=function(self,inclusive,request)
 	return card
 end
 
-sgs.ai_skill_use_func["#lol_xlnw_rCard"] = function(card,use,self,request)
+ai_card_use["#lol_xlnw_rCard"] = function(self, card, use, request)
 	local target
 	self:sortInPlace(self.friends, "hp")
 
@@ -1075,7 +1121,9 @@ end
 local lol_smss_q_skill = {}
 lol_smss_q_skill.name = "lol_smss_q"
 table.insert(package_skills, lol_smss_q_skill)
-lol_smss_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_smss_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_smss_qCard") then return end
 	local card = parse(self,request,"#lol_smss_qCard:.:")
 	
@@ -1083,7 +1131,7 @@ lol_smss_q_skill.getTurnUseCard=function(self,inclusive,request)
 	return card
 end
 
-sgs.ai_skill_use_func["#lol_smss_qCard"] = function(card,use,self,request)
+ai_card_use["#lol_smss_qCard"] = function(self, card, use, request)
 	if self:isWeak() then
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
@@ -1114,7 +1162,9 @@ sgs.ai_use_priority["lol_smss_qCard"] = sgs.ai_use_priority.Slash + 8
 local lol_smss_w_skill = {}
 lol_smss_w_skill.name = "lol_smss_w"
 table.insert(package_skills, lol_smss_w_skill)
-lol_smss_w_skill.getTurnUseCard=function(self,inclusive,request)
+lol_smss_w_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_smss_wCard") then return end
 
 	local card
@@ -1138,7 +1188,7 @@ lol_smss_w_skill.getTurnUseCard=function(self,inclusive,request)
 	return nil
 end
 
-sgs.ai_skill_use_func["#lol_smss_wCard"] = function(card,use,self,request)
+ai_card_use["#lol_smss_wCard"] = function(self, card, use, request)
 	local target
 	
 	
@@ -1179,13 +1229,15 @@ sgs.ai_card_intention["lol_smss_wCard"] = 50
 local lol_smss_e_skill = {}
 lol_smss_e_skill.name= "lol_smss_e"
 table.insert(package_skills,lol_smss_e_skill)
-lol_smss_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_smss_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:getStrategyHasUsed("#lol_smss_eCard") then
 		return parse(self,request,"#lol_smss_eCard:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#lol_smss_eCard"] = function(card,use,self,request)
+ai_card_use["#lol_smss_eCard"] = function(self, card, use, request)
 		local use_card
 		local  cards
 		local target
@@ -1230,7 +1282,9 @@ sgs.ai_card_intention["lol_smss_eCard"] = 50
 local lol_smss_r_skill = {}
 lol_smss_r_skill.name = "lol_smss_r"
 table.insert(package_skills, lol_smss_r_skill)
-lol_smss_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_smss_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_smss_rCard") then return end
 	if self.player:getMark("@lol_smss_r") < 1 then return end
 	local card = parse(self,request,"#lol_smss_rCard:.:")
@@ -1239,7 +1293,7 @@ lol_smss_r_skill.getTurnUseCard=function(self,inclusive,request)
 	return card
 end
 
-sgs.ai_skill_use_func["#lol_smss_rCard"] = function(card,use,self,request)
+ai_card_use["#lol_smss_rCard"] = function(self, card, use, request)
 	if self:isWeak() then
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
@@ -1270,7 +1324,9 @@ end
 local lol_ayjm_q_skill={}
 lol_ayjm_q_skill.name="lol_ayjm_q"
 table.insert(package_skills,lol_ayjm_q_skill)
-lol_ayjm_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_ayjm_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:isWeak() then return nil end
 	 if self.player:getHp() <= 1 then return nil end
     
@@ -1288,19 +1344,22 @@ end
 
 
 
-sgs.ai_skill_choice["lol_ayjm_w"] = function(self, choices, data)
+ai_skill_choice["lol_ayjm_w"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toDamage().to
 	if #items == 1 then
-		return items[1]
+		return ai_choice_result((items[1]), options)
 	end
 	if target and self:isEnemy(target) and ((self:getCardsNum("Peach") + self.player:getHp() >= 2) or self:getOverflow() == 0) and  table.contains(items, "lol_ayjm_w_damage")  then
-		return "lol_ayjm_w_damage"
+		return ai_choice_result(("lol_ayjm_w_damage"), options)
 	end
 	if  target and (self:isFriend(target) or self:isWeak()) and  table.contains(items, "lol_ayjm_w_hp")  then
-		return "lol_ayjm_w_hp"
+		return ai_choice_result(("lol_ayjm_w_hp"), options)
 	end
-	return "cancel"
+	return ai_choice_result(("cancel"), options)
 end
 
 
@@ -1310,7 +1369,9 @@ end
 local lol_ayjm_e_skill={}
 lol_ayjm_e_skill.name="lol_ayjm_e"
 table.insert(package_skills,lol_ayjm_e_skill)
-lol_ayjm_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_ayjm_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self:isWeak() then return nil end
     if self.player:hasFlag("lol_ayjm_e") then return nil end
     if self.player:getHp() <= 1 then return nil end
@@ -1333,7 +1394,9 @@ end
 local lol_ayjm_r_skill = {}
 lol_ayjm_r_skill.name = "lol_ayjm_r"
 table.insert(package_skills, lol_ayjm_r_skill)
-lol_ayjm_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_ayjm_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_ayjm_rCard") then return end
 	if self.player:getMark("@lol_ayjm_r") < 1 then return end
 	local card = parse(self,request,"#lol_ayjm_rCard:.:")
@@ -1342,7 +1405,7 @@ lol_ayjm_r_skill.getTurnUseCard=function(self,inclusive,request)
 	return card
 end
 
-sgs.ai_skill_use_func["#lol_ayjm_rCard"] = function(card,use,self,request)
+ai_card_use["#lol_ayjm_rCard"] = function(self, card, use, request)
 	if self:isWeak() then
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
@@ -1375,11 +1438,13 @@ end
 local lol_bjfh_q_skill = {}
 lol_bjfh_q_skill.name= "lol_bjfh_q"
 table.insert(package_skills,lol_bjfh_q_skill)
-lol_bjfh_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_bjfh_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse(self,request,"#lol_bjfh_qCard:.:")
 end
 
-sgs.ai_skill_use_func["#lol_bjfh_qCard"] = function(card,use,self,request)
+ai_card_use["#lol_bjfh_qCard"] = function(self, card, use, request)
 	
 	local use_card,cards
 	cards = self.player:getHandcards()
@@ -1429,11 +1494,13 @@ end
 local lol_bjfh_e_skill = {}
 lol_bjfh_e_skill.name= "lol_bjfh_e"
 table.insert(package_skills,lol_bjfh_e_skill)
-lol_bjfh_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_bjfh_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse(self,request,"#lol_bjfh_eCard:.:")
 end
 
-sgs.ai_skill_use_func["#lol_bjfh_eCard"] = function(card,use,self,request)
+ai_card_use["#lol_bjfh_eCard"] = function(self, card, use, request)
 	
 	local use_card,cards
 	cards = self.player:getHandcards()
@@ -1473,13 +1540,15 @@ sgs.dynamic_value.damage_card["#lol_bjfh_eCard"] = true
 local lol_bjfh_r_skill = {}
 lol_bjfh_r_skill.name= "lol_bjfh_r"
 table.insert(package_skills,lol_bjfh_r_skill)
-lol_bjfh_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_bjfh_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.room:getTurnCount()<=1 then return end
 	if self.player:getMark("@lol_bjfh_r") == 0 then return end
 	return parse(self,request,"#lol_bjfh_rCard:.:")
 end
 
-sgs.ai_skill_use_func["#lol_bjfh_rCard"] = function(card,use,self,request)
+ai_card_use["#lol_bjfh_rCard"] = function(self, card, use, request)
 	
 	local use_card,cards
 	cards = self.player:getHandcards()
@@ -1535,7 +1604,9 @@ sgs.dynamic_value.damage_card["#lol_bjfh_rCard"] = true
 local lol_sxls_q_skill={}
 lol_sxls_q_skill.name="lol_sxls_q"
 table.insert(package_skills,lol_sxls_q_skill)
-lol_sxls_q_skill.getTurnUseCard=function(self,inclusive,request)
+lol_sxls_q_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getHandcardNum()<1 then return nil end
     if self.player:hasFlag("lol_sxls_q") then return nil end
     local cards = self.player:getHandcards()
@@ -1581,7 +1652,9 @@ end
 local lol_sxls_w_skill = {}
 lol_sxls_w_skill.name = "lol_sxls_w"
 table.insert(package_skills, lol_sxls_w_skill)
-lol_sxls_w_skill.getTurnUseCard=function(self,inclusive,request)
+lol_sxls_w_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_sxls_wCard") then return end
 
 	local card = parse(self,request,"#lol_sxls_wCard:.:")
@@ -1590,7 +1663,7 @@ lol_sxls_w_skill.getTurnUseCard=function(self,inclusive,request)
 	return card
 end
 
-sgs.ai_skill_use_func["#lol_sxls_wCard"] = function(card,use,self,request)
+ai_card_use["#lol_sxls_wCard"] = function(self, card, use, request)
 
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
@@ -1636,7 +1709,9 @@ sgs.ai_use_priority["lol_sxls_wCard"] = sgs.ai_use_priority.Slash - 0.1
 local lol_sxls_e_skill = {}
 lol_sxls_e_skill.name = "lol_sxls_e"
 table.insert(package_skills, lol_sxls_e_skill)
-lol_sxls_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_sxls_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_sxls_eCard") then return end
 	if self.player:getMark("@lol_sxls_e") == 1 then return end
 	local card = parse(self,request,"#lol_sxls_eCard:.:")
@@ -1645,7 +1720,7 @@ lol_sxls_e_skill.getTurnUseCard=function(self,inclusive,request)
 	return card
 end
 
-sgs.ai_skill_use_func["#lol_sxls_eCard"] = function(card,use,self,request)
+ai_card_use["#lol_sxls_eCard"] = function(self, card, use, request)
 		use.card = card
 end
 sgs.ai_use_priority["lol_sxls_eCard"] = sgs.ai_use_priority.Slash + 5.1
@@ -1654,11 +1729,13 @@ sgs.ai_use_priority["lol_sxls_eCard"] = sgs.ai_use_priority.Slash + 5.1
 local lol_sxls_r_skill = {}
 lol_sxls_r_skill.name = "lol_sxls_r"
 table.insert(package_skills,lol_sxls_r_skill)
-lol_sxls_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_sxls_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return parse(self,request,"#lol_sxls_rCard:.:")
 end
 
-sgs.ai_skill_use_func["#lol_sxls_rCard"] = function(card,use,self,request)
+ai_card_use["#lol_sxls_rCard"] = function(self, card, use, request)
 	local slashes = self:getCards("Slash")
 	for _,e in sgs.list(self.player:getEquips())do
 		for _,slash in sgs.list(AIList.new(slashes))do
@@ -1713,7 +1790,9 @@ end
 local lol_bzll_w_skill={}
 lol_bzll_w_skill.name="lol_bzll_w"
 table.insert(package_skills,lol_bzll_w_skill)
-lol_bzll_w_skill.getTurnUseCard=function(self,inclusive,request)
+lol_bzll_w_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getHandcardNum()<1 then return nil end
     if self.player:hasFlag("lol_bzll_w") then return nil end
     if self.player:getMark("lol_bzll_q") == 0 then return nil end
@@ -1755,7 +1834,9 @@ end
 local lol_bzll_e_skill = {}
 lol_bzll_e_skill.name = "lol_bzll_e"
 table.insert(package_skills, lol_bzll_e_skill)
-lol_bzll_e_skill.getTurnUseCard=function(self,inclusive,request)
+lol_bzll_e_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getStrategyHasUsed("#lol_bzll_eCard") then return end
 	if self.player:getMark("@lol_bzll_e") ~= 0 then return end
 	local card = parse(self,request,"#lol_bzll_eCard:.:")
@@ -1764,7 +1845,7 @@ lol_bzll_e_skill.getTurnUseCard=function(self,inclusive,request)
 	return card
 end
 
-sgs.ai_skill_use_func["#lol_bzll_eCard"] = function(card,use,self,request)
+ai_card_use["#lol_bzll_eCard"] = function(self, card, use, request)
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
 	local use_card = {}
@@ -1784,16 +1865,17 @@ sgs.ai_skill_use_func["#lol_bzll_eCard"] = function(card,use,self,request)
 end
 
 
-sgs.ai_skill_invoke.lol_bzll_e = function(self, data)
+ai_skill_invoke.lol_bzll_e = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local move = data:toMoveOneTime()
 	local dest
 	if move.from:objectName() == self.player:objectName() then dest = self.room:getCurrent()
 	else dest = find_general(self,move.from)
 	end
 	if dest and self:isEnemy(dest) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
 
 
@@ -1802,7 +1884,9 @@ end
 local lol_bzll_r_skill={}
 lol_bzll_r_skill.name="lol_bzll_r"
 table.insert(package_skills,lol_bzll_r_skill)
-lol_bzll_r_skill.getTurnUseCard=function(self,inclusive,request)
+lol_bzll_r_skill.getTurnUseCard=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getHandcardNum()<1 then return nil end
     if self.player:getMark("lol_bzll_q") == 0 then return nil end
     if self.player:getMark("@lol_bzll_r") == 0 then return nil end
@@ -1868,8 +1952,8 @@ end
 
 
 
-for _,skill in ipairs(package_skills)do sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end
-do local source=sgs.ai_skill_use['@@lol_jwyh_r'];sgs.ai_skill_use['@@lol_jwyh_r']=function(self,...)
- local wire=source(self,...);if wire==nil or wire=='.'then return wire end
+for _,skill in ipairs(package_skills)do ai_fill_skill[skill.name]=skill.getTurnUseCard end
+do local source=ai_skill_use['@@lol_jwyh_r'];ai_skill_use['@@lol_jwyh_r']=function(self, prompt, request)
+ local wire=source(self,prompt, request);if wire==nil or wire=='.'then return wire end
  local use=AIUsePlan.new();use.card=final_parse(self,nil,wire);return use:toAnswer()
 end end

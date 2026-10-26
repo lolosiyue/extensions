@@ -1,4 +1,4 @@
--- Yinhu: fixed b6025acc source. Cross-inquiry state contains only primitives.
+-- Source: b6025acc ai/yinhu-ai.lua.
 local known = AIValue.requireKnown
 
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
@@ -55,8 +55,8 @@ local function podi_mark(self,p)
  self:addStrategyPlayerMark(p,"yhpodi_to-PlayClear",1)
 end
 local function select_peiqi(self)
- local f=sgs.ai_skill_invoke.peiqi;if type(f)~="function"then ai_unsupported("source peiqi dependency not loaded","yhshoulu")end
- return f(self,{isNull=function()return true end,toPlayer=function()return nil end})
+ local f=ai_skill_invoke.peiqi;if type(f)~="function"then ai_unsupported("source peiqi dependency not loaded","yhshoulu")end
+ return f(self,self:inquiryInput("skill_invoke","peiqi",{}))
 end
 local function peiqi_data(self)
  local row,ok=self:getStrategyMemory("yjcm2022.peiqiData")
@@ -64,11 +64,13 @@ local function peiqi_data(self)
  return {cid=row.cid,from=known(self.room:findPlayerByObjectName(row.from,true),"peiqi from"),to=known(self.room:findPlayerByObjectName(row.to,true),"peiqi to")}
 end
 
-sgs.ai_fill_skill.yhshecuo = function(self,inclusive,request)
+ai_fill_skill.yhshecuo = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("yhshecuo","YHShecuoCard",request)
 end
 
-sgs.ai_skill_use_func["YHShecuoCard"] = function(card,use,self)
+ai_card_use["YHShecuoCard"] = function(self, card, use, request)
 	for _,ep in sgs.list(self.enemies)do
 		if ep:getHp()>=self.player:getHp()
 		then
@@ -175,7 +177,9 @@ sgs.ai_skill_defense.yhnabi = function(self, player)
 	return 0
 end
 
-sgs.ai_fill_skill.yhyijie = function(self,inclusive,request)
+ai_fill_skill.yhyijie = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	for _,c in sgs.list(cards)do
 		if c:getSuit()==2
@@ -183,7 +187,7 @@ sgs.ai_fill_skill.yhyijie = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["YHYijieCard"] = function(card,use,self)
+ai_card_use["YHYijieCard"] = function(self, card, use, request)
 	for _,ep in sgs.list(self.friends)do
 		if self:isWeak(ep)
 		then
@@ -226,7 +230,9 @@ sgs.ai_skill_askforyiji.yhxinghan = function(self,card_ids)
 	end
 end
 
-sgs.ai_fill_skill.yhxinghan = function(self,inclusive,request)
+ai_fill_skill.yhxinghan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile("he")
 	cards = self:sortByKeepValue(cards)
   	for d,c in sgs.list(cards)do
@@ -238,7 +244,9 @@ sgs.ai_fill_skill.yhxinghan = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_fill_skill.yhbianzhan = function(self,inclusive,request)
+ai_fill_skill.yhbianzhan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = sgs.QList2Table(self.player:getCards("h"))
 	cards = self:sortByKeepValue(cards)
 	write(self,"yhbianzhan_c",nil)
@@ -252,7 +260,7 @@ sgs.ai_fill_skill.yhbianzhan = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["YHBianzhanCard"] = function(card,use,self)
+ai_card_use["YHBianzhanCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	for _,ep in sgs.list(self.enemies)do
 		if ep:getHandcardNum()>self.player:getHandcardNum()
@@ -302,19 +310,22 @@ sgs.ai_skill_playerchosen.yhjifeng = function(self,players)
 	return destlist[1]
 end
 
-sgs.ai_fill_skill.yhhuntian = function(self,inclusive,request)
+ai_fill_skill.yhhuntian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("yhhuntian","YHHuntianCard",request)
 end
 
-sgs.ai_skill_use_func["YHHuntianCard"] = function(card,use,self)
+ai_card_use["YHHuntianCard"] = function(self, card, use, request)
 	use.card = self:bindSkillCard("yhhuntian",{},nil,nil,"YHHuntianCard")
 end
 
 sgs.ai_use_value.YHHuntianCard = 2.4
 sgs.ai_use_priority.YHHuntianCard = 1.8
 
-sgs.ai_skill_invoke.yhhuntian = function(self,data)
-    return true
+ai_skill_invoke.yhhuntian = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
 
@@ -331,8 +342,9 @@ sgs.ai_skill_playerchosen.yhceri = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.yhsancai = function(self,data)
-    return true
+ai_skill_invoke.yhsancai = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
 sgs.ai_skill_askforyiji.yhsancai = function(self,card_ids)
@@ -369,21 +381,24 @@ sgs.ai_skill_discard.yhjuyi = function(self)
 	return #handcards>3 and cards or {}
 end
 
-sgs.ai_skill_invoke.yhhanjie = function(self,data)
+ai_skill_invoke.yhhanjie = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = self.player
 	local use = data:toCardUse()
-	return not self:isFriend(use.from)
-	and use.card:getNumber()>8
+	return (not self:isFriend(use.from)
+	and use.card:getNumber()>8) or false
 end
 
-sgs.ai_fill_skill.yhjuxian = function(self,inclusive,request)
+ai_fill_skill.yhjuxian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if #self.friends_noself>0
 	then
 		return self:legacySkillSeed("yhjuxian","YHJuxianCard",request)
 	end
 end
 
-sgs.ai_skill_use_func["YHJuxianCard"] = function(card,use,self)
+ai_card_use["YHJuxianCard"] = function(self, card, use, request)
 	use.card = self:bindSkillCard("yhjuxian",{},nil,nil,"YHJuxianCard")
 end
 
@@ -423,7 +438,9 @@ sgs.ai_skill_playerchosen.yhdujian = function(self,players)
 	return destlist[1]
 end
 
-sgs.ai_fill_skill.yhbuque_put = function(self,inclusive,request)
+ai_fill_skill.yhbuque_put = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards)
 	if #cards<1 then return end
@@ -438,7 +455,7 @@ sgs.ai_fill_skill.yhbuque_put = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["YHBuquePutCard"] = function(card,use,self)
+ai_card_use["YHBuquePutCard"] = function(self, card, use, request)
 	use.card = card
     for _,p in sgs.list(self.room:findPlayersBySkillName("yhbuque"))do
 		if not self:isEnemy(p) and p:getStrategyMark("yhbuque_put-PlayClear")<1 and use.to
@@ -453,7 +470,7 @@ end
 sgs.ai_use_value.YHBuquePutCard = 9.4
 sgs.ai_use_priority.YHBuquePutCard = -0.4
 
-sgs.ai_fill_skill.yhbuque = function(self)
+ai_fill_skill.yhbuque = function(self, options, request)
     local cs=visible_draw_cards(self)
     return #cs>0 and cs
 end
@@ -463,21 +480,26 @@ sgs.ai_guhuo_card.yhbuque = function(self,toname,class_name)
     end
 end
 
-sgs.ai_skill_invoke.yhchenzhen = function(self,data)
-    return self.player:getPhase()<=sgs.Player_Play
+ai_skill_invoke.yhchenzhen = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (self.player:getPhase()<=sgs.Player_Play
 	and not self:willSkipPlayPhase()
 	and self.player:getMaxHp()>1
-	and #self.enemies>0
+	and #self.enemies>0) or false
 end
 
-sgs.ai_skill_choice.yhchenzhen = function(self,choices)
+ai_skill_choice.yhchenzhen = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	return items[1]
+	return ai_choice_result((items[1]), options)
 end
 
-sgs.ai_skill_choice.yhchenzhen_num = function(self,choices)
+ai_skill_choice.yhchenzhen_num = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	return items[#items]
+	return ai_choice_result((items[#items]), options)
 end
 
 sgs.ai_skill_playerchosen.yhsigong = function(self,players)
@@ -499,7 +521,9 @@ sgs.ai_skill_playerchosen.yhsigong = function(self,players)
 	return destlist[1]
 end
 
-sgs.ai_fill_skill.yhxijian_give = function(self,inclusive,request)
+ai_fill_skill.yhxijian_give = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards)
 	write(self,"ispc",nil)
@@ -514,7 +538,7 @@ sgs.ai_fill_skill.yhxijian_give = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["YHXijianGiveCard"] = function(card,use,self)
+ai_card_use["YHXijianGiveCard"] = function(self, card, use, request)
 	if read(self,"ispc")
 	then
 		for _,ep in sgs.list(self.enemies)do
@@ -551,12 +575,15 @@ sgs.ai_skill_playerchosen.yhxijian = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.yhboben = function(self,data)
+ai_skill_invoke.yhboben = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isEnemy(target)
+		return (self:isEnemy(target)) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_discard.yhboben = function(self,x,n)
@@ -582,7 +609,9 @@ sgs.ai_skill_playerchosen.yhjuantu = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill.yhquanwang = function(self,inclusive,request)
+ai_fill_skill.yhquanwang = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getHandcardNum()>0
 	and #self.friends_noself>0
 	and self:isWeak()
@@ -591,7 +620,7 @@ sgs.ai_fill_skill.yhquanwang = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["YHQuanwangCard"] = function(card,use,self)
+ai_card_use["YHQuanwangCard"] = function(self, card, use, request)
 	self.friends_noself = self:sort(self.friends_noself,"handcard")
 	for _,ep in sgs.list(self.friends_noself)do
 		use.card = self:bindSkillCard("yhquanwang",{},nil,nil,"YHQuanwangCard")
@@ -603,21 +632,23 @@ end
 sgs.ai_use_value.YHQuanwangCard = 3.4
 sgs.ai_use_priority.YHQuanwangCard = -1.8
 
-sgs.ai_skill_choice.yhchenwen = function(self,choices)
+ai_skill_choice.yhchenwen = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	local n = self.player:getLostHp()
 	n = n>2 and math.random(2,3) or n
 	if n>0 and items[1]:startsWith("yhchenwen")
-	then return items[n] end
+	then return ai_choice_result((items[n]), options) end
 	if table.contains(items,"yhpodi3")
-	then return "yhpodi3" end
+	then return ai_choice_result(("yhpodi3"), options) end
 	if table.contains(items,"yhpodi2")
-	then return "yhpodi2" end
+	then return ai_choice_result(("yhpodi2"), options) end
 	if table.contains(items,"yhshouzhuang")
-	then return "yhshouzhuang" end
+	then return ai_choice_result(("yhshouzhuang"), options) end
 	if table.contains(items,"yhpodi4")
-	then return "yhpodi4" end
-	return items[#items]
+	then return ai_choice_result(("yhpodi4"), options) end
+	return ai_choice_result((items[#items]), options)
 end
 
 sgs.ai_skill_discard.yhchenwen = function(self,max,min)
@@ -632,23 +663,29 @@ sgs.ai_skill_discard.yhchenwen = function(self,max,min)
 	return to_cards
 end
 
-sgs.ai_skill_invoke.yhshouzhuang = function(self,data)
+ai_skill_invoke.yhshouzhuang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local invoke = data:toPlayer()
 	if invoke
 	then
-		return self:doDisCard(invoke,"he")
-		or not self:isFriend(invoke)
+		return (self:doDisCard(invoke,"he")
+		or not self:isFriend(invoke)) or false
 	end
 	invoke = data:toString()
 	if invoke and invoke~=""
 	then
 		invoke = invoke:split(":")[2]
 		invoke = self.room:findPlayerByObjectName(invoke)
-		return invoke and (self:doDisCard(invoke,"he") or not self:isFriend(invoke))
+		return (invoke and (self:doDisCard(invoke,"he") or not self:isFriend(invoke))) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_choice.yhshouzhuang = function(self,choices,data)
+ai_skill_choice.yhshouzhuang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local to = data:toPlayer()
 	local n = items[1]:split("=")[3]
@@ -656,20 +693,24 @@ sgs.ai_skill_choice.yhshouzhuang = function(self,choices,data)
 	if self:isFriend(to)
 	then
 		if n<=to:getEquips():length()
-		then return items[1]
-		else return items[2] end
+		then return ai_choice_result((items[1]), options)
+		else return ai_choice_result((items[2]), options) end
 	else
 		if n>to:getEquips():length()
-		then return items[1]
-		else return items[2] end
+		then return ai_choice_result((items[1]), options)
+		else return ai_choice_result((items[2]), options) end
 	end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_fill_skill.yhpodi = function(self,inclusive,request)
+ai_fill_skill.yhpodi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("yhpodi","YHPodiCard",request)
 end
 
-sgs.ai_skill_use_func["YHPodiCard"] = function(card,use,self)
+ai_card_use["YHPodiCard"] = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	for _,ep in sgs.list(self.enemies)do
 		if ep:getHandcardNum()>1
@@ -687,15 +728,19 @@ end
 sgs.ai_use_value.YHPodiCard = 4.4
 sgs.ai_use_priority.YHPodiCard = 6.8
 
-sgs.ai_skill_choice.yhpodi = function(self,choices)
+ai_skill_choice.yhpodi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	if #items>4 then return items[math.random(2,4)] end
-	if #items>3 then return items[math.random(2,3)] end
-	if #items>2 then return items[2] end
-	return items[#items-1]
+	if #items>4 then return ai_choice_result((items[math.random(2,4)]), options) end
+	if #items>3 then return ai_choice_result((items[math.random(2,3)]), options) end
+	if #items>2 then return ai_choice_result((items[2]), options) end
+	return ai_choice_result((items[#items-1]), options)
 end
 
-sgs.ai_fill_skill.yhduwei = function(self,inclusive,request)
+ai_fill_skill.yhduwei = function(self, options, request)
+    local inclusive = options and options.inclusive
+
   	local name = property(self,"yhduwei_damage_card")
 	local cards = self:addHandPile("he")
 	cards = self:sortByKeepValue(cards,nil,true)
@@ -707,7 +752,7 @@ sgs.ai_fill_skill.yhduwei = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use["@@yhduwei"] = function(self,prompt)
+ai_skill_use["@@yhduwei"] = function(self, prompt, request)
   	local name = property(self,"yhduwei_damage_card")
 	local cards = self:addHandPile("he")
 	cards = self:sortByKeepValue(cards,nil,true)
@@ -731,22 +776,28 @@ sgs.ai_skill_use["@@yhduwei"] = function(self,prompt)
     end
 end
 
-sgs.ai_skill_invoke.yhsiku = function(self,data)
+ai_skill_invoke.yhsiku = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local invoke = data:toString()
 	if invoke~=""
 	then
 		invoke = invoke:split(":")[2]
 		invoke = self.room:findPlayerByObjectName(invoke)
-		return self:isEnemy(invoke) and (not self:isWeak(invoke) or #self.enemies<2 or self.player:isDead())
+		return (self:isEnemy(invoke) and (not self:isWeak(invoke) or #self.enemies<2 or self.player:isDead())) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.yhqingsi = function(self,data)
+ai_skill_invoke.yhqingsi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target
 	then
-		return self:isFriend(target) and not self:isWeak()
+		return (self:isFriend(target) and not self:isWeak()) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_playerchosen.yhchuzhu = function(self,players)
@@ -766,7 +817,9 @@ sgs.ai_skill_cardask["@yhhuairen-put"] = function(self,data,pattern)
 	return true
 end
 
-sgs.ai_fill_skill.yhyuren = function(self,inclusive,request)
+ai_fill_skill.yhyuren = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards,nil,true)
 	local tocs = {}
@@ -793,7 +846,7 @@ sgs.ai_fill_skill.yhyuren = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["YHYurenCard"] = function(card,use,self)
+ai_card_use["YHYurenCard"] = function(self, card, use, request)
 	if read(self,"yhyuren_to")
 	then
 		use.card = card
@@ -843,7 +896,9 @@ sgs.ai_skill_playerchosen.yhxiaoyun = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill.yhmeiying = function(self,inclusive,request)
+ai_fill_skill.yhmeiying = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards,nil,true)
 	self.enemies = self:sort(self.enemies,"hp")
@@ -868,7 +923,7 @@ sgs.ai_fill_skill.yhmeiying = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["YHMeiyingCard"] = function(card,use,self)
+ai_card_use["YHMeiyingCard"] = function(self, card, use, request)
 	if read(self,"yhmeiying_to")
 	then
 		use.card = card
@@ -879,7 +934,7 @@ end
 sgs.ai_use_value.YHMeiyingCard = 5.4
 sgs.ai_use_priority.YHMeiyingCard = 2.8
 
-sgs.ai_skill_use["@@yhmeiying"] = function(self,prompt)
+ai_skill_use["@@yhmeiying"] = function(self, prompt, request)
     local c = self.player:getStrategyMark("yhmeiying_id-PlayClear")
 	c = known_card(self,c)
 	local dummy = self:aiUseCard(c)
@@ -896,29 +951,31 @@ sgs.ai_skill_use["@@yhmeiying"] = function(self,prompt)
     end
 end
 
-sgs.ai_skill_choice.yhkudu = function(self,choices)
+ai_skill_choice.yhkudu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	write(self,"yhkudu_to",nil)
 	if table.contains(items,"self=judge")
 	and self:doDisCard(self.player,"j")
-	then return "self=judge" end
+	then return ai_choice_result(("self=judge"), options) end
 	if table.contains(items,"self=discard")
 	and self.player:getHandcardNum()>=self.player:getMaxCards()
-	then return "self=discard" end
+	then return ai_choice_result(("self=discard"), options) end
 	if table.contains(items,"self=discard")
-	then return "self=discard" end
+	then return ai_choice_result(("self=discard"), options) end
 	if table.contains(items,"self=judge")
-	then return "self=judge" end
+	then return ai_choice_result(("self=judge"), options) end
 	if table.contains(items,"self=draw")
 	and self.player:getHandcardNum()>3
-	then return "self=draw" end
+	then return ai_choice_result(("self=draw"), options) end
 	if table.contains(items,"self=play")
 	and self.player:getHandcardNum()<3
-	then return "self=play" end
+	then return ai_choice_result(("self=play"), options) end
 	if table.contains(items,"self=draw")
-	then return "self=draw" end
+	then return ai_choice_result(("self=draw"), options) end
 	if table.contains(items,"self=play")
-	then return "self=play" end
+	then return ai_choice_result(("self=play"), options) end
 
 	if table.contains(items,"other=play")
 	then
@@ -927,7 +984,7 @@ sgs.ai_skill_choice.yhkudu = function(self,choices)
 			write(self,"yhkudu_to",ep)
 			if ep:getHandcardNum()>2
 			then
-				return "other=play"
+				return ai_choice_result(("other=play"), options)
 			end
 		end
 	end
@@ -938,7 +995,7 @@ sgs.ai_skill_choice.yhkudu = function(self,choices)
 			write(self,"yhkudu_to",ep)
 			if ep:getHandcardNum()<3
 			then
-				return "other=draw"
+				return ai_choice_result(("other=draw"), options)
 			end
 		end
 	end
@@ -949,7 +1006,7 @@ sgs.ai_skill_choice.yhkudu = function(self,choices)
 			write(self,"yhkudu_to",ep)
 			if ep:getHandcardNum()>3
 			then
-				return "other=discard"
+				return ai_choice_result(("other=discard"), options)
 			end
 		end
 	end
@@ -960,7 +1017,7 @@ sgs.ai_skill_choice.yhkudu = function(self,choices)
 			write(self,"yhkudu_to",ep)
 			if self:doDisCard(ep,"j")
 			then
-				return "other=judge"
+				return ai_choice_result(("other=judge"), options)
 			end
 		end
 	end
@@ -970,7 +1027,7 @@ sgs.ai_skill_choice.yhkudu = function(self,choices)
 		self.enemies = self:sort(self.enemies,"handcard",true)
 		for i,ep in sgs.list(self.enemies)do
 			write(self,"yhkudu_to",ep)
-			return "other=play"
+			return ai_choice_result(("other=play"), options)
 		end
 	end
 	if table.contains(items,"other=draw")
@@ -978,7 +1035,7 @@ sgs.ai_skill_choice.yhkudu = function(self,choices)
 		self.enemies = self:sort(self.enemies,"handcard")
 		for i,ep in sgs.list(self.enemies)do
 			write(self,"yhkudu_to",ep)
-			return "other=draw"
+			return ai_choice_result(("other=draw"), options)
 		end
 	end
 	if table.contains(items,"other=discard")
@@ -986,7 +1043,7 @@ sgs.ai_skill_choice.yhkudu = function(self,choices)
 		self.friends_noself = self:sort(self.friends_noself,"handcard",true)
 		for i,ep in sgs.list(self.enemies)do
 			write(self,"yhkudu_to",ep)
-			return "other=discard"
+			return ai_choice_result(("other=discard"), options)
 		end
 	end
 	if table.contains(items,"other=judge")
@@ -994,16 +1051,19 @@ sgs.ai_skill_choice.yhkudu = function(self,choices)
 		self.friends_noself = self:sort(self.friends_noself,"handcard")
 		for i,ep in sgs.list(self.enemies)do
 			write(self,"yhkudu_to",ep)
-			return "other=judge"
+			return ai_choice_result(("other=judge"), options)
 		end
 	end
 
 
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_invoke.yhkudu = function(self,data)
+ai_skill_invoke.yhkudu = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local choices = "other=play+other=draw+other=discard+other=judge"
-	return sgs.ai_skill_choice.yhkudu(self,choices)
+	return (ai_skill_choice.yhkudu(self,{reason="yhkudu",choices={"other=play","other=draw","other=discard","other=judge"},inquiry_scope="nested"},nil)) or false
 end
 
 sgs.ai_skill_playerchosen.yhkudu = function(self,players)
@@ -1015,11 +1075,12 @@ sgs.ai_skill_playerchosen.yhkudu = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.yhkunmo = function(self,data)
-    return true
+ai_skill_invoke.yhkunmo = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
-sgs.ai_skill_use["@@yhkunmo"] = function(self,prompt)
+ai_skill_use["@@yhkunmo"] = function(self, prompt, request)
 	local cards = self.player:getCards("h")
 	cards = self:sortByUseValue(cards,true,true)
   	for d,c in sgs.list(cards)do
@@ -1072,20 +1133,26 @@ local function bozhi_plan(self,prompt)
     end
 end
 
-sgs.ai_skill_invoke.yhbozhi = function(self,data)
+ai_skill_invoke.yhbozhi = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local c,tos=bozhi_plan(self,"yhbozhi0")
-    if c then return c:getLegacyStringKey().."->"..table.concat(tos,"+")end
+    if c then return (c:getLegacyStringKey().."->"..table.concat(tos,"+")) or false end
+    return false
+
 end
 
-sgs.ai_skill_use["@@yhbozhi"]=function(self,prompt)
+ai_skill_use["@@yhbozhi"]=function(self, prompt, request)
  local c,tos=bozhi_plan(self,prompt);if c then return converted_use(self,"yhbozhi",c,tos)end
 end
 
-sgs.ai_skill_invoke.yhjixiang = function(self,data)
+ai_skill_invoke.yhjixiang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	for _,fp in sgs.list(self.room:getOtherPlayers(self.player))do
 		if not self:isEnemy(fp)
-		then return true end
+		then return (true) or false end
 	end
+	return false
+
 end
 
 sgs.ai_skill_askforyiji.yhjixiang = function(self,card_ids,tos)
@@ -1122,7 +1189,7 @@ sgs.ai_skill_playerchosen.yhguidu = function(self,players)
 	end
 end
 
-sgs.ai_skill_use["@@yhshanhai"] = function(self,prompt)
+ai_skill_use["@@yhshanhai"] = function(self, prompt, request)
   	local ids = property(self,"YHShanhaiGetIds"):split("+")
 	for c,id in sgs.list(self.player:handCards())do
 		if not table.contains(ids,""..id)
@@ -1144,16 +1211,20 @@ sgs.ai_skill_use["@@yhshanhai"] = function(self,prompt)
 	end
 end
 
-sgs.ai_skill_choice.yhyanglian = function(self,choices)
+ai_skill_choice.yhyanglian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
-	return items[math.random(1,#items-1)]
+	return ai_choice_result((items[math.random(1,#items-1)]), options)
 end
 
-sgs.ai_skill_choice.yhxiandao = function(self,choices)
+ai_skill_choice.yhxiandao = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if self.player:getHandcardNum()<4
-	then return items[2] end
-	return items[#items]
+	then return ai_choice_result((items[2]), options) end
+	return ai_choice_result((items[#items]), options)
 end
 
 sgs.ai_skill_playerchosen.yhqizu = function(self,players)
@@ -1196,17 +1267,20 @@ sgs.ai_skill_cardchosen.yhshoulu = function(self,who,flags,method)
 	end
 end
 
-sgs.ai_skill_invoke.yhyange = function(self,data)
-    return true
+ai_skill_invoke.yhyange = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
-sgs.ai_skill_choice.yhqupai = function(self,choices)
+ai_skill_choice.yhqupai = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if math.random()>0.3
-	then return "2" end
+	then return ai_choice_result(("2"), options) end
 	if math.random()>0.6
-	then return "1" end
-	return "cancel"
+	then return ai_choice_result(("1"), options) end
+	return ai_choice_result(("cancel"), options)
 end
 
 

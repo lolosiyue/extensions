@@ -1,9 +1,9 @@
--- Fixed b6025acc doudizhu policies. Hypotheses never confer payment authority.
+-- Source: b6025acc ai/doudizhu-ai.lua.
 local known = AIValue.requireKnown
 local sorted={sort=true,sortByKeepValue=true}
 
 local function callback(reg,key,...)
-    local fn=sgs[reg]and sgs[reg][key]
+    local fn=(reg == "ai_skill_use" and ai_skill_use or (reg == "ai_card_use" and ai_card_use or (reg == "ai_skill_invoke" and ai_skill_invoke or (reg == "ai_fill_skill" and ai_fill_skill or (reg == "ai_skill_choice" and ai_skill_choice or sgs[reg])))))and (reg == "ai_skill_use" and ai_skill_use or (reg == "ai_card_use" and ai_card_use or (reg == "ai_skill_invoke" and ai_skill_invoke or (reg == "ai_fill_skill" and ai_fill_skill or (reg == "ai_skill_choice" and ai_skill_choice or sgs[reg])))))[key]
     if type(fn)~="function"then ai_unsupported("doudizhu shared callback missing",reg.."."..key)end
     local a,b=fn(...);if AIUnsupported.is(a)then error(a,0)end;return a,b
 end
@@ -35,7 +35,7 @@ local function recall_faqi(self)
 end
 
 
-sgs.ai_skill_use["@@feiyang"] = function(self,prompt)
+ai_skill_use["@@feiyang"] = function(self, prompt, native_request)
 	local disaster,indulgence,supply_shortage = -1,-1,-1
 	for _,card in sgs.list(self.player:getJudgingArea())do
 		if card:isKindOf("Disaster") then disaster = card:getKnownId() end
@@ -89,41 +89,52 @@ sgs.ai_skill_use["@@feiyang"] = function(self,prompt)
 	return "."
 end
 
-sgs.ai_skill_invoke.doudizhu_reward = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.doudizhu_reward = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
-sgs.ai_skill_choice.doudizhu = function(self,choices)
+ai_skill_choice.doudizhu = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local items = choices:split("+")
 	if table.contains(items,"recover")
 	and self:isWeak()
-	then return "recover" end
+	then return ai_choice_result(("recover"), options) end
 	if table.contains(items,"draw")
 	and self:canDraw()
-	then return "draw" end
+	then return ai_choice_result(("draw"), options) end
 	if table.contains(items,"recover")
-	then return "recover" end
+	then return ai_choice_result(("recover"), options) end
+
+    return ai_choice_result(nil, options)
 end
 
-sgs.ai_skill_invoke.ddzcibei = function(self,data)
+ai_skill_invoke.ddzcibei = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return self:isFriend(target) or not self:isWeak(target)
+		return (self:isFriend(target) or not self:isWeak(target)) or false
 	end
+	return false
+
 end
 
-sgs.ai_skill_invoke.longgong = function(self,data)
+ai_skill_invoke.longgong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage.from then
-		return self:isFriend(damage.from) or self:isWeak()
+		return (self:isFriend(damage.from) or self:isWeak()) or false
 	end
-	return true
+	return (true) or false
 end
 
-sgs.ai_fill_skill.sitian = function(self,inclusive,request)
+ai_fill_skill.sitian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValueInPlace(cards, nil, "j") -- 按保留值排序
+    self:sortByKeepValueInPlace(cards, nil, "j")
 	for _,c1 in sgs.list(cards)do
 		if self:getOverflow()<0 or #self.enemies<1 then break end
 		local ids2 = {}
@@ -137,17 +148,19 @@ sgs.ai_fill_skill.sitian = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["SitianCard"] = function(card,use,self)
+ai_card_use["SitianCard"] = function(self, card, use, request)
 	use.card = card
 end
 
 sgs.ai_use_value.SitianCard = 3.4
 sgs.ai_use_priority.SitianCard = 1.2
 
-sgs.ai_fill_skill.jiuxian = function(self,inclusive,request)
+ai_fill_skill.jiuxian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValueInPlace(cards) -- 按保留值排序
+    self:sortByKeepValueInPlace(cards)
 	for _,c in sgs.list(cards)do
 		if c:isNDTrick() and not c:isSingleTargetCard() then
 			local dc = converted(self,"jiuxian","analeptic","Analeptic",c,request)
@@ -168,8 +181,9 @@ function sgs.ai_cardsview.jiuxian(self,class_name,player)
 	end
 end
 
-sgs.ai_skill_invoke.shixian = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.shixian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
 sgs.ai_skill_askforag.faqi = function(self,card_ids)
@@ -190,15 +204,18 @@ sgs.ai_skill_askforag.faqi = function(self,card_ids)
 	end
 end
 
-sgs.ai_skill_use["@@faqi"] = function(self,prompt)
+ai_skill_use["@@faqi"] = function(self, prompt, request)
     return recall_faqi(self)
 end
 
-sgs.ai_skill_invoke.zhanjian = function(self,data)
+ai_skill_invoke.zhanjian = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return not self:isFriend(target) and self:canDraw()
+		return (not self:isFriend(target) and self:canDraw()) or false
 	end
+	return false
+
 end
 
 sgs.ai_skill_playerchosen.ddzbenxi = function(self,players)
@@ -214,11 +231,13 @@ sgs.ai_skill_playerchosen.ddzbenxi = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill.lisao = function(self,inclusive,request)
+ai_fill_skill.lisao = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return self:legacySkillSeed("lisao", "LisaoCard", request or self.request)
 end
 
-sgs.ai_skill_use_func["LisaoCard"] = function(card,use,self)
+ai_card_use["LisaoCard"] = function(self, card, use, request)
 	self:sortInPlace(self.enemies)
 	for _,ep in sgs.list(self.enemies)do
 		if use.to:length()<2 then
@@ -231,11 +250,14 @@ end
 sgs.ai_use_value.LisaoCard = 3.4
 sgs.ai_use_priority.LisaoCard = 9.2
 
-sgs.ai_skill_invoke.juanlv = function(self,data)
-	return callback("ai_skill_invoke","double_sword",self,data)
+ai_skill_invoke.juanlv = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (callback("ai_skill_invoke","double_sword",self,options,request)) or false
 end
 
-sgs.ai_fill_skill.qixin = function(self,inclusive,request)
+ai_fill_skill.qixin = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	for i,c in sgs.list(prior_cards(self))do
 		if c:isKindOf("QixinCard") then return end
 	end
@@ -259,7 +281,7 @@ sgs.ai_fill_skill.qixin = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["QixinCard"] = function(card,use,self)
+ai_card_use["QixinCard"] = function(self, card, use, request)
 	use.card = card
 end
 
@@ -268,12 +290,14 @@ sgs.ai_use_priority.QixinCard = 9.2
 
 
 
-sgs.ai_skill_invoke.zhinang = function(self,data)
-	return self:canDraw()
+ai_skill_invoke.zhinang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw()) or false
 end
 
-sgs.ai_skill_invoke.huyi = function(self,data)
-	return self.player:getVisibleSkillList():length()>3
+ai_skill_invoke.huyi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self.player:getVisibleSkillList():length()>3) or false
 end
 
 sgs.ai_skill_playerchosen.fengzhu = function(self,players)
@@ -302,10 +326,12 @@ sgs.ai_skill_playerchosen.yuyu = function(self,players)
 	end
 end
 
-sgs.ai_fill_skill.jiejiu = function(self,inclusive,request)
+ai_fill_skill.jiejiu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValueInPlace(cards) -- 按保留值排序
+    self:sortByKeepValueInPlace(cards)
 	for _,c in sgs.list(cards)do
 		if c:isKindOf("Analeptic") then
 			for _,pn in sgs.list(pattern_names(self))do
@@ -322,9 +348,10 @@ sgs.ai_fill_skill.jiejiu = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_invoke.dingxi = function(self,data)
+ai_skill_invoke.dingxi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return self:isEnemy(to)
+	return (self:isEnemy(to)) or false
 end
 
 sgs.ai_skill_askforag.dingxi = function(self,card_ids)
@@ -339,8 +366,9 @@ sgs.ai_skill_askforag.dingxi = function(self,card_ids)
 	end
 end
 
-sgs.ai_skill_invoke.huiwan = function(self,data)
-	return self:canDraw() and #self.enemies>0
+ai_skill_invoke.huiwan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (self:canDraw() and #self.enemies>0) or false
 end
 
 sgs.ai_skill_askforag.huiwan = function(self,card_ids)
@@ -372,9 +400,10 @@ sgs.ai_skill_playerchosen.huanli = function(self,players)
 	end
 end
 
-sgs.ai_skill_invoke.huanli = function(self,data)
+ai_skill_invoke.huanli = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return not self:isEnemy(to) and to:getMaxHp()>3
+	return (not self:isEnemy(to) and to:getMaxHp()>3) or false
 end
 
 sgs.ai_skill_askforyiji.ddzfulu = function(self,card_ids,tos)
@@ -394,16 +423,17 @@ end
 
 sgs.ai_skill_discard.ddzfulu = function(self,inclusive,request)
     local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValueInPlace(handcards) -- 按保留值排序
+    self:sortByKeepValueInPlace(handcards)
 	return {handcards[1]:getKnownId()}
 end
 
-sgs.ai_skill_invoke.pimi = function(self,data)
+ai_skill_invoke.pimi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if self:isFriend(use.from) then
-		return self:doDisCard(use.from, "e") or not use.card:isDamageCard()
+		return (self:doDisCard(use.from, "e") or not use.card:isDamageCard()) or false
 	end
-	return self:doDisCard(use.from, "he") and not use.card:isDamageCard()
+	return (self:doDisCard(use.from, "he") and not use.card:isDamageCard()) or false
 end
 
 

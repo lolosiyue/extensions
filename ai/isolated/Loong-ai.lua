@@ -1,4 +1,4 @@
--- Loong fixed b6025acc. Policy proposals are readonly until final selection.
+-- Source: b6025acc ai/Loong-ai.lua.
 local known = AIValue.requireKnown
 local function hydrate_context(self,value,kind)
  if value==nil then return nil end
@@ -67,7 +67,8 @@ end
 
 
 
-sgs.ai_skill_invoke["lxtx_taoxi"] = function(self,data)
+ai_skill_invoke["lxtx_taoxi"] = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local to = data:toPlayer()
     if to and self:isEnemy(to) then
         local dismantlement_count = 0
@@ -84,10 +85,10 @@ sgs.ai_skill_invoke["lxtx_taoxi"] = function(self,data)
             end
         end
 
-        if dismantlement_count>=to:getHandcardNum()then return true end
+        if dismantlement_count>=to:getHandcardNum()then return (true) or false end
         local handcards = complete_hand(self,to)
         if dismantlement_count>=handcards:length() then
-            return true
+            return (true) or false
         end
 
         local can_use,cant_use = {},{}
@@ -100,11 +101,11 @@ sgs.ai_skill_invoke["lxtx_taoxi"] = function(self,data)
         end
 
         if #can_use==0 and dismantlement_count==0 then
-            return false
+            return (false) or false
         end
 
         if self:needToLoseHp() then
-            return true
+            return (true) or false
         end
 
         local knowns,unknowns = {},{}
@@ -273,20 +274,22 @@ sgs.ai_skill_invoke["lxtx_taoxi"] = function(self,data)
             end
 
             if can_use_count>=to_can_use_count+#unknowns then
-                return true
+                return (true) or false
             elseif can_use_count>0 and ( can_use_count+0.01 )/( to_can_use_count+0.01 )>=0.5 then
-                return true
+                return (true) or false
             end
         end
 
         if self:getCardsNum("Peach")>0 then
-            return true
+            return (true) or false
         end
-        if math.random() < 0.6 then return true end
+        if math.random() < 0.6 then return (true) or false end
     end
-    return false
+    return (false) or false
 end
-sgs.ai_fill_skill.lxtx_taoxi = function(self,inclusive,request)
+ai_fill_skill.lxtx_taoxi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getStrategyMark("lxtx_taoxi-SelfPlayClear") > 0
 	then
         local c = self.player:getStrategyMark("taoxiName-Clear")
@@ -322,8 +325,9 @@ sgs.ai_skill_askforag.lxtx_taoxi = function(self,card_ids)
 end
 
 -- audited alias ai_cardneed.lxtx_jiangchi
-sgs.ai_skill_invoke.lxtx_jiangchi = function(self,data)
-    return true
+ai_skill_invoke.lxtx_jiangchi = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
+    return (true) or false
 end
 
 sgs.ai_skill_discard.lxtx_jiangchi = function(self,discard_num,min_num,optional,include_equip)
@@ -345,7 +349,9 @@ sgs.ai_skill_discard.lxtx_jiangchi = function(self,discard_num,min_num,optional,
 end
 
 
-sgs.ai_fill_skill.lxtx_zhangwu = function(self,inclusive,request)
+ai_fill_skill.lxtx_zhangwu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile("h")
 	cards = self:sortByUseValueInPlace(cards, true)
 	local use_cards = {}
@@ -396,7 +402,7 @@ sgs.ai_fill_skill.lxtx_zhangwu = function(self,inclusive,request)
 end
 
 
-sgs.ai_fill_skill.lxtx_zhengpi = function(self)
+ai_fill_skill.lxtx_zhengpi = function(self, options, request)
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValueInPlace(cards)
   	for _,c in sgs.list(cards)do
@@ -407,7 +413,7 @@ sgs.ai_fill_skill.lxtx_zhengpi = function(self)
 	end
 end
 
-sgs.ai_skill_use_func["#lxtx_zhengpi"] = function(card,use,self)
+ai_card_use["#lxtx_zhengpi"] = function(self, card, use, request)
 	self:sortInPlace(self.friends_noself, "card", true)
 	for _,p in sgs.list(self.friends_noself)do
 		if p:getCardCount()>1 and self:doDisCard(p, "h")
@@ -440,21 +446,23 @@ sgs.ai_use_value["lxtx_zhengpi"] = 9.4
 sgs.ai_use_priority["lxtx_zhengpi"] = 3.8
 sgs.ai_card_intention["lxtx_zhengpi"] = 50
 
-sgs.ai_skill_invoke.lxtx_fengying = function(self,data)
+ai_skill_invoke.lxtx_fengying = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     if self.player:getMaxHp() - self.player:getHandcardNum() > 0 then
         if #self.enemies > 0 and known(self.world.turn_count,"turn_count") > 0 then
-            return true
+            return (true) or false
         end
     end
-    if self:isWeak() and self:getAllPeachNum() == 0 and math.random() < 0.6 then return true end
-    return false
+    if self:isWeak() and self:getAllPeachNum() == 0 and math.random() < 0.6 then return (true) or false end
+    return (false) or false
 end
 
-sgs.ai_skill_invoke.lxtx_jizhao = function(self,data)
+ai_skill_invoke.lxtx_jizhao = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
 	local peaches = 1-dying.who:getHp()
 
-	return self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<peaches
+	return (self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<peaches) or false
 end
 
 sgs.ai_canNiepan_skill.lxtx_jizhao = function(player)
@@ -462,11 +470,13 @@ sgs.ai_canNiepan_skill.lxtx_jizhao = function(player)
 end
 
 
-sgs.ai_fill_skill.lxtx_rende = function(self,inclusive,request)
+ai_fill_skill.lxtx_rende = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return seed(self,"lxtx_rende")
 end
 
-sgs.ai_skill_use_func["#lxtx_rende"] = function(card,use,self)
+ai_card_use["#lxtx_rende"] = function(self, card, use, request)
     self:sortInPlace(self.friends_noself, "defense")
     local need = {}
     for _,p in ipairs(self.friends_noself) do
@@ -493,23 +503,26 @@ sgs.ai_skill_use_func["#lxtx_rende"] = function(card,use,self)
     if use.to then use.to:append(need[1]) end
 end
 
-sgs.ai_skill_choice["lxtx_rende"] = function(self, choices, data)
+ai_skill_choice["lxtx_rende"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
-    if #items == 1 then return items[1] end
-    if self.player:getLostHp() > 1 then return "peach" end
+    if #items == 1 then return ai_choice_result((items[1]), options) end
+    if self.player:getLostHp() > 1 then return ai_choice_result(("peach"), options) end
     table.removeOne(items, "cancel")
     for _,pattern in ipairs(items) do
         local card = named_eval(self,"lxtx_rende_choice",pattern,{})
         local usec = {isDummy=true,to=sgs.SPlayerList()}
         self:useCardByClassName(card, usec)
         if usec.to and usec.to:length() > 0 then
-            return pattern
+            return ai_choice_result((pattern), options)
         end
     end
-    return "cancel"
+    return ai_choice_result(("cancel"), options)
 end
 
-sgs.ai_skill_use["@@lxtx_rende"] = function(self, prompt)
+ai_skill_use["@@lxtx_rende"] = function(self, prompt, request)
     local pattern = self.player:getPropertyValue("lxtx_rende") or ""
 
     if pattern == "peach" or pattern == "analeptic" then
@@ -547,17 +560,19 @@ function sgs.ai_slash_weaponfilter.LxtxFeiLongDuoFeng(self, to, player)
 	return getCardsNum("Peach", to, self.player) + getCardsNum("Jink", to, self.player) < 1
 		and getCardsNum("Jink", to, self.player) == 0
 end
-sgs.ai_skill_invoke._lxtx_feilongduofeng_re = function(self, data)
-	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return false end
-	return true
+ai_skill_invoke._lxtx_feilongduofeng_re = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return (false) or false end
+	return (true) or false
 end
-sgs.ai_skill_invoke._lxtx_feilongduofeng = function(self, data)
+ai_skill_invoke._lxtx_feilongduofeng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	for _, to in sgs.qlist(use.to) do
 		local eff = self:doDisCard(to)
-		return eff and self:isEnemy(to)
+		return (eff and self:isEnemy(to)) or false
 	end
-	return
+	return false
 end
 
 local function apply_feilong_role(self,actor,target)
@@ -594,7 +609,9 @@ sgs.ai_view_as.lxtx_shouyue_wusheng = function(card,player,card_place)
 	end
 end
 
-sgs.ai_fill_skill.lxtx_shouyue_wusheng = function(self,inclusive,request)
+ai_fill_skill.lxtx_shouyue_wusheng = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile("he")
 	cards = self:sortByUseValueInPlace(cards, true)
 	local red_card = {}
@@ -632,7 +649,9 @@ sgs.ai_use_revises.lxtx_shouyue_paoxiao = function(self,card,use)
 end
 
 
-sgs.ai_fill_skill.lxtx_shouyue_longdan = function(self,inclusive,request)
+ai_fill_skill.lxtx_shouyue_longdan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile()
 	local jink_card
 	self:sortByUseValueInPlace(cards, true)
@@ -701,7 +720,9 @@ sgs.ai_view_as.lxtx_wupao = function(card,player,card_place)
 	end
 end
 
-sgs.ai_fill_skill.lxtx_wupao = function(self,inclusive,request)
+ai_fill_skill.lxtx_wupao = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local cards = self:addHandPile("he")
 	cards = self:sortByUseValueInPlace(cards, true)
 	local red_card = {}
@@ -733,7 +754,9 @@ function sgs.ai_cardneed.lxtx_wupao(to,card)
 end
 sgs.double_slash_skill = sgs.double_slash_skill .. "|lxtx_wupao"
 
-sgs.ai_fill_skill.lxtx_yizan = function(self,inclusive,request)
+ai_fill_skill.lxtx_yizan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local usable_cards = {}
     local heart, diamond, club, spade = {},{},{},{}
 	self:sortByUseValueInPlace(usable_cards, true)
@@ -851,14 +874,14 @@ sgs.ai_view_as.lxtx_yizan = function(card, player, card_place, class_name)
 	end
 end
 
-sgs.ai_skill_invoke.lxtx_qingren = true
+ai_skill_invoke.lxtx_qingren = true
 
 
-sgs.ai_fill_skill.lxtx_lianheng = function(self)
+ai_fill_skill.lxtx_lianheng = function(self, options, request)
 	return seed(self,"lxtx_lianheng")
 end
 
-sgs.ai_skill_use_func["#lxtx_lianheng"] = function(card,use,self)
+ai_card_use["#lxtx_lianheng"] = function(self, card, use, request)
 	self:sortInPlace(self.enemies, "card", true)
 	for _,ep in sgs.list(self.enemies)do
 		if not ep:isChained()
@@ -875,11 +898,11 @@ sgs.ai_use_priority["lxtx_lianheng"] = 3.8
 sgs.ai_card_intention["lxtx_lianheng"] = 50
 
 
-sgs.ai_fill_skill.lxtx_manjuan = function(self)
+ai_fill_skill.lxtx_manjuan = function(self, options, request)
 	return seed(self,"lxtx_manjuan")
 end
 
-sgs.ai_skill_use_func["#lxtx_manjuan"] = function(card,use,self)
+ai_card_use["#lxtx_manjuan"] = function(self, card, use, request)
     use.card = card
     return
 end
@@ -888,61 +911,68 @@ sgs.ai_use_value["lxtx_manjuan"] = 9.4
 sgs.ai_use_priority["lxtx_manjuan"] = 3.8
 sgs.ai_card_intention["lxtx_manjuan"] = 50
 
-sgs.ai_skill_choice.lxtx_manjuan = function(self,choices,data)
+ai_skill_choice.lxtx_manjuan = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
-    if table.contains(items, "3") then return "3" end
-    local previous=recall(self,"lxtx_manjuan");if previous then return previous end
-	return "1"
+    if table.contains(items, "3") then return ai_choice_result(("3"), options) end
+    local previous=recall(self,"lxtx_manjuan");if previous then return ai_choice_result((previous), options) end
+	return ai_choice_result(("1"), options)
 end
 
 
-sgs.ai_skill_invoke.lxtx_manjuan = function(self,data)
+ai_skill_invoke.lxtx_manjuan = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
     if use.card:isKindOf("Peach") and self.player:getLostHp()>1 then
         remember(self,"lxtx_manjuan","2") 
-        return true
+        return (true) or false
     elseif use.card:isKindOf("Analeptic") then
         remember(self,"lxtx_manjuan","2") 
-        return true
+        return (true) or false
     elseif use.to:contains(self.player)	then 
         remember(self,"lxtx_manjuan","2") 
-        return true
+        return (true) or false
     elseif use.card:isDamageCard() or use.card:isKindOf("SingleTargetTrick") then
         for _,to in sgs.list(use.to)do
             if self:isFriend(to)
-            then return false end
+            then return (false) or false end
         end
         for _,to in sgs.list(use.to) do
             if self:isEnemy(to) then
                 if self:hasHeavyDamage(use.from, use.card, to) then
                     remember(self,"lxtx_manjuan","1") 
-                    return true
+                    return (true) or false
                 end
             end
         end
         remember(self,"lxtx_manjuan","2") 
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 
-sgs.ai_skill_invoke.lxtx_canshi = function(self,data)
+ai_skill_invoke.lxtx_canshi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local n = 0
 	for _,p in sgs.qlist(self.room:getAlivePlayers())do
 		if p:isWounded() or (self.player:hasSkill("lxtx_guiming") and self.player:isLord() and p:getKnownKingdom()=="wu" and self.player:objectName()~=p:objectName()) then n = n+1 end
 	end
-	if n<2 then return false end
-	if n==3 and (not self:isWeak() or self:willSkipPlayPhase()) then return true end
-	if n>3 then return true end
-	return false
+	if n<2 then return (false) or false end
+	if n==3 and (not self:isWeak() or self:willSkipPlayPhase()) then return (true) or false end
+	if n>3 then return (true) or false end
+	return (false) or false
 end
 
 
-sgs.ai_fill_skill.lxtx_xianzhen = function(self,inclusive,request)
+ai_fill_skill.lxtx_xianzhen = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	return seed(self,"lxtx_xianzhen")
 end
 
-sgs.ai_skill_use_func["#lxtx_xianzhen"] = function(card,use,self)
+ai_card_use["#lxtx_xianzhen"] = function(self, card, use, request)
 	self:sortInPlace(self.enemies, "handcard")
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
@@ -1093,7 +1123,7 @@ sgs.ai_skill_cardask["@zhuiji"] = function(self,data,pattern)
 		end
 	end
 end
-sgs.ai_skill_use["@@lxtx_shichou"] = function(self,prompt)
+ai_skill_use["@@lxtx_shichou"] = function(self, prompt, request)
 	local use = source_use(self,"lxtx_shichou_data")
 	local dummy_use = self:aiUseCard(use.card, dummy(true, math.max(self.player:getLostHp(), 1), use.to))
 	if dummy_use.card and not dummy_use.to:isEmpty() then
@@ -1111,7 +1141,7 @@ sgs.ai_skill_use["@@lxtx_shichou"] = function(self,prompt)
 end
 sgs.ai_card_intention["lxtx_shichou"] = 70
 
-sgs.ai_skill_invoke.lxtx_yishe = true
+ai_skill_invoke.lxtx_yishe = true
 sgs.ai_skill_playerchosen.lxtx_yisheAsk = function(self, targets)
 	targets = sgs.QList2Table(targets)
 	for _, target in ipairs(targets) do
@@ -1123,7 +1153,7 @@ sgs.ai_skill_playerchosen.lxtx_yisheAsk = function(self, targets)
 end
 sgs.ai_playerchosen_intention.lxtx_yishe = -40
 
-sgs.ai_skill_invoke.lxtx_shicai = true
+ai_skill_invoke.lxtx_shicai = true
 sgs.ai_skill_playerchosen.lxtx_chenggong = function(self, targets)
 	targets = sgs.QList2Table(targets)
 	for _, target in ipairs(targets) do
@@ -1136,11 +1166,11 @@ end
 sgs.ai_playerchosen_intention.lxtx_chenggong = -40
 
 
-sgs.ai_fill_skill.lxtx_fushi = function(self)
+ai_fill_skill.lxtx_fushi = function(self, options, request)
 	return seed(self,"lxtx_fushi")
 end
 
-sgs.ai_skill_use_func["#lxtx_fushi"] = function(card,use,self)
+ai_card_use["#lxtx_fushi"] = function(self, card, use, request)
     if self.player:isLord() then
         self:sortInPlace(self.friends_noself, "card", true)
         for _,p in sgs.list(self.friends_noself)do
@@ -1181,13 +1211,15 @@ sgs.ai_use_priority["lxtx_fushi"] = 3.8
 
 
 
-sgs.ai_fill_skill.lxtx_yanpo = function(self,inclusive,request)
+ai_fill_skill.lxtx_yanpo = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if not self.player:getStrategyHasUsed("#lxtx_yanpo") then
 		return seed(self,"lxtx_yanpo")
 	end
 end
 
-sgs.ai_skill_use_func["#lxtx_yanpo"] = function(card, use, self)
+ai_card_use["#lxtx_yanpo"] = function(self, card, use, request)
 	local target = nil
 	self:updatePlayers()
 	self:sortInPlace(self.enemies, "handcard")
@@ -1235,20 +1267,20 @@ sgs.ai_skill_use_func["#lxtx_yanpo"] = function(card, use, self)
 end
 sgs.ai_card_intention["lxtx_yanpo"] = 80
 
-sgs.ai_skill_use["@@lxtx_yanpoheart"] = function(self,prompt)
-    return sgs.ai_skill_use["@@lxtx_yanpo"](self, "heart")
+ai_skill_use["@@lxtx_yanpoheart"] = function(self, prompt, request)
+    return ai_skill_use["@@lxtx_yanpo"](self, "heart", nil)
 end
-sgs.ai_skill_use["@@lxtx_yanpodiamond"] = function(self,prompt)
-    return sgs.ai_skill_use["@@lxtx_yanpo"](self, "diamond")
+ai_skill_use["@@lxtx_yanpodiamond"] = function(self, prompt, request)
+    return ai_skill_use["@@lxtx_yanpo"](self, "diamond", nil)
 end
-sgs.ai_skill_use["@@lxtx_yanpospade"] = function(self,prompt)
-    return sgs.ai_skill_use["@@lxtx_yanpo"](self, "spade")
+ai_skill_use["@@lxtx_yanpospade"] = function(self, prompt, request)
+    return ai_skill_use["@@lxtx_yanpo"](self, "spade", nil)
 end
-sgs.ai_skill_use["@@lxtx_yanpoclub"] = function(self,prompt)
-    return sgs.ai_skill_use["@@lxtx_yanpo"](self, "club")
+ai_skill_use["@@lxtx_yanpoclub"] = function(self, prompt, request)
+    return ai_skill_use["@@lxtx_yanpo"](self, "club", nil)
 end
 
-sgs.ai_skill_use["@@lxtx_yanpo"] = function(self,prompt)
+ai_skill_use["@@lxtx_yanpo"] = function(self, prompt, request)
     local cards = sgs.QList2Table(self.player:getCards("h"))
     self:sortByKeepValueInPlace(cards)
     for _, acard in ipairs(cards) do
@@ -1276,3 +1308,31 @@ ai_audited_aliases.register({id="ai_cardneed.lxtx_shouyue_liegong",registry="ai_
 ai_audited_aliases.register({id="ai_skill_invoke.lxtx_shouyue_liegong",registry="ai_skill_invoke",path={"lxtx_shouyue_liegong"},canonical_registry="ai_skill_invoke",canonical_path={"liegong"},self_index=1,defer_canonical=true})
 
 ai_audited_aliases.register({id="ai_cardneed.lxtx_shouyue_tieqi",registry="ai_cardneed",path={"lxtx_shouyue_tieqi"},canonical_registry="ai_cardneed",canonical_path={"slash"},self_index=3,defer_canonical=true})
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["lxtx_zhuiji"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(from,"hasSkill","lxtx_zhuiji") then
+        		return nil, true
+        	end
+        return value
+    end
+    sgs.ai_need_damaged["lxtx_zhuiji"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_before_damage" and context.rule == "lxtx_zhuiji" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "lxtx_zhuiji", {
+        {phase="need_hp_before_damage", order=20, rule="lxtx_zhuiji"},
+    })
+end)()
+end

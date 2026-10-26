@@ -71,11 +71,12 @@ end
 sgs.ai_cardsview.jiushi=function(self,class_name,player)
     return {name="analeptic",skill="jiushi",suit=sgs.Card_NoSuit,number=0,subcards={}}
 end
-function sgs.ai_skill_invoke.jiushi(self,data)
-	return not self.player:faceUp()
+function ai_skill_invoke.jiushi(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (not self.player:faceUp()) or false
 end
 
-sgs.ai_skill_invoke.luoying = function(self)
+ai_skill_invoke.luoying = function(self, options, request)
 	if flag(self,self.player,"DimengTarget") then
 		local another
 		for _,player in ipairs(self.room:getOtherPlayers(self.player))do
@@ -84,9 +85,9 @@ sgs.ai_skill_invoke.luoying = function(self)
 				break
 			end
 		end
-		if not another or not self:isFriend(another) then return false end
+		if not another or not self:isFriend(another) then return (false) or false end
 	end
-	return not self:needKongcheng(self.player,true)
+	return (not self:needKongcheng(self.player,true)) or false
 end
 
 sgs.ai_skill_askforag.luoying = function(self,card_ids)
@@ -98,28 +99,31 @@ sgs.ai_skill_askforag.luoying = function(self,card_ids)
 	return -1
 end
 
-sgs.ai_skill_invoke.olluoying = function(self,data)
+ai_skill_invoke.olluoying = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local move = data:toMoveOneTime()
 	local cards={};for _,id in ipairs(known(move.card_ids,"olluoying.move_cards"))do cards[#cards+1]=material(self,id)end
 	if #self:poisonCards(cards)>move.card_ids:length()/2 then
-		return false
+		return (false) or false
 	end
-	return not self:needKongcheng(self.player,true)
+	return (not self:needKongcheng(self.player,true)) or false
 end
 
 
 
-sgs.ai_skill_choice.jujian = function(self,choices)
-	if not self.player:faceUp() then return "reset" end
+ai_skill_choice.jujian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	if not self.player:faceUp() then return ai_choice_result(("reset"), options) end
 	if self.player:hasArmorEffect("Vine") and self.player:isChained() and not self:isGoodChainPartner() then
-		return "reset"
+		return ai_choice_result(("reset"), options)
 	end
-	if self:isWeak() and self.player:isWounded() then return "recover" end
+	if self:isWeak() and self.player:isWounded() then return ai_choice_result(("recover"), options) end
 	if skill(self,self.player,"manjuan") then
-		if self.player:isWounded() then return "recover" end
-		if self.player:isChained() then return "reset" end
+		if self.player:isWounded() then return ai_choice_result(("recover"), options) end
+		if self.player:isChained() then return ai_choice_result(("reset"), options) end
 	end
-	return "draw"
+	return ai_choice_result(("draw"), options)
 end
 
 sgs.ai_card_intention.JujianCard = -100
@@ -152,24 +156,25 @@ end
 
 
 
-sgs.ai_skill_invoke.enyuan = function(self,data)
+ai_skill_invoke.enyuan = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local move = data:toMoveOneTime()
 	if move and move.from and known(move.card_count or move.card_ids and #move.card_ids,"enyuan.move_count")>0 then
 		local from = self.room:findPlayerByObjectName(move.from:objectName())
-		if from then return self:isFriend(from) and not self:needKongcheng(from,true) end
+		if from then return (self:isFriend(from) and not self:needKongcheng(from,true)) or false end
 	end
 	local damage = data:toDamage()
 	if damage.from and damage.from:isAlive() then
 		if self:isFriend(damage.from) then
-			if self:getOverflow(damage.from)>2 then return true end
-			if self:needToLoseHp(damage.from,self.player,damage.card,true) and not self:hasSkills(sgs.masochism_skill,damage.from) then return true end
-			if not self:hasLoseHandcardEffective(damage.from) and not damage.from:isKongcheng() then return true end
-			return false
+			if self:getOverflow(damage.from)>2 then return (true) or false end
+			if self:needToLoseHp(damage.from,self.player,damage.card,true) and not self:hasSkills(sgs.masochism_skill,damage.from) then return (true) or false end
+			if not self:hasLoseHandcardEffective(damage.from) and not damage.from:isKongcheng() then return (true) or false end
+			return (false) or false
 		else
-			return true
+			return (true) or false
 		end
 	end
-	return
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.enyuan = function(self,player,promptlist)
@@ -393,20 +398,21 @@ sgs.ai_skill_cardask["xuanhuo-slash"] = function(self,data,pattern,t1,t2,prompt)
 	return "."
 end
 
-sgs.ai_skill_invoke.xuanfeng = function(self,data)
+ai_skill_invoke.xuanfeng = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	for _,enemy in ipairs(self.enemies)do
 		if (self:doDisCard(enemy,"he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() and
 		not (skill(self,enemy,"guzheng") and self.room:getCurrent():getPhase()==sgs.Player_Discard) then
-			return true
+			return (true) or false
 		end
 	end
 	for _,friend in ipairs(self.friends_noself)do
 		if(self:hasSkills(sgs.lose_equip_skill,friend) and not friend:getEquips():isEmpty())
 		or (self:needToThrowArmor(friend) and friend:getArmor()) or self:doDisCard(friend,"he") then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
 sgs.ai_skill_playerchosen.xuanfeng = function(self,targets)
@@ -432,19 +438,22 @@ sgs.xuanfeng_keep_value = sgs.xiaoji_keep_value
 
 sgs.ai_cardneed.xuanfeng = sgs.ai_cardneed.equip
 
-sgs.ai_skill_invoke.pojun = function(self,data)
+ai_skill_invoke.pojun = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 
 	if not damage.to:faceUp() then
-		return self:isFriend(damage.to)
+		return (self:isFriend(damage.to)) or false
 	end
 
 	local good = damage.to:getHp()>2
 	if self:isFriend(damage.to) then
-		return good
+		return (good) or false
 	elseif self:isEnemy(damage.to) then
-		return not good
+		return (not good) or false
 	end
+	return false
+
 end
 
 sgs.ai_choicemade_filter.skillInvoke.pojun = function(self,player,promptlist)
@@ -465,21 +474,23 @@ end
 
 
 
-sgs.ai_skill_invoke.shangshi = function(self,data)
-	if self.player:getLostHp()==1 then return sgs.ai_skill_invoke.noslianying(self,data) end
-	return true
+ai_skill_invoke.shangshi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	if self.player:getLostHp()==1 then return (ai_skill_invoke.noslianying(self, options, request)) or false end
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.quanji = function(self,data)
+ai_skill_invoke.quanji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
 	local juece_effect = (current and current:isAlive() and current:getPhase()~=sgs.Player_NotActive and self:isEnemy(current) and skill(self,current,"juece"))
 	local manjuan_effect = self:hasManjuanEffect(self.player)
 	if self.player:isKongcheng() then
-		if manjuan_effect or juece_effect then return false end
+		if manjuan_effect or juece_effect then return (false) or false end
 	elseif self.player:getHandcardNum()==1 then
-		if manjuan_effect and juece_effect then return false end
+		if manjuan_effect and juece_effect then return (false) or false end
 	end
-	return true
+	return (true) or false
 end
 
 sgs.ai_skill_discard.quanji = function(self)
@@ -498,38 +509,49 @@ sgs.ai_can_damagehp.quanji = function(self,from,card,to)
 	and self:canLoseHp(from,card,to)
 end
 
-sgs.ai_skill_choice.zili = function(self,choice)
-	if self.player:getHp()<self.player:getMaxHp()-1 then return "recover" end
-	return "draw"
+ai_skill_choice.zili = function(self, options, request)
+    local choice = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+	if self.player:getHp()<self.player:getMaxHp()-1 then return ai_choice_result(("recover"), options) end
+	return ai_choice_result(("draw"), options)
 end
 
 
 
-sgs.ai_skill_invoke.noszhenggong = function(self,data)
+ai_skill_invoke.noszhenggong = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local from = data:toPlayer()
-	return self:doDisCard(from,"e",true)
+	return (self:doDisCard(from,"e",true)) or false
 end
 
-sgs.ai_skill_invoke.nosquanji = function(self,data)
+ai_skill_invoke.nosquanji = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	return self:doDisCard(to,"j",true)
-	or self:isEnemy(to) and to:getHandcardNum()<self.player:getHandcardNum()
+	return (self:doDisCard(to,"j",true)
+	or self:isEnemy(to) and to:getHandcardNum()<self.player:getHandcardNum()) or false
 end
 
-sgs.ai_skill_invoke.nosyexin = function(self,data)
-	return #self.enemies>0
+ai_skill_invoke.nosyexin = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
+	return (#self.enemies>0) or false
 end
 
 
-sgs.ai_fill_skill.xinzhan=function(self,inclusive,request)
+ai_fill_skill.xinzhan=function(self, options, request)
+    local inclusive = options and options.inclusive
+
  if self.player:getHandcardNum()>self.player:getMaxHp() then return self:legacySkillSeed("xinzhan","XinzhanCard",request)end
 end
-sgs.ai_skill_use_func.XinzhanCard=function(card,use,self,request)use.card=policy_card(self,"xinzhan","XinzhanCard",{},request)end
+ai_card_use.XinzhanCard=function(self, card, use, request)use.card=policy_card(self,"xinzhan","XinzhanCard",{},request)end
 sgs.ai_use_value.XinzhanCard=4.4
 sgs.ai_use_priority.XinzhanCard=9.4
-sgs.ai_fill_skill.ganlu=function(self,inclusive,request)return self:legacySkillSeed("ganlu","GanluCard",request)end
-sgs.ai_fill_skill.xianzhen=function(self,inclusive,request)return self:legacySkillSeed("xianzhen","XianzhenCard",request)end
-sgs.ai_skill_use_func.GanluCard = function(card,use,self,request)
+ai_fill_skill.ganlu=function(self, options, request)
+    local inclusive = options and options.inclusive
+return self:legacySkillSeed("ganlu","GanluCard",request)end
+ai_fill_skill.xianzhen=function(self, options, request)
+    local inclusive = options and options.inclusive
+return self:legacySkillSeed("xianzhen","XianzhenCard",request)end
+ai_card_use.GanluCard = function(self, card, use, request)
 	local target,min_friend,max_enemy
 
 	local compare_func = function(a,b)
@@ -605,7 +627,9 @@ sgs.ai_card_intention.GanluCard = function(self,card,from,to)
 	end
 end
 
-sgs.ai_fill_skill.mingce=function(self,inclusive,request)
+ai_fill_skill.mingce=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local card
 	if self:needToThrowArmor() then
 		card = self.player:getArmor()
@@ -654,7 +678,7 @@ sgs.ai_fill_skill.mingce=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.MingceCard = function(card,use,self)
+ai_card_use.MingceCard = function(self, card, use, request)
 	local target
 	local friends = self.friends_noself
 	local slash = self:classProbe("Slash")
@@ -697,16 +721,18 @@ sgs.ai_skill_use_func.MingceCard = function(card,use,self)
 	end
 end
 
-sgs.ai_skill_choice.mingce = function(self,choices)
+ai_skill_choice.mingce = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local chengong = self.room:getCurrent()
-	if not self:isFriend(chengong) then return "draw" end
+	if not self:isFriend(chengong) then return ai_choice_result(("draw"), options) end
 	for _,player in ipairs(self.room:getAlivePlayers())do
 		if flag(self,player,"MingceTarget") and not self:isFriend(player) then
 			local slash = self:classProbe("Slash")
-			if not self:slashProhibit(slash,player) then return "use" end
+			if not self:slashProhibit(slash,player) then return ai_choice_result(("use"), options) end
 		end
 	end
-	return "draw"
+	return ai_choice_result(("draw"), options)
 end
 
 sgs.ai_skill_playerchosen.mingce = function(self,targets)
@@ -715,7 +741,6 @@ sgs.ai_skill_playerchosen.mingce = function(self,targets)
 	return sgs.ai_skill_playerchosen.zero_card_as_slash(self,targets)
 end
 
--- sgs.ai_playerchosen_intention.mingce = 80
 
 sgs.ai_use_value.MingceCard = 5.9
 sgs.ai_use_priority.MingceCard = 4
@@ -724,7 +749,7 @@ sgs.ai_card_intention.MingceCard = -70
 
 sgs.ai_cardneed.mingce = sgs.ai_cardneed.equip
 
-sgs.ai_skill_use_func.XianzhenCard = function(card,use,self,request)
+ai_card_use.XianzhenCard = function(self, card, use, request)
 	self:sortInPlace(self.enemies, "handcard")
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
@@ -742,10 +767,6 @@ sgs.ai_skill_use_func.XianzhenCard = function(card,use,self,request)
 			end
 		end
 
-		--[[local slash = self:getCard("Slash")
-		assert(slash)
-		local dummy_use = dummy()
-		self:useBasicCard(slash,dummy_use)--]]
 
 		for _,enemy in ipairs(self.enemies)do
 			if not (skill(self,enemy,"kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and self:canAttack(enemy,self.player)
@@ -802,13 +823,15 @@ sgs.dynamic_value.control_card.XianzhenCard = true
 sgs.ai_use_value.XianzhenCard = 9.2
 sgs.ai_use_priority.XianzhenCard = 9.2
 
-sgs.ai_fill_skill.paiyi=function(self,inclusive,request)
+ai_fill_skill.paiyi=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getPile("power"):length()>0 then
 		return policy_card(self,"paiyi","PaiyiCard",{self.player:getPile("power")[1]},request)
 	end
 end
 
-sgs.ai_skill_use_func.PaiyiCard = function(card,use,self,request)
+ai_card_use.PaiyiCard = function(self, card, use, request)
 	local target
 	self:sortInPlace(self.friends_noself, "defense")
 	for _,friend in ipairs(self.friends_noself)do
@@ -884,7 +907,9 @@ end
 
 sgs.ai_skill_defense.paiyi = 1.5
 
-sgs.ai_fill_skill.nosyexin=function(self,inclusive,request)
+ai_fill_skill.nosyexin=function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	local hs = self.player:getHandcards()
 	hs = AIList.new(hs)
 	hs = self:sortByKeepValue(hs)
@@ -907,7 +932,7 @@ sgs.ai_fill_skill.nosyexin=function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func.NosYexinCard = function(card,use,self)
+ai_card_use.NosYexinCard = function(self, card, use, request)
 	use.card = card
 end
 
@@ -995,9 +1020,10 @@ local function visible_hand(self,target,observer)
  end
  return known(cards,"buyi.visible_hand")
 end
-sgs.ai_skill_invoke.buyi=function(self,data)
+ai_skill_invoke.buyi=function(self, options, request)
+ local data = request and self:getDecisionData(request) or nil
  local dying=known(data:toDying(),"buyi.dying");local who=known(dying.who,"buyi.who")
- if who:isKongcheng()then return false end
+ if who:isKongcheng()then return (false) or false end
  local friend=not self:isEnemy(who)
  if not known(self.world.enable_hegemony,"buyi.hegemony") and self.role=="renegade" then
   if self.room:getMode()=="couple" then
@@ -1010,7 +1036,7 @@ sgs.ai_skill_invoke.buyi=function(self,data)
  local all_basic=true;local cards=visible_hand(self,who,self.player)
  for _,card in ipairs(cards)do if card:getTypeId()~=sgs.Card_TypeBasic then all_basic=false end end
  if #cards<who:getHandcardNum()then all_basic=false end
- return friend and not all_basic
+ return (friend and not all_basic) or false
 end
 sgs.ai_choicemade_filter.skillInvoke.buyi=function(self,player,promptlist)
  local dying=self.room:getCurrentDyingPlayer()
@@ -1111,4 +1137,181 @@ end
 if ai_audited_aliases then
     ai_audited_aliases.register{id="ai_skill_invoke.shenxian",registry="ai_skill_invoke",path={"shenxian"},canonical_registry="ai_skill_invoke",canonical_path={"luoying"},self_index=1,defer_canonical=true}
     ai_audited_aliases.register{id="ai_skill_invoke.yinli",registry="ai_skill_invoke",path={"yinli"},canonical_registry="ai_skill_invoke",canonical_path={"luoying"},self_index=1,defer_canonical=true}
+end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, owner, max_hp, query, context)
+        if query(owner, "hasSkill", "ganlu") then
+            local lord
+            if type(owner.isLord) == "function" then lord = owner:isLord() end
+            if type(lord) ~= "boolean" then
+                local role = type(owner.getRole) == "function" and owner:getRole() or nil
+                if role == nil then return nil, true end
+                lord = role == "lord"
+            end
+            return math.max(lord and 3 or 2, max_hp - (1)), true
+        end
+        return max_hp
+    end
+    local function policy_2(self, owner, max_hp, query, context)
+        if query(owner,"hasSkills","quanji+zili") and query(owner,"getMark","zili") < 1 then return max_hp - 1, true end
+        return max_hp
+    end
+    local previous_1 = sgs.ai_getBestHp_skill["ganlu"]
+    sgs.ai_getBestHp_skill["ganlu"] = function(owner, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "base" and context.rule == "ganlu" then
+                return policy_1(context.self, owner, context.value, context.query, context)
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(owner) end
+    end
+    sgs.declareValueHookStages("ai_getBestHp_skill", "ganlu", {
+        {phase="base", rule="ganlu", order=2500, pairs_group="best_hp"},
+    })
+    local previous_2 = sgs.ai_getBestHp_skill["quanji"]
+    sgs.ai_getBestHp_skill["quanji"] = function(owner, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "base" and context.rule == "quanji" then
+                return policy_2(context.self, owner, context.value, context.query, context)
+            end
+            return context.value
+        end
+        if type(previous_2) == "function" then return previous_2(owner) end
+    end
+    sgs.declareValueHookStages("ai_getBestHp_skill", "quanji", {
+        {phase="base", rule="quanji", order=2601},
+    })
+end)()
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["can_lose_hostile.flyuqing"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(self, "isWeak", to) then
+                    if damage_call(from, "getMark", "@flyuqing") > 0
+                        and damage_call(from, "hasSkill", "zhenyi") then return nil, true end
+                    if damage_call(from, "hasSkill", "pojun") then return nil, true end
+                end
+        return value
+    end
+    sgs.ai_need_damaged["can_lose_hostile.flyuqing"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "can_lose_hostile" and context.rule == "flyuqing" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "can_lose_hostile.flyuqing", {
+        {phase="can_lose_hostile", order=3, rule="flyuqing"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_target_damage["huilei"]
+    local policy = function(self, to, context)
+        local value, good_query = context.value, context.query
+        local card, damageNum, apn, value_known = context.extra[1], context.extra[2], context.extra[3], context.extra[4]
+        if not good_query(to, "isLord") and good_query(to, "getHp")<=damageNum and good_query(to, "hasSkill", "huilei") then
+        		if good_query(self.player, "getHandcardNum")>=4 then return nil, true end
+        		return good_query(self, "compareRoleEvaluation", to,"rebel","loyalist")=="rebel", true
+        	end
+        return value
+    end
+    sgs.ai_target_damage["huilei"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "good_after_negative" and context.rule == "huilei" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "huilei", {
+        {phase="good_after_negative", order=1, rule="huilei"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_target_damage["jueqing"]
+    local policy = function(self, to, context)
+        local value, core_query = context.value, context.query
+        local attacker, nature = context.extra[1], context.extra[2]
+        if core_query(self,"hasSkills","jueqing") then return true, true end
+        return value
+    end
+    sgs.ai_target_damage["jueqing"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "attack_priority" and context.rule == "jueqing" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "jueqing", {
+        {phase="attack_priority", order=1, rule="jueqing"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_target_damage["jiushi"]
+    local policy = function(self, to, context)
+        local value, allocation_query = context.value, context.query
+        local count, player, card, nature = context.extra[1], context.extra[2], context.extra[3], context.extra[4]
+        if allocation_query(to, "faceUp") and allocation_query(to, "hasSkill","jiushi")
+        					then value = value+25 end
+        return value
+    end
+    sgs.ai_target_damage["jiushi"] = function(self, to, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "damage_low_hp" and context.rule == "jiushi" then
+                return policy(self, to, context)
+            end
+            if type(previous) == "function" then return previous(self, to, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to) end
+    end
+    sgs.declareValueHookStages("ai_target_damage", "jiushi", {
+        {phase="damage_low_hp", order=1, rule="jiushi"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_defense_slash["jueqing"]
+    local policy = function(self, to, observer, context)
+        local call, state = context.query, context.extra[1]
+        local defense = context.value
+        state.masochismEligible = not call(self.player, "hasSkill", "jueqing")
+        return defense
+    end
+    sgs.ai_defense_slash["jueqing"] = function(self, to, observer, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "health" and context.rule == "slash_defense.masochism_guard" then
+                return policy(self, to, observer, context)
+            end
+            if type(previous) == "function" then return previous(self, to, observer, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, to, observer) end
+    end
+    sgs.declareValueHookStages("ai_defense_slash", "jueqing", {
+        {phase="health", order=10, rule="slash_defense.masochism_guard"},
+    })
+end)()
 end

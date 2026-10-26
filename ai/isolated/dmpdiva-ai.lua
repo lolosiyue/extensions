@@ -1,5 +1,4 @@
--- Fixed dmpdiva-ai.lua policy. Source bugs and first-result ordering are retained.
--- Only scoped disclosed question data and current native-issued skill authority are consumed.
+-- Dmpdiva package policies.
 
 local function context(self,key)
     local data=self:getDecisionContext()
@@ -35,9 +34,11 @@ sgs.ai_skill_discard.se_nitian = function(self, discard_num, min_num, optional, 
 	return to_discard
 end
 
---sgs.ai_skill_choice.se_nitian = "se_nitian_gain"
 
-sgs.ai_skill_choice["se_nitian"] = function(self, choices, data)
+ai_skill_choice["se_nitian"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local cards = context(self, "nitian_move_cards")
 	if not AIValue.isList(cards) then ai_unsupported("Nitian discarded faces are unavailable", "se_nitian") end
 	local lightonly = true
@@ -49,18 +50,18 @@ sgs.ai_skill_choice["se_nitian"] = function(self, choices, data)
 		end
 	end
 	if lightonly then
-		return "se_nitian_draw"
+		return ai_choice_result(("se_nitian_draw"), options)
 	end
-	return "se_nitian_gain"
+	return ai_choice_result(("se_nitian_gain"), options)
 end
 
 sgs.save_skill = sgs.save_skill .. "|se_guwu"
 
-sgs.ai_skill_invoke.se_guwu = function(self, data)
-	--local dying_data = data:toDying()
+ai_skill_invoke.se_guwu = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if self:isFriend(target) then return true end
-	return false
+	if self:isFriend(target) then return (true) or false end
+	return (false) or false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.se_guwu = function(self,player,promptlist)
@@ -72,7 +73,9 @@ end
 
 
 --鸟神
-sgs.ai_fill_skill.se_zhifu = function(self, inclusive, request)
+ai_fill_skill.se_zhifu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isKongcheng() then return end
 	for _, p in ipairs(self.friends) do
 		if (p:getArmor() and p:getArmor():isKindOf("SilverLion") and p:isWounded()) or (p:getHp() == 1 and self.player:getHandcardNum() > 1) then
@@ -91,7 +94,7 @@ sgs.ai_fill_skill.se_zhifu = function(self, inclusive, request)
 	return self:legacySkillSeed("se_zhifu", "#se_zhifucard", request)
 end
 
-sgs.ai_skill_use_func["#se_zhifucard"] = function(card, use, self, request)
+ai_card_use["#se_zhifucard"] = function(self, card, use, request)
 	local target
 	local card
 
@@ -152,7 +155,10 @@ sgs.ai_use_value["se_zhifucard"]       = 4
 sgs.ai_use_priority["se_zhifucard"]    = 4
 sgs.ai_card_intention["se_zhifucard"]  = -60
 
-sgs.ai_skill_choice["se_zhifucard"]    = function(self, choices, data)
+ai_skill_choice["se_zhifucard"]    = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local items = choices:split("+")
 	local target = data:toPlayer()
 	local catalog = context(self, "armor_catalog")
@@ -162,24 +168,25 @@ sgs.ai_skill_choice["se_zhifucard"]    = function(self, choices, data)
 		if card:isKindOf("Armor") and table.contains(items, card:objectName()) then
 			if target then
 				if self:isFriend(target) and self:evaluateArmor(card, target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then
-					return card:objectName()
+					return ai_choice_result((card:objectName()), options)
 				elseif self:isEnemy(target) and self:evaluateArmor(card, target) < -5 then
-					return card:objectName()
+					return ai_choice_result((card:objectName()), options)
 				end
 			end
 		end
 	end
-	-- if table.contains(items, "silver_lion") then return "silver_lion" end
 	if target and self:isFriend(target) and getBestHp(target) > target:getHp() and table.contains(items, "SilverLion") then
 		return
-		"SilverLion"
+		ai_choice_result(("SilverLion"), options)
 	end
 
-	return items[math.random(1, #items)]
+	return ai_choice_result((items[math.random(1, #items)]), options)
 end
 
 --妮可
-sgs.ai_fill_skill.se_nike = function(self, inclusive, request)
+ai_fill_skill.se_nike = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:isNude() then return end
 	if self.player:getStrategyHasUsed("#se_nikecard") then return end
 	local hurtF = 0
@@ -196,7 +203,7 @@ sgs.ai_fill_skill.se_nike = function(self, inclusive, request)
 	return
 end
 
-sgs.ai_skill_use_func["#se_nikecard"] = function(card, use, self, request)
+ai_card_use["#se_nikecard"] = function(self, card, use, request)
 	local targets = AIList.new({})
 	local numMax = (self.player:getHandcardNum() + self.player:getEquips():length()) * 2
 
@@ -252,18 +259,20 @@ end
 sgs.ai_use_value["se_nikecard"]       = 8
 sgs.ai_use_priority["se_nikecard"]    = 0.4
 
---
-sgs.ai_skill_choice.se_yanyi          = function(self, choices, data)
+ai_skill_choice.se_yanyi          = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local choice_table = choices:split("+")
 	for _, choice in ipairs(choice_table) do
 		if choice == "LLJ_reality" or choice == "shouji" or choice == "LuaLiansuo" or choice == "LuaLuoshen" or choice == "SE_Lingshang" or choice == "SE_Guanli" or choice == "SE_Nagong" or choice == "SE_Weigong" or choice == "se_zhuren" or choice == "Yuyue" or choice == "Yingbi" or choice == "se_qiangjing" then
-			return "se_yanyi"
+			return ai_choice_result(("se_yanyi"), options)
 		end
 	end
 	for _, choice in ipairs(choice_table) do
-		if choice ~= "se_yanyi" and choice ~= "se_nike" then return choice end
+		if choice ~= "se_yanyi" and choice ~= "se_nike" then return ai_choice_result((choice), options) end
 	end
-	return "se_yanyi"
+	return ai_choice_result(("se_yanyi"), options)
 end
 
 sgs.recover_hp_skill = sgs.recover_hp_skill .. "|se_nike"

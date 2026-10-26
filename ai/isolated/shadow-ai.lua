@@ -1,6 +1,4 @@
--- Shadow 隔離 AI。SmartAI 相等函式在 smart-ai-functions.lua／decision-core.lua。
--- 本檔只擴充技能名單、牌值與 y_ 決策，不改基礎層，也不呼叫 Engine。
--- 快照沒有的移動、標記、屬性回 unsupported，不編成預設答案。
+-- Shadow package policies.
 
 sgs.append_skill_list("need_kongcheng", "y_lianying")
 sgs.append_skill_list("notActive_cardneed_skill", "y_yangzheng")
@@ -256,18 +254,19 @@ ai_skill_activate.y_rongzhuang = function(self)
     })
 end
 
-sgs.ai_skill_invoke.y_chongqi = function(self, data)
+ai_skill_invoke.y_chongqi = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return nil end
+    if not player then return (nil) or false end
     local enemy = self:isEnemy(player)
-    if enemy == nil then return nil end
-    if not enemy then return false end
+    if enemy == nil then return (nil) or false end
+    if not enemy then return (false) or false end
     local discard = self:doDisCard(player, "he")
-    if discard == nil then return nil end
-    return discard == true
+    if discard == nil then return (nil) or false end
+    return (discard == true) or false
 end
 
-sgs.ai_skill_invoke.y_zhiji = true
+ai_skill_invoke.y_zhiji = true
 
 ai_skill_activate.y_tiaoxin = function(self)
     if not relations(self, "y_tiaoxin") then return nil end
@@ -289,40 +288,42 @@ ai_skill_activate.y_tiaoxin = function(self)
     return nil
 end
 
-sgs.ai_skill_invoke.y_yongjue = function(self, data)
+ai_skill_invoke.y_yongjue = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return nil end
-    return self:isFriend(player)
+    if not player then return (nil) or false end
+    return (self:isFriend(player)) or false
 end
 
-sgs.ai_skill_invoke.y_yjtargetmove = function(self, data)
+ai_skill_invoke.y_yjtargetmove = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
     local card = use and use.card
-    if not card then return nil end
-    if card:isKindOf("AmazingGrace") or card:isKindOf("ExNihilo") then return false end
+    if not card then return (nil) or false end
+    if card:isKindOf("AmazingGrace") or card:isKindOf("ExNihilo") then return (false) or false end
     if card:isKindOf("GodSalvation") then
         local wounded = self.player:isWounded()
-        if wounded == nil then return nil end
-        if wounded then return false end
+        if wounded == nil then return (nil) or false end
+        if wounded then return (false) or false end
     end
-    return true
+    return (true) or false
 end
 
-sgs.ai_skill_invoke.y_cunsi = function(self)
-    if type(self.player.getRole) ~= "function" then return nil end
+ai_skill_invoke.y_cunsi = function(self, options, request)
+    if type(self.player.getRole) ~= "function" then return (nil) or false end
     local role = self.player:getRole()
-    if type(role) ~= "string" or role == "" then return nil end
-    if role == "lord" then return false end
-    if not self.friends_noself or #self.friends_noself < 1 then return false end
+    if type(role) ~= "string" or role == "" then return (nil) or false end
+    if role == "lord" then return (false) or false end
+    if not self.friends_noself or #self.friends_noself < 1 then return (false) or false end
     local count = number(self.player:getHandcardNum())
-    if count == nil then return nil end
-    if count == 1 then return true end
+    if count == nil then return (nil) or false end
+    if count == 1 then return (true) or false end
     local cards = self.player:getCards("h")
-    if not cards then return nil end
+    if not cards then return (nil) or false end
     for _, card in ipairs(cards) do
-        if card:isKindOf("Peach") or card:isKindOf("Analeptic") then return false end
+        if card:isKindOf("Peach") or card:isKindOf("Analeptic") then return (false) or false end
     end
-    return true
+    return (true) or false
 end
 
 sgs.ai_skill_playerchosen.y_cunsi = function(self, targets)
@@ -362,13 +363,13 @@ sgs.ai_cardneed.y_shenzhi = function(to)
     return hand < hp
 end
 
-sgs.ai_skill_invoke.y_shushen = function(self)
-    if not self.friends_noself or not self.enemies then return nil end
-    if #self.friends_noself > 0 then return true end
+ai_skill_invoke.y_shushen = function(self, options, request)
+    if not self.friends_noself or not self.enemies then return (nil) or false end
+    if #self.friends_noself > 0 then return (true) or false end
     for _, enemy in ipairs(self.enemies) do
-        if enemy:hasSkill("kongcheng") and enemy:isKongcheng() then return true end
+        if enemy:hasSkill("kongcheng") and enemy:isKongcheng() then return (true) or false end
     end
-    return false
+    return (false) or false
 end
 
 sgs.ai_skill_playerchosen.y_shushen = function(self)
@@ -387,16 +388,16 @@ sgs.ai_skill_playerchosen.y_shushen = function(self)
     end
 end
 
-sgs.ai_skill_invoke.y_baiyi = function(self)
+ai_skill_invoke.y_baiyi = function(self, options, request)
     local nude = self.player:isNude()
-    if nude == nil then return nil end
-    return not nude
+    if nude == nil then return (nil) or false end
+    return (not nude) or false
 end
 
-sgs.ai_skill_invoke.y_baiyier = function(self)
+ai_skill_invoke.y_baiyier = function(self, options, request)
     local players = self:findPlayerToDiscard("hej", true, false, nil, true)
-    if not players then return nil end
-    return #players > 0
+    if not players then return (nil) or false end
+    return (#players > 0) or false
 end
 
 sgs.ai_skill_playerchosen.y_baiyi = function(self)
@@ -422,12 +423,13 @@ sgs.ai_skill_playerchosen.y_baiyi = function(self)
     end
 end
 
-sgs.ai_skill_invoke.y_yuanjiu = function(self, data)
+ai_skill_invoke.y_yuanjiu = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local pile = self.player:getPile("y_yuanjiuPile")
     if pile then
         for _, left in ipairs(pile) do
             for _, right in ipairs(pile) do
-                if left ~= right and left:getNumber() == right:getNumber() then return true end
+                if left ~= right and left:getNumber() == right:getNumber() then return (true) or false end
             end
         end
     end
@@ -437,8 +439,8 @@ sgs.ai_skill_invoke.y_yuanjiu = function(self, data)
     end
     local who = dying.who
     local friend = self:isFriend(who)
-    if friend == nil or type(self.askForSinglePeach) ~= "function" then return nil end
-    return self:askForSinglePeach(who) == true and friend == true
+    if friend == nil or type(self.askForSinglePeach) ~= "function" then return (nil) or false end
+    return (self:askForSinglePeach(who) == true and friend == true) or false
 end
 
 ai_skill_activate.y_jiefan = function(self)
@@ -469,8 +471,8 @@ ai_skill_activate.y_jiefan = function(self)
     return nil
 end
 
-sgs.ai_skill_choice.y_jiefan = function()
-    return "draw"
+ai_skill_choice.y_jiefan = function(self, options, request)
+    return ai_choice_result(("draw"), options)
 end
 
 ai_skill_activate.y_huanshi = function(self)
@@ -511,11 +513,11 @@ ai_skill_use["@@y_hongyuan"] = function(self)
     return plan or {kind = "pass"}
 end
 
-sgs.ai_skill_invoke.y_zishou = function(self)
+ai_skill_invoke.y_zishou = function(self, options, request)
     local lost = number(self.player:getLostHp())
     local hp = number(self.player:getHp())
     local cards = self.player:getHandcards()
-    if lost == nil or hp == nil or not cards then return nil end
+    if lost == nil or hp == nil or not cards then return (nil) or false end
     local jink, slash, nullification, peach = 0, 0, 0, 0
     for _, card in ipairs(cards) do
         if card:isKindOf("Jink") then jink = jink + 1
@@ -525,13 +527,13 @@ sgs.ai_skill_invoke.y_zishou = function(self)
         end
     end
     local basic = jink + slash + nullification
-    if lost >= 2 then return true end
+    if lost >= 2 then return (true) or false end
     if lost == 1 then
-        if slash > 0 then return hp >= basic end
-        return hp > basic
+        if slash > 0 then return (hp >= basic) or false end
+        return (hp > basic) or false
     end
-    if slash > 0 then return (hp - (basic + peach)) >= 2 end
-    return (hp - (basic + peach)) > 2
+    if slash > 0 then return ((hp - (basic + peach)) >= 2) or false end
+    return ((hp - (basic + peach)) > 2) or false
 end
 
 ai_skill_use["@@y_yangzheng"] = function(self)
@@ -590,33 +592,33 @@ ai_skill_activate.y_fenying = function(self)
     return nil
 end
 
-sgs.ai_skill_invoke.y_fenying = true
+ai_skill_invoke.y_fenying = true
 
-sgs.ai_skill_invoke.y_dushi = function(self)
+ai_skill_invoke.y_dushi = function(self, options, request)
     local hand = number(self.player:getHandcardNum())
     local hp = number(self.player:getHp())
-    if hand == nil or hp == nil then return nil end
-    if hand < hp then return true end
-    if not self.enemies or not self.friends then return nil end
+    if hand == nil or hp == nil then return (nil) or false end
+    if hand < hp then return (true) or false end
+    if not self.enemies or not self.friends then return (nil) or false end
     local players = self:findPlayerToDiscard("hej", true, false, nil, true)
-    if players and players[1] then return true end
+    if players and players[1] then return (true) or false end
     for _, enemy in ipairs(self.enemies) do
-        if enemy:isNude() == false then return true end
+        if enemy:isNude() == false then return (true) or false end
     end
     for _, friend in ipairs(self.friends) do
         if friend:containsTrick("indulgence") or friend:containsTrick("supply_shortage") then
-            return true
+            return (true) or false
         end
         if friend:containsTrick("lightning") then
             for _, other in ipairs(self.friends) do
                 if other:hasSkill("guicai") or other:hasSkill("guidao") or other:hasSkill("guanxing") then
-                    return false
+                    return (false) or false
                 end
             end
-            return true
+            return (true) or false
         end
     end
-    return false
+    return (false) or false
 end
 
 sgs.ai_slash_prohibit.y_dushi = function(self, from, to)
@@ -658,18 +660,19 @@ sgs.ai_skill_playerchosen.y_dushi = function(self, targets)
     end
 end
 
-sgs.ai_skill_invoke.y_zhensha = function(self, data)
+ai_skill_invoke.y_zhensha = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return nil end
-    return self:isEnemy(player)
+    if not player then return (nil) or false end
+    return (self:isEnemy(player)) or false
 end
 
-sgs.ai_skill_invoke.y_shipo = function(self)
-    if not self.enemies then return nil end
+ai_skill_invoke.y_shipo = function(self, options, request)
+    if not self.enemies then return (nil) or false end
     for _, enemy in ipairs(self.enemies) do
-        if enemy:isKongcheng() == false then return true end
+        if enemy:isKongcheng() == false then return (true) or false end
     end
-    return false
+    return (false) or false
 end
 
 sgs.ai_skill_playerchosen.y_shipo = function(self)
@@ -734,16 +737,18 @@ ai_skill_activate.y_wuji = function(self)
     return nil
 end
 
-sgs.ai_skill_choice.y_wujicard = function(self, choices)
+ai_skill_choice.y_wujicard = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
     local saved = self:recall("shadow.y_wuji")
     self:remember("shadow.y_wuji", nil)
     if type(saved) == "string" and saved ~= "" and string.find("+" .. choices .. "+", "+" .. saved .. "+", 1, true) then
-        return saved
+        return ai_choice_result((saved), options)
     end
-    return nil
+    return ai_choice_result((nil), options)
 end
 
-sgs.ai_skill_invoke.y_laoyue = true
+ai_skill_invoke.y_laoyue = true
 
 sgs.ai_cardneed.y_wuji = function(to, card)
     if type(sgs.ai_cardneed.slash) == "function" then return sgs.ai_cardneed.slash(to, card) end
@@ -812,7 +817,7 @@ sgs.ai_skill_playerchosen.y_shenzhu = function(self, targets)
     end
 end
 
-sgs.ai_skill_invoke.y_bailian = true
+ai_skill_invoke.y_bailian = true
 
 sgs.ai_skill_playerchosen.y_bailian = function(self, targets)
     for _, target in ipairs(targets) do
@@ -826,15 +831,15 @@ sgs.ai_skill_playerchosen.y_bailian = function(self, targets)
     end
 end
 
-sgs.ai_skill_invoke.y_caipei = function(self)
-    if not self.friends then return nil end
+ai_skill_invoke.y_caipei = function(self, options, request)
+    if not self.friends then return (nil) or false end
     local peach = self:getCardsNum("Peach")
     local hand = number(self.player:getHandcardNum())
-    if peach == nil or hand == nil then return nil end
+    if peach == nil or hand == nil then return (nil) or false end
     for _, friend in ipairs(self.friends) do
-        if friend:isKongcheng() == false then return peach < hand end
+        if friend:isKongcheng() == false then return (peach < hand) or false end
     end
-    return false
+    return (false) or false
 end
 
 sgs.ai_skill_playerchosen.y_caipei = function(self)
@@ -849,20 +854,22 @@ sgs.ai_cardneed.y_caipei = function(to, card)
     return card and card:isKindOf("TrickCard") or false
 end
 
-sgs.ai_skill_invoke.y_kongzhen = function(self, data)
+ai_skill_invoke.y_kongzhen = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return nil end
-    return self:isFriend(player)
+    if not player then return (nil) or false end
+    return (self:isFriend(player)) or false
 end
 
-sgs.ai_skill_invoke.y_huaiju = function(self, data)
+ai_skill_invoke.y_huaiju = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local move = shadow_move(self)
 	if move.from:getSeat() ~= self.player:getSeat() then
-		return true
+		return (true) or false
 	elseif move.from:getSeat() == self.player:getSeat() then
-		if #self.friends_noself > 0 then return true end
+		if #self.friends_noself > 0 then return (true) or false end
 	end
-	return false
+	return (false) or false
 end
 
 ai_skill_use["@@y_huntian"] = function(self)
@@ -906,10 +913,10 @@ ai_skill_use["@@y_huntian"] = function(self)
     return skill_plan(self, "y_huntian", {chosen:getEffectiveId()}, {}) or {kind = "pass"}
 end
 
-sgs.ai_skill_choice.y_huntian = function(self)
+ai_skill_choice.y_huntian = function(self, options, request)
     local cards = self.player:getCards("h")
     local next_player = self.player:getNextAlive()
-    if not cards or not next_player then return nil end
+    if not cards or not next_player then return ai_choice_result((nil), options) end
     local heart, spade, club, not_spade, peach = false, false, false, false, 0
     for _, card in ipairs(cards) do
         local suit = card:getSuit()
@@ -925,51 +932,54 @@ sgs.ai_skill_choice.y_huntian = function(self)
     if (self.player:containsTrick("supply_shortage") and club)
         or (self.player:containsTrick("indulgence") and heart)
         or (self.player:containsTrick("lightning") and not_spade) then
-        return "1"
+        return ai_choice_result(("1"), options)
     end
     if number(self.player:getHandcardNum()) == peach then
-        if self.player:isWounded() then return "2" end
+        if self.player:isWounded() then return ai_choice_result(("2"), options) end
         if self:isFriend(next_player) and next_player:isWounded()
             and not next_player:containsTrick("supply_shortage")
             and not next_player:containsTrick("indulgence") then
-            return "4"
+            return ai_choice_result(("4"), options)
         end
-        return "2"
+        return ai_choice_result(("2"), options)
     end
     if self:isFriend(next_player) then
-        if next_player:containsTrick("supply_shortage") then return club and "3" or "5" end
-        if next_player:containsTrick("indulgence") then return heart and "3" or "2" end
-        if next_player:containsTrick("lightning") then return not_spade and "3" or "5" end
-        return "5"
+        if next_player:containsTrick("supply_shortage") then return ai_choice_result((club and "3" or "5"), options) end
+        if next_player:containsTrick("indulgence") then return ai_choice_result((heart and "3" or "2"), options) end
+        if next_player:containsTrick("lightning") then return ai_choice_result((not_spade and "3" or "5"), options) end
+        return ai_choice_result(("5"), options)
     end
     if self:isEnemy(next_player) then
-        if next_player:containsTrick("lightning") then return spade and "3" or "5" end
-        return "4"
+        if next_player:containsTrick("lightning") then return ai_choice_result((spade and "3" or "5"), options) end
+        return ai_choice_result(("4"), options)
     end
-    if blocked(self.player) == nil then return nil end
-    return "4"
+    if blocked(self.player) == nil then return ai_choice_result((nil), options) end
+    return ai_choice_result(("4"), options)
 end
 
-sgs.ai_skill_invoke.y_huntian2 = true
+ai_skill_invoke.y_huntian2 = true
 
-sgs.ai_skill_choice.y_huntian2 = function(self, choices, data)
+ai_skill_choice.y_huntian2 = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local player = data:toPlayer()
-    if not player then return nil end
+    if not player then return ai_choice_result((nil), options) end
     local friend = self:isFriend(player)
-    if friend == nil then return nil end
-    return friend and "htdraw" or "htdiscard"
+    if friend == nil then return ai_choice_result((nil), options) end
+    return ai_choice_result((friend and "htdraw" or "htdiscard"), options)
 end
 
-sgs.ai_skill_invoke.y_weiji = function(self)
+ai_skill_invoke.y_weiji = function(self, options, request)
     local max_hp = number(self.player:getMaxHp())
-    if max_hp == nil then return nil end
+    if max_hp == nil then return (nil) or false end
     if max_hp == 1 then
         local peach = self:getCardsNum("Peach")
         local wine = self:getCardsNum("Analeptic")
-        if peach == nil or wine == nil then return nil end
-        return peach > 0 or wine > 0
+        if peach == nil or wine == nil then return (nil) or false end
+        return (peach > 0 or wine > 0) or false
     end
-    return max_hp > 1
+    return (max_hp > 1) or false
 end
 
 sgs.ai_skill_playerchosen.y_weiji = function(self)
@@ -1041,38 +1051,42 @@ ai_skill_activate.y_xiangxi = function(self)
     return skill_plan(self, "y_xiangxi", {}, {target:objectName()})
 end
 
-sgs.ai_skill_choice.y_xiangxi = function(self, choices, data)
+ai_skill_choice.y_xiangxi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local target = data:toPlayer()
-    if not target then return nil end
+    if not target then return ai_choice_result((nil), options) end
     local friend = self:isFriend(target)
     local mine = number(self.player:getHandcardNum())
     local theirs = number(target:getHandcardNum())
-    if friend == nil or mine == nil or theirs == nil then return nil end
-    if friend and self.player:isWounded() and math.abs(theirs - mine) < 2 then return "j" end
-    if theirs - mine > 1 then return "h" end
-    if self.player:containsTrick("supply_shortage") or self.player:containsTrick("indulgence") then return "j" end
+    if friend == nil or mine == nil or theirs == nil then return ai_choice_result((nil), options) end
+    if friend and self.player:isWounded() and math.abs(theirs - mine) < 2 then return ai_choice_result(("j"), options) end
+    if theirs - mine > 1 then return ai_choice_result(("h"), options) end
+    if self.player:containsTrick("supply_shortage") or self.player:containsTrick("indulgence") then return ai_choice_result(("j"), options) end
     if friend and (target:containsTrick("supply_shortage") or target:containsTrick("indulgence")) then
-        return "j"
+        return ai_choice_result(("j"), options)
     end
     local self_equips = self.player:getEquips()
     local target_equips = target:getEquips()
-    if not self_equips or not target_equips then return nil end
+    if not self_equips or not target_equips then return ai_choice_result((nil), options) end
     if (self:loseEquipEffect(self.player) and #self_equips > 0)
         or (friend and self:loseEquipEffect(target) and #target_equips > 0) then
-        return "e"
+        return ai_choice_result(("e"), options)
     end
-    if self:isWeak() then return "j" end
-    return "h"
+    if self:isWeak() then return ai_choice_result(("j"), options) end
+    return ai_choice_result(("h"), options)
 end
 
-sgs.ai_skill_invoke.y_kegou = true
+ai_skill_invoke.y_kegou = true
 sgs.ai_target_revises.y_kegou = function(to, card)
     return card and card:isKindOf("Indulgence") or false
 end
 
-sgs.ai_skill_invoke.y_yingzi = true
+ai_skill_invoke.y_yingzi = true
 
-sgs.ai_skill_invoke.y_shouju = function(self, data)
+ai_skill_invoke.y_shouju = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local card = shadow_card(self, "y_shouju_card")
 	local sj = false
 	self:sort(self.friends, "defense")
@@ -1085,13 +1099,13 @@ sgs.ai_skill_invoke.y_shouju = function(self, data)
 			end
 		end
 	end
-	if sj == false then return false end
+	if sj == false then return (false) or false end
 	for _, c in sgs.qlist(self.player:getCards("h")) do
 		if c:isKindOf("Basic") and not c:isKindOf("Peach") then
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 sgs.ai_skill_playerchosen.y_shouju = function(self, targets)
 	targets = sgs.QList2Table(targets)
@@ -1164,78 +1178,84 @@ sgs.ai_skill_cardask["y_shouju"] = function(self, data, pattern)
 	self._shadow_shouju_override = nil
 end
 
-sgs.ai_skill_invoke.y_wenliang = function(self, data)
+ai_skill_invoke.y_wenliang = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return nil end
+    if not player then return (nil) or false end
     local friend = self:isFriend(player)
     local enemy = self:isEnemy(player)
-    if friend == nil or enemy == nil then return nil end
+    if friend == nil or enemy == nil then return (nil) or false end
     local armor = player:getArmor()
     if friend then
-        if armor and armor:objectName() == "silverlion" and player:isWounded() then return true end
+        if armor and armor:objectName() == "silverlion" and player:isWounded() then return (true) or false end
         if not (armor and armor:isKindOf("EightDiagram")) then
             local hand = number(player:getHandcardNum())
             local hp = number(player:getHp())
-            if hand == nil or hp == nil then return nil end
-            if hand < 2 and hp == 1 then return true end
+            if hand == nil or hp == nil then return (nil) or false end
+            if hand < 2 and hp == 1 then return (true) or false end
             local cards = self.player:getCards("h")
-            if not cards then return nil end
+            if not cards then return (nil) or false end
             for _, card in ipairs(cards) do
-                if not card:isKindOf("Peach") then return true end
+                if not card:isKindOf("Peach") then return (true) or false end
             end
         else
-            return player:isKongcheng() and number(player:getHp()) == 1
+            return (player:isKongcheng() and number(player:getHp()) == 1) or false
         end
     elseif enemy then
         local hand = number(player:getHandcardNum())
         local hp = number(player:getHp())
-        if hand == nil or hp == nil then return nil end
-        if hp == 1 or hand <= 1 then return false end
+        if hand == nil or hp == nil then return (nil) or false end
+        if hp == 1 or hand <= 1 then return (false) or false end
         if (armor and (armor:isKindOf("EightDiagram") or armor:isKindOf("RenwangShield")))
             or player:getDefensiveHorse() or player:getWeapon() or player:getOffensiveHorse() then
-            return true
+            return (true) or false
         end
     end
-    return false
+    return (false) or false
 end
 
-sgs.ai_skill_invoke.y_duoqi = true
+ai_skill_invoke.y_duoqi = true
 
-sgs.ai_skill_invoke.y_youfang = function(self, data)
+ai_skill_invoke.y_youfang = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local move = shadow_move(self)
-	if not move.from or not move.from:isAlive() then return false end
+	if not move.from or not move.from:isAlive() then return (false) or false end
 	if move.from and self:isFriend(move.from) then
-		return true
+		return (true) or false
 	end
-	return false
+	return (false) or false
 end
-sgs.ai_skill_choice.y_youfang = function(self, choices, data)
+ai_skill_choice.y_youfang = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
 	local move = shadow_move(self)
 	local target = move.from
 	choices = choices:split("+")
 	if self:isFriend(target) then
 		if table.contains(choices, "recover") and target:getLostHp() > 0 and self:isWeak(target) then
-			return "recover"
+			return ai_choice_result(("recover"), options)
 		end
 		if table.contains(choices, "draw") and self:needBear(target) then
-			return "draw"
+			return ai_choice_result(("draw"), options)
 		end
 		if table.contains(choices, "recover") and target:getLostHp() > 0 then
-			return "recover"
+			return ai_choice_result(("recover"), options)
 		end
 	end
-	return "draw"
+	return ai_choice_result(("draw"), options)
 end
-sgs.ai_skill_invoke.y_zhixi = function(self, data)
+ai_skill_invoke.y_zhixi = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local move = shadow_move(self)
-	if not move.to or not move.to:isAlive() then return false end
+	if not move.to or not move.to:isAlive() then return (false) or false end
 	if move.to and self:isFriend(move.to) then
-		return false
+		return (false) or false
 	end
-	return true
+	return (true) or false
 end
 
-sgs.ai_skill_invoke.y_xiaoyi = true
+ai_skill_invoke.y_xiaoyi = true
 sgs.ai_skill_playerchosen.y_xiaoyi = function(self, targets)
 	targets = sgs.QList2Table(targets)
 	self:sort(targets, "defense")
@@ -1276,7 +1296,7 @@ ai_skill_activate.y_lianzhu = function(self)
     return skill_plan(self, "y_lianzhu", ids, targets)
 end
 
-sgs.ai_skill_invoke.y_fanjin = true
+ai_skill_invoke.y_fanjin = true
 sgs.ai_skill_playerchosen.y_fanjin = function(self, targets)
 	targets = sgs.QList2Table(targets)
 	self:sort(targets, "defense")
@@ -1410,12 +1430,13 @@ ai_skill_use["@@y_xianzhou"] = function(self)
     return skill_plan(self, "y_xianzhou", ids, {}) or {kind = "pass"}
 end
 
-sgs.ai_skill_invoke.y_huiyu = function(self, data)
+ai_skill_invoke.y_huiyu = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
     local card = use and use.card
     local from = use and use.from
-    if not card or not from or not use.to then return nil end
-    if not self.enemies then return nil end
+    if not card or not from or not use.to then return (nil) or false end
+    if not self.enemies then return (nil) or false end
     local function usable(target)
         if type(self.player.canSlash) ~= "function" then return nil end
         local slash = self.player:canSlash(target)
@@ -1427,27 +1448,27 @@ sgs.ai_skill_invoke.y_huiyu = function(self, data)
     if self.player:objectName() == from:objectName() then
         for _, target in ipairs(use.to) do
             local ok = usable(target)
-            if ok == nil then return nil end
-            if self:isFriend(target) and ok and self:dontHurt(target, self.player) then return false end
+            if ok == nil then return (nil) or false end
+            if self:isFriend(target) and ok and self:dontHurt(target, self.player) then return (false) or false end
         end
         for _, target in ipairs(use.to) do
             local ok = usable(target)
             local good = self:isGoodTarget(target, self.enemies, card)
-            if ok == nil or good == nil then return nil end
-            if self:isEnemy(target) and ok and good then return true end
+            if ok == nil or good == nil then return (nil) or false end
+            if self:isEnemy(target) and ok and good then return (true) or false end
         end
-        return true
+        return (true) or false
     end
     local lose = self:needToLoseHp(self.player, from, card)
-    if lose == nil then return nil end
-    if lose then return true end
+    if lose == nil then return (nil) or false end
+    if lose then return (true) or false end
     for _, target in ipairs(use.to) do
         local ok = usable(target)
         local good = self:isGoodTarget(target, self.enemies, card)
-        if ok == nil or good == nil then return nil end
-        if self:isEnemy(target) and ok and good then return true end
+        if ok == nil or good == nil then return (nil) or false end
+        if self:isEnemy(target) and ok and good then return (true) or false end
     end
-    return false
+    return (false) or false
 end
 
 -- Same accepted Huaiju chain: the mark identifies an already discarded face.
@@ -1469,3 +1490,46 @@ sgs.ai_skill_playerchosen.y_huaiju = function(self, targets)
 	end
 	return targets:first()
 end
+
+-- Package-owned value hooks; original callback arguments remain unchanged.
+;(function()
+    local function policy_1(self, player, preferred, query, context)
+        local name = "y_kongzhen"
+        if query(player, "hasSkill", name) then return true, true end
+        return preferred
+    end
+    local function policy_2(self, player, value, defense_query, siblings, context)
+        for _, sibling in ipairs(siblings) do
+            if defense_query(sibling, "hasSkill", "y_yongjue") and defense_query(player, "getHandcardNum") < defense_query(player, "getHp")
+                and defense_query(self, "beFriend", sibling, player) then value = value + (defense_query(sibling, "getHandcardNum") + defense_query(sibling, "getHp")) * 0.5 break end
+        end
+        return value
+    end
+    local previous_1 = sgs.ai_need_kongcheng["y_kongzhen"]
+    sgs.ai_need_kongcheng["y_kongzhen"] = function(self, player, keep, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "after_loss" and context.rule == "y_kongzhen" then
+                return policy_1(self, player, context.value, context.query, context)
+            end
+            return context.value
+        end
+        if type(previous_1) == "function" then return previous_1(self, player, keep) end
+    end
+    sgs.declareValueHookStages("ai_need_kongcheng", "y_kongzhen", {
+        {phase="after_loss", rule="y_kongzhen", order=1700},
+    })
+    local previous_2 = sgs.ai_skill_defense["y_yongjue"]
+    sgs.ai_skill_defense["y_yongjue"] = function(self, player, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "after_health" and context.rule == "y_yongjue" then
+                return policy_2(self, player, context.value, context.query, context.extra[1], context)
+            end
+            return context.value
+        end
+        if type(previous_2) == "function" then return previous_2(self, player) end
+        return previous_2
+    end
+    sgs.declareValueHookStages("ai_skill_defense", "y_yongjue", {
+        {phase="after_health", rule="y_yongjue", order=8200},
+    })
+end)()

@@ -1,5 +1,4 @@
--- Fixed b6025acc extra-ai.lua:2998–3007. This focused module ports the
--- heg_congjian damage callbacks; it does not claim the rest of extra-ai.
+-- Source: b6025acc ai/extra-ai.lua.
 local function phase(player)
     if player == nil then error("attempt to index a nil value", 0) end
     if type(player.getPhase) ~= "function" then ai_unsupported("heg_congjian phase helper absent", "heg_congjian") end
@@ -15,7 +14,7 @@ sgs.ai_ajustdamage_to.heg_congjian = function(self, from, to, card, nature)
     if phase(to) ~= sgs.Player_NotActive then return 1 end
 end
 
-local prior_extra_hooks,prior_extra_typed_uses={},{}
+local prior_extra_hooks={}
 prior_extra_hooks["ai_ajustdamage_from.PeaceSpell"]=sgs.ai_ajustdamage_from["PeaceSpell"]
 prior_extra_hooks["ai_ajustdamage_from.heg_congjian"]=sgs.ai_ajustdamage_from["heg_congjian"]
 prior_extra_hooks["ai_ajustdamage_from.heg_ejue"]=sgs.ai_ajustdamage_from["heg_ejue"]
@@ -82,65 +81,65 @@ prior_extra_hooks["ai_choicemade_filter.skillInvoke.heg_true_pozhen"]=sgs.ai_cho
 prior_extra_hooks["ai_choicemade_filter.skillInvoke.heg_yicheng"]=sgs.ai_choicemade_filter["skillInvoke"]["heg_yicheng"]
 prior_extra_hooks["ai_choicemade_filter.skillInvoke.heg_zhuwei"]=sgs.ai_choicemade_filter["skillInvoke"]["heg_zhuwei"]
 prior_extra_hooks["ai_choicemade_filter.skillInvoke.twyj_huzhu"]=sgs.ai_choicemade_filter["skillInvoke"]["twyj_huzhu"]
-prior_extra_hooks["ai_fill_skill.bf_nos_tiaodu"]=sgs.ai_fill_skill["bf_nos_tiaodu"]
-prior_extra_hooks["ai_fill_skill.bf_qice"]=sgs.ai_fill_skill["bf_qice"]
-prior_extra_hooks["ai_fill_skill.bf_xiongsuan"]=sgs.ai_fill_skill["bf_xiongsuan"]
-prior_extra_hooks["ai_fill_skill.bf_yongjin"]=sgs.ai_fill_skill["bf_yongjin"]
-prior_extra_hooks["ai_fill_skill.gd_zezhu"]=sgs.ai_fill_skill["gd_zezhu"]
-prior_extra_hooks["ai_fill_skill.guandu_shicai"]=sgs.ai_fill_skill["guandu_shicai"]
-prior_extra_hooks["ai_fill_skill.guandu_yuanlue"]=sgs.ai_fill_skill["guandu_yuanlue"]
-prior_extra_hooks["ai_fill_skill.heg_chengliu"]=sgs.ai_fill_skill["heg_chengliu"]
-prior_extra_hooks["ai_fill_skill.heg_duanliang"]=sgs.ai_fill_skill["heg_duanliang"]
-prior_extra_hooks["ai_fill_skill.heg_duanxie"]=sgs.ai_fill_skill["heg_duanxie"]
-prior_extra_hooks["ai_fill_skill.heg_duwu"]=sgs.ai_fill_skill["heg_duwu"]
-prior_extra_hooks["ai_fill_skill.heg_fengying"]=sgs.ai_fill_skill["heg_fengying"]
-prior_extra_hooks["ai_fill_skill.heg_guikuang"]=sgs.ai_fill_skill["heg_guikuang"]
-prior_extra_hooks["ai_fill_skill.heg_guishu"]=sgs.ai_fill_skill["heg_guishu"]
-prior_extra_hooks["ai_fill_skill.heg_huaiyi"]=sgs.ai_fill_skill["heg_huaiyi"]
-prior_extra_hooks["ai_fill_skill.heg_jianglue"]=sgs.ai_fill_skill["heg_jianglue"]
-prior_extra_hooks["ai_fill_skill.heg_jiaping_Attach"]=sgs.ai_fill_skill["heg_jiaping_Attach"]
-prior_extra_hooks["ai_fill_skill.heg_jinfa"]=sgs.ai_fill_skill["heg_jinfa"]
-prior_extra_hooks["ai_fill_skill.heg_jinghe"]=sgs.ai_fill_skill["heg_jinghe"]
-prior_extra_hooks["ai_fill_skill.heg_kurou"]=sgs.ai_fill_skill["heg_kurou"]
-prior_extra_hooks["ai_fill_skill.heg_longdan"]=sgs.ai_fill_skill["heg_longdan"]
-prior_extra_hooks["ai_fill_skill.heg_lord_hongfa_Attach"]=sgs.ai_fill_skill["heg_lord_hongfa_Attach"]
-prior_extra_hooks["ai_fill_skill.heg_lord_huibian"]=sgs.ai_fill_skill["heg_lord_huibian"]
-prior_extra_hooks["ai_fill_skill.heg_lord_jiahe_Attach"]=sgs.ai_fill_skill["heg_lord_jiahe_Attach"]
-prior_extra_hooks["ai_fill_skill.heg_lord_lianzi"]=sgs.ai_fill_skill["heg_lord_lianzi"]
-prior_extra_hooks["ai_fill_skill.heg_lord_shouyue_wusheng"]=sgs.ai_fill_skill["heg_lord_shouyue_wusheng"]
-prior_extra_hooks["ai_fill_skill.heg_lord_wendao"]=sgs.ai_fill_skill["heg_lord_wendao"]
-prior_extra_hooks["ai_fill_skill.heg_mobile_duoshi"]=sgs.ai_fill_skill["heg_mobile_duoshi"]
-prior_extra_hooks["ai_fill_skill.heg_mobile_paiyi"]=sgs.ai_fill_skill["heg_mobile_paiyi"]
-prior_extra_hooks["ai_fill_skill.heg_nos_guishu"]=sgs.ai_fill_skill["heg_nos_guishu"]
-prior_extra_hooks["ai_fill_skill.heg_nos_huaiyi"]=sgs.ai_fill_skill["heg_nos_huaiyi"]
-prior_extra_hooks["ai_fill_skill.heg_ov_hongyuan"]=sgs.ai_fill_skill["heg_ov_hongyuan"]
-prior_extra_hooks["ai_fill_skill.heg_paiyi"]=sgs.ai_fill_skill["heg_paiyi"]
-prior_extra_hooks["ai_fill_skill.heg_pojing"]=sgs.ai_fill_skill["heg_pojing"]
-prior_extra_hooks["ai_fill_skill.heg_qiangxi"]=sgs.ai_fill_skill["heg_qiangxi"]
-prior_extra_hooks["ai_fill_skill.heg_qingyin"]=sgs.ai_fill_skill["heg_qingyin"]
-prior_extra_hooks["ai_fill_skill.heg_quanjin"]=sgs.ai_fill_skill["heg_quanjin"]
-prior_extra_hooks["ai_fill_skill.heg_ruilve_attach"]=sgs.ai_fill_skill["heg_ruilve_attach"]
-prior_extra_hooks["ai_fill_skill.heg_sanchen"]=sgs.ai_fill_skill["heg_sanchen"]
-prior_extra_hooks["ai_fill_skill.heg_shunfu"]=sgs.ai_fill_skill["heg_shunfu"]
-prior_extra_hooks["ai_fill_skill.heg_six_swords"]=sgs.ai_fill_skill["heg_six_swords"]
-prior_extra_hooks["ai_fill_skill.heg_tenyear_boyan"]=sgs.ai_fill_skill["heg_tenyear_boyan"]
-prior_extra_hooks["ai_fill_skill.heg_tenyear_fenglue"]=sgs.ai_fill_skill["heg_tenyear_fenglue"]
-prior_extra_hooks["ai_fill_skill.heg_tenyear_mingfa"]=sgs.ai_fill_skill["heg_tenyear_mingfa"]
-prior_extra_hooks["ai_fill_skill.heg_tenyear_weimeng"]=sgs.ai_fill_skill["heg_tenyear_weimeng"]
-prior_extra_hooks["ai_fill_skill.heg_transfer"]=sgs.ai_fill_skill["heg_transfer"]
-prior_extra_hooks["ai_fill_skill.heg_weidi"]=sgs.ai_fill_skill["heg_weidi"]
-prior_extra_hooks["ai_fill_skill.heg_xianqu"]=sgs.ai_fill_skill["heg_xianqu"]
-prior_extra_hooks["ai_fill_skill.heg_xiejian"]=sgs.ai_fill_skill["heg_xiejian"]
-prior_extra_hooks["ai_fill_skill.heg_xuanhuoAttach"]=sgs.ai_fill_skill["heg_xuanhuoAttach"]
-prior_extra_hooks["ai_fill_skill.heg_yinsha"]=sgs.ai_fill_skill["heg_yinsha"]
-prior_extra_hooks["ai_fill_skill.heg_yinyangyu"]=sgs.ai_fill_skill["heg_yinyangyu"]
-prior_extra_hooks["ai_fill_skill.heg_zaoyun"]=sgs.ai_fill_skill["heg_zaoyun"]
-prior_extra_hooks["ai_fill_skill.heg_zhiheng"]=sgs.ai_fill_skill["heg_zhiheng"]
-prior_extra_hooks["ai_fill_skill.heg_zhuangrong"]=sgs.ai_fill_skill["heg_zhuangrong"]
-prior_extra_hooks["ai_fill_skill.twyj_huzhu"]=sgs.ai_fill_skill["twyj_huzhu"]
-prior_extra_hooks["ai_fill_skill.twyj_qijia"]=sgs.ai_fill_skill["twyj_qijia"]
-prior_extra_hooks["ai_fill_skill.twyj_rangyi"]=sgs.ai_fill_skill["twyj_rangyi"]
-prior_extra_hooks["ai_fill_skill.twyj_zhuchen"]=sgs.ai_fill_skill["twyj_zhuchen"]
+prior_extra_hooks["ai_fill_skill.bf_nos_tiaodu"]=ai_fill_skill["bf_nos_tiaodu"]
+prior_extra_hooks["ai_fill_skill.bf_qice"]=ai_fill_skill["bf_qice"]
+prior_extra_hooks["ai_fill_skill.bf_xiongsuan"]=ai_fill_skill["bf_xiongsuan"]
+prior_extra_hooks["ai_fill_skill.bf_yongjin"]=ai_fill_skill["bf_yongjin"]
+prior_extra_hooks["ai_fill_skill.gd_zezhu"]=ai_fill_skill["gd_zezhu"]
+prior_extra_hooks["ai_fill_skill.guandu_shicai"]=ai_fill_skill["guandu_shicai"]
+prior_extra_hooks["ai_fill_skill.guandu_yuanlue"]=ai_fill_skill["guandu_yuanlue"]
+prior_extra_hooks["ai_fill_skill.heg_chengliu"]=ai_fill_skill["heg_chengliu"]
+prior_extra_hooks["ai_fill_skill.heg_duanliang"]=ai_fill_skill["heg_duanliang"]
+prior_extra_hooks["ai_fill_skill.heg_duanxie"]=ai_fill_skill["heg_duanxie"]
+prior_extra_hooks["ai_fill_skill.heg_duwu"]=ai_fill_skill["heg_duwu"]
+prior_extra_hooks["ai_fill_skill.heg_fengying"]=ai_fill_skill["heg_fengying"]
+prior_extra_hooks["ai_fill_skill.heg_guikuang"]=ai_fill_skill["heg_guikuang"]
+prior_extra_hooks["ai_fill_skill.heg_guishu"]=ai_fill_skill["heg_guishu"]
+prior_extra_hooks["ai_fill_skill.heg_huaiyi"]=ai_fill_skill["heg_huaiyi"]
+prior_extra_hooks["ai_fill_skill.heg_jianglue"]=ai_fill_skill["heg_jianglue"]
+prior_extra_hooks["ai_fill_skill.heg_jiaping_Attach"]=ai_fill_skill["heg_jiaping_Attach"]
+prior_extra_hooks["ai_fill_skill.heg_jinfa"]=ai_fill_skill["heg_jinfa"]
+prior_extra_hooks["ai_fill_skill.heg_jinghe"]=ai_fill_skill["heg_jinghe"]
+prior_extra_hooks["ai_fill_skill.heg_kurou"]=ai_fill_skill["heg_kurou"]
+prior_extra_hooks["ai_fill_skill.heg_longdan"]=ai_fill_skill["heg_longdan"]
+prior_extra_hooks["ai_fill_skill.heg_lord_hongfa_Attach"]=ai_fill_skill["heg_lord_hongfa_Attach"]
+prior_extra_hooks["ai_fill_skill.heg_lord_huibian"]=ai_fill_skill["heg_lord_huibian"]
+prior_extra_hooks["ai_fill_skill.heg_lord_jiahe_Attach"]=ai_fill_skill["heg_lord_jiahe_Attach"]
+prior_extra_hooks["ai_fill_skill.heg_lord_lianzi"]=ai_fill_skill["heg_lord_lianzi"]
+prior_extra_hooks["ai_fill_skill.heg_lord_shouyue_wusheng"]=ai_fill_skill["heg_lord_shouyue_wusheng"]
+prior_extra_hooks["ai_fill_skill.heg_lord_wendao"]=ai_fill_skill["heg_lord_wendao"]
+prior_extra_hooks["ai_fill_skill.heg_mobile_duoshi"]=ai_fill_skill["heg_mobile_duoshi"]
+prior_extra_hooks["ai_fill_skill.heg_mobile_paiyi"]=ai_fill_skill["heg_mobile_paiyi"]
+prior_extra_hooks["ai_fill_skill.heg_nos_guishu"]=ai_fill_skill["heg_nos_guishu"]
+prior_extra_hooks["ai_fill_skill.heg_nos_huaiyi"]=ai_fill_skill["heg_nos_huaiyi"]
+prior_extra_hooks["ai_fill_skill.heg_ov_hongyuan"]=ai_fill_skill["heg_ov_hongyuan"]
+prior_extra_hooks["ai_fill_skill.heg_paiyi"]=ai_fill_skill["heg_paiyi"]
+prior_extra_hooks["ai_fill_skill.heg_pojing"]=ai_fill_skill["heg_pojing"]
+prior_extra_hooks["ai_fill_skill.heg_qiangxi"]=ai_fill_skill["heg_qiangxi"]
+prior_extra_hooks["ai_fill_skill.heg_qingyin"]=ai_fill_skill["heg_qingyin"]
+prior_extra_hooks["ai_fill_skill.heg_quanjin"]=ai_fill_skill["heg_quanjin"]
+prior_extra_hooks["ai_fill_skill.heg_ruilve_attach"]=ai_fill_skill["heg_ruilve_attach"]
+prior_extra_hooks["ai_fill_skill.heg_sanchen"]=ai_fill_skill["heg_sanchen"]
+prior_extra_hooks["ai_fill_skill.heg_shunfu"]=ai_fill_skill["heg_shunfu"]
+prior_extra_hooks["ai_fill_skill.heg_six_swords"]=ai_fill_skill["heg_six_swords"]
+prior_extra_hooks["ai_fill_skill.heg_tenyear_boyan"]=ai_fill_skill["heg_tenyear_boyan"]
+prior_extra_hooks["ai_fill_skill.heg_tenyear_fenglue"]=ai_fill_skill["heg_tenyear_fenglue"]
+prior_extra_hooks["ai_fill_skill.heg_tenyear_mingfa"]=ai_fill_skill["heg_tenyear_mingfa"]
+prior_extra_hooks["ai_fill_skill.heg_tenyear_weimeng"]=ai_fill_skill["heg_tenyear_weimeng"]
+prior_extra_hooks["ai_fill_skill.heg_transfer"]=ai_fill_skill["heg_transfer"]
+prior_extra_hooks["ai_fill_skill.heg_weidi"]=ai_fill_skill["heg_weidi"]
+prior_extra_hooks["ai_fill_skill.heg_xianqu"]=ai_fill_skill["heg_xianqu"]
+prior_extra_hooks["ai_fill_skill.heg_xiejian"]=ai_fill_skill["heg_xiejian"]
+prior_extra_hooks["ai_fill_skill.heg_xuanhuoAttach"]=ai_fill_skill["heg_xuanhuoAttach"]
+prior_extra_hooks["ai_fill_skill.heg_yinsha"]=ai_fill_skill["heg_yinsha"]
+prior_extra_hooks["ai_fill_skill.heg_yinyangyu"]=ai_fill_skill["heg_yinyangyu"]
+prior_extra_hooks["ai_fill_skill.heg_zaoyun"]=ai_fill_skill["heg_zaoyun"]
+prior_extra_hooks["ai_fill_skill.heg_zhiheng"]=ai_fill_skill["heg_zhiheng"]
+prior_extra_hooks["ai_fill_skill.heg_zhuangrong"]=ai_fill_skill["heg_zhuangrong"]
+prior_extra_hooks["ai_fill_skill.twyj_huzhu"]=ai_fill_skill["twyj_huzhu"]
+prior_extra_hooks["ai_fill_skill.twyj_qijia"]=ai_fill_skill["twyj_qijia"]
+prior_extra_hooks["ai_fill_skill.twyj_rangyi"]=ai_fill_skill["twyj_rangyi"]
+prior_extra_hooks["ai_fill_skill.twyj_zhuchen"]=ai_fill_skill["twyj_zhuchen"]
 prior_extra_hooks["ai_getBestHp_skill.heg_yinghun"]=sgs.ai_getBestHp_skill["heg_yinghun"]
 prior_extra_hooks["ai_getBestHp_skill.yinghun_po"]=sgs.ai_getBestHp_skill["yinghun_po"]
 prior_extra_hooks["ai_nullification.heg_alliance_feast"]=sgs.ai_nullification["heg_alliance_feast"]
@@ -191,31 +190,31 @@ prior_extra_hooks["ai_skill_cardask.@twyj_huzhu"]=sgs.ai_skill_cardask["@twyj_hu
 prior_extra_hooks["ai_skill_cardask.heg_chengshang"]=sgs.ai_skill_cardask["heg_chengshang"]
 prior_extra_hooks["ai_skill_cardchosen.heg_huaiyi"]=sgs.ai_skill_cardchosen["heg_huaiyi"]
 prior_extra_hooks["ai_skill_cardchosen.heg_mouduan"]=sgs.ai_skill_cardchosen["heg_mouduan"]
-prior_extra_hooks["ai_skill_choice.bf_xiongsuan"]=sgs.ai_skill_choice["bf_xiongsuan"]
-prior_extra_hooks["ai_skill_choice.do_command"]=sgs.ai_skill_choice["do_command"]
-prior_extra_hooks["ai_skill_choice.heg_duanqiu_ChooseKingdom"]=sgs.ai_skill_choice["heg_duanqiu_ChooseKingdom"]
-prior_extra_hooks["ai_skill_choice.heg_gongxiu"]=sgs.ai_skill_choice["heg_gongxiu"]
-prior_extra_hooks["ai_skill_choice.heg_huaiyi"]=sgs.ai_skill_choice["heg_huaiyi"]
-prior_extra_hooks["ai_skill_choice.heg_lianpian"]=sgs.ai_skill_choice["heg_lianpian"]
-prior_extra_hooks["ai_skill_choice.heg_liegong"]=sgs.ai_skill_choice["heg_liegong"]
-prior_extra_hooks["ai_skill_choice.heg_lixia"]=sgs.ai_skill_choice["heg_lixia"]
-prior_extra_hooks["ai_skill_choice.heg_lord_jianan"]=sgs.ai_skill_choice["heg_lord_jianan"]
-prior_extra_hooks["ai_skill_choice.heg_mobile_kuangfu"]=sgs.ai_skill_choice["heg_mobile_kuangfu"]
-prior_extra_hooks["ai_skill_choice.heg_mobile_suishi"]=sgs.ai_skill_choice["heg_mobile_suishi"]
-prior_extra_hooks["ai_skill_choice.heg_nos_daming"]=sgs.ai_skill_choice["heg_nos_daming"]
-prior_extra_hooks["ai_skill_choice.heg_nos_huaiyi"]=sgs.ai_skill_choice["heg_nos_huaiyi"]
-prior_extra_hooks["ai_skill_choice.heg_nos_lixia"]=sgs.ai_skill_choice["heg_nos_lixia"]
-prior_extra_hooks["ai_skill_choice.heg_ov_shigong"]=sgs.ai_skill_choice["heg_ov_shigong"]
-prior_extra_hooks["ai_skill_choice.heg_ov_zhenxi"]=sgs.ai_skill_choice["heg_ov_zhenxi"]
-prior_extra_hooks["ai_skill_choice.heg_ov_zhuidu"]=sgs.ai_skill_choice["heg_ov_zhuidu"]
-prior_extra_hooks["ai_skill_choice.heg_pojing"]=sgs.ai_skill_choice["heg_pojing"]
-prior_extra_hooks["ai_skill_choice.heg_tenyear_anyong"]=sgs.ai_skill_choice["heg_tenyear_anyong"]
-prior_extra_hooks["ai_skill_choice.heg_tenyear_shejian"]=sgs.ai_skill_choice["heg_tenyear_shejian"]
-prior_extra_hooks["ai_skill_choice.heg_yanxi"]=sgs.ai_skill_choice["heg_yanxi"]
-prior_extra_hooks["ai_skill_choice.heg_yinghun"]=sgs.ai_skill_choice["heg_yinghun"]
-prior_extra_hooks["ai_skill_choice.heg_zhengbi"]=sgs.ai_skill_choice["heg_zhengbi"]
-prior_extra_hooks["ai_skill_choice.start_command_heg_jianglue"]=sgs.ai_skill_choice["start_command_heg_jianglue"]
-prior_extra_hooks["ai_skill_choice.yinghun_po"]=sgs.ai_skill_choice["yinghun_po"]
+prior_extra_hooks["ai_skill_choice.bf_xiongsuan"]=ai_skill_choice["bf_xiongsuan"]
+prior_extra_hooks["ai_skill_choice.do_command"]=ai_skill_choice["do_command"]
+prior_extra_hooks["ai_skill_choice.heg_duanqiu_ChooseKingdom"]=ai_skill_choice["heg_duanqiu_ChooseKingdom"]
+prior_extra_hooks["ai_skill_choice.heg_gongxiu"]=ai_skill_choice["heg_gongxiu"]
+prior_extra_hooks["ai_skill_choice.heg_huaiyi"]=ai_skill_choice["heg_huaiyi"]
+prior_extra_hooks["ai_skill_choice.heg_lianpian"]=ai_skill_choice["heg_lianpian"]
+prior_extra_hooks["ai_skill_choice.heg_liegong"]=ai_skill_choice["heg_liegong"]
+prior_extra_hooks["ai_skill_choice.heg_lixia"]=ai_skill_choice["heg_lixia"]
+prior_extra_hooks["ai_skill_choice.heg_lord_jianan"]=ai_skill_choice["heg_lord_jianan"]
+prior_extra_hooks["ai_skill_choice.heg_mobile_kuangfu"]=ai_skill_choice["heg_mobile_kuangfu"]
+prior_extra_hooks["ai_skill_choice.heg_mobile_suishi"]=ai_skill_choice["heg_mobile_suishi"]
+prior_extra_hooks["ai_skill_choice.heg_nos_daming"]=ai_skill_choice["heg_nos_daming"]
+prior_extra_hooks["ai_skill_choice.heg_nos_huaiyi"]=ai_skill_choice["heg_nos_huaiyi"]
+prior_extra_hooks["ai_skill_choice.heg_nos_lixia"]=ai_skill_choice["heg_nos_lixia"]
+prior_extra_hooks["ai_skill_choice.heg_ov_shigong"]=ai_skill_choice["heg_ov_shigong"]
+prior_extra_hooks["ai_skill_choice.heg_ov_zhenxi"]=ai_skill_choice["heg_ov_zhenxi"]
+prior_extra_hooks["ai_skill_choice.heg_ov_zhuidu"]=ai_skill_choice["heg_ov_zhuidu"]
+prior_extra_hooks["ai_skill_choice.heg_pojing"]=ai_skill_choice["heg_pojing"]
+prior_extra_hooks["ai_skill_choice.heg_tenyear_anyong"]=ai_skill_choice["heg_tenyear_anyong"]
+prior_extra_hooks["ai_skill_choice.heg_tenyear_shejian"]=ai_skill_choice["heg_tenyear_shejian"]
+prior_extra_hooks["ai_skill_choice.heg_yanxi"]=ai_skill_choice["heg_yanxi"]
+prior_extra_hooks["ai_skill_choice.heg_yinghun"]=ai_skill_choice["heg_yinghun"]
+prior_extra_hooks["ai_skill_choice.heg_zhengbi"]=ai_skill_choice["heg_zhengbi"]
+prior_extra_hooks["ai_skill_choice.start_command_heg_jianglue"]=ai_skill_choice["start_command_heg_jianglue"]
+prior_extra_hooks["ai_skill_choice.yinghun_po"]=ai_skill_choice["yinghun_po"]
 prior_extra_hooks["ai_skill_discard.bf_wanwei"]=sgs.ai_skill_discard["bf_wanwei"]
 prior_extra_hooks["ai_skill_discard.command"]=sgs.ai_skill_discard["command"]
 prior_extra_hooks["ai_skill_discard.heg_juejue"]=sgs.ai_skill_discard["heg_juejue"]
@@ -223,69 +222,69 @@ prior_extra_hooks["ai_skill_discard.heg_lord_jianan"]=sgs.ai_skill_discard["heg_
 prior_extra_hooks["ai_skill_discard.heg_neiji"]=sgs.ai_skill_discard["heg_neiji"]
 prior_extra_hooks["ai_skill_discard.heg_shilus"]=sgs.ai_skill_discard["heg_shilus"]
 prior_extra_hooks["ai_skill_discard.heg_triblade_Skill"]=sgs.ai_skill_discard["heg_triblade_Skill"]
-prior_extra_hooks["ai_skill_invoke.ChangeGeneral"]=sgs.ai_skill_invoke["ChangeGeneral"]
-prior_extra_hooks["ai_skill_invoke.DragonPhoenix"]=sgs.ai_skill_invoke["DragonPhoenix"]
-prior_extra_hooks["ai_skill_invoke.bf_sec_tiaodu"]=sgs.ai_skill_invoke["bf_sec_tiaodu"]
-prior_extra_hooks["ai_skill_invoke.bf_third_tiaodu"]=sgs.ai_skill_invoke["bf_third_tiaodu"]
-prior_extra_hooks["ai_skill_invoke.bf_tiaodu"]=sgs.ai_skill_invoke["bf_tiaodu"]
-prior_extra_hooks["ai_skill_invoke.bf_yuejian"]=sgs.ai_skill_invoke["bf_yuejian"]
-prior_extra_hooks["ai_skill_invoke.chenggong"]=sgs.ai_skill_invoke["chenggong"]
-prior_extra_hooks["ai_skill_invoke.guandu_fuyuan"]=sgs.ai_skill_invoke["guandu_fuyuan"]
-prior_extra_hooks["ai_skill_invoke.heg_beiluan"]=sgs.ai_skill_invoke["heg_beiluan"]
-prior_extra_hooks["ai_skill_invoke.heg_buyi"]=sgs.ai_skill_invoke["heg_buyi"]
-prior_extra_hooks["ai_skill_invoke.heg_chengliu"]=sgs.ai_skill_invoke["heg_chengliu"]
-prior_extra_hooks["ai_skill_invoke.heg_chenglue"]=sgs.ai_skill_invoke["heg_chenglue"]
-prior_extra_hooks["ai_skill_invoke.heg_duannian"]=sgs.ai_skill_invoke["heg_duannian"]
-prior_extra_hooks["ai_skill_invoke.heg_duanqiu"]=sgs.ai_skill_invoke["heg_duanqiu"]
-prior_extra_hooks["ai_skill_invoke.heg_gongxiu"]=sgs.ai_skill_invoke["heg_gongxiu"]
-prior_extra_hooks["ai_skill_invoke.heg_gongzhi"]=sgs.ai_skill_invoke["heg_gongzhi"]
-prior_extra_hooks["ai_skill_invoke.heg_hengjiang"]=sgs.ai_skill_invoke["heg_hengjiang"]
-prior_extra_hooks["ai_skill_invoke.heg_huaiyuan"]=sgs.ai_skill_invoke["heg_huaiyuan"]
-prior_extra_hooks["ai_skill_invoke.heg_jianzhi"]=sgs.ai_skill_invoke["heg_jianzhi"]
-prior_extra_hooks["ai_skill_invoke.heg_jinxian"]=sgs.ai_skill_invoke["heg_jinxian"]
-prior_extra_hooks["ai_skill_invoke.heg_juejue"]=sgs.ai_skill_invoke["heg_juejue"]
-prior_extra_hooks["ai_skill_invoke.heg_jujian"]=sgs.ai_skill_invoke["heg_jujian"]
-prior_extra_hooks["ai_skill_invoke.heg_jushou"]=sgs.ai_skill_invoke["heg_jushou"]
-prior_extra_hooks["ai_skill_invoke.heg_liangfan"]=sgs.ai_skill_invoke["heg_liangfan"]
-prior_extra_hooks["ai_skill_invoke.heg_luanchang"]=sgs.ai_skill_invoke["heg_luanchang"]
-prior_extra_hooks["ai_skill_invoke.heg_mobile_bushi"]=sgs.ai_skill_invoke["heg_mobile_bushi"]
-prior_extra_hooks["ai_skill_invoke.heg_mobile_jiancai"]=sgs.ai_skill_invoke["heg_mobile_jiancai"]
-prior_extra_hooks["ai_skill_invoke.heg_mobile_kuangfu"]=sgs.ai_skill_invoke["heg_mobile_kuangfu"]
-prior_extra_hooks["ai_skill_invoke.heg_mobile_suishi"]=sgs.ai_skill_invoke["heg_mobile_suishi"]
-prior_extra_hooks["ai_skill_invoke.heg_mobile_tanfeng"]=sgs.ai_skill_invoke["heg_mobile_tanfeng"]
-prior_extra_hooks["ai_skill_invoke.heg_mobile_yaowu"]=sgs.ai_skill_invoke["heg_mobile_yaowu"]
-prior_extra_hooks["ai_skill_invoke.heg_mobile_zhuwei"]=sgs.ai_skill_invoke["heg_mobile_zhuwei"]
-prior_extra_hooks["ai_skill_invoke.heg_nos_lixia"]=sgs.ai_skill_invoke["heg_nos_lixia"]
-prior_extra_hooks["ai_skill_invoke.heg_ol_liegong"]=sgs.ai_skill_invoke["heg_ol_liegong"]
-prior_extra_hooks["ai_skill_invoke.heg_ov_jiansu"]=sgs.ai_skill_invoke["heg_ov_jiansu"]
-prior_extra_hooks["ai_skill_invoke.heg_ov_shigong_gain"]=sgs.ai_skill_invoke["heg_ov_shigong_gain"]
-prior_extra_hooks["ai_skill_invoke.heg_ov_zhenxi"]=sgs.ai_skill_invoke["heg_ov_zhenxi"]
-prior_extra_hooks["ai_skill_invoke.heg_ov_zhuidu"]=sgs.ai_skill_invoke["heg_ov_zhuidu"]
-prior_extra_hooks["ai_skill_invoke.heg_pojing"]=sgs.ai_skill_invoke["heg_pojing"]
-prior_extra_hooks["ai_skill_invoke.heg_qiance"]=sgs.ai_skill_invoke["heg_qiance"]
-prior_extra_hooks["ai_skill_invoke.heg_qiao"]=sgs.ai_skill_invoke["heg_qiao"]
-prior_extra_hooks["ai_skill_invoke.heg_qiuan"]=sgs.ai_skill_invoke["heg_qiuan"]
-prior_extra_hooks["ai_skill_invoke.heg_shejus"]=sgs.ai_skill_invoke["heg_shejus"]
-prior_extra_hooks["ai_skill_invoke.heg_shiren"]=sgs.ai_skill_invoke["heg_shiren"]
-prior_extra_hooks["ai_skill_invoke.heg_tenyear_anyong"]=sgs.ai_skill_invoke["heg_tenyear_anyong"]
-prior_extra_hooks["ai_skill_invoke.heg_tenyear_boyan"]=sgs.ai_skill_invoke["heg_tenyear_boyan"]
-prior_extra_hooks["ai_skill_invoke.heg_tenyear_dechao"]=sgs.ai_skill_invoke["heg_tenyear_dechao"]
-prior_extra_hooks["ai_skill_invoke.heg_tenyear_fenglue"]=sgs.ai_skill_invoke["heg_tenyear_fenglue"]
-prior_extra_hooks["ai_skill_invoke.heg_tenyear_shejian"]=sgs.ai_skill_invoke["heg_tenyear_shejian"]
-prior_extra_hooks["ai_skill_invoke.heg_tenyear_weimeng"]=sgs.ai_skill_invoke["heg_tenyear_weimeng"]
-prior_extra_hooks["ai_skill_invoke.heg_tenyear_zhuwei"]=sgs.ai_skill_invoke["heg_tenyear_zhuwei"]
-prior_extra_hooks["ai_skill_invoke.heg_tongdu"]=sgs.ai_skill_invoke["heg_tongdu"]
-prior_extra_hooks["ai_skill_invoke.heg_true_jiancai"]=sgs.ai_skill_invoke["heg_true_jiancai"]
-prior_extra_hooks["ai_skill_invoke.heg_true_jiancai_change"]=sgs.ai_skill_invoke["heg_true_jiancai_change"]
-prior_extra_hooks["ai_skill_invoke.heg_true_pozhen"]=sgs.ai_skill_invoke["heg_true_pozhen"]
-prior_extra_hooks["ai_skill_invoke.heg_wenji"]=sgs.ai_skill_invoke["heg_wenji"]
-prior_extra_hooks["ai_skill_invoke.heg_xiace"]=sgs.ai_skill_invoke["heg_xiace"]
-prior_extra_hooks["ai_skill_invoke.heg_xiongnve"]=sgs.ai_skill_invoke["heg_xiongnve"]
-prior_extra_hooks["ai_skill_invoke.heg_xishe"]=sgs.ai_skill_invoke["heg_xishe"]
-prior_extra_hooks["ai_skill_invoke.heg_yinyangyu"]=sgs.ai_skill_invoke["heg_yinyangyu"]
-prior_extra_hooks["ai_skill_invoke.heg_zhuwei"]=sgs.ai_skill_invoke["heg_zhuwei"]
-prior_extra_hooks["ai_skill_invoke.twyj_huzhu"]=sgs.ai_skill_invoke["twyj_huzhu"]
-prior_extra_hooks["ai_skill_invoke.twyj_liancai"]=sgs.ai_skill_invoke["twyj_liancai"]
+prior_extra_hooks["ai_skill_invoke.ChangeGeneral"]=ai_skill_invoke["ChangeGeneral"]
+prior_extra_hooks["ai_skill_invoke.DragonPhoenix"]=ai_skill_invoke["DragonPhoenix"]
+prior_extra_hooks["ai_skill_invoke.bf_sec_tiaodu"]=ai_skill_invoke["bf_sec_tiaodu"]
+prior_extra_hooks["ai_skill_invoke.bf_third_tiaodu"]=ai_skill_invoke["bf_third_tiaodu"]
+prior_extra_hooks["ai_skill_invoke.bf_tiaodu"]=ai_skill_invoke["bf_tiaodu"]
+prior_extra_hooks["ai_skill_invoke.bf_yuejian"]=ai_skill_invoke["bf_yuejian"]
+prior_extra_hooks["ai_skill_invoke.chenggong"]=ai_skill_invoke["chenggong"]
+prior_extra_hooks["ai_skill_invoke.guandu_fuyuan"]=ai_skill_invoke["guandu_fuyuan"]
+prior_extra_hooks["ai_skill_invoke.heg_beiluan"]=ai_skill_invoke["heg_beiluan"]
+prior_extra_hooks["ai_skill_invoke.heg_buyi"]=ai_skill_invoke["heg_buyi"]
+prior_extra_hooks["ai_skill_invoke.heg_chengliu"]=ai_skill_invoke["heg_chengliu"]
+prior_extra_hooks["ai_skill_invoke.heg_chenglue"]=ai_skill_invoke["heg_chenglue"]
+prior_extra_hooks["ai_skill_invoke.heg_duannian"]=ai_skill_invoke["heg_duannian"]
+prior_extra_hooks["ai_skill_invoke.heg_duanqiu"]=ai_skill_invoke["heg_duanqiu"]
+prior_extra_hooks["ai_skill_invoke.heg_gongxiu"]=ai_skill_invoke["heg_gongxiu"]
+prior_extra_hooks["ai_skill_invoke.heg_gongzhi"]=ai_skill_invoke["heg_gongzhi"]
+prior_extra_hooks["ai_skill_invoke.heg_hengjiang"]=ai_skill_invoke["heg_hengjiang"]
+prior_extra_hooks["ai_skill_invoke.heg_huaiyuan"]=ai_skill_invoke["heg_huaiyuan"]
+prior_extra_hooks["ai_skill_invoke.heg_jianzhi"]=ai_skill_invoke["heg_jianzhi"]
+prior_extra_hooks["ai_skill_invoke.heg_jinxian"]=ai_skill_invoke["heg_jinxian"]
+prior_extra_hooks["ai_skill_invoke.heg_juejue"]=ai_skill_invoke["heg_juejue"]
+prior_extra_hooks["ai_skill_invoke.heg_jujian"]=ai_skill_invoke["heg_jujian"]
+prior_extra_hooks["ai_skill_invoke.heg_jushou"]=ai_skill_invoke["heg_jushou"]
+prior_extra_hooks["ai_skill_invoke.heg_liangfan"]=ai_skill_invoke["heg_liangfan"]
+prior_extra_hooks["ai_skill_invoke.heg_luanchang"]=ai_skill_invoke["heg_luanchang"]
+prior_extra_hooks["ai_skill_invoke.heg_mobile_bushi"]=ai_skill_invoke["heg_mobile_bushi"]
+prior_extra_hooks["ai_skill_invoke.heg_mobile_jiancai"]=ai_skill_invoke["heg_mobile_jiancai"]
+prior_extra_hooks["ai_skill_invoke.heg_mobile_kuangfu"]=ai_skill_invoke["heg_mobile_kuangfu"]
+prior_extra_hooks["ai_skill_invoke.heg_mobile_suishi"]=ai_skill_invoke["heg_mobile_suishi"]
+prior_extra_hooks["ai_skill_invoke.heg_mobile_tanfeng"]=ai_skill_invoke["heg_mobile_tanfeng"]
+prior_extra_hooks["ai_skill_invoke.heg_mobile_yaowu"]=ai_skill_invoke["heg_mobile_yaowu"]
+prior_extra_hooks["ai_skill_invoke.heg_mobile_zhuwei"]=ai_skill_invoke["heg_mobile_zhuwei"]
+prior_extra_hooks["ai_skill_invoke.heg_nos_lixia"]=ai_skill_invoke["heg_nos_lixia"]
+prior_extra_hooks["ai_skill_invoke.heg_ol_liegong"]=ai_skill_invoke["heg_ol_liegong"]
+prior_extra_hooks["ai_skill_invoke.heg_ov_jiansu"]=ai_skill_invoke["heg_ov_jiansu"]
+prior_extra_hooks["ai_skill_invoke.heg_ov_shigong_gain"]=ai_skill_invoke["heg_ov_shigong_gain"]
+prior_extra_hooks["ai_skill_invoke.heg_ov_zhenxi"]=ai_skill_invoke["heg_ov_zhenxi"]
+prior_extra_hooks["ai_skill_invoke.heg_ov_zhuidu"]=ai_skill_invoke["heg_ov_zhuidu"]
+prior_extra_hooks["ai_skill_invoke.heg_pojing"]=ai_skill_invoke["heg_pojing"]
+prior_extra_hooks["ai_skill_invoke.heg_qiance"]=ai_skill_invoke["heg_qiance"]
+prior_extra_hooks["ai_skill_invoke.heg_qiao"]=ai_skill_invoke["heg_qiao"]
+prior_extra_hooks["ai_skill_invoke.heg_qiuan"]=ai_skill_invoke["heg_qiuan"]
+prior_extra_hooks["ai_skill_invoke.heg_shejus"]=ai_skill_invoke["heg_shejus"]
+prior_extra_hooks["ai_skill_invoke.heg_shiren"]=ai_skill_invoke["heg_shiren"]
+prior_extra_hooks["ai_skill_invoke.heg_tenyear_anyong"]=ai_skill_invoke["heg_tenyear_anyong"]
+prior_extra_hooks["ai_skill_invoke.heg_tenyear_boyan"]=ai_skill_invoke["heg_tenyear_boyan"]
+prior_extra_hooks["ai_skill_invoke.heg_tenyear_dechao"]=ai_skill_invoke["heg_tenyear_dechao"]
+prior_extra_hooks["ai_skill_invoke.heg_tenyear_fenglue"]=ai_skill_invoke["heg_tenyear_fenglue"]
+prior_extra_hooks["ai_skill_invoke.heg_tenyear_shejian"]=ai_skill_invoke["heg_tenyear_shejian"]
+prior_extra_hooks["ai_skill_invoke.heg_tenyear_weimeng"]=ai_skill_invoke["heg_tenyear_weimeng"]
+prior_extra_hooks["ai_skill_invoke.heg_tenyear_zhuwei"]=ai_skill_invoke["heg_tenyear_zhuwei"]
+prior_extra_hooks["ai_skill_invoke.heg_tongdu"]=ai_skill_invoke["heg_tongdu"]
+prior_extra_hooks["ai_skill_invoke.heg_true_jiancai"]=ai_skill_invoke["heg_true_jiancai"]
+prior_extra_hooks["ai_skill_invoke.heg_true_jiancai_change"]=ai_skill_invoke["heg_true_jiancai_change"]
+prior_extra_hooks["ai_skill_invoke.heg_true_pozhen"]=ai_skill_invoke["heg_true_pozhen"]
+prior_extra_hooks["ai_skill_invoke.heg_wenji"]=ai_skill_invoke["heg_wenji"]
+prior_extra_hooks["ai_skill_invoke.heg_xiace"]=ai_skill_invoke["heg_xiace"]
+prior_extra_hooks["ai_skill_invoke.heg_xiongnve"]=ai_skill_invoke["heg_xiongnve"]
+prior_extra_hooks["ai_skill_invoke.heg_xishe"]=ai_skill_invoke["heg_xishe"]
+prior_extra_hooks["ai_skill_invoke.heg_yinyangyu"]=ai_skill_invoke["heg_yinyangyu"]
+prior_extra_hooks["ai_skill_invoke.heg_zhuwei"]=ai_skill_invoke["heg_zhuwei"]
+prior_extra_hooks["ai_skill_invoke.twyj_huzhu"]=ai_skill_invoke["twyj_huzhu"]
+prior_extra_hooks["ai_skill_invoke.twyj_liancai"]=ai_skill_invoke["twyj_liancai"]
 prior_extra_hooks["ai_skill_playerchosen.bf_nos_tiaodu"]=sgs.ai_skill_playerchosen["bf_nos_tiaodu"]
 prior_extra_hooks["ai_skill_playerchosen.bf_sec_tiaodu"]=sgs.ai_skill_playerchosen["bf_sec_tiaodu"]
 prior_extra_hooks["ai_skill_playerchosen.bf_third_tiaodu"]=sgs.ai_skill_playerchosen["bf_third_tiaodu"]
@@ -338,94 +337,75 @@ prior_extra_hooks["ai_skill_playerschosen.heg_tenyear_jianliang"]=sgs.ai_skill_p
 prior_extra_hooks["ai_skill_playerschosen.heg_xunjim"]=sgs.ai_skill_playerschosen["heg_xunjim"]
 prior_extra_hooks["ai_skill_playerschosen.heg_yingshi_target"]=sgs.ai_skill_playerschosen["heg_yingshi_target"]
 prior_extra_hooks["ai_skill_playerschosen.heg_zhuihuan"]=sgs.ai_skill_playerschosen["heg_zhuihuan"]
-prior_extra_hooks["ai_skill_use.@@bf_yongjin!"]=sgs.ai_skill_use["@@bf_yongjin!"]
-prior_extra_typed_uses["@@bf_yongjin!"]=ai_skill_use["@@bf_yongjin!"]
-prior_extra_hooks["ai_skill_use.@@command6!"]=sgs.ai_skill_use["@@command6!"]
-prior_extra_typed_uses["@@command6!"]=ai_skill_use["@@command6!"]
-prior_extra_hooks["ai_skill_use.@@heg_chengliu"]=sgs.ai_skill_use["@@heg_chengliu"]
-prior_extra_typed_uses["@@heg_chengliu"]=ai_skill_use["@@heg_chengliu"]
-prior_extra_hooks["ai_skill_use.@@heg_fk_bushi"]=sgs.ai_skill_use["@@heg_fk_bushi"]
-prior_extra_typed_uses["@@heg_fk_bushi"]=ai_skill_use["@@heg_fk_bushi"]
-prior_extra_hooks["ai_skill_use.@@heg_huyuan"]=sgs.ai_skill_use["@@heg_huyuan"]
-prior_extra_typed_uses["@@heg_huyuan"]=ai_skill_use["@@heg_huyuan"]
-prior_extra_hooks["ai_skill_use.@@heg_jiantong"]=sgs.ai_skill_use["@@heg_jiantong"]
-prior_extra_typed_uses["@@heg_jiantong"]=ai_skill_use["@@heg_jiantong"]
-prior_extra_hooks["ai_skill_use.@@heg_keshou"]=sgs.ai_skill_use["@@heg_keshou"]
-prior_extra_typed_uses["@@heg_keshou"]=ai_skill_use["@@heg_keshou"]
-prior_extra_hooks["ai_skill_use.@@heg_mobile_keshou"]=sgs.ai_skill_use["@@heg_mobile_keshou"]
-prior_extra_typed_uses["@@heg_mobile_keshou"]=ai_skill_use["@@heg_mobile_keshou"]
-prior_extra_hooks["ai_skill_use.@@heg_ov_jiansu"]=sgs.ai_skill_use["@@heg_ov_jiansu"]
-prior_extra_typed_uses["@@heg_ov_jiansu"]=ai_skill_use["@@heg_ov_jiansu"]
-prior_extra_hooks["ai_skill_use.@@heg_pozhu"]=sgs.ai_skill_use["@@heg_pozhu"]
-prior_extra_typed_uses["@@heg_pozhu"]=ai_skill_use["@@heg_pozhu"]
-prior_extra_hooks["ai_skill_use.@@heg_shensu1"]=sgs.ai_skill_use["@@heg_shensu1"]
-prior_extra_typed_uses["@@heg_shensu1"]=ai_skill_use["@@heg_shensu1"]
-prior_extra_hooks["ai_skill_use.@@heg_shensu2"]=sgs.ai_skill_use["@@heg_shensu2"]
-prior_extra_typed_uses["@@heg_shensu2"]=ai_skill_use["@@heg_shensu2"]
-prior_extra_hooks["ai_skill_use.@@heg_shensu3"]=sgs.ai_skill_use["@@heg_shensu3"]
-prior_extra_typed_uses["@@heg_shensu3"]=ai_skill_use["@@heg_shensu3"]
-prior_extra_hooks["ai_skill_use.@@heg_tianxiang"]=sgs.ai_skill_use["@@heg_tianxiang"]
-prior_extra_typed_uses["@@heg_tianxiang"]=ai_skill_use["@@heg_tianxiang"]
-prior_extra_hooks["ai_skill_use.@@heg_yanxi"]=sgs.ai_skill_use["@@heg_yanxi"]
-prior_extra_typed_uses["@@heg_yanxi"]=ai_skill_use["@@heg_yanxi"]
-prior_extra_hooks["ai_skill_use.@@heg_zhengbi"]=sgs.ai_skill_use["@@heg_zhengbi"]
-prior_extra_typed_uses["@@heg_zhengbi"]=ai_skill_use["@@heg_zhengbi"]
-prior_extra_hooks["ai_skill_use.@@twyj_rangyi"]=sgs.ai_skill_use["@@twyj_rangyi"]
-prior_extra_typed_uses["@@twyj_rangyi"]=ai_skill_use["@@twyj_rangyi"]
-prior_extra_hooks["ai_skill_use.@@zhengbidiscard!"]=sgs.ai_skill_use["@@zhengbidiscard!"]
-prior_extra_typed_uses["@@zhengbidiscard!"]=ai_skill_use["@@zhengbidiscard!"]
-prior_extra_hooks["ai_skill_use.@heg_mouduan"]=sgs.ai_skill_use["@heg_mouduan"]
-prior_extra_typed_uses["@heg_mouduan"]=ai_skill_use["@heg_mouduan"]
-prior_extra_hooks["ai_skill_use_func.#bf_nos_tiaodu"]=sgs.ai_skill_use_func["#bf_nos_tiaodu"]
-prior_extra_hooks["ai_skill_use_func.#bf_qice"]=sgs.ai_skill_use_func["#bf_qice"]
-prior_extra_hooks["ai_skill_use_func.#bf_xiongsuan"]=sgs.ai_skill_use_func["#bf_xiongsuan"]
-prior_extra_hooks["ai_skill_use_func.#bf_yongjin"]=sgs.ai_skill_use_func["#bf_yongjin"]
-prior_extra_hooks["ai_skill_use_func.#gd_zezhu"]=sgs.ai_skill_use_func["#gd_zezhu"]
-prior_extra_hooks["ai_skill_use_func.#guandu_shicai"]=sgs.ai_skill_use_func["#guandu_shicai"]
-prior_extra_hooks["ai_skill_use_func.#guandu_yuanlue"]=sgs.ai_skill_use_func["#guandu_yuanlue"]
-prior_extra_hooks["ai_skill_use_func.#heg_chengliu"]=sgs.ai_skill_use_func["#heg_chengliu"]
-prior_extra_hooks["ai_skill_use_func.#heg_duanxie"]=sgs.ai_skill_use_func["#heg_duanxie"]
-prior_extra_hooks["ai_skill_use_func.#heg_duwu"]=sgs.ai_skill_use_func["#heg_duwu"]
-prior_extra_hooks["ai_skill_use_func.#heg_guikuang"]=sgs.ai_skill_use_func["#heg_guikuang"]
-prior_extra_hooks["ai_skill_use_func.#heg_huaiyi"]=sgs.ai_skill_use_func["#heg_huaiyi"]
-prior_extra_hooks["ai_skill_use_func.#heg_jianglue"]=sgs.ai_skill_use_func["#heg_jianglue"]
-prior_extra_hooks["ai_skill_use_func.#heg_jiaping_Attach"]=sgs.ai_skill_use_func["#heg_jiaping_Attach"]
-prior_extra_hooks["ai_skill_use_func.#heg_jinfa"]=sgs.ai_skill_use_func["#heg_jinfa"]
-prior_extra_hooks["ai_skill_use_func.#heg_jinghe"]=sgs.ai_skill_use_func["#heg_jinghe"]
-prior_extra_hooks["ai_skill_use_func.#heg_kurou"]=sgs.ai_skill_use_func["#heg_kurou"]
-prior_extra_hooks["ai_skill_use_func.#heg_lord_huibian"]=sgs.ai_skill_use_func["#heg_lord_huibian"]
-prior_extra_hooks["ai_skill_use_func.#heg_lord_jiahe_Attach"]=sgs.ai_skill_use_func["#heg_lord_jiahe_Attach"]
-prior_extra_hooks["ai_skill_use_func.#heg_lord_lianzi"]=sgs.ai_skill_use_func["#heg_lord_lianzi"]
-prior_extra_hooks["ai_skill_use_func.#heg_lord_wendao"]=sgs.ai_skill_use_func["#heg_lord_wendao"]
-prior_extra_hooks["ai_skill_use_func.#heg_mobile_paiyi"]=sgs.ai_skill_use_func["#heg_mobile_paiyi"]
-prior_extra_hooks["ai_skill_use_func.#heg_nos_huaiyi"]=sgs.ai_skill_use_func["#heg_nos_huaiyi"]
-prior_extra_hooks["ai_skill_use_func.#heg_ov_hongyuan"]=sgs.ai_skill_use_func["#heg_ov_hongyuan"]
-prior_extra_hooks["ai_skill_use_func.#heg_paiyi"]=sgs.ai_skill_use_func["#heg_paiyi"]
-prior_extra_hooks["ai_skill_use_func.#heg_pojing"]=sgs.ai_skill_use_func["#heg_pojing"]
-prior_extra_hooks["ai_skill_use_func.#heg_qiangxi"]=sgs.ai_skill_use_func["#heg_qiangxi"]
-prior_extra_hooks["ai_skill_use_func.#heg_qingyin"]=sgs.ai_skill_use_func["#heg_qingyin"]
-prior_extra_hooks["ai_skill_use_func.#heg_quanjin"]=sgs.ai_skill_use_func["#heg_quanjin"]
-prior_extra_hooks["ai_skill_use_func.#heg_ruilve"]=sgs.ai_skill_use_func["#heg_ruilve"]
-prior_extra_hooks["ai_skill_use_func.#heg_sanchen"]=sgs.ai_skill_use_func["#heg_sanchen"]
-prior_extra_hooks["ai_skill_use_func.#heg_shunfu"]=sgs.ai_skill_use_func["#heg_shunfu"]
-prior_extra_hooks["ai_skill_use_func.#heg_six_swords_Skill"]=sgs.ai_skill_use_func["#heg_six_swords_Skill"]
-prior_extra_hooks["ai_skill_use_func.#heg_tenyear_boyan"]=sgs.ai_skill_use_func["#heg_tenyear_boyan"]
-prior_extra_hooks["ai_skill_use_func.#heg_tenyear_fenglue"]=sgs.ai_skill_use_func["#heg_tenyear_fenglue"]
-prior_extra_hooks["ai_skill_use_func.#heg_tenyear_mingfa"]=sgs.ai_skill_use_func["#heg_tenyear_mingfa"]
-prior_extra_hooks["ai_skill_use_func.#heg_tenyear_weimeng"]=sgs.ai_skill_use_func["#heg_tenyear_weimeng"]
-prior_extra_hooks["ai_skill_use_func.#heg_transfer"]=sgs.ai_skill_use_func["#heg_transfer"]
-prior_extra_hooks["ai_skill_use_func.#heg_weidi"]=sgs.ai_skill_use_func["#heg_weidi"]
-prior_extra_hooks["ai_skill_use_func.#heg_xianqu"]=sgs.ai_skill_use_func["#heg_xianqu"]
-prior_extra_hooks["ai_skill_use_func.#heg_xiejian"]=sgs.ai_skill_use_func["#heg_xiejian"]
-prior_extra_hooks["ai_skill_use_func.#heg_xuanhuo"]=sgs.ai_skill_use_func["#heg_xuanhuo"]
-prior_extra_hooks["ai_skill_use_func.#heg_yinyangyu"]=sgs.ai_skill_use_func["#heg_yinyangyu"]
-prior_extra_hooks["ai_skill_use_func.#heg_zaoyun"]=sgs.ai_skill_use_func["#heg_zaoyun"]
-prior_extra_hooks["ai_skill_use_func.#heg_zhuangrong"]=sgs.ai_skill_use_func["#heg_zhuangrong"]
-prior_extra_hooks["ai_skill_use_func.#twyj_huzhu"]=sgs.ai_skill_use_func["#twyj_huzhu"]
-prior_extra_hooks["ai_skill_use_func.#twyj_qijia"]=sgs.ai_skill_use_func["#twyj_qijia"]
-prior_extra_hooks["ai_skill_use_func.#twyj_rangyi"]=sgs.ai_skill_use_func["#twyj_rangyi"]
-prior_extra_hooks["ai_skill_use_func.#twyj_zhuchen"]=sgs.ai_skill_use_func["#twyj_zhuchen"]
-prior_extra_hooks["ai_skill_use_func.heg_zhiheng"]=sgs.ai_skill_use_func["heg_zhiheng"]
+prior_extra_hooks["ai_skill_use.@@bf_yongjin!"]=ai_skill_use["@@bf_yongjin!"]
+prior_extra_hooks["ai_skill_use.@@command6!"]=ai_skill_use["@@command6!"]
+prior_extra_hooks["ai_skill_use.@@heg_chengliu"]=ai_skill_use["@@heg_chengliu"]
+prior_extra_hooks["ai_skill_use.@@heg_fk_bushi"]=ai_skill_use["@@heg_fk_bushi"]
+prior_extra_hooks["ai_skill_use.@@heg_huyuan"]=ai_skill_use["@@heg_huyuan"]
+prior_extra_hooks["ai_skill_use.@@heg_jiantong"]=ai_skill_use["@@heg_jiantong"]
+prior_extra_hooks["ai_skill_use.@@heg_keshou"]=ai_skill_use["@@heg_keshou"]
+prior_extra_hooks["ai_skill_use.@@heg_mobile_keshou"]=ai_skill_use["@@heg_mobile_keshou"]
+prior_extra_hooks["ai_skill_use.@@heg_ov_jiansu"]=ai_skill_use["@@heg_ov_jiansu"]
+prior_extra_hooks["ai_skill_use.@@heg_pozhu"]=ai_skill_use["@@heg_pozhu"]
+prior_extra_hooks["ai_skill_use.@@heg_shensu1"]=ai_skill_use["@@heg_shensu1"]
+prior_extra_hooks["ai_skill_use.@@heg_shensu2"]=ai_skill_use["@@heg_shensu2"]
+prior_extra_hooks["ai_skill_use.@@heg_shensu3"]=ai_skill_use["@@heg_shensu3"]
+prior_extra_hooks["ai_skill_use.@@heg_tianxiang"]=ai_skill_use["@@heg_tianxiang"]
+prior_extra_hooks["ai_skill_use.@@heg_yanxi"]=ai_skill_use["@@heg_yanxi"]
+prior_extra_hooks["ai_skill_use.@@heg_zhengbi"]=ai_skill_use["@@heg_zhengbi"]
+prior_extra_hooks["ai_skill_use.@@twyj_rangyi"]=ai_skill_use["@@twyj_rangyi"]
+prior_extra_hooks["ai_skill_use.@@zhengbidiscard!"]=ai_skill_use["@@zhengbidiscard!"]
+prior_extra_hooks["ai_skill_use.@heg_mouduan"]=ai_skill_use["@heg_mouduan"]
+prior_extra_hooks["ai_card_use.#bf_nos_tiaodu"]=ai_card_use["#bf_nos_tiaodu"]
+prior_extra_hooks["ai_card_use.#bf_qice"]=ai_card_use["#bf_qice"]
+prior_extra_hooks["ai_card_use.#bf_xiongsuan"]=ai_card_use["#bf_xiongsuan"]
+prior_extra_hooks["ai_card_use.#bf_yongjin"]=ai_card_use["#bf_yongjin"]
+prior_extra_hooks["ai_card_use.#gd_zezhu"]=ai_card_use["#gd_zezhu"]
+prior_extra_hooks["ai_card_use.#guandu_shicai"]=ai_card_use["#guandu_shicai"]
+prior_extra_hooks["ai_card_use.#guandu_yuanlue"]=ai_card_use["#guandu_yuanlue"]
+prior_extra_hooks["ai_card_use.#heg_chengliu"]=ai_card_use["#heg_chengliu"]
+prior_extra_hooks["ai_card_use.#heg_duanxie"]=ai_card_use["#heg_duanxie"]
+prior_extra_hooks["ai_card_use.#heg_duwu"]=ai_card_use["#heg_duwu"]
+prior_extra_hooks["ai_card_use.#heg_guikuang"]=ai_card_use["#heg_guikuang"]
+prior_extra_hooks["ai_card_use.#heg_huaiyi"]=ai_card_use["#heg_huaiyi"]
+prior_extra_hooks["ai_card_use.#heg_jianglue"]=ai_card_use["#heg_jianglue"]
+prior_extra_hooks["ai_card_use.#heg_jiaping_Attach"]=ai_card_use["#heg_jiaping_Attach"]
+prior_extra_hooks["ai_card_use.#heg_jinfa"]=ai_card_use["#heg_jinfa"]
+prior_extra_hooks["ai_card_use.#heg_jinghe"]=ai_card_use["#heg_jinghe"]
+prior_extra_hooks["ai_card_use.#heg_kurou"]=ai_card_use["#heg_kurou"]
+prior_extra_hooks["ai_card_use.#heg_lord_huibian"]=ai_card_use["#heg_lord_huibian"]
+prior_extra_hooks["ai_card_use.#heg_lord_jiahe_Attach"]=ai_card_use["#heg_lord_jiahe_Attach"]
+prior_extra_hooks["ai_card_use.#heg_lord_lianzi"]=ai_card_use["#heg_lord_lianzi"]
+prior_extra_hooks["ai_card_use.#heg_lord_wendao"]=ai_card_use["#heg_lord_wendao"]
+prior_extra_hooks["ai_card_use.#heg_mobile_paiyi"]=ai_card_use["#heg_mobile_paiyi"]
+prior_extra_hooks["ai_card_use.#heg_nos_huaiyi"]=ai_card_use["#heg_nos_huaiyi"]
+prior_extra_hooks["ai_card_use.#heg_ov_hongyuan"]=ai_card_use["#heg_ov_hongyuan"]
+prior_extra_hooks["ai_card_use.#heg_paiyi"]=ai_card_use["#heg_paiyi"]
+prior_extra_hooks["ai_card_use.#heg_pojing"]=ai_card_use["#heg_pojing"]
+prior_extra_hooks["ai_card_use.#heg_qiangxi"]=ai_card_use["#heg_qiangxi"]
+prior_extra_hooks["ai_card_use.#heg_qingyin"]=ai_card_use["#heg_qingyin"]
+prior_extra_hooks["ai_card_use.#heg_quanjin"]=ai_card_use["#heg_quanjin"]
+prior_extra_hooks["ai_card_use.#heg_ruilve"]=ai_card_use["#heg_ruilve"]
+prior_extra_hooks["ai_card_use.#heg_sanchen"]=ai_card_use["#heg_sanchen"]
+prior_extra_hooks["ai_card_use.#heg_shunfu"]=ai_card_use["#heg_shunfu"]
+prior_extra_hooks["ai_card_use.#heg_six_swords_Skill"]=ai_card_use["#heg_six_swords_Skill"]
+prior_extra_hooks["ai_card_use.#heg_tenyear_boyan"]=ai_card_use["#heg_tenyear_boyan"]
+prior_extra_hooks["ai_card_use.#heg_tenyear_fenglue"]=ai_card_use["#heg_tenyear_fenglue"]
+prior_extra_hooks["ai_card_use.#heg_tenyear_mingfa"]=ai_card_use["#heg_tenyear_mingfa"]
+prior_extra_hooks["ai_card_use.#heg_tenyear_weimeng"]=ai_card_use["#heg_tenyear_weimeng"]
+prior_extra_hooks["ai_card_use.#heg_transfer"]=ai_card_use["#heg_transfer"]
+prior_extra_hooks["ai_card_use.#heg_weidi"]=ai_card_use["#heg_weidi"]
+prior_extra_hooks["ai_card_use.#heg_xianqu"]=ai_card_use["#heg_xianqu"]
+prior_extra_hooks["ai_card_use.#heg_xiejian"]=ai_card_use["#heg_xiejian"]
+prior_extra_hooks["ai_card_use.#heg_xuanhuo"]=ai_card_use["#heg_xuanhuo"]
+prior_extra_hooks["ai_card_use.#heg_yinyangyu"]=ai_card_use["#heg_yinyangyu"]
+prior_extra_hooks["ai_card_use.#heg_zaoyun"]=ai_card_use["#heg_zaoyun"]
+prior_extra_hooks["ai_card_use.#heg_zhuangrong"]=ai_card_use["#heg_zhuangrong"]
+prior_extra_hooks["ai_card_use.#twyj_huzhu"]=ai_card_use["#twyj_huzhu"]
+prior_extra_hooks["ai_card_use.#twyj_qijia"]=ai_card_use["#twyj_qijia"]
+prior_extra_hooks["ai_card_use.#twyj_rangyi"]=ai_card_use["#twyj_rangyi"]
+prior_extra_hooks["ai_card_use.#twyj_zhuchen"]=ai_card_use["#twyj_zhuchen"]
+prior_extra_hooks["ai_card_use.heg_zhiheng"]=ai_card_use["heg_zhiheng"]
 prior_extra_hooks["ai_target_revises.heg_kongcheng"]=sgs.ai_target_revises["heg_kongcheng"]
 prior_extra_hooks["ai_target_revises.heg_mobile_qianxun"]=sgs.ai_target_revises["heg_mobile_qianxun"]
 prior_extra_hooks["ai_use_revises.heg_paoxiao"]=sgs.ai_use_revises["heg_paoxiao"]
@@ -453,11 +433,9 @@ local accepted_congjian_to=sgs.ai_ajustdamage_to.heg_congjian
 -- capability interrupts only the exercised branch; it never becomes false/pass.
 local package_skills={}
 local function addAiSkills(name)local skill={name=name};package_skills[#package_skills+1]=skill;return skill end
--- Source legacy callbacks are collected before choosing the existing ABI slot.
--- Existing Original typed callbacks are never registered into the other ABI.
-local source_use_registry=setmetatable({},{__index=function(_,key)
- return sgs.ai_skill_use[key]or ai_skill_use[key]
-end})
+-- Keep source-local calls and prior Original providers on the native use ABI.
+local native_use_registry=ai_skill_use
+local ai_skill_use=setmetatable({},{__index=native_use_registry})
 local current_ai,current_key,current_request
 local previews=setmetatable({},{__mode='k'})
 local constructed=setmetatable({},{__mode='k'})
@@ -470,9 +448,8 @@ local function disclosed(id)
 end
 local function source_printed(id)return source_query(owner(),'getPrintedCardById',id)end
 local function request_view(self,request)
- request=request or current_request
- if request and type(request.getActivationSkillName)~='function'then return AILegacyRequest.new(request,self.room)end
- return request
+ -- Native fill and use callbacks retain the issued pure-value identity.
+ return request or current_request
 end
 local function aggregate(costs,suit,number)
  if suit==sgs.Card_NoSuit or suit==sgs.Card_SuitToBeDecided then
@@ -567,8 +544,7 @@ local function history_available(self,c,n)return source_query(source_query(self,
 local function source_global(self,name,...)
  ai_unsupported('Room-VM global presence is not projected','extra.'..name)
 end
--- R29 finite constructor pairs. A source class is not an activation alias;
--- both fill and use_func consume the actual request forwarded by decision-core.
+-- A source class is not an activation alias; fill and use_func forward the actual request.
 local extra29_prototypes={gd_zezhu='#gd_zezhu',guandu_shicai='#guandu_shicai',
  guandu_yuanlue='#guandu_yuanlue',twyj_huzhu='#twyj_huzhu',
  twyj_qijia='#twyj_qijia',twyj_rangyi='#twyj_rangyi',twyj_zhuchen='#twyj_zhuchen'}
@@ -577,7 +553,7 @@ local function source_activation(self,class)
  local expected=extra29_classes[class]
  if expected then
   local request=known(request_view(self),'extra source activation request')
-  local skill=source_query(request,'getActivationSkillName')
+  local skill=known(type(request.skill_action)=='table'and request.skill_action.activation_skill,'extra native activation skill')
   if skill~=expected then ai_unsupported('source prototype does not match actual activation',class)end
   -- evaluateTurnSkillCard separately validates all six source identity fields
   -- against the issued scope. Preserve the request rather than synthesizing one.
@@ -680,7 +656,9 @@ local function extra_alias(row)ai_audited_aliases.register(row)end
 local guandu_shicai_skill = {}
 guandu_shicai_skill.name = "guandu_shicai"
 table.insert(package_skills, guandu_shicai_skill)
-guandu_shicai_skill.getTurnUseCard = function(self,inclusive,request)
+guandu_shicai_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	for _, c in sgs.qlist(self.player:getHandcards()) do
 		if source_query(c,"hasFlag","guandu_shicai") then return end
 	end
@@ -691,7 +669,7 @@ guandu_shicai_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#guandu_shicai"] = function(card,use,self,request)
+ai_card_use["#guandu_shicai"] = function(self,card,use,request)
 	local usable_cards = AIList.new(self.player:getCards("he"))
 	source_query(self, 'sortByUseValueInPlace', usable_cards)
 	local use_card = {}
@@ -714,7 +692,9 @@ sgs.ai_card_priority.guandu_shicai = function(self,card,v)
 	then return 10 end
 end
 
-sgs.ai_skill_invoke["chenggong"] = function(self, data)
+ai_skill_invoke["chenggong"] = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target_name = source_query(data,"toString"):split(":")[2]
 	local target = nil
 	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
@@ -722,7 +702,7 @@ sgs.ai_skill_invoke["chenggong"] = function(self, data)
 			target = p
 		end
 	end
-	return target and source_query(self,"isFriend",target)
+	return (target and source_query(self,"isFriend",target)) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke["chenggong"] = function(self, player, promptlist)
@@ -740,13 +720,15 @@ end
 local gd_zezhu_skill = {}
 gd_zezhu_skill.name = "gd_zezhu"
 table.insert(package_skills, gd_zezhu_skill)
-gd_zezhu_skill.getTurnUseCard = function(self,inclusive,request)
+gd_zezhu_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if not self.player:getStrategyHasUsed("#gd_zezhu") then
 		return parse_source("#gd_zezhu:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#gd_zezhu"] = function(card,use,self,request)
+ai_card_use["#gd_zezhu"] = function(self,card,use,request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.enemies, "defense")
 	local targets = {}
@@ -793,13 +775,15 @@ sgs.ai_skill_cardask["@gd_zezhu-give"] = function(self, data, pattern, target, t
 	end
 end
 
-sgs.ai_skill_invoke.guandu_hengjiang = sgs.ai_skill_invoke.hengjiang
+if ai_skill_invoke.hengjiang~=nil then ai_skill_invoke.guandu_hengjiang=ai_skill_invoke.hengjiang end
 sgs.ai_choicemade_filter.skillInvoke.guandu_hengjiang = sgs.ai_choicemade_filter.skillInvoke.hengjiang
 
 local guandu_yuanlue_skill = {}
 guandu_yuanlue_skill.name = "guandu_yuanlue"
 table.insert(package_skills, guandu_yuanlue_skill)
-guandu_yuanlue_skill.getTurnUseCard = function(self,inclusive,request)
+guandu_yuanlue_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self.player:isNude() or #self.enemies == 0 or #self.friends_noself == 0 then return end
 	local card_id
 	local cards = self.player:getCards("he")
@@ -818,7 +802,7 @@ guandu_yuanlue_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#guandu_yuanlue"] = function(card,use,self,request)
+ai_card_use["#guandu_yuanlue"] = function(self,card,use,request)
     if not self.player:isNude() then
         source_query(self, 'sortInPlace', self.friends_noself)
 		for _, friend in ipairs(self.friends_noself) do
@@ -835,14 +819,16 @@ end
 sgs.ai_use_value.guandu_yuanlue = 8.5
 sgs.ai_use_priority.guandu_yuanlue = 9.5
 sgs.ai_card_intention.guandu_yuanlue = -80
-sgs.ai_skill_invoke.guandu_fuyuan = function(self, data)
+ai_skill_invoke.guandu_fuyuan = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
     local current = self.room:getCurrent()
     if current then
         if source_query(current,"getHandcardNum") <= self.player:getHandcardNum() then
-            return source_query(self,"canDraw",current,self.player) and source_query(self,"isFriend",current)
+            return (source_query(self,"canDraw",current,self.player) and source_query(self,"isFriend",current)) or false 
         end
     end
-    return true
+    return (true) or false 
 end
 sgs.ai_choicemade_filter.skillInvoke.guandu_fuyuan = function(self, player, promptlist)
     local current = self.room:getCurrent()
@@ -891,14 +877,15 @@ sgs.ai_choicemade_filter.cardResponded["@guandu_jieliang"] = function(self, play
 		source_call(self,"updateIntention",false,player,current,80)
 	end
 end
-sgs.ai_skill_invoke.guandu_jieliang = true
+ai_skill_invoke.guandu_jieliang = true
 
 
 function SmartAIView:useCardYuanjun(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	source_query(self, 'sortInPlace', self.friends, "hp")
 	local extraTarget = 1 + source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-	for _,ep in sgs.list(self.friends_noself)do do 
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.friends_noself, recommend))do do
 		if isCurrent(use,ep) then goto package_continue_1 end
 		if source_query(self.player,"canUse",card,ep) then
 	    	use.card = card
@@ -908,6 +895,7 @@ function SmartAIView:useCardYuanjun(card,use)
 		end
 	end ::package_continue_1:: end
 end
+sgs.registerSkillCardType("Yuanjun", "recover")
 sgs.ai_use_priority.Yuanjun = 2.4
 sgs.ai_keep_value.Yuanjun = 2.2
 sgs.ai_use_value.Yuanjun = 4.7
@@ -916,10 +904,11 @@ sgs.ai_card_intention.Yuanjun = -33
 
 
 function SmartAIView:useCardTunliang(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	source_query(self, 'sortInPlace', self.friends, "hp")
 	local extraTarget = 2 + source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-	for _,ep in sgs.list(self.friends)do do 
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.friends, recommend))do do
 		if isCurrent(use,ep) then goto package_continue_2 end
 		if source_query(self.player,"canUse",card,ep) and source_query(self,"canDraw",ep,self.player) then
 	    	use.card = card
@@ -929,6 +918,7 @@ function SmartAIView:useCardTunliang(card,use)
 		end
 	end ::package_continue_2:: end
 end
+sgs.registerSkillCardType("Tunliang", "draw")
 sgs.ai_use_priority.Tunliang = 2.4
 sgs.ai_keep_value.Tunliang = 2.2
 sgs.ai_use_value.Tunliang = 4.7
@@ -937,11 +927,12 @@ sgs.ai_card_intention.Tunliang = -33
 
 
 function SmartAIView:useCardXujiu(card,use)
+    local recommend = self:targetRecommendScorer(card)
 	local extraTarget = source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	if source_query(card,"subcardsLength")+self:getOverflow()>1 and not(source_query(self.player,"hasEquip",card) or self:isWeak() or self:hasLoseHandcardEffective())
 	or source_query(card,"getEffectiveId")>=0 and source_call(self.room,"getCardOwner",false,source_query(card,"getEffectiveId"))~=self.player then
-		for _, enemy in ipairs(self.enemies) do
+		for _, enemy in ipairs(self:orderTargetsByRecommend(self.enemies, recommend)) do
 			if source_can_to(card,self.player,enemy) then
 				use.card = card
 				if use.to then
@@ -966,7 +957,7 @@ function SmartAIView:useCardXujiu(card,use)
 		end ::package_continue_3:: end
 		if #cs<1 then return end
 		for i,d in ipairs(cs)do
-			for _,to in sgs.qlist(d.to)do do 
+			for _,to in sgs.qlist(self:orderTargetsByRecommend(d.to, recommend))do do
 				if source_query(self,"isFriend",to)
 				or source_query(to,"getHandcardNum")>0 and self:getOverflow()<0 and source_query(to,"hasSkill","anxian")
 				or source_query(to,"hasSkills","zhenlie|mobilejxtpjinjiu")
@@ -991,6 +982,7 @@ function SmartAIView:useCardXujiu(card,use)
 		end
 	end
 end
+sgs.registerSkillCardType("Xujiu", "buff")
 
 sgs.ai_use_value.Xujiu = 5.98
 sgs.ai_keep_value.Xujiu = 2.1
@@ -1024,8 +1016,12 @@ end
 
 
 
-sgs.ai_skill_choice["yinghun_po"] = function(self, choices)
-	return self.yinghun_pochoice
+ai_skill_choice["yinghun_po"] = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+
+	return  ai_choice_result((self.yinghun_pochoice),options)
 end
 sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 	if source_query(self.player,"hasFlag","AI_doNotInvoke_yinghun") then
@@ -1242,7 +1238,9 @@ sgs.ai_getBestHp_skill.yinghun_po = function(owner)
 	return source_query(owner,"getMaxHp") - 2
 end
 
-sgs.ai_fill_skill.heg_xianqu = function(self,inclusive,request)
+ai_fill_skill.heg_xianqu = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if #self.enemies == 0 then return nil end
 	if self.player:getHandcardNum() < 4 then
 		return parse_source("#heg_xianqu:.::")
@@ -1250,7 +1248,7 @@ sgs.ai_fill_skill.heg_xianqu = function(self,inclusive,request)
 	return nil
 end
 
-sgs.ai_skill_use_func["#heg_xianqu"] = function(card,use,self,request)
+ai_card_use["#heg_xianqu"] = function(self,card,use,request)
 	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	for _,enemy in ipairs(self.enemies) do
 		if not source_query(enemy,"isKongcheng") then
@@ -1263,7 +1261,9 @@ sgs.ai_skill_use_func["#heg_xianqu"] = function(card,use,self,request)
 	end
 end
 
-sgs.ai_fill_skill.heg_yinyangyu = function(self,inclusive,request)
+ai_fill_skill.heg_yinyangyu = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self:needBear() then return nil end
 	if self:isWeak() and self:getOverflow() <= 0 then
 		return parse_source("#heg_yinyangyu:.::")
@@ -1271,21 +1271,23 @@ sgs.ai_fill_skill.heg_yinyangyu = function(self,inclusive,request)
 	return nil
 end
 
-sgs.ai_skill_use_func["#heg_yinyangyu"] = function(card,use,self,request)
+ai_card_use["#heg_yinyangyu"] = function(self,card,use,request)
 	use.card = card
 end
 
 sgs.ai_use_priority["heg_yinyangyu"] = 10
 
-sgs.ai_skill_invoke.heg_yinyangyu = function(self, data)
+ai_skill_invoke.heg_yinyangyu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	if self:getOverflow() > 1 then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 
-source_use_registry["@heg_mouduan"] = function(self, prompt, method)
+ai_skill_use["@heg_mouduan"] = function(self, prompt, request)
 	self:updatePlayers()
 	local selectset = {}
 	for _,friend in ipairs(self.friends) do
@@ -1371,7 +1373,9 @@ sgs.need_kongcheng = sgs.need_kongcheng .. "|heg_kongcheng"
 local heg_longdan_skill={}
 heg_longdan_skill.name="heg_longdan"
 table.insert(package_skills,heg_longdan_skill)
-heg_longdan_skill.getTurnUseCard=function(self,inclusive,request)
+heg_longdan_skill.getTurnUseCard=function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = self:addHandPile()
 	local jink_card
 	source_query(self, 'sortByUseValueInPlace', cards, true)
@@ -1445,19 +1449,23 @@ sgs.ai_skill_playerchosen["heg_longdan_recover"] = function(self, targets)
 	return nil
 end
 
-sgs.ai_skill_invoke.heg_jushou = function(self,data)
+ai_skill_invoke.heg_jushou = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local draw = getKingdoms(self.player)
 	if draw <= 2 then
-		return true
+		return (true) or false 
 	end
-	return sgs.ai_skill_invoke.tenyearjushou(self, data)
+	return (ai_skill_invoke.tenyearjushou(self, options, request)) or false 
 end
 
 
 heg_duanliang_skill={}
 heg_duanliang_skill.name="heg_duanliang"
 table.insert(package_skills,heg_duanliang_skill)
-heg_duanliang_skill.getTurnUseCard=function(self,inclusive,request)
+heg_duanliang_skill.getTurnUseCard=function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = self:addHandPile("he")
 	local card
 	source_query(self, 'sortByUseValueInPlace', cards, true)
@@ -1533,7 +1541,9 @@ end
 local heg_kurou_skill = {}
 heg_kurou_skill.name = "heg_kurou"
 table.insert(package_skills,heg_kurou_skill)
-heg_kurou_skill.getTurnUseCard = function(self,inclusive,request)
+heg_kurou_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if (self.player:getHp()==2 and self.player:hasSkill("chanyuan")) then return end
 	if (self.player:getHp()>3 and self.player:getHandcardNum()>self.player:getHp())
 	or (self.player:getHp()-self.player:getHandcardNum()>=2)
@@ -1570,7 +1580,7 @@ heg_kurou_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#heg_kurou"] = function(card,use,self,request)
+ai_card_use["#heg_kurou"] = function(self,card,use,request)
 	use.card = card
 end
 
@@ -1580,7 +1590,7 @@ sgs.double_slash_skill = sgs.double_slash_skill .. "|heg_kurou"
 
 
 
-source_use_registry["@@heg_shensu1"] = function(self,prompt)
+ai_skill_use["@@heg_shensu1"] = function(self,prompt)
 	source_query(self, 'sortInPlace', self.enemies, "defense")
 	if self.player:containsTrick("lightning") and self.player:getCards("j"):length()==1
 	and source_query(self,"hasWizard",self.friends) and not source_query(self,"hasWizard",self.enemies,true)
@@ -1604,15 +1614,15 @@ source_use_registry["@@heg_shensu1"] = function(self,prompt)
 	return "."
 end
 
-source_use_registry["@@heg_shensu2"] = function(self,prompt,method)
-	local card_str = source_use_registry["@@shensu2"](self,prompt,method)
+ai_skill_use["@@heg_shensu2"] = function(self, prompt, request)
+	local card_str = ai_skill_use["@@shensu2"](self,prompt,{handling_method=request and request.handling_method})
 	if not card_str or card_str=="." then return "." end
 	local new_str = string.gsub(card_str,"@ShensuCard=","#heg_shensu:")
 	new_str = string.gsub(card_str,"->",":->")
 	return new_str
 end
 
-source_use_registry["@@heg_shensu3"] = function(self,prompt)
+ai_skill_use["@@heg_shensu3"] = function(self,prompt)
 	source_query(self, 'sortInPlace', self.enemies, "defense")
 	if self:needBear() then return "." end
 	local selfSub = self:getOverflow()
@@ -1655,7 +1665,7 @@ sgs.heg_shensu_keep_value = sgs.shensu_keep_value
 sgs.ai_skill_cardask["@heg_luoyi"] = function(self,data)
 	local cards = AIList.new(self.player:getHandcards())
 	source_query(self, 'sortByUseValueInPlace', cards, true)
-	if sgs.ai_skill_invoke.nosluoyi(self, data) then
+	if ai_skill_invoke.nosluoyi(self, self.request.options, self.request) then
 		return "$"..cards[1]:getEffectiveId()
 	end
 	return "."
@@ -1666,11 +1676,13 @@ extra_alias{ id="ai_cardneed.heg_luoyi",registry="ai_cardneed",path={"heg_luoyi"
 local heg_qiangxi_skill = {}
 heg_qiangxi_skill.name= "heg_qiangxi"
 table.insert(package_skills,heg_qiangxi_skill)
-heg_qiangxi_skill.getTurnUseCard=function(self,inclusive,request)
+heg_qiangxi_skill.getTurnUseCard=function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_qiangxi:.:")
 end
 
-sgs.ai_skill_use_func["#heg_qiangxi"] = function(card,use,self,request)
+ai_card_use["#heg_qiangxi"] = function(self,card,use,request)
 	local weapon = self.player:getWeapon()
 	if weapon then
 		local hand_weapon,cards
@@ -1722,15 +1734,20 @@ sgs.heg_qiangxi_keep_value = {
 }
 sgs.straight_damage_skill = sgs.straight_damage_skill .. "|heg_qiangxi"
 
-sgs.ai_skill_choice["heg_liegong"] = function(self, choices, data)
+ai_skill_choice["heg_liegong"] = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if source_query(self,"isEnemy",target) and not source_query(self,"cantDamageMore",self.player,target) and getCardsNum("Jink", target, self.player) < 1 then
-		return "heg_liegong_addDamage"
+		return  ai_choice_result(("heg_liegong_addDamage"),options)
 	end
 	if not source_query(self,"isFriend",target) then
-		return "heg_liegong_cantjink"
+		return  ai_choice_result(("heg_liegong_cantjink"),options)
 	end
-	return "cancel"
+	return  ai_choice_result(("cancel"),options)
 end
 extra_alias{ id="ai_cardneed.heg_liegong",registry="ai_cardneed",path={"heg_liegong"},canonical_registry="ai_cardneed",canonical_path={"slash"},self_index=3,defer_canonical=true}
 sgs.hit_skill = sgs.hit_skill .. "|heg_liegong"
@@ -1752,19 +1769,24 @@ sgs.ai_skill_playerchosen.heg_yinghun = function(self,targets)
 	end
 
 end
-sgs.ai_skill_choice.heg_yinghun = function(self,choices, data)
+ai_skill_choice.heg_yinghun = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	if self.player:isWounded() then
-		return self.yinghunchoice
+		return  ai_choice_result((self.yinghunchoice),options)
 	else
 		local target = source_query(data,"toPlayer")
 		if source_query(self,"isFriend",target) then
-			return "d1tx"
+			return  ai_choice_result(("d1tx"),options)
 		end
 		if source_query(self,"isEnemy",target) then
-			return "dxt1"
+			return  ai_choice_result(("dxt1"),options)
 		end
 	end
-	return "d1tx"
+	return  ai_choice_result(("d1tx"),options)
 end
 
 sgs.ai_getBestHp_skill.heg_yinghun = function(owner)
@@ -1779,7 +1801,7 @@ sgs.ai_use_revises.heg_xiaoji = function(self,card,use)
 end
 
 
-source_use_registry["@@heg_tianxiang"] = function(self, prompt, method)
+ai_skill_use["@@heg_tianxiang"] = function(self, prompt, request)
 	local handcards = AIList.new(self.player:getCards("h"))
 	source_query(self,"sortByCardNeed",handcards,true)
 	local use_card = nil
@@ -1828,17 +1850,21 @@ sgs.ai_choicemade_filter.skillInvoke.heg_yicheng = function(self,player,promptli
 	end
 end
 
-function sgs.ai_skill_invoke.heg_hengjiang(self,data)
+function ai_skill_invoke.heg_hengjiang(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if source_query(self,"isEnemy",target) then
-		return true
+		return (true) or false 
 	else
-		if source_helper("hasManjuanEffect",self.player) then return false end
-		if source_query(target,"getPhase")>sgs.Player_Discard then return true end
-		if source_query(target,"hasSkill","yongsi") then return false end
-		if source_query(target,"hasSkill","keji") and not source_query(target,"hasFlag","KejiSlashInPlayPhase") then return true end
-		return source_query(target,"getHandcardNum")<=source_query(target,"getMaxCards")-2
+		if source_helper("hasManjuanEffect",self.player) then return (false) or false  end
+		if source_query(target,"getPhase")>sgs.Player_Discard then return (true) or false  end
+		if source_query(target,"hasSkill","yongsi") then return (false) or false  end
+		if source_query(target,"hasSkill","keji") and not source_query(target,"hasFlag","KejiSlashInPlayPhase") then return (true) or false  end
+		return (source_query(target,"getHandcardNum")<=source_query(target,"getMaxCards")-2) or false 
 	end
+    return false
+
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_hengjiang = function(self,player,promptlist)
@@ -1892,7 +1918,7 @@ local function heg_huyuan_validate(self,equip_type,is_handcard)
 	return nil
 end
 
-source_use_registry["@@heg_huyuan"] = function(self,prompt)
+ai_skill_use["@@heg_huyuan"] = function(self,prompt)
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
 	source_query(self, 'sortByKeepValueInPlace', cards)
@@ -1981,10 +2007,12 @@ sgs.heg_huyuan_keep_value = {
 local heg_duanxie_skill = {}
 heg_duanxie_skill.name = "heg_duanxie"
 table.insert(package_skills,heg_duanxie_skill)
-heg_duanxie_skill.getTurnUseCard = function(self,inclusive,request)
+heg_duanxie_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_duanxie:.:")
 end
-sgs.ai_skill_use_func["#heg_duanxie"] = function(card,use,self,request)
+ai_card_use["#heg_duanxie"] = function(self,card,use,request)
 	local x = math.max(self.player:getLostHp(), 1)
 	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	local targets = AIList.new{}
@@ -2020,7 +2048,9 @@ sgs.ai_use_priority["heg_duanxie"] = 0
 local heg_nos_guishu_skill = {}
 heg_nos_guishu_skill.name = "heg_nos_guishu"
 table.insert(package_skills,heg_nos_guishu_skill)
-heg_nos_guishu_skill.getTurnUseCard = function(self,inclusive,request)
+heg_nos_guishu_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = self:addHandPile()
 	source_query(self, 'sortByUseValueInPlace', cards, true)
 	for _,acard in sgs.list(cards)do
@@ -2067,7 +2097,9 @@ end
 local heg_guishu_skill = {}
 heg_guishu_skill.name = "heg_guishu"
 table.insert(package_skills,heg_guishu_skill)
-heg_guishu_skill.getTurnUseCard = function(self,inclusive,request)
+heg_guishu_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = self:addHandPile()
 	source_query(self, 'sortByUseValueInPlace', cards, true)
 	for _,acard in sgs.list(cards)do
@@ -2131,12 +2163,14 @@ sgs.ai_playerschosen_intention.heg_zhuihuan = function(self, from, prompt)
     end
 end
 
-sgs.ai_skill_invoke.heg_qiao = function(self,data)
+ai_skill_invoke.heg_qiao = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if source_query(self,"isEnemy",target) then
-		return source_query(self,"doDisCard",target,"he")
+		return (source_query(self,"doDisCard",target,"he")) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_qiao = function(self,player,promptlist)
@@ -2175,7 +2209,7 @@ end
 
 sgs.ai_playerchosen_intention.heg_chengshang = 40
 
-sgs.ai_skill_invoke.heg_guowu = sgs.ai_skill_invoke.guowu
+if ai_skill_invoke.guowu~=nil then ai_skill_invoke.heg_guowu=ai_skill_invoke.guowu end
 
 sgs.ai_skill_playerschosen.heg_guowu = function(self, targets, max, min)
 	local use = room_tag("heg_guowu"):toCardUse()
@@ -2194,7 +2228,9 @@ sgs.ai_skill_playerschosen.heg_guowu = function(self, targets, max, min)
 	return enemy
 end
 
-sgs.ai_fill_skill.heg_zhuangrong = function(self,inclusive,request)
+ai_fill_skill.heg_zhuangrong = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local use_card
     local cards = self.player:getCards("h")
     cards = source_query(self, 'sortByUseValueInPlace', cards, true)
@@ -2209,7 +2245,7 @@ sgs.ai_fill_skill.heg_zhuangrong = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#heg_zhuangrong"] = function(card,use,self,request)
+ai_card_use["#heg_zhuangrong"] = function(self,card,use,request)
 	if self:getCardsNum("Slash") > 0 and not self.player:hasSkill("wushuang") then
 		for _, c in sgs.qlist(self.player:getHandcards()) do
 			if source_helper("isCard","Slash", c, self.player) then
@@ -2225,11 +2261,13 @@ end
 
 sgs.ai_use_priority["heg_zhuangrong"] = 5
 
-sgs.ai_skill_invoke.heg_duannian = function(self, data)
+ai_skill_invoke.heg_duannian = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	if self.player:getHandcardNum() > self.player:getMaxHp() and self.player:getMaxCards() > self.player:getMaxHp() then
-		return false
+		return (false) or false 
 	end
-	return true
+	return (true) or false 
 end
 
 sgs.ai_skill_playerchosen.heg_lianyou = function(self, targets)
@@ -2249,11 +2287,13 @@ sgs.ai_ajustdamage_from.heg_xinghuo = function(self, from, to, card, nature)
 	end
 end
 
-sgs.ai_skill_invoke.heg_gongxiu = function(self, data)
+ai_skill_invoke.heg_gongxiu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	if sgs.ai_skill_playerschosen.heg_gongxiu(self, self.room:getAlivePlayers(), self.player:getMaxHp()):length() > 0 then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_playerschosen.heg_gongxiu = function(self, targets, max, min)
@@ -2291,12 +2331,17 @@ sgs.ai_skill_playerschosen.heg_gongxiu = function(self, targets, max, min)
 	return selected
 end
 
-sgs.ai_skill_choice.heg_gongxiu = function(self, choices, data)
+ai_skill_choice.heg_gongxiu = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	if self.heg_gongxiu then
-		return self.heg_gongxiu
+		return  ai_choice_result((self.heg_gongxiu),options)
 	end
 	local items = source_query(choices,"split","+")
-	return items[1]
+	return  ai_choice_result((items[1]),options)
 end
 
 sgs.ai_playerschosen_intention.heg_gongxiu = function(self, from, prompt)
@@ -2319,23 +2364,27 @@ sgs.ai_playerschosen_intention.heg_gongxiu = function(self, from, prompt)
 	end
 end
 
-sgs.ai_fill_skill.heg_jinghe = function(self,inclusive,request)
+ai_fill_skill.heg_jinghe = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self.player:getStrategyHasUsed("#heg_jinghe") then
 		return nil
 	end
 	return parse_source("#heg_jinghe:.:")
 end
 
-sgs.ai_skill_use_func["#heg_jinghe"] = function(card,use,self,request)
+ai_card_use["#heg_jinghe"] = function(self,card,use,request)
 	use.card = card
 	source_call(use.to,"append",false,self.player)
 end
 
 sgs.ai_use_priority["heg_jinghe"] = 10
 
-sgs.ai_skill_invoke.heg_ol_liegong = function(self,data)
+ai_skill_invoke.heg_ol_liegong = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
-	return not source_query(self,"isFriend",target)
+	return (not source_query(self,"isFriend",target)) or false 
 end
 sgs.hit_skill = sgs.hit_skill .. "|heg_ol_liegong"
 
@@ -2344,29 +2393,33 @@ sgs.ai_canliegong_skill.heg_ol_liegong = function(self, from, to)
 end
 
 extra_alias{ id="ai_cardneed.heg_ol_liegong",registry="ai_cardneed",path={"heg_ol_liegong"},canonical_registry="ai_cardneed",canonical_path={"slash"},self_index=3,defer_canonical=true}
-sgs.ai_skill_invoke["ChangeGeneral"] = function(self, data)
+ai_skill_invoke["ChangeGeneral"] = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	self:updatePlayers()
-	if self.player:hasSkill("bf_nos_diancai") then return true end
+	if self.player:hasSkill("bf_nos_diancai") then return (true) or false  end
 	if self.player:hasSkill("bf_qice") then
 		if #self.enemies > #self.friends then
-			return true
+			return (true) or false 
 		end
 	end
 	for _,p in sgs.qlist(self.room:findPlayersBySkillName("bf_zhiman")) do
 		if p then
-			return false
+			return (false) or false 
 
 
 
 		end
 	end
-	return true
+	return (true) or false 
 end
 
 local bf_qice_skill = {}
 bf_qice_skill.name = "bf_qice"
 table.insert(package_skills, bf_qice_skill)
-bf_qice_skill.getTurnUseCard = function(self,inclusive,request)
+bf_qice_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	source_call(self,"setPriorityValue",false,"bf_qice",1.5,"extra.bf_qice")
 	if self.player:getStrategyHasUsed("#bf_qice") or self.player:isKongcheng() then return end
 	local cards = self.player:getHandcards()
@@ -2498,7 +2551,7 @@ bf_qice_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#bf_qice"] = function(card,use,self,request)
+ai_card_use["#bf_qice"] = function(self,card,use,request)
 	local userstring = source_query(card,"getLegacyStringKey")
 	userstring = (source_query(userstring,"split",":"))[4]
 	local qicecard = clone_source(userstring, source_query(card,"getSuit"), source_query(card,"getNumber"))
@@ -2530,12 +2583,14 @@ sgs.ai_skill_discard["bf_wanwei"] = function(self, discard_num, min_num, optiona
 	end
 	return to_discard
 end
-sgs.ai_skill_invoke.bf_yuejian = function(self, data)
+ai_skill_invoke.bf_yuejian = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = self.room:getCurrent()
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 sgs.ai_choicemade_filter.skillInvoke.bf_yuejian = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -2545,7 +2600,7 @@ sgs.ai_choicemade_filter.skillInvoke.bf_yuejian = function(self,player,promptlis
 end
 
 
-sgs.ai_skill_invoke["bf_zhiman"] = sgs.ai_skill_invoke["yishihz"]
+if ai_skill_invoke["yishihz"]~=nil then ai_skill_invoke["bf_zhiman"]=ai_skill_invoke["yishihz"] end
 
 extra_alias{ id="ai_choicemade_filter.cardChosen.bf_zhiman",registry="ai_choicemade_filter",path={"cardChosen","bf_zhiman"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","snatch"},self_index=1,defer_canonical=true}
 sgs.lose_equip_skill = sgs.lose_equip_skill .. "|bf_xuanlve"
@@ -2566,7 +2621,9 @@ extra_alias{ id="ai_choicemade_filter.cardChosen.bf_xuanlve",registry="ai_choice
 local bf_yongjin_skill = {}
 bf_yongjin_skill.name = "bf_yongjin"
 table.insert(package_skills, bf_yongjin_skill)
-bf_yongjin_skill.getTurnUseCard = function(self,inclusive,request)
+bf_yongjin_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local equip_num = 0
 	if self.player:getMark("@bf_yongjin") > 0 then
 		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
@@ -2580,7 +2637,7 @@ bf_yongjin_skill.getTurnUseCard = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#bf_yongjin"] = function(card,use,self,request)
+ai_card_use["#bf_yongjin"] = function(self,card,use,request)
 	use.card = card
 end
 
@@ -2597,7 +2654,7 @@ sgs.ai_skill_askforag["bf_yongjin"] = function(self, card_ids)
 	return -1
 end
 
-source_use_registry["@@bf_yongjin!"] = function(self, prompt, method)
+ai_skill_use["@@bf_yongjin!"] = function(self, prompt, request)
 	local equip_cards = AIList.new(self.player:getCards("h"))
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.friends, "defense")
@@ -2614,12 +2671,14 @@ source_use_registry["@@bf_yongjin!"] = function(self, prompt, method)
 	return "."
 end
 
-sgs.ai_skill_invoke.bf_tiaodu = function(self, data)
+ai_skill_invoke.bf_tiaodu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 sgs.ai_choicemade_filter.skillInvoke.bf_tiaodu = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -2644,13 +2703,15 @@ sgs.ai_playerchosen_intention["bf_tiaodu"] = -50
 local bf_nos_tiaodu_skill = {}
 bf_nos_tiaodu_skill.name = "bf_nos_tiaodu"
 table.insert(package_skills, bf_nos_tiaodu_skill)
-bf_nos_tiaodu_skill.getTurnUseCard = function(self,inclusive,request)
+bf_nos_tiaodu_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if not self.player:getStrategyHasUsed("#bf_nos_tiaodu") then
 		return parse_source("#bf_nos_tiaodu:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#bf_nos_tiaodu"] = function(card,use,self,request)
+ai_card_use["#bf_nos_tiaodu"] = function(self,card,use,request)
 	local targets = {}
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.friends, "defense")
@@ -2722,12 +2783,14 @@ end
 
 sgs.ai_playerchosen_intention["bf_nos_tiaodu"] = -50
 
-sgs.ai_skill_invoke.bf_sec_tiaodu = function(self, data)
+ai_skill_invoke.bf_sec_tiaodu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 sgs.ai_choicemade_filter.skillInvoke.bf_sec_tiaodu = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -2738,12 +2801,14 @@ end
 extra_alias{ id="ai_skill_playerchosen.bf_sec_tiaodu",registry="ai_skill_playerchosen",path={"bf_sec_tiaodu"},canonical_registry="ai_skill_playerchosen",canonical_path={"bf_tiaodu"},self_index=1,defer_canonical=true}
 sgs.ai_playerchosen_intention["bf_sec_tiaodu"] = sgs.ai_playerchosen_intention["bf_tiaodu"]
 
-sgs.ai_skill_invoke.bf_third_tiaodu = function(self, data)
+ai_skill_invoke.bf_third_tiaodu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 sgs.ai_choicemade_filter.skillInvoke.bf_third_tiaodu = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -2760,13 +2825,15 @@ sgs.ai_playerchosen_intention["bf_third_tiaodu"] = sgs.ai_playerchosen_intention
 local bf_xiongsuan_skill = {}
 bf_xiongsuan_skill.name = "bf_xiongsuan"
 table.insert(package_skills, bf_xiongsuan_skill)
-bf_xiongsuan_skill.getTurnUseCard = function(self,inclusive,request)
+bf_xiongsuan_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self.player:getMark("@scary") > 0 and self.player:getHandcardNum() < 3 then
 		return parse_source("#bf_xiongsuan:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#bf_xiongsuan"] = function(card,use,self,request)
+ai_card_use["#bf_xiongsuan"] = function(self,card,use,request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	local usable_cards = AIList.new(self.player:getCards("h"))
@@ -2796,19 +2863,26 @@ sgs.ai_skill_use_func["#bf_xiongsuan"] = function(card,use,self,request)
 	if use.to then source_call(use.to,"append",false,target[1]) end
 end
 
-sgs.ai_skill_choice["bf_xiongsuan"] = function(self, choices, data)
+ai_skill_choice["bf_xiongsuan"] = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local skill_items = source_query(choices,"split","+")
 	if #skill_items == 1 then
-		return skill_items[1]
+		return  ai_choice_result((skill_items[1]),options)
 	else
-		return skill_items[math.random(1,#skill_items)]
+		return  ai_choice_result((skill_items[math.random(1,#skill_items)]),options)
 	end
+    return ai_choice_result(nil,options)
+
 end
 
 sgs.ai_use_priority["bf_xiongsuan"] = 3
 sgs.ai_use_value["bf_xiongsuan"] = 3
 
-sgs.ai_skill_choice.bf_nos_huashen = sgs.ai_skill_choice.huashen
+ai_skill_choice.bf_nos_huashen = ai_skill_choice.huashen
 
 
 
@@ -2829,13 +2903,15 @@ end
 local twyj_rangyi_skill = {}
 twyj_rangyi_skill.name = "twyj_rangyi"
 table.insert(package_skills, twyj_rangyi_skill)
-twyj_rangyi_skill.getTurnUseCard = function(self,inclusive,request)
+twyj_rangyi_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if not self.player:getStrategyHasUsed("#twyj_rangyi") and not self.player:isKongcheng() then
 		return parse_source("#twyj_rangyi:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#twyj_rangyi"] = function(card,use,self,request)
+ai_card_use["#twyj_rangyi"] = function(self,card,use,request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.friends_noself, "hp")
 	source_query(self, 'sortInPlace', self.enemies, "hp")
@@ -2933,7 +3009,7 @@ end
 sgs.ai_use_priority["twyj_rangyi"] = 0
 sgs.ai_use_value["twyj_rangyi"] = 0
 
-source_use_registry["@@twyj_rangyi"] = function(self, prompt, method)
+ai_skill_use["@@twyj_rangyi"] = function(self, prompt, request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.friends_noself, "hp")
 	source_query(self, 'sortInPlace', self.enemies, "hp")
@@ -2996,13 +3072,15 @@ extra_alias{ id="ai_cardneed.twyj_qijia",registry="ai_cardneed",path={"twyj_qiji
 local twyj_qijia_skill = {}
 twyj_qijia_skill.name = "twyj_qijia"
 table.insert(package_skills, twyj_qijia_skill)
-twyj_qijia_skill.getTurnUseCard = function(self,inclusive,request)
+twyj_qijia_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self.player:getEquips():length() > 0 and source_query(self.player,"canDiscard",self.player,"e") then
 		return parse_source("#twyj_qijia:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#twyj_qijia"] = function(card,use,self,request)
+ai_card_use["#twyj_qijia"] = function(self,card,use,request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local equipments = AIList.new(self.player:getCards("e"))
@@ -3064,13 +3142,15 @@ sgs.ai_card_intention["twyj_qijia"] = 80
 local twyj_zhuchen_skill = {}
 twyj_zhuchen_skill.name = "twyj_zhuchen"
 table.insert(package_skills, twyj_zhuchen_skill)
-twyj_zhuchen_skill.getTurnUseCard = function(self,inclusive,request)
+twyj_zhuchen_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") > 0 then
 		return parse_source("#twyj_zhuchen:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#twyj_zhuchen"] = function(card,use,self,request)
+ai_card_use["#twyj_zhuchen"] = function(self,card,use,request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local targets = {}
@@ -3107,13 +3187,15 @@ extra_alias{ id="ai_cardneed.twyj_huzhu",registry="ai_cardneed",path={"twyj_huzh
 local twyj_huzhu_skill = {}
 twyj_huzhu_skill.name = "twyj_huzhu"
 table.insert(package_skills, twyj_huzhu_skill)
-twyj_huzhu_skill.getTurnUseCard = function(self,inclusive,request)
+twyj_huzhu_skill.getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if not self.player:getStrategyHasUsed("#twyj_huzhu") and not self.player:getEquips():isEmpty() then
 		return parse_source("#twyj_huzhu:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#twyj_huzhu"] = function(card,use,self,request)
+ai_card_use["#twyj_huzhu"] = function(self,card,use,request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.friends_noself, "hp")
 	local targets = {}
@@ -3138,9 +3220,11 @@ sgs.ai_card_intention["twyj_huzhu"] = function(self, card, from, tos)
 	end
 end
 
-sgs.ai_skill_invoke["twyj_huzhu"] = function(self, data)
+ai_skill_invoke["twyj_huzhu"] = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local player = source_query(data,"toPlayer")
-	return player and source_query(self,"isFriend",player)
+	return (player and source_query(self,"isFriend",player)) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.twyj_huzhu = function(self, player, promptlist)
@@ -3162,7 +3246,9 @@ sgs.ai_skill_cardask["@twyj_huzhu"] = function(self, data, pattern, target, targ
 	end
 end
 
-sgs.ai_skill_invoke["twyj_liancai"] = function(self, data)
+ai_skill_invoke["twyj_liancai"] = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local has_enemy_equips = false
 	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
 		if source_query(self,"isEnemy",p) and source_query(p,"getEquips"):length() > 0 then
@@ -3180,12 +3266,12 @@ sgs.ai_skill_invoke["twyj_liancai"] = function(self, data)
 			only_one_silver = true
 		end
 	end
-	if has_equip_enemy == 1 and only_one_silver then return false end
+	if has_equip_enemy == 1 and only_one_silver then return (false) or false  end
 	
 	if self.player:getHp() - self.player:getHandcardNum() > 0 and has_enemy_equips then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_askforag["twyj_liancai"] = function(self, card_ids)
@@ -3206,7 +3292,7 @@ sgs.ai_skill_askforag["twyj_liancai"] = function(self, card_ids)
 	end
 end
 
-sgs.ai_skill_invoke["twyj_liancai_turnover"] = true
+ai_skill_invoke["twyj_liancai_turnover"] = true
 
 sgs.ai_skill_discard["command"] = function(self, discard_num, min_num, optional, include_equip)
 	local usable_cards = AIList.new(self.player:getCards("he"))
@@ -3220,56 +3306,61 @@ sgs.ai_skill_discard["command"] = function(self, discard_num, min_num, optional,
 	return to_discard
 end
 
-sgs.ai_skill_choice.do_command = function(self, choices, data)
+ai_skill_choice.do_command = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local from = source_query(data,"toPlayer")
 	local items = source_query(choices,"split","+")
 	if table.contains(items, "command1") and math.random() < 0.5 then
 		if source_query(self,"isFriend",from) then
-			return "command1"
+			return  ai_choice_result(("command1"),options)
 		end
 		if self.friends_noself and #self.friends_noself > 0 and self:getAllPeachNum() <= 0 then
-			return "cancel"
+			return  ai_choice_result(("cancel"),options)
 		end
-		return "command1"
+		return  ai_choice_result(("command1"),options)
 	end
 	if table.contains(items, "command2") then
 		if source_query(self,"doDisCard",self.player,"he",true) then
-			return "command2"
+			return  ai_choice_result(("command2"),options)
 		end
 		if source_query(self,"isFriend",from) then
-			return "command2"
+			return  ai_choice_result(("command2"),options)
 		end
 	end
 	if table.contains(items, "command3") then
 		if source_helper("hasZhaxiangEffect",self.player) and self.player:getHp() + self:getAllPeachNum() - 1 > 0 then
-			return "command3"
+			return  ai_choice_result(("command3"),options)
 		end
 		if math.random() < 0.5 and self.player:getHp() + self:getAllPeachNum() - 1 > 0 then
-			return "command3"
+			return  ai_choice_result(("command3"),options)
 		end
 	end
 	if table.contains(items, "command4") then
 		if math.random() < 0.5 then
-			return "command4"
+			return  ai_choice_result(("command4"),options)
 		end
 	end
 	if table.contains(items, "command5") then
 		if not self:isWeak() and self.player:faceUp() then
-			return "command5"
+			return  ai_choice_result(("command5"),options)
 		end
 	end
 	if table.contains(items, "command6") then
 		local hand_discard = self.player:getHandcardNum() - 1
 		local equip_discard = self.player:getEquips():length() - 1
 		if hand_discard + equip_discard <= 2 then
-			return "command6"
+			return  ai_choice_result(("command6"),options)
 		end
 	end
-	return "cancel"
+	return  ai_choice_result(("cancel"),options)
 end
 
 extra_alias{ id="ai_skill_playerchosen.command1",registry="ai_skill_playerchosen",path={"command1"},canonical_registry="ai_skill_playerchosen",canonical_path={"damage"},self_index=1,defer_canonical=true}
-source_use_registry["@@command6!"] = function(self, prompt, method)
+ai_skill_use["@@command6!"] = function(self, prompt, request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.enemies, "defense")
 	local ids = {}
@@ -3314,7 +3405,9 @@ end
 
 sgs.ai_playerchosen_intention["heg_jieyue"] = 40
 
-sgs.ai_fill_skill.heg_fengying = function(self,inclusive,request)
+ai_fill_skill.heg_fengying = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if #self.toUse > 1 then return nil end
 	local dc = clone_source("heg_threaten_emperor", sgs.Card_NoSuit, 0)
 	source_call(dc,"setSkillName",false,"heg_fengying")
@@ -3345,25 +3438,30 @@ sgs.ai_playerschosen_intention.heg_fengying = function(self, from, prompt)
     end
 end
 
-sgs.ai_skill_invoke.heg_zhengbi = true
+ai_skill_invoke.heg_zhengbi = true
 
-sgs.ai_skill_choice.heg_zhengbi = function(self, choices, data)
+ai_skill_choice.heg_zhengbi = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local items = source_query(choices,"split","+")
-	if table.contains(items, "heg_zhengbi_give") and source_use_registry["@@heg_zhengbi"](self, "") ~=  "." then
+	if table.contains(items, "heg_zhengbi_give") and ai_skill_use["@@heg_zhengbi"](self, "", nil) ~=  "." then
 		for _, friend in ipairs(self.friends_noself) do
 			if source_query(self,"canDraw",friend,self.player) and source_query(self,"doDisCard",friend,"he",true) then
-				return "heg_zhengbi_give"
+				return  ai_choice_result(("heg_zhengbi_give"),options)
 			end
 		end
 		if math.random() < 0.5 then
 			for _, enemy in ipairs(self.enemies) do
 				if source_query(self,"doDisCard",enemy,"he",true) and source_query(enemy,"getCardCount",true) > 1 then
-					return "heg_zhengbi_give"
+					return  ai_choice_result(("heg_zhengbi_give"),options)
 				end
 			end
 		end
 	end
-	return "heg_zhengbi_distance"
+	return  ai_choice_result(("heg_zhengbi_distance"),options)
 end
 
 sgs.ai_skill_playerchosen.heg_zhengbi = function(self, targets)
@@ -3393,7 +3491,7 @@ end
 
 sgs.ai_playerchosen_intention.heg_zhengbi = 40
 
-source_use_registry["@@zhengbidiscard!"] = function(self, prompt, method)
+ai_skill_use["@@zhengbidiscard!"] = function(self, prompt, request)
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
 	source_query(self, 'sortByKeepValueInPlace', cards)
@@ -3433,7 +3531,7 @@ source_use_registry["@@zhengbidiscard!"] = function(self, prompt, method)
 	return "."
 end
 
-source_use_registry["@@heg_zhengbi"] = function(self, prompt, method)
+ai_skill_use["@@heg_zhengbi"] = function(self, prompt, request)
 	local cards = AIList.new(self.player:getCards("h"))
 	source_query(self, 'sortByKeepValueInPlace', cards)
 	local use_card
@@ -3458,13 +3556,15 @@ source_use_registry["@@heg_zhengbi"] = function(self, prompt, method)
 	return "."
 end
 
-sgs.ai_fill_skill.heg_jianglue = function(self,inclusive,request)
+ai_fill_skill.heg_jianglue = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if (self.room:getTurnCount()>1) or (self:isWeak()) then
 		return parse_source("#heg_jianglue:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#heg_jianglue"] = function(card,use,self,request)
+ai_card_use["#heg_jianglue"] = function(self,card,use,request)
 	use.card = card
 end
 
@@ -3492,26 +3592,33 @@ sgs.ai_playerschosen_intention.heg_jianglue = function(self, from, prompt)
     end
 end
 
-sgs.ai_skill_choice.start_command_heg_jianglue = function(self, choices, data)
+ai_skill_choice.start_command_heg_jianglue = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local items = source_query(choices,"split","+")
 	if table.contains(items, "command1") then
-		return "command1"
+		return  ai_choice_result(("command1"),options)
 	end
 	if table.contains(items, "command2") then
-		return "command2"
+		return  ai_choice_result(("command2"),options)
 	end
 	if table.contains(items, "command4") then
-		return "command4"
+		return  ai_choice_result(("command4"),options)
 	end
-	return items[math.random(1,#items)]
+	return  ai_choice_result((items[math.random(1,#items)]),options)
 end
 
-sgs.ai_fill_skill.heg_xuanhuoAttach = function(self,inclusive,request)
+ai_fill_skill.heg_xuanhuoAttach = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self:isWeak() or self.player:isKongcheng() or self:needBear() then return end
 	return parse_source("#heg_xuanhuo:.:")
 end
 
-sgs.ai_skill_use_func["#heg_xuanhuo"] = function(card,use,self,request)
+ai_card_use["#heg_xuanhuo"] = function(self,card,use,request)
 	local cards = AIList.new(self.player:getCards("h"))
 	source_query(self, 'sortByKeepValueInPlace', cards)
 	for _, friend in ipairs(self.friends_noself) do
@@ -3529,7 +3636,7 @@ sgs.ai_use_priority.heg_xuanhuo = 5.2
 
 sgs.ai_skill_discard.heg_enyuan = sgs.ai_skill_discard.enyuan
 
-source_use_registry["@@heg_keshou"] = function(self,prompt,method)
+ai_skill_use["@@heg_keshou"] = function(self, prompt, request)
 	local cards = AIList.new(self.player:getCards("h"))
 	source_query(self, 'sortByKeepValueInPlace', cards)
 	local damage = room_tag("heg_keshou"):toDamage()
@@ -3554,15 +3661,17 @@ source_use_registry["@@heg_keshou"] = function(self,prompt,method)
 	return card_str
 end
 
-sgs.ai_skill_invoke.heg_zhuwei = function(self, data)
+ai_skill_invoke.heg_zhuwei = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	if source_query(data,"toCard") then
-		return true
+		return (true) or false 
 	end
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 sgs.ai_choicemade_filter.skillInvoke.heg_zhuwei = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -3571,19 +3680,23 @@ sgs.ai_choicemade_filter.skillInvoke.heg_zhuwei = function(self,player,promptlis
 	end
 end
 
-sgs.ai_skill_invoke.heg_buyi = function(self, data)
+ai_skill_invoke.heg_buyi = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toDying").who
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_fill_skill.heg_weidi = function(self,inclusive,request)
+ai_fill_skill.heg_weidi = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_weidi:.:")
 end
 
-sgs.ai_skill_use_func["#heg_weidi"] = function(card,use,self,request)
+ai_card_use["#heg_weidi"] = function(self,card,use,request)
 	self:updatePlayers()
 	source_query(self, 'sortInPlace', self.enemies, "defense")
 	for _, enemy in ipairs(self.enemies) do
@@ -3649,12 +3762,14 @@ sgs.ai_skill_cardask["@heg_fudi-give"] = function(self, data, pattern, target, t
 end
 
 extra_alias{ id="ai_skill_playerchosen.heg_fudi",registry="ai_skill_playerchosen",path={"heg_fudi"},canonical_registry="ai_skill_playerchosen",canonical_path={"damage"},self_index=1,defer_canonical=true}
-sgs.ai_skill_invoke.heg_liangfan = function(self, data)
+ai_skill_invoke.heg_liangfan = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target then
-		return source_query(self,"doDisCard",target,"he",true)
+		return (source_query(self,"doDisCard",target,"he",true)) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_ajustdamage_from.heg_congjian = function(self, from, to, card, nature)
@@ -3668,20 +3783,24 @@ sgs.ai_ajustdamage_to.heg_congjian = function(self, from, to, card, nature)
 	end
 end
 
-sgs.ai_skill_invoke.heg_qiuan = function(self, data)
+ai_skill_invoke.heg_qiuan = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local damage = source_query(data,"toDamage")
 	if source_query(self,"needToLoseHp",damage.to,damage.from,damage.card) then
-		return false
+		return (false) or false 
 	end
-	return true
+	return (true) or false 
 end
 
-sgs.ai_skill_invoke.heg_liangfan = function(self, data)
+ai_skill_invoke.heg_liangfan = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toDamage").to
 	if target and source_query(self,"doDisCard",target,"he",true) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_playerchosen.heg_wenji = function(self,targets)
@@ -3712,12 +3831,14 @@ sgs.ai_skill_playerchosen.heg_wenji = function(self,targets)
 	return nil
 end
 
-sgs.ai_skill_invoke.heg_wenji = function(self, data)
+ai_skill_invoke.heg_wenji = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_cardask["@heg_fengshih"] = function(self, data, pattern, target, target2)
@@ -3760,58 +3881,72 @@ sgs.ai_skill_cardask["@heg_midao-give"] = function(self, data, pattern, target, 
 	end
 end
 
-sgs.ai_skill_choice.heg_lixia = function(self, choices, data)
+ai_skill_choice.heg_lixia = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local draw = getChoice(choices, "draw")
 	local discard = getChoice(choices, "discard")
 	if discard then
 		local target = source_query(data,"toPlayer")
 		if source_query(self,"doDisCard",target,"e") and source_query(self,"isEnemy",target) and (self:getAllPeachNum() + self.player:getHp() - 1 > 0) and (source_helper("hasZhaxiangEffect",self.player) or math.random() < 0.5) then
-			return discard
+			return  ai_choice_result((discard),options)
 		end
 	end
-	return draw
+	return  ai_choice_result((draw),options)
 end
 
-sgs.ai_skill_invoke.heg_nos_lixia = function(self, data)
+ai_skill_invoke.heg_nos_lixia = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) and source_query(self,"doDisCard",target,"e") then
-		return true
+		return (true) or false 
 	end
 	if target and source_query(self,"isEnemy",target) and source_query(self,"doDisCard",target,"e") then
 		if self:getAllPeachNum() + self.player:getHp() - 1 > 0 and (source_helper("hasZhaxiangEffect",self.player) or math.random() < 0.5) and not self:isWeak() then
-			return true
+			return (true) or false 
 		end
 		if source_query(self,"needToThrowCard",self.player,"h",true,false,false) then
-			return true
+			return (true) or false 
 		end
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_choice.heg_nos_lixia = function(self, choices, data)
+ai_skill_choice.heg_nos_lixia = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local draw = getChoice(choices, "draw")
 	local items = source_query(choices,"split","+")
 	local target = source_query(data,"toPlayer")
 	if draw then
 		if source_query(self,"isFriend",target) and source_query(self,"canDraw",target) then
-			return draw
+			return  ai_choice_result((draw),options)
 		end
 	end
 	if table.contains(items, "discard") then
 		if source_query(self,"needToThrowCard",self.player,"h",true,false,false) then
-			return "discard"
+			return  ai_choice_result(("discard"),options)
 		end
 	end
 	if table.contains(items, "loseHp") then
 		if self.player:getHp() + self:getAllPeachNum() - 1 > 0 and (source_helper("hasZhaxiangEffect",self.player) or math.random() < 0.5) and not self:isWeak() then
-			return "loseHp"
+			return  ai_choice_result(("loseHp"),options)
 		end
 	end
 
-	return draw
+	return  ai_choice_result((draw),options)
 end
 
-sgs.ai_fill_skill.heg_quanjin = function(self,inclusive,request)
+ai_fill_skill.heg_quanjin = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = AIList.new(self.player:getCards("h"))
     source_query(self, 'sortByUseValueInPlace', cards, true)
     for _, card in ipairs(cards) do
@@ -3819,7 +3954,7 @@ sgs.ai_fill_skill.heg_quanjin = function(self,inclusive,request)
     end
 end
 
-sgs.ai_skill_use_func["#heg_quanjin"] = function(card,use,self,request)
+ai_card_use["#heg_quanjin"] = function(self,card,use,request)
 	for _, enemy in ipairs(self.enemies) do
 		if source_query(enemy,"getMark","heg_quanjin-PlayClear") > 0 then
 			use.card = card
@@ -3829,12 +3964,14 @@ sgs.ai_skill_use_func["#heg_quanjin"] = function(card,use,self,request)
 	end
 end
 
-sgs.ai_fill_skill.heg_zaoyun = function(self,inclusive,request)
+ai_fill_skill.heg_zaoyun = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self:isWeak() or self.player:isKongcheng() or self:needBear() then return end
 	return parse_source("#heg_zaoyun:.:")
 end
 
-sgs.ai_skill_use_func["#heg_zaoyun"] = function(card,use,self,request)
+ai_card_use["#heg_zaoyun"] = function(self,card,use,request)
 	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local targets = AIList.new{}
 	for _, enemy in ipairs(self.enemies) do
@@ -3862,7 +3999,9 @@ end
 
 sgs.ai_use_priority["heg_zaoyun"] = sgs.ai_use_priority.QiangxiCard
 
-sgs.ai_skill_invoke.heg_qiance = function(self, data)
+ai_skill_invoke.heg_qiance = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local use = source_query(data,"toCardUse")
 	local targets = AIList.new{}
 	for _, p in sgs.qlist(use.to) do
@@ -3873,34 +4012,36 @@ sgs.ai_skill_invoke.heg_qiance = function(self, data)
 	if not source_query(targets,"isEmpty") then
 		for _, p in sgs.qlist(targets) do
 			if source_query(self,"isFriend",p) then
-				return false
+				return (false) or false 
 			end
 		end
 		if use.card and source_query(use.card,"isDamageCard") then
 			for _, p in sgs.qlist(targets) do
 				if source_query(self,"isEnemy",p) and source_query(self,"canDamage",p,use.from,use.card) then
-					return true
+					return (true) or false 
 				end
 			end
 		else
 			if math.random() < 0.5 then
 				for _, p in sgs.qlist(targets) do
 					if source_query(self,"isEnemy",p) then
-						return true
+						return (true) or false 
 					end
 				end
 			end
 		end
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_invoke.heg_jujian = function(self, data)
+ai_skill_invoke.heg_jujian = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toDying").who
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 sgs.ai_choicemade_filter.skillInvoke.heg_jujian = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -3945,7 +4086,9 @@ end
 sgs.ai_playerchosen_intention.heg_zhidao = 80
 
 
-sgs.ai_fill_skill.heg_jinfa = function(self,inclusive,request)
+ai_fill_skill.heg_jinfa = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = AIList.new(self.player:getCards("he"))
 	source_query(self, 'sortByUseValueInPlace', cards, true)
 	for _, card in ipairs(cards) do
@@ -3953,7 +4096,7 @@ sgs.ai_fill_skill.heg_jinfa = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#heg_jinfa"] = function(card,use,self,request)
+ai_card_use["#heg_jinfa"] = function(self,card,use,request)
 	local slash = clone_source("slash", sgs.Card_NoSuit, -1)
 	source_call(slash,"setSkillName",false,"heg_jinfa")
 	source_call(slash,"deleteLater",false)
@@ -4032,12 +4175,14 @@ sgs.ai_playerschosen_intention.heg_baolie = function(self, from, prompt)
     end
 end
 
-sgs.ai_skill_invoke.heg_chenglue = function(self, data)
+ai_skill_invoke.heg_chenglue = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_playerchosen.heg_chenglue = function(self, targets)
@@ -4080,19 +4225,24 @@ end
 
 sgs.ai_playerchosen_intention.heg_lianpian = -50
 
-sgs.ai_skill_choice.heg_lianpian = function(self, choices, data)
+ai_skill_choice.heg_lianpian = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local discard = getChoice(choices, "discard")
 	local recover = getChoice(choices, "recover")
 	local target = source_query(data,"toPlayer")
 	if source_query(self,"isFriend",target) then
 		if source_query(target,"getHp") < source_helper("getBestHp",target) then
-			return recover
+			return  ai_choice_result((recover),options)
 		end
 	end
 	if discard and source_query(self,"doDisCard",target,"he") then
-		return discard
+		return  ai_choice_result((discard),options)
 	end
-	return "cancel"
+	return  ai_choice_result(("cancel"),options)
 end
 
 sgs.ai_choicemade_filter.skillChoice.heg_lianpian = function(self,player,promptlist)
@@ -4109,7 +4259,7 @@ sgs.ai_choicemade_filter.skillChoice.heg_lianpian = function(self,player,promptl
 end
 
 extra_alias{ id="ai_choicemade_filter.cardChosen.heg_lianpian",registry="ai_choicemade_filter",path={"cardChosen","heg_lianpian"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","snatch"},self_index=1,defer_canonical=true}
-sgs.ai_skill_invoke.heg_congcha = true
+ai_skill_invoke.heg_congcha = true
 
 sgs.ai_skill_playerchosen.heg_congcha = function(self, targets)
 	targets = AIList.new(targets)
@@ -4124,14 +4274,16 @@ end
 
 sgs.ai_playerchosen_intention.heg_congcha = -50
 
-sgs.ai_skill_invoke.heg_jinxian = function(self, data)
+ai_skill_invoke.heg_jinxian = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local targets = AIList.new{}
 	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
 		if source_query(self.player,"distanceTo",p) <= 1 then
 			source_call(targets,"append",false,p)
 		end
 	end
-	if source_query(targets,"isEmpty") then return false end
+	if source_query(targets,"isEmpty") then return (false) or false  end
 	local good = 0
 	for _, p in sgs.qlist(targets) do
 		if source_query(self,"isEnemy",p) and source_query(self,"doDisCard",p,"he",false,2) then
@@ -4141,9 +4293,9 @@ sgs.ai_skill_invoke.heg_jinxian = function(self, data)
 		end
 	end
 	if good > 0 then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_playerchosen.heg_tongling = function(self, targets)
@@ -4258,10 +4410,15 @@ sgs.ai_playerchosen_intention.heg_nos_daming_slash = function(self,from,to)
 	end
 end
 
-sgs.ai_skill_choice.heg_nos_daming = function(self, choices, data)
+ai_skill_choice.heg_nos_daming = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local items = source_query(choices,"split","+")
-	if self.heg_nos_daming then return self.heg_nos_daming end
-	return items[math.random(1,#items)]
+	if self.heg_nos_daming then return  ai_choice_result((self.heg_nos_daming),options) end
+	return  ai_choice_result((items[math.random(1,#items)]),options)
 end
 
 sgs.ai_choicemade_filter.skillChoice.heg_nos_daming = function(self,player,promptlist)
@@ -4290,11 +4447,13 @@ sgs.ai_canliegong_skill.heg_nos_xiaoni = function(self, from, to)
 	end
 end
 
-sgs.ai_skill_invoke.heg_juejue = function(self, data)
+ai_skill_invoke.heg_juejue = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	if self.player:getHp() + self:getAllPeachNum() - 1 > 0 then
-		return (math.random() < 0.5 or source_helper("hasZhaxiangEffect",self.player)) and not self:isWeak() and self:getOverflow() > 0
+		return ((math.random() < 0.5 or source_helper("hasZhaxiangEffect",self.player)) and not self:isWeak() and self:getOverflow() > 0) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_discard.heg_juejue = function(self, discard_num, min_num, optional, include_equip)
@@ -4327,12 +4486,14 @@ sgs.ai_skill_discard.heg_juejue = function(self, discard_num, min_num, optional,
 end
 
 extra_alias{ id="ai_skill_playerchosen.heg_fangyuan",registry="ai_skill_playerchosen",path={"heg_fangyuan"},canonical_registry="ai_skill_playerchosen",canonical_path={"zero_card_as_slash"},self_index=1,defer_canonical=true}
-sgs.ai_skill_invoke.heg_tongdu = function(self, data)
+ai_skill_invoke.heg_tongdu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_tongdu = function(self,player,promptlist)
@@ -4342,13 +4503,15 @@ sgs.ai_choicemade_filter.skillInvoke.heg_tongdu = function(self,player,promptlis
 	end
 end
 
-sgs.ai_fill_skill.heg_qingyin = function(self,inclusive,request)
+ai_fill_skill.heg_qingyin = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if (#self.friends<=#self.enemies and self.room:getTurnCount()>2 and self.player:getLostHp()>0) or (self.room:getTurnCount()>1 and self:isWeak()) then
 		return parse_source("#heg_qingyin:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#heg_qingyin"] = function(card,use,self,request)
+ai_card_use["#heg_qingyin"] = function(self,card,use,request)
 	use.card = card
 	for i = 1,#self.friends do
 		source_call(use.to,"append",false,self.friends[i])
@@ -4358,14 +4521,16 @@ end
 sgs.ai_card_intention["heg_qingyin"] = -80
 sgs.ai_use_priority["heg_qingyin"] = 9.31
 
-sgs.ai_fill_skill.heg_duwu = function(self,inclusive,request)
+ai_fill_skill.heg_duwu = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if #self.enemies == 0 then return end
 	if (#self.friends<=#self.enemies and self.room:getTurnCount()>2 and self.player:getLostHp()>0) or (self.room:getTurnCount()>1 and self:isWeak()) then
 		return parse_source("#heg_duwu:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#heg_duwu"] = function(card,use,self,request)
+ai_card_use["#heg_duwu"] = function(self,card,use,request)
 	local targets = {}
 	for _, enemy in ipairs(self.enemies) do
 		if source_query(self,"canDamage",enemy) and source_query(self.player,"inMyAttackRange",enemy) then
@@ -4400,8 +4565,10 @@ sgs.ai_skill_cardask["@heg_xishe"] = function(self, data, pattern, target, targe
 	return "."
 end
 
-sgs.ai_skill_invoke.heg_xishe = function(self, data)
-	return math.random() < 0.5
+ai_skill_invoke.heg_xishe = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
+	return (math.random() < 0.5) or false 
 end
 
 sgs.ai_ajustdamage_from.heg_suzhi = function(self, from, to, card, nature)
@@ -4436,12 +4603,14 @@ sgs.ai_can_damagehp.heg_quanji = function(self,from,card,to)
 	and source_query(self,"canLoseHp",from,card,to) and source_query(to,"getMark","heg_quanji-Inflicted-Clear") == 0
 end
 
-sgs.ai_fill_skill.heg_paiyi = function(self,inclusive,request)
+ai_fill_skill.heg_paiyi = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self.player:getPile("heg_quanji_power"):length()>2 then
 		return parse_source("#heg_paiyi:"..self.player:getPile("heg_quanji_power"):first()..":")
 	end
 end
-sgs.ai_skill_use_func["#heg_paiyi"] = function(card,use,self,request)
+ai_card_use["#heg_paiyi"] = function(self,card,use,request)
 	local target
 	local targets = source_call(self,"findPlayerToDraw",false,true,self.player:getPile("heg_quanji_power"):length() - 1,true)
 	for _,p in ipairs(targets)do
@@ -4535,7 +4704,9 @@ sgs.ai_ajustdamage_from.heg_xiongnve = function(self, from, to, card, nature)
 	end
 end
 
-sgs.ai_skill_invoke.heg_xiongnve = function(self, data)
+ai_skill_invoke.heg_xiongnve = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local event = source_query(data,"toString")
 	if event == "start" then
 		local general_list = self.player:property("heg_shilus_generals"):toString():split("+")
@@ -4551,7 +4722,7 @@ sgs.ai_skill_invoke.heg_xiongnve = function(self, data)
 									local general = source_general(gn)
 									if general and string.find(source_query(general,"getKingdoms"), source_query(p,"getKingdom")) then
 										source_flag(self,self.player,"heg_xiongnve:"..gn)
-										return true
+										return (true) or false 
 									end
 								end
 							end
@@ -4562,12 +4733,14 @@ sgs.ai_skill_invoke.heg_xiongnve = function(self, data)
 		end
 	end
 	if event == "end" then
-		return self:isWeak()
+		return (self:isWeak()) or false 
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_fill_skill.heg_huaiyi = function(self,inclusive,request)
+ai_fill_skill.heg_huaiyi = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local handcards = self.player:getHandcards()
 	local red,black = false,false
 	if #self.toUse > 0 then return end
@@ -4589,7 +4762,7 @@ sgs.ai_fill_skill.heg_huaiyi = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#heg_huaiyi"] = function(card,use,self,request)
+ai_card_use["#heg_huaiyi"] = function(self,card,use,request)
 	local handcards = self.player:getHandcards()
     local reds,blacks = {},{}
     for _,c in sgs.qlist(handcards)do
@@ -4611,8 +4784,13 @@ sgs.ai_skill_use_func["#heg_huaiyi"] = function(card,use,self,request)
 end
 sgs.dynamic_value.benefit["heg_huaiyi"] = true
 
-sgs.ai_skill_choice.heg_huaiyi = function(self,choices,data)
-    return sgs.ai_skill_choice.huaiyi(self,choices,data)
+ai_skill_choice.heg_huaiyi = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
+    return  ai_choice_result((ai_skill_choice.huaiyi(self,{reason='huaiyi',choices=options and options.choices or (choices~=nil and {} or nil),inquiry_scope='ordinary_internal'},request)),options)
 end
 
 sgs.ai_skill_playerschosen.heg_huaiyi = function(self, targets, max, min)
@@ -4654,7 +4832,9 @@ sgs.ai_skill_cardchosen.heg_huaiyi = function(self, who, flags)
 end
 
 
-sgs.ai_fill_skill.heg_nos_huaiyi = function(self,inclusive,request)
+ai_fill_skill.heg_nos_huaiyi = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local handcards = self.player:getHandcards()
 	local red,black = false,false
 	if #self.toUse > 0 then return end
@@ -4676,7 +4856,7 @@ sgs.ai_fill_skill.heg_nos_huaiyi = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#heg_nos_huaiyi"] = function(card,use,self,request)
+ai_card_use["#heg_nos_huaiyi"] = function(self,card,use,request)
 	local handcards = self.player:getHandcards()
     local reds,blacks = {},{}
     for _,c in sgs.qlist(handcards)do
@@ -4739,14 +4919,16 @@ end
 sgs.ai_playerchosen_intention.heg_yingshi = -40
 
 
-sgs.ai_fill_skill.heg_shunfu = function(self,inclusive,request)
+ai_fill_skill.heg_shunfu = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if #self.enemies == 0 or #self.friends_noself == 0 then return end
 	if (self.room:getTurnCount()>1) or (self:isWeak()) then
 		return parse_source("#heg_shunfu:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#heg_shunfu"] = function(card,use,self,request)
+ai_card_use["#heg_shunfu"] = function(self,card,use,request)
 	local targets = {}
 	source_query(self, 'sortInPlace', self.friends_noself, "handcard", true)
 	local friends = self.friends_noself
@@ -4794,11 +4976,13 @@ sgs.ai_view_as.heg_yimie_attach = function(card,player,card_place)
 	end
 end
 
-sgs.ai_fill_skill.heg_ruilve_attach = function(self,inclusive,request)
+ai_fill_skill.heg_ruilve_attach = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_ruilve:.:")
 end
 
-sgs.ai_skill_use_func["#heg_ruilve"] = function(card,use,self,request)
+ai_card_use["#heg_ruilve"] = function(self,card,use,request)
     for _,p in ipairs(self.friends_noself) do
         if source_query(p,"hasSkill","heg_ruilve") and source_query(p,"getMark","heg_ruilve-PlayClear") == 0 and source_query(self,"canDraw",p,self.player) then
             local cards = self.player:getCards("he")
@@ -4817,22 +5001,26 @@ sgs.ai_skill_use_func["#heg_ruilve"] = function(card,use,self,request)
     use.card = nil
 end
 
-sgs.ai_skill_invoke.heg_beiluan = function(self, data)
+ai_skill_invoke.heg_beiluan = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toDamage").from
 	if target and source_query(self,"isEnemy",target) and not source_query(self,"hasCrossbowEffect",target) then
-		return true
+		return (true) or false 
 	end
 	if target and source_query(self,"isFriend",target) and source_query(self,"hasCrossbowEffect",target) and source_query(target,"getPhase") == sgs.Player_Play and source_query(self,"willUse",target,clone_source(),false,false,true) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_fill_skill.heg_pojing = function(self,inclusive,request)
+ai_fill_skill.heg_pojing = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_pojing:.:")
 end
 
-sgs.ai_skill_use_func["#heg_pojing"] = function(card,use,self,request)
+ai_card_use["#heg_pojing"] = function(self,card,use,request)
 	local friends = {}
 	for _, friend in ipairs(self.friends_noself) do
 		if source_query(friend,"getMark","heg_pojing"..self.player:objectName()) == 0 then
@@ -4863,12 +5051,17 @@ sgs.ai_skill_use_func["#heg_pojing"] = function(card,use,self,request)
 end
 sgs.ai_use_priority["heg_pojing"] = 4.8
 
-sgs.ai_skill_choice.heg_pojing = function(self, choices, data)
+ai_skill_choice.heg_pojing = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	local items = source_query(choices,"split","+")
 	local obtain = getChoice(choices, "obtain")
 	if (source_query(self,"isFriend",target) or source_query(self,"doDisCard",self.player,"hej",true)) and obtain then
-		return obtain
+		return  ai_choice_result((obtain),options)
 	end
 	local x = 0
 	for _, p in sgs.qlist(source_query(self.room,"getOtherPlayers",target)) do
@@ -4877,21 +5070,25 @@ sgs.ai_skill_choice.heg_pojing = function(self, choices, data)
 		end
 	end
 	if (x > 2 or x > self.player:getHp() + self:getAllPeachNum()) and obtain then
-		return obtain
+		return  ai_choice_result((obtain),options)
 	end
-	return "damage"
+	return  ai_choice_result(("damage"),options)
 end
 
-sgs.ai_skill_invoke.heg_pojing = function(self, data)
+ai_skill_invoke.heg_pojing = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"canDamage",target,self.player,nil) and source_query(self,"damageIsEffective",target,sgs.DamageStruct_Normal,self.player) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_invoke.heg_gongzhi = function(self, data)
-	return sgs.ai_skill_playerschosen.heg_gongzhi(self, self.room:getAlivePlayers(), 0, 4):length() > 0
+ai_skill_invoke.heg_gongzhi = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
+	return (sgs.ai_skill_playerschosen.heg_gongzhi(self, self.room:getAlivePlayers(), 0, 4):length() > 0) or false 
 end
 
 sgs.ai_skill_playerschosen.heg_gongzhi = function(self, targets, max, min)
@@ -4918,16 +5115,18 @@ sgs.ai_playerschosen_intention.heg_gongzhi = function(self, from, prompt)
     end
 end
 
-sgs.ai_skill_invoke.heg_shejus = function(self, data)
+ai_skill_invoke.heg_shejus = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"isWeak",target) and (source_query(target,"getHandcardNum") < 3 or getKnownCard(target,self.player,"Peach")<1) then
-		return true
+		return (true) or false 
 	end
 	if target and source_query(self,"isEnemy",target) and (source_query(target,"getHandcardNum") >= 3 or getKnownCard(target,self.player,"Peach")>0) then
-		return true
+		return (true) or false 
 	end
 	
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_cardask["@heg_zhulan"] = function(self, data, pattern, target, target2)
@@ -4948,7 +5147,9 @@ sgs.ai_choicemade_filter.cardResponded["@heg_zhulan"] = function(self, player, p
 	end
 end
 
-sgs.ai_skill_invoke.heg_luanchang = function(self, data)
+ai_skill_invoke.heg_luanchang = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local current = self.room:getCurrent()
 	local card = clone_source("archery_attack", sgs.Card_NoSuit, 0)
 	source_call(card,"setSkillName",false,"heg_luanchang")
@@ -4956,9 +5157,9 @@ sgs.ai_skill_invoke.heg_luanchang = function(self, data)
 	source_call(card,"deleteLater",false)
 	local dummy_use = source_call(self,"aiUseCard",false,card,dummy())
 	if dummy_use.card then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_ajustdamage_from.heg_zhuosheng = function(self, from, to, card, nature)
@@ -4980,7 +5181,7 @@ sgs.ai_skill_cardask["@heg_ciwei"] = function(self, data, pattern, target, targe
 	return "."
 end
 
-source_use_registry["@@heg_yanxi"] = function(self, prompt, method)
+ai_skill_use["@@heg_yanxi"] = function(self, prompt, request)
 	self:chuliSourceMap("reset")
 	local players = self:findPlayerToDiscard("h",false,true)
 	local kingdoms = {}
@@ -5023,36 +5224,43 @@ sgs.ai_card_intention["heg_yanxi"] = function(self,card,from,tos)
 	end
 end
 
-sgs.ai_skill_choice.heg_yanxi = function(self, choices, data)
+ai_skill_choice.heg_yanxi = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local items = source_query(choices,"split","+")
 	local card = disclosed(source_query(data,"toInt"))
 	local current = self.room:getCurrent()
 	if current and card then
 		if source_query(self,"isFriend",current) then
-			return items[math.random(1, #items)]
+			return  ai_choice_result((items[math.random(1, #items)]),options)
 		elseif source_query(self,"isEnemy",current) then
 			for _,item in ipairs(items)do
 				if item == source_query(card,"getClassName") then
-					return item
+					return  ai_choice_result((item),options)
 				end
 			end
 		end
 	end
-	return items[math.random(1, #items)]
+	return  ai_choice_result((items[math.random(1, #items)]),options)
 end
 
-sgs.ai_skill_invoke.heg_shiren = function(self, data)
+ai_skill_invoke.heg_shiren = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isFriend",damage.to) and source_query(self,"canDraw",damage.to) then
-		return true
+		return (true) or false 
 	end
 	if damage.to and source_query(self,"isEnemy",damage.to) then
-		return false
+		return (false) or false 
 	end
-	return math.random() < 0.5
+	return (math.random() < 0.5) or false 
 end
 
-source_use_registry["@@heg_jiantong"] = function(self, prompt, method)
+ai_skill_use["@@heg_jiantong"] = function(self, prompt, request)
 	source_query(self, 'sortInPlace', self.enemies, "handcard", true)
 	for _, enemy in ipairs(self.enemies) do
 		if source_query(self,"doDisCard",enemy,"h",true,2) and not source_query(self,"loseEquipEffect",enemy) then
@@ -5067,7 +5275,7 @@ source_use_registry["@@heg_jiantong"] = function(self, prompt, method)
 	return "."
 end
 
-sgs.ai_skill_invoke.heg_jiantong = true
+ai_skill_invoke.heg_jiantong = true
 
 sgs.ai_skill_playerchosen.heg_chengxi = function(self, targets)
 	targets = AIList.new(targets)
@@ -5119,12 +5327,14 @@ sgs.ai_canliegong_skill.heg_chujue = function(self, from, to)
 	end
 end
 
-sgs.ai_skill_invoke.heg_jianzhi = function(self, data)
+ai_skill_invoke.heg_jianzhi = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(damage.to,"getRole") == "rebel" and source_query(self,"getAllPeachNum",damage.to) + source_query(damage.to,"getHp") + source_query(damage.to,"getHujia") <= damage.damage then
-		return self.player:getHandcardNum() < 9
+		return (self.player:getHandcardNum() < 9) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_playerchosen.heg_zhefu  = function(self, targets)
@@ -5152,11 +5362,13 @@ end
 
 sgs.ai_playerchosen_intention.heg_yidu = 40
 
-sgs.ai_fill_skill.heg_chengliu = function(self,inclusive,request)
+ai_fill_skill.heg_chengliu = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_chengliu:.:")
 end
 
-sgs.ai_skill_use_func["#heg_chengliu"] = function(card,use,self,request)
+ai_card_use["#heg_chengliu"] = function(self,card,use,request)
 	local targets = {}
 	for _, enemy in ipairs(self.enemies) do
 		if source_query(enemy,"getEquips"):length() < self.player:getEquips():length() and source_query(self,"canDamage",enemy,self.player,nil) and source_query(self,"damageIsEffective",enemy,sgs.DamageStruct_Normal,self.player) then
@@ -5172,7 +5384,7 @@ sgs.ai_skill_use_func["#heg_chengliu"] = function(card,use,self,request)
 		if use.to then source_call(use.to,"append",false,targets[1]) end
 	end
 end
-source_use_registry["@@heg_chengliu"] = function(self, prompt, method)
+ai_skill_use["@@heg_chengliu"] = function(self, prompt, request)
 	local card = parse_source("#heg_chengliu:.:")
 	local dummy_use = dummy()
 	source_call(self,"useSkillCard",false,card,dummy_use)
@@ -5183,9 +5395,11 @@ source_use_registry["@@heg_chengliu"] = function(self, prompt, method)
 	return "."
 end
 
-sgs.ai_skill_invoke.heg_chengliu = function(self, data)
+ai_skill_invoke.heg_chengliu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
-	return source_query(self,"doDisCard",target,"e",true)
+	return (source_query(self,"doDisCard",target,"e",true)) or false 
 end
 
 sgs.ai_skill_playerschosen.heg_xunjim = function(self, targets, max, min)
@@ -5212,7 +5426,7 @@ sgs.ai_skill_cardask["@heg_xijue-xiaoguo"] = function(self, data, pattern, targe
 	return "."
 end
 sgs.ai_skill_cardask["@heg_xijue-tenyeartuxi"] = function(self, data, pattern, target, target2)
-	local tuxi_string = source_use_registry["@@tenyeartuxi"](self, prompt)
+	local tuxi_string = ai_skill_use["@@tenyeartuxi"](self, prompt, nil)
 	if tuxi_string == "." then
 		return "."
 	end
@@ -5223,20 +5437,26 @@ sgs.ai_skill_cardask["@heg_yingwei"] = function(self, data, pattern, target, tar
 	return true
 end
 
-sgs.ai_skill_invoke.heg_duanqiu = function(self, data)
+ai_skill_invoke.heg_duanqiu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	self:getTurnUse()
-	if #self.toUse > 2 then return false end
+	if #self.toUse > 2 then return (false) or false  end
 	local duel = clone_source("duel", sgs.Card_NoSuit, 0)
 	source_call(duel,"setSkillName",false,"heg_duanqiu")
 	source_call(duel,"deleteLater",false)
 	local dummy_use = source_call(self,"aiUseCard",false,duel,dummy())
 	if dummy_use.card then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_choice.heg_duanqiu_ChooseKingdom = function(self, choices)
+ai_skill_choice.heg_duanqiu_ChooseKingdom = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+
 	local items = source_query(choices,"split","+")
 	local duel = clone_source("duel", sgs.Card_NoSuit, 0)
 	source_call(duel,"setSkillName",false,"heg_duanqiu")
@@ -5244,18 +5464,20 @@ sgs.ai_skill_choice.heg_duanqiu_ChooseKingdom = function(self, choices)
 	local dummy_use = source_call(self,"aiUseCard",false,duel,dummy())
 	if dummy_use.card then
 		for _,p in sgs.list(dummy_use.to)do
-			return source_query(p,"getKingdom")
+			return  ai_choice_result((source_query(p,"getKingdom")),options)
 		end
 	end
-	return items[math.random(1, #items)]
+	return  ai_choice_result((items[math.random(1, #items)]),options)
 end
 
-sgs.ai_skill_invoke.heg_huaiyuan = function(self, data)
+ai_skill_invoke.heg_huaiyuan = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_huaiyuan = function(self,player,promptlist)
@@ -5360,8 +5582,10 @@ sgs.ai_view_as.heg_xiace = function(card,player,card_place)
 	end
 end
 
-sgs.ai_skill_invoke.heg_xiace = function(self, data)
-	return math.random() < 0.5
+ai_skill_invoke.heg_xiace = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
+	return (math.random() < 0.5) or false 
 end
 
 sgs.ai_skill_cardask["@heg_limeng"] = function(self, data, pattern)
@@ -5402,10 +5626,12 @@ end
 
 sgs.ai_damage_reason_suppress_intention.heg_limeng = true
 
-sgs.ai_fill_skill.heg_xiejian = function(self,inclusive,request)
+ai_fill_skill.heg_xiejian = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_xiejian:.:")
 end
-sgs.ai_skill_use_func["#heg_xiejian"] = function(card,use,self,request)
+ai_card_use["#heg_xiejian"] = function(self,card,use,request)
 	source_query(self, 'sortInPlace', self.enemies, "defense")
 	for _,enemy in ipairs(self.enemies) do
 		use.card = card
@@ -5416,7 +5642,9 @@ end
 sgs.ai_use_priority["heg_xiejian"] = 4.8
 
  
-sgs.ai_fill_skill.heg_yinsha = function(self,inclusive,request)
+ai_fill_skill.heg_yinsha = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
     if self.player:getHandcardNum()>self.player:getHp()
 	or self.player:isKongcheng() or #self.toUse>1 then return end
 	local collateral = clone_source("collateral")
@@ -5427,10 +5655,12 @@ end
 
 sgs.ai_suppress_intention.heg_yinsha = true
 
-sgs.ai_fill_skill.heg_sanchen = function(self,inclusive,request)
+ai_fill_skill.heg_sanchen = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_sanchen:.:")
 end
-sgs.ai_skill_use_func["#heg_sanchen"] = function(card,use,self,request)
+ai_card_use["#heg_sanchen"] = function(self,card,use,request)
 	source_query(self, 'sortInPlace', self.friends, "handcard")
 	self.friends = sgs.reverse(self.friends)
 	for _,p in sgs.list(self.friends)do
@@ -5450,7 +5680,7 @@ end
 sgs.ai_use_value["heg_sanchen"] = 10
 sgs.ai_card_intention["heg_sanchen"] = -50
 
-source_use_registry["@@heg_pozhu"] = function(self, prompt)
+ai_skill_use["@@heg_pozhu"] = function(self, prompt)
 	local cards = AIList.new(self:addHandPile("he"))
     source_query(self, 'sortByKeepValueInPlace', cards)
     for _, c in ipairs(cards) do
@@ -5471,7 +5701,7 @@ source_use_registry["@@heg_pozhu"] = function(self, prompt)
 end
 
 
-source_use_registry["@@heg_fk_bushi"] = function(self, prompt, method)
+ai_skill_use["@@heg_fk_bushi"] = function(self, prompt, request)
 	local ids = self.player:getPile("heg_fk_rice")
     local cards = {}
     for _,id in sgs.list(ids)do
@@ -5519,16 +5749,18 @@ sgs.ai_skill_cardask["@heg_fk_midao-card"] = function(self, data, pattern, targe
     return "."    
 end
 
-sgs.ai_skill_invoke.heg_true_pozhen = function(self, data)
+ai_skill_invoke.heg_true_pozhen = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = self.room:getCurrent()
 	if not target or not source_query(target,"isAlive") or not source_query(self,"isEnemy",target) then
-		return false 
+		return (false) or false  
 	end
 	
 	
 	local aliveCount = self.room:alivePlayerCount()
 	if aliveCount < 2 then
-		return (source_query(target,"getHandcardNum") > 3 and not source_query(self,"willSkipPlayPhase",target)) or self:isWeak()
+		return ((source_query(target,"getHandcardNum") > 3 and not source_query(self,"willSkipPlayPhase",target)) or self:isWeak()) or false 
 	end
 	
 	local x = 0
@@ -5571,7 +5803,7 @@ sgs.ai_skill_invoke.heg_true_pozhen = function(self, data)
 		end
 	end
 	
-	return (((x >= 2) or (source_query(target,"getHandcardNum") > 3)) and not source_query(self,"willSkipPlayPhase",target)) or self:isWeak()
+	return ((((x >= 2) or (source_query(target,"getHandcardNum") > 3)) and not source_query(self,"willSkipPlayPhase",target)) or self:isWeak()) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_true_pozhen = function(self,player,promptlist)
@@ -5581,19 +5813,23 @@ sgs.ai_choicemade_filter.skillInvoke.heg_true_pozhen = function(self,player,prom
 	end
 end
 
-sgs.ai_skill_invoke.heg_true_jiancai_change = function(self, data)
+ai_skill_invoke.heg_true_jiancai_change = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
-sgs.ai_skill_invoke.heg_true_jiancai = function(self, data)
+ai_skill_invoke.heg_true_jiancai = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isFriend",damage.to) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_true_jiancai = function(self,player,promptlist)
@@ -5603,15 +5839,17 @@ sgs.ai_choicemade_filter.skillInvoke.heg_true_jiancai = function(self,player,pro
 	end
 end
 
-sgs.ai_skill_invoke.DragonPhoenix = function(self, data)
+ai_skill_invoke.DragonPhoenix = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if self.room:getCurrentDyingPlayer() and self.room:getCurrentDyingPlayer():objectName() == source_query(target,"objectName") then
-		return source_query(self,"doDisCard",target,"he",true)
+		return (source_query(self,"doDisCard",target,"he",true)) or false 
 	end
 	if target then
-		return source_query(self,"doDisCard",target,"he")
+		return (source_query(self,"doDisCard",target,"he")) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_view_as.heg_lord_shouyue_wusheng = function(card,player,card_place)
@@ -5640,7 +5878,9 @@ sgs.ai_view_as.heg_lord_shouyue_wusheng = function(card,player,card_place)
 	end
 end
 
-sgs.ai_fill_skill.heg_lord_shouyue_wusheng = function(self,inclusive,request)
+ai_fill_skill.heg_lord_shouyue_wusheng = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = self:addHandPile("he")
 	cards = source_query(self, 'sortByUseValueInPlace', cards, true)
 	if self.player:getKnownKingdom() ~= "shu" then return nil end
@@ -5692,7 +5932,7 @@ sgs.ai_fill_skill.heg_lord_shouyue_wusheng = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_invoke.heg_lord_jizhao = sgs.ai_skill_invoke.niepan
+if ai_skill_invoke.niepan~=nil then ai_skill_invoke.heg_lord_jizhao=ai_skill_invoke.niepan end
 
 sgs.ai_canNiepan_skill.heg_lord_jizhao = function(player)
 	return source_query(player,"getMark","heg_lord_jizhao_used") == 0
@@ -5704,7 +5944,7 @@ sgs.ai_ajustdamage_from.PeaceSpell = function(self, from, to, card, nature)
 	end
 end
 
-sgs.ai_skill_invoke.heg_lord_hongfa = true
+ai_skill_invoke.heg_lord_hongfa = true
 
 sgs.ai_cardsview["heg_lord_hongfa_Attach"] = function(self,class_name,player)
 	if class_name=="Slash" then
@@ -5722,7 +5962,9 @@ sgs.ai_cardsview["heg_lord_hongfa_Attach"] = function(self,class_name,player)
 	end
 end
 
-addAiSkills("heg_lord_hongfa_Attach").getTurnUseCard = function(self,inclusive,request)
+addAiSkills("heg_lord_hongfa_Attach").getTurnUseCard = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local dc = clone_source("slash", sgs.Card_NoSuit, 0)
 	source_call(dc,"setSkillName",false,"_heg_lord_hongfa")
 	source_call(dc,"deleteLater",false)
@@ -5752,7 +5994,9 @@ addAiSkills("heg_lord_hongfa_Attach").getTurnUseCard = function(self,inclusive,r
 	end
 end
 
-sgs.ai_fill_skill.heg_lord_wendao = function(self,inclusive,request)
+ai_fill_skill.heg_lord_wendao = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local to_get
 	for _, id in sgs.qlist(self.room:getDiscardPile()) do
 		if disclosed(id):isKindOf("PeaceSpell") then
@@ -5796,7 +6040,7 @@ sgs.ai_fill_skill.heg_lord_wendao = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#heg_lord_wendao"] = function(card,use,self,request)
+ai_card_use["#heg_lord_wendao"] = function(self,card,use,request)
 	use.card = card
 	source_call(use.to,"append",false,self.player)
 end
@@ -5811,7 +6055,9 @@ function sgs.ai_armor_value.heg_lord_wendao(player, self, card)
 end
 
 
-sgs.ai_fill_skill.heg_lord_jiahe_Attach = function(self,inclusive,request)
+ai_fill_skill.heg_lord_jiahe_Attach = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = self.player:getCards("he")
 	cards = source_query(self, 'sortByUseValueInPlace', cards, true)
 	local use_card = nil
@@ -5827,7 +6073,7 @@ sgs.ai_fill_skill.heg_lord_jiahe_Attach = function(self,inclusive,request)
 	return nil
 end
 
-sgs.ai_skill_use_func["#heg_lord_jiahe_Attach"] = function(card,use,self,request)
+ai_card_use["#heg_lord_jiahe_Attach"] = function(self,card,use,request)
 	for _, p in sgs.qlist(self.room:findPlayersBySkillName("heg_lord_jiahe")) do
 		if source_query(self,"isFriend",p) then
 			use.card = card
@@ -5839,16 +6085,18 @@ end
 
 sgs.ai_use_priority["heg_lord_jiahe_Attach"] = sgs.ai_use_priority.ZhihengCard + 1
 
-sgs.ai_skill_invoke.heg_lord_jiahe = true
+ai_skill_invoke.heg_lord_jiahe = true
 
-sgs.ai_fill_skill.heg_zhiheng = function(self,inclusive,request)
+ai_fill_skill.heg_zhiheng = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self.player:getMaxHp() < 1 or not source_query(self.player,"canDiscard",self.player,"he") then return end
 	local card = active_source()
 	source_call(card,"setSkillName",false,"heg_zhiheng")
 	return card
 end
 
-sgs.ai_skill_use_func.heg_zhiheng = function(card,use,self,request)
+ai_card_use.heg_zhiheng = function(self,card,use,request)
 	local shared = parse_source("@ZhihengCard=.")
 	local dummy_use = dummy()
 	source_call(self,"useSkillCard",false,shared,dummy_use)
@@ -5867,7 +6115,9 @@ sgs.ai_use_priority["heg_zhiheng"] = sgs.ai_use_priority.ZhihengCard
 sgs.ai_use_value.heg_zhiheng = sgs.ai_use_value.ZhihengCard
 sgs.dynamic_value.benefit.heg_zhiheng = true
 
-sgs.ai_fill_skill.heg_lord_lianzi = function(self,inclusive,request)
+ai_fill_skill.heg_lord_lianzi = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = self.player:getCards("h")
 	cards = source_query(self, 'sortByUseValueInPlace', cards, true)
 	if #cards > 0 then
@@ -5875,7 +6125,7 @@ sgs.ai_fill_skill.heg_lord_lianzi = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#heg_lord_lianzi"] = function(card,use,self,request)
+ai_card_use["#heg_lord_lianzi"] = function(self,card,use,request)
 	use.card = card
 end
 sgs.ai_use_priority["heg_lord_lianzi"] = sgs.ai_use_priority.ZhihengCard + 1
@@ -5903,22 +6153,28 @@ sgs.ai_skill_discard.heg_lord_jianan = function(self, discard_num, min_num, opti
 	return to_discard
 end
 
-sgs.ai_skill_choice.heg_lord_jianan = function(self,choices)
+ai_skill_choice.heg_lord_jianan = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+
 	choices = source_query(choices,"split","+")
 	for _,choice in sgs.list(choices)do
 		if string.find(sgs.bad_skills,choice) then
-			return choice
+			return  ai_choice_result((choice),options)
 		end
 	end
-	return choices[math.random(1,#choices)]
+	return  ai_choice_result((choices[math.random(1,#choices)]),options)
 end
 
 
-sgs.ai_fill_skill.heg_lord_huibian = function(self,inclusive,request)
+ai_fill_skill.heg_lord_huibian = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
     return parse_source("#heg_lord_huibian:.:")
 end
 
-sgs.ai_skill_use_func["#heg_lord_huibian"] = function(card,use,self,request)
+ai_card_use["#heg_lord_huibian"] = function(self,card,use,request)
     source_query(self, 'sortInPlace', self.friends_noself, "hp")
     local target1, target2
     for _, friend in ipairs(self.friends_noself) do
@@ -5955,16 +6211,18 @@ function sgs.ai_armor_value.heg_lord_zongyu(player, self, card)
     if card and source_query(card,"isKindOf","SixDragons") then return 4 end
 end
 
-sgs.ai_skill_invoke.heg_lord_zongyu = true
+ai_skill_invoke.heg_lord_zongyu = true
 
 
-sgs.ai_fill_skill.heg_jiaping_Attach = function(self,inclusive,request)
+ai_fill_skill.heg_jiaping_Attach = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if (self:isWeak()) then
 		return parse_source("#heg_jiaping_Attach:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#heg_jiaping_Attach"] = function(card,use,self,request)
+ai_card_use["#heg_jiaping_Attach"] = function(self,card,use,request)
 	for _, p in sgs.qlist(self.room:findPlayersBySkillName("heg_jiaping")) do
 		if source_query(p,"getMark","heg_jiaping_lun") == 0 then
 			use.card = card
@@ -5974,11 +6232,13 @@ sgs.ai_skill_use_func["#heg_jiaping_Attach"] = function(card,use,self,request)
 	end
 end
 
-sgs.ai_fill_skill.heg_guikuang = function(self,inclusive,request)
+ai_fill_skill.heg_guikuang = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_guikuang:.:")
 end
 
-sgs.ai_skill_use_func["#heg_guikuang"] = function(card,use,self,request)
+ai_card_use["#heg_guikuang"] = function(self,card,use,request)
 	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	local target
 	local target2
@@ -6000,12 +6260,14 @@ sgs.ai_card_intention["heg_guikuang"] = 50
 
 sgs.ai_damage_reason_suppress_intention.heg_guikuang = true
 
-sgs.ai_skill_invoke.heg_mobile_bushi = function(self, data)
+ai_skill_invoke.heg_mobile_bushi = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and not source_query(self,"isEnemy",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_mobile_bushi = function(self,player,promptlist)
@@ -6029,12 +6291,14 @@ sgs.ai_skill_cardask["@heg_mobile_midao"] = function(self, data, pattern, target
 	return "."
 end
 
-sgs.ai_skill_invoke.heg_mobile_jiancai = function(self, data)
+ai_skill_invoke.heg_mobile_jiancai = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isFriend",damage.to) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_mobile_jiancai = function(self,player,promptlist)
@@ -6044,13 +6308,15 @@ sgs.ai_choicemade_filter.skillInvoke.heg_mobile_jiancai = function(self,player,p
 	end
 end
 
-sgs.ai_fill_skill.heg_mobile_paiyi = function(self,inclusive,request)
+ai_fill_skill.heg_mobile_paiyi = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self.player:getPile("heg_quanji_power"):length() > 1 then
 		return parse_source("#heg_mobile_paiyi:"..self.player:getPile("heg_quanji_power"):first()..":")
 	end
 end
 
-sgs.ai_skill_use_func["#heg_mobile_paiyi"] = function(card,use,self,request)
+ai_card_use["#heg_mobile_paiyi"] = function(self,card,use,request)
 	local target
 	local targets = self:findPlayerToDraw(true,2,true)
 	for _,p in ipairs(targets)do
@@ -6107,7 +6373,7 @@ sgs.ai_skill_use_func["#heg_mobile_paiyi"] = function(card,use,self,request)
 	end
 end
 
-source_use_registry["@@heg_mobile_keshou"] = function(self,prompt,method)
+ai_skill_use["@@heg_mobile_keshou"] = function(self, prompt, request)
 	local cards = AIList.new(self.player:getCards("he"))
 	source_query(self, 'sortByKeepValueInPlace', cards)
 	local damage = room_tag("heg_mobile_keshou"):toDamage()
@@ -6132,15 +6398,17 @@ source_use_registry["@@heg_mobile_keshou"] = function(self,prompt,method)
 	return card_str
 end
 
-sgs.ai_skill_invoke.heg_mobile_zhuwei = function(self, data)
+ai_skill_invoke.heg_mobile_zhuwei = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	if source_query(data,"toCard") then
-		return true
+		return (true) or false 
 	end
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_mobile_zhuwei = function(self,player,promptlist)
@@ -6150,8 +6418,10 @@ sgs.ai_choicemade_filter.skillInvoke.heg_mobile_zhuwei = function(self,player,pr
 	end
 end
 
-sgs.ai_skill_invoke.heg_mobile_yaowu = function(self, data)
-	return self:isWeak() or self:getOverflow() > 0 or math.random() < 0.5
+ai_skill_invoke.heg_mobile_yaowu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
+	return (self:isWeak() or self:getOverflow() > 0 or math.random() < 0.5) or false 
 end
 
 sgs.ai_skill_playerchosen.heg_mobile_tanfeng = function(self, targets)
@@ -6163,20 +6433,22 @@ sgs.ai_skill_playerchosen.heg_mobile_tanfeng = function(self, targets)
 end
 
 extra_alias{ id="ai_choicemade_filter.cardChosen.heg_mobile_tanfeng",registry="ai_choicemade_filter",path={"cardChosen","heg_mobile_tanfeng"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","snatch"},self_index=1,defer_canonical=true}
-sgs.ai_skill_invoke.heg_mobile_tanfeng = function(self, data)
+ai_skill_invoke.heg_mobile_tanfeng = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isEnemy",target) then
 		if source_query(self,"needToLoseHp",self.player,target,nil) and source_query(self,"damageIsEffective",self.player,sgs.DamageStruct_Fire,target) then
-			return true
+			return (true) or false 
 		end
 	end
 	if target and source_query(self,"isFriend",target) then
 		if source_query(target,"getJudgingArea"):length() > 0 then
-			return source_query(self,"needToLoseHp",self.player,target,nil) or not source_query(self,"damageIsEffective",self.player,sgs.DamageStruct_Fire,target) or not self:isWeak()
+			return (source_query(self,"needToLoseHp",self.player,target,nil) or not source_query(self,"damageIsEffective",self.player,sgs.DamageStruct_Fire,target) or not self:isWeak()) or false 
 		end
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 
@@ -6185,7 +6457,9 @@ sgs.ai_target_revises.heg_mobile_qianxun = function(to,card,self)
 	then return true end
 end
 
-sgs.ai_fill_skill.heg_mobile_duoshi = function(self,inclusive,request)
+ai_fill_skill.heg_mobile_duoshi = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if self.player:getPile("heg_mobile_jie"):length() >= 3 then
 		local ids = self.player:getPile("heg_mobile_jie")
 		local cards = {}
@@ -6247,7 +6521,7 @@ sgs.ai_ajustdamage_from.heg_mobile_liegong = function(self, from, to, card, natu
 	end
 end
 
-sgs.ai_skill_invoke.heg_mobile_liegong = sgs.ai_skill_invoke.liegong
+if ai_skill_invoke.liegong~=nil then ai_skill_invoke.heg_mobile_liegong=ai_skill_invoke.liegong end
 
 sgs.ai_skill_playerchosen.heg_mobile_shushen = function(self,targets)
 	if #self.friends_noself==0 then return nil end
@@ -6256,49 +6530,70 @@ end
 sgs.ai_playerchosen_intention.heg_mobile_shushen = -80
 
 
-sgs.ai_skill_invoke.heg_mobile_suishi = function(self,data)
+ai_skill_invoke.heg_mobile_suishi = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local promptlist = source_query(data,"toString"):split(":")
 	local effect = promptlist[1]
 	local tianfeng = source_call(self.room,"findPlayerByObjectName",false,promptlist[2])
 	if effect=="draw" then
-		return tianfeng and source_query(self,"isFriend",tianfeng) and source_query(self,"canDraw",tianfeng)
+		return (tianfeng and source_query(self,"isFriend",tianfeng) and source_query(self,"canDraw",tianfeng)) or false 
 	else
-		return tianfeng and source_query(self,"isEnemy",tianfeng)
+		return (tianfeng and source_query(self,"isEnemy",tianfeng)) or false 
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_choice.heg_mobile_suishi = function(self, choices, data)
+ai_skill_choice.heg_mobile_suishi = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	choices = source_query(choices,"split","+")
 	if table.contains(choices, "discardhandcard") then
 		if source_query(self,"doDisCard",self.player,"h") then
-			return "discardhandcard"
+			return  ai_choice_result(("discardhandcard"),options)
 		end
 	end
-	return choices[math.random(1,#choices)]
+	return  ai_choice_result((choices[math.random(1,#choices)]),options)
 end
 
-sgs.ai_skill_invoke.heg_mobile_kuangfu = function(self, data)
+ai_skill_invoke.heg_mobile_kuangfu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target then
-		return source_query(self,"doDisCard",target,"he",true)
+		return (source_query(self,"doDisCard",target,"he",true)) or false 
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_choice.heg_mobile_kuangfu = function(self, choices, data)
-	return "obtain"
+ai_skill_choice.heg_mobile_kuangfu = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
+	return  ai_choice_result(("obtain"),options)
 end
 
-sgs.ai_skill_invoke.heg_ov_zhenxi = function(self, data)
+ai_skill_invoke.heg_ov_zhenxi = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isEnemy",target) then
-		return true
+		return (true) or false 
 	end
-	return source_query(self,"doDisCard",target,"he")
+	return (source_query(self,"doDisCard",target,"he")) or false 
 end
 
-sgs.ai_skill_choice.heg_ov_zhenxi = function(self, choices, data)
+ai_skill_choice.heg_ov_zhenxi = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	choices = source_query(choices,"split","+")
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isEnemy",target) then
@@ -6319,16 +6614,16 @@ sgs.ai_skill_choice.heg_ov_zhenxi = function(self, choices, data)
 			if #suits > 0 then
 				for _, c in sgs.qlist(self.player:getCards("he")) do
 					if table.contains(suits, source_query(c,"getSuitString")) and not source_query(c,"isKindOf","TrickCard") then
-						return "use"
+						return  ai_choice_result(("use"),options)
 					end
 				end
 			end
 		end
 	end
 	if table.contains(choices, "discard") and source_query(self,"doDisCard",target,"he") then
-		return "discard"
+		return  ai_choice_result(("discard"),options)
 	end
-	return "cancel"
+	return  ai_choice_result(("cancel"),options)
 end
 
 sgs.ai_skill_cardask["@heg_ov_zhenxi"] = function(self, data, pattern, target, target2)
@@ -6364,11 +6659,13 @@ sgs.ai_skill_cardask["@heg_ov_zhenxi"] = function(self, data, pattern, target, t
 	return "."
 end
 
-sgs.ai_skill_invoke.heg_ov_jiansu = function(self, data)
-	return math.random() < 0.6
+ai_skill_invoke.heg_ov_jiansu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
+	return (math.random() < 0.6) or false 
 end
 
-source_use_registry["@@heg_ov_jiansu"] = function(self, prompt, method)
+ai_skill_use["@@heg_ov_jiansu"] = function(self, prompt, request)
 	for _, friend in ipairs(self.friends) do
 		if source_query(friend,"getHp") <= 2 then
 			local use_cards = {}
@@ -6385,17 +6682,19 @@ source_use_registry["@@heg_ov_jiansu"] = function(self, prompt, method)
 	return "."
 end
 
-sgs.ai_skill_invoke.heg_ov_zhuidu = function(self, data)
+ai_skill_invoke.heg_ov_zhuidu = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isEnemy",damage.to) then
 		if source_query(self,"doDisCard",damage.to,"e") then
-			return true
+			return (true) or false 
 		end
 		if not source_query(self,"cantDamageMore",self.player,damage.to) and source_query(self,"canDamage",damage.to,self.player,damage.card) then
-			return true
+			return (true) or false 
 		end
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_skill_cardask["@heg_ov_zhuidu-beishui"] = function(self, data, pattern, target, target2)
@@ -6408,48 +6707,59 @@ sgs.ai_skill_cardask["@heg_ov_zhuidu-beishui"] = function(self, data, pattern, t
 	return "."
 end
 
-sgs.ai_skill_choice.heg_ov_zhuidu = function(self, choices, data)
+ai_skill_choice.heg_ov_zhuidu = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local damage = source_query(data,"toDamage")
 	choices = source_query(choices,"split","+")
 	if source_query(self,"doDisCard",self.player,"e") and table.contains(choices, "discard") then
-		return "discard"
+		return  ai_choice_result(("discard"),options)
 	end
-	return "damage"
+	return  ai_choice_result(("damage"),options)
 end
 
 sgs.ai_canNiepan_skill.heg_ov_shigong = function(player)
 	return source_query(player,"getGeneral2") and source_query(player,"getMark","@heg_ov_shigong") > 0
 end
 
-sgs.ai_skill_invoke.heg_ov_shigong = sgs.ai_skill_invoke.niepan
-sgs.ai_skill_invoke.heg_ov_shigong_gain = function(self, data)
+if ai_skill_invoke.niepan~=nil then ai_skill_invoke.heg_ov_shigong=ai_skill_invoke.niepan end
+ai_skill_invoke.heg_ov_shigong_gain = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	for _,sk in sgs.list(self.player:getVisibleSkillList())do do
 		if source_query(sk,"isAttachedLordSkill") then goto package_continue_11 end
 		if not string.find(sgs.bad_skills,choice) then
-			return true
+			return (true) or false 
 		end
 	end ::package_continue_11:: end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_choice.heg_ov_shigong = function(self,choices)
+ai_skill_choice.heg_ov_shigong = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+
 	choices = source_query(choices,"split","+")
 	for _,choice in sgs.list(choices)do
 		if source_query(self,"isValueSkill",choice,self.player,true) then
-			return choice
+			return  ai_choice_result((choice),options)
 		end
 	end
 	for _,choice in sgs.list(choices)do
 		if source_query(self,"isValueSkill",choice,self.player) then
-			return choice
+			return  ai_choice_result((choice),options)
 		end
 	end
 	for _,choice in sgs.list(choices)do do 
 		if string.find(sgs.bad_skills,choice) then goto package_continue_12 end
-		return choice
+		return  ai_choice_result((choice),options)
 	end ::package_continue_12:: end
-	return choices[math.random(1,#choices)]
+	return  ai_choice_result((choices[math.random(1,#choices)]),options)
 end
 
 sgs.ai_skill_playerchosen.heg_ov_hongyuan = function(self, targets)
@@ -6472,11 +6782,13 @@ local function CardIsHezong(card_or_id)
 		or (current_card and source_query(current_card,"hasFlag","heg_transfer_card")) or false
 end
 
-sgs.ai_fill_skill.heg_ov_hongyuan = function(self,inclusive,request)
+ai_fill_skill.heg_ov_hongyuan = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_ov_hongyuan:.:")
 end
 
-sgs.ai_skill_use_func["#heg_ov_hongyuan"] = function(card,use,self,request)
+ai_card_use["#heg_ov_hongyuan"] = function(self,card,use,request)
 	local card = parse_source("@TenyearRendeCard=.")
 	local dummy_use = dummy()
 	source_call(self,"useSkillCard",false,card,dummy_use)
@@ -6492,22 +6804,26 @@ sgs.ai_skill_use_func["#heg_ov_hongyuan"] = function(card,use,self,request)
 end
 sgs.ai_use_priority.heg_ov_hongyuan = 1
 
-sgs.ai_skill_invoke.heg_tenyear_dechao = function(self, data)
+ai_skill_invoke.heg_tenyear_dechao = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local use = source_query(data,"toCardUse")
 	if use.from and source_query(self,"doDisCard",use.from,"he") then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 extra_alias{ id="ai_choicemade_filter.cardChosen.heg_tenyear_dechao",registry="ai_choicemade_filter",path={"cardChosen","heg_tenyear_dechao"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","snatch"},self_index=1,defer_canonical=true}
-sgs.ai_fill_skill.heg_tenyear_mingfa = function(self,inclusive,request)
+ai_fill_skill.heg_tenyear_mingfa = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if #self.enemies > 0 then
 		return parse_source("#heg_tenyear_mingfa:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#heg_tenyear_mingfa"] = function(card,use,self,request)
+ai_card_use["#heg_tenyear_mingfa"] = function(self,card,use,request)
 	local targets = source_call(self,"findPlayerToDamage",false,1,self.player,"N")
 	if #targets > 0 then
 		for _,p in ipairs(targets)do
@@ -6555,11 +6871,13 @@ sgs.ai_playerschosen_intention.heg_tenyear_jianliang = function(self, from, prom
     end
 end
 
-sgs.ai_fill_skill.heg_tenyear_weimeng = function(self,inclusive,request)
+ai_fill_skill.heg_tenyear_weimeng = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_tenyear_weimeng:.:")
 end
 
-sgs.ai_skill_use_func["#heg_tenyear_weimeng"] = function(card,use,self,request)
+ai_card_use["#heg_tenyear_weimeng"] = function(self,card,use,request)
 	for _, friend in ipairs(self.friends_noself) do
 		if source_query(self,"doDisCard",friend,"he",true) then
 			use.card = card
@@ -6576,19 +6894,23 @@ sgs.ai_skill_use_func["#heg_tenyear_weimeng"] = function(card,use,self,request)
 	end
 end
 
-sgs.ai_skill_invoke.heg_tenyear_weimeng = function(self, data)
+ai_skill_invoke.heg_tenyear_weimeng = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_fill_skill.heg_tenyear_boyan = function(self,inclusive,request)
+ai_fill_skill.heg_tenyear_boyan = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	return parse_source("#heg_tenyear_boyan:.:")
 end
 
-sgs.ai_skill_use_func["#heg_tenyear_boyan"] = function(card,use,self,request)
+ai_card_use["#heg_tenyear_boyan"] = function(self,card,use,request)
 	if self.player:getMark("heg_tenyear_boyan") <= 0 then
 		source_call(self,"setPriorityValue",false,"heg_tenyear_boyan",sgs.ai_use_priority.BoyanCard,"extra.heg_tenyear_boyan")
 		local targets = self:findPlayerToDraw(false,1,true)
@@ -6626,42 +6948,53 @@ end
 sgs.ai_use_value["heg_tenyear_boyan"] = sgs.ai_use_value.BoyanCard
 sgs.ai_use_priority["heg_tenyear_boyan"] = sgs.ai_use_priority.BoyanCard
 
-sgs.ai_skill_invoke.heg_tenyear_boyan = function(self, data)
+ai_skill_invoke.heg_tenyear_boyan = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 
-sgs.ai_skill_invoke.heg_tenyear_shejian = function(self, data)
+ai_skill_invoke.heg_tenyear_shejian = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local use = source_query(data,"toCardUse")
 	if use.from and source_query(self,"isEnemy",use.from) then
 		if source_query(self,"doDisCard",use.from,"he") then
-			return true
+			return (true) or false 
 		end
 		if source_query(self,"canDamage",use.from,self.player,nil) then
-			return true
+			return (true) or false 
 		end
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_choice.heg_tenyear_shejian = function(self, choices, data)
+ai_skill_choice.heg_tenyear_shejian = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	local items source_query(choices,"split","+")
 	local use = source_query(data,"toCardUse")
 	local damage = getChoice(choices, "damage")
 	local discard = getChoice(choices, "discard")
 	if damage then
 		if use.from and source_query(self,"canDamage",use.from,self.player,nil) then
-			return damage
+			return  ai_choice_result((damage),options)
 		end
 	end
-	return discard
+	return  ai_choice_result((discard),options)
 end
 
-sgs.ai_fill_skill.heg_tenyear_fenglue = function(self,inclusive,request)
+ai_fill_skill.heg_tenyear_fenglue = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	local cards = self.player:getCards("h")
 	source_query(self, 'sortByKeepValueInPlace', cards)
   	for _,c in sgs.list(cards)do
@@ -6672,7 +7005,7 @@ sgs.ai_fill_skill.heg_tenyear_fenglue = function(self,inclusive,request)
 	end
 end
 
-sgs.ai_skill_use_func["#heg_tenyear_fenglue"] = function(card,use,self,request)
+ai_card_use["#heg_tenyear_fenglue"] = function(self,card,use,request)
 	source_query(self, 'sortInPlace', self.enemies, "card", true)
 	for _,ep in sgs.list(self.enemies)do
 		if source_query(self.player,"canPindian",ep)
@@ -6708,49 +7041,60 @@ end
 sgs.ai_use_value["heg_tenyear_fenglue"] = 9.4
 sgs.ai_use_priority["heg_tenyear_fenglue"] = 4.8
 
-sgs.ai_skill_invoke.heg_tenyear_fenglue = function(self, data)
+ai_skill_invoke.heg_tenyear_fenglue = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 
 
-sgs.ai_skill_invoke.heg_tenyear_anyong = function(self, data)
+ai_skill_invoke.heg_tenyear_anyong = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isEnemy",damage.to) then
 		if not source_query(self,"cantDamageMore",damage.from,damage.to) and source_query(self,"damageStruct",damage) then
-			return true
+			return (true) or false 
 		end
 	end
-	return false
+	return (false) or false 
 end
 
-sgs.ai_skill_choice.heg_tenyear_anyong = function(self, choices, data)
+ai_skill_choice.heg_tenyear_anyong = function(self,options,request)
+    local choices
+    if options and options.choices~=nil then choices=table.concat(options.choices,'+')
+    elseif options and (options.inquiry_scope=='ordinary_top_level'or options.inquiry_scope=='original_top_level')then choices=''end
+    local data=request and self:getDecisionData(request) or nil
+
 	choices = source_query(choices,"split","+")
 	local losehp = getChoice(choices, "losehp")
 	local discard = getChoice(choices, "discard")
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isEnemy",target) and losehp then
-		return losehp
+		return  ai_choice_result((losehp),options)
 	end
 	if discard and source_query(self,"doDisCard",target,"h") then
-		return discard
+		return  ai_choice_result((discard),options)
 	end
-	return "cancel"
+	return  ai_choice_result(("cancel"),options)
 end
 
-sgs.ai_skill_invoke.heg_tenyear_zhuwei  = function(self, data)
+ai_skill_invoke.heg_tenyear_zhuwei  = function(self,options,request)
+    local data=request and self:getDecisionData(request) or nil
+
 	if source_query(data,"toCard") then
-		return true
+		return (true) or false 
 	end
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return true
+		return (true) or false 
 	end
-	return false
+	return (false) or false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_tenyear_zhuwei = function(self,player,promptlist)
@@ -6765,11 +7109,12 @@ end
 
 
 function SmartAIView:useCardheg_known_both(card, use)
+    local recommend = self:targetRecommendScorer(card)
 	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	self.enemies = sgs.reverse(self.enemies)
 	local extraTarget = source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-	for _,ep in sgs.list(self.enemies)do do 
+	for _,ep in sgs.list(self:orderTargetsByRecommend(self.enemies, recommend))do do
 		if isCurrent(use,ep) then goto package_continue_13 end
 		if source_query(self.player,"canUse",card,ep)
 		and source_query(self,"hasTrickEffective",card,ep,self.player) and #getKnownCards(ep,self.player) < source_query(ep,"getHandcardNum") then
@@ -6780,6 +7125,7 @@ function SmartAIView:useCardheg_known_both(card, use)
 		end
 	end ::package_continue_13:: end
 end
+sgs.registerSkillCardType("heg_known_both", "debuff")
 sgs.ai_use_priority.heg_known_both = 9.1
 sgs.ai_use_value.heg_known_both = 5.4
 sgs.ai_keep_value.heg_known_both = 3.33
@@ -6794,11 +7140,12 @@ end
 
 
 function SmartAIView:useCardheg_befriend_attacking(card, use)
+    local recommend = self:targetRecommendScorer(card)
 	local friends = self:findPlayerToDraw(false,1,true)
 	source_query(self, 'sortInPlace', self.friends, nil, true)
 	local extraTarget = source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-	for _,fp in sgs.list(friends)do do 
+	for _,fp in sgs.list(self:orderTargetsByRecommend(friends, recommend))do do
 		if isCurrent(use,fp) or source_query(use.to,"contains",fp) then goto package_continue_14 end
 		if source_can_to(card,self.player,fp)
 		and source_query(self,"canDraw",fp) and source_query(self,"hasTrickEffective",card,fp,self.player) then
@@ -6808,7 +7155,7 @@ function SmartAIView:useCardheg_befriend_attacking(card, use)
 			then return end
 		end
 	end ::package_continue_14:: end
-	for _,fp in sgs.list(self.friends)do do 
+	for _,fp in sgs.list(self:orderTargetsByRecommend(self.friends, recommend))do do
 		if isCurrent(use,fp) or source_query(use.to,"contains",fp) then goto package_continue_15 end
 		if source_can_to(card,self.player,fp)
 		and source_query(self,"canDraw",fp) and source_query(self,"hasTrickEffective",card,fp,self.player) then
@@ -6819,6 +7166,7 @@ function SmartAIView:useCardheg_befriend_attacking(card, use)
 		end
 	end ::package_continue_15:: end
 end
+sgs.registerSkillCardType("heg_befriend_attacking", "draw")
 sgs.ai_use_priority.heg_befriend_attacking = 9.28
 sgs.ai_use_value.heg_befriend_attacking = 9
 sgs.ai_keep_value.heg_befriend_attacking = 3.88
@@ -6838,20 +7186,23 @@ end
 
 
 function SmartAIView:useCardheg_await_exhausted(card, use)
+    local recommend = self:targetRecommendScorer(card)
+	if recommend(self.player, 0) == nil then return end
 	use.card = card
 	if use.to then source_call(use.to,"append",false,self.player) end
-	for _, player in ipairs(self.friends_noself) do
+	for _, player in ipairs(self:orderTargetsByRecommend(self.friends_noself, recommend)) do
 		if use.to and source_query(self,"canDraw",player) and not source_query(player,"isNude") and source_query(self,"hasTrickEffective",card,player,self.player) then
 			source_call(use.to,"append",false,player)
 		end
 	end
-	for _, enemy in ipairs(self.enemies) do
+	for _, enemy in ipairs(self:orderTargetsByRecommend(self.enemies, recommend)) do
 		if use.to and source_helper("hasManjuanEffect",enemy) and not source_query(enemy,"isNude") and source_query(self,"hasTrickEffective",card,enemy,self.player) then
 			source_call(use.to,"append",false,enemy)
 		end
 	end
 	return
 end
+sgs.registerSkillCardType("heg_await_exhausted", "draw")
 sgs.ai_use_priority.heg_await_exhausted = 2.8
 sgs.ai_use_value.heg_await_exhausted = 4
 sgs.ai_keep_value.heg_await_exhausted = 1
@@ -6915,13 +7266,15 @@ end
 
 sgs.weapon_range.heg_six_swords = 2
 
-sgs.ai_fill_skill.heg_six_swords = function(self,inclusive,request)
+ai_fill_skill.heg_six_swords = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	if #self.friends > 0 then
 		return parse_source("#heg_six_swords:.:")
 	end
 end
 
-sgs.ai_skill_use_func["#heg_six_swords_Skill"] = function(card,use,self,request)
+ai_card_use["#heg_six_swords_Skill"] = function(self,card,use,request)
 	source_query(self, 'sortInPlace', self.friends, "defense")
 	local invoke = false
 	for _,friend in ipairs(self.friends)do
@@ -7099,6 +7452,7 @@ sgs.ai_card_intention.heg_burning_camps = 120
 
 
 function SmartAIView:useCardheg_fight_together(card, use)
+	local recommend = self:targetRecommendScorer(card)
 	if not source_query(card,"isAvailable",self.player) then return end
 
 	local bigs, smalls = {}, {}
@@ -7154,6 +7508,18 @@ function SmartAIView:useCardheg_fight_together(card, use)
 				end
 			end
 		end
+		-- 效果按整組生效：累加組內推薦，但任何否決都淘汰整組，不能刪除其中一人。
+		local function group_value(players, value)
+			if #players == 0 then return -math.huge end
+			for _, player in ipairs(players) do
+				local delta = recommend(player, 0)
+				if delta == nil then return -math.huge end
+				value = value + delta
+			end
+			return value
+		end
+		v_big = group_value(bigs, v_big)
+		v_small = table.contains(choices, "small") and group_value(smalls, v_small) or -math.huge
 		local win = math.max(v_small, v_big)
 		if win > 1 then
 			if win == v_big then
@@ -7173,6 +7539,7 @@ function SmartAIView:useCardheg_fight_together(card, use)
 		return
 	end
 end
+sgs.registerSkillCardType("heg_fight_together", "debuff")
 
 
 sgs.ai_nullification.heg_fight_together = function(self, card, from, to, positive)
@@ -7217,7 +7584,10 @@ sgs.ai_keep_value.heg_fight_together = 3.24
 
 
 function SmartAIView:useCardheg_alliance_feast(card, use)
+	local recommend = self:targetRecommendScorer(card)
 	if not source_query(card,"isAvailable",self.player) then return end
+	local self_adjust = recommend(self.player, 0)
+	if self_adjust == nil then return end
 	local effect_kingdoms = {}
 
 	for _, target in sgs.qlist(source_query(self.room,"getOtherPlayers",self.player)) do
@@ -7231,12 +7601,17 @@ function SmartAIView:useCardheg_alliance_feast(card, use)
 	local winner
 	for _, kingdom in ipairs(effect_kingdoms) do
 		local value = 0
+		local adjustment, vetoed = self_adjust, false
 		local their_num = 0
 		local self_value = 0
 		local enemy_value = 0
 		for _, p in sgs.qlist(source_query(self.room,"getOtherPlayers",self.player)) do
 			if source_query(p,"getKingdom") == kingdom then
 				their_num = their_num + 1
+				if source_query(self,"hasTrickEffective",card,p,self.player) then
+					local delta = recommend(p, 0)
+					if delta == nil then vetoed = true else adjustment = adjustment + delta end
+				end
 				if source_query(self,"isFriend",p) and source_query(self,"hasTrickEffective",card,p,self.player) then
 					self_value = self_value + 0.5
 					if source_query(p,"isChained") then self_value = self_value + 0.5 end
@@ -7255,7 +7630,7 @@ function SmartAIView:useCardheg_alliance_feast(card, use)
 		if self_value >= 3 and enemy_value > 2.5 then
 			enemy_value = enemy_value / 2
 		end
-		value = self_value - enemy_value
+		value = vetoed and -math.huge or self_value - enemy_value + adjustment
 		if value > max_v then
 			winner = kingdom
 			max_v = value
@@ -7278,6 +7653,8 @@ function SmartAIView:useCardheg_alliance_feast(card, use)
 		end
 	end
 end
+sgs.registerSkillCardType("heg_alliance_feast", "draw")
+sgs.registerSkillCardType("heg_alliance_feast", "recover")
 
 sgs.ai_use_value.heg_alliance_feast = 9.5
 sgs.ai_use_priority.heg_alliance_feast = 8.8
@@ -7341,7 +7718,9 @@ sgs.ai_nullification.heg_alliance_feast = function(self, card, from, to, positiv
 end
 
 
-sgs.ai_fill_skill.heg_transfer = function(self,inclusive,request)
+ai_fill_skill.heg_transfer = function(self,options,request)
+    local inclusive=(options or {}).inclusive
+
 	source_call(self,"setPriorityValue",false,"heg_transfer",0.8,"extra.heg_transfer")
 	self.yjzy_to = nil
 	local use_cards = {}
@@ -7375,7 +7754,7 @@ sgs.ai_fill_skill.heg_transfer = function(self,inclusive,request)
 	return parse_source("#heg_transfer:"..table.concat(use_cards, "+")..":")
 end
 
-sgs.ai_skill_use_func["#heg_transfer"] = function(card,use,self,request)
+ai_card_use["#heg_transfer"] = function(self,card,use,request)
 	if self.yjzy_to then
 		use.card = card
 		source_call(use.to,"append",false,self.yjzy_to)
@@ -7404,7 +7783,7 @@ sgs.ai_card_intention.heg_transfer = -40
 -- kept as audit rows, not activated as an invented replacement.
 local effective_fill={["bf_nos_tiaodu"]=true,["bf_qice"]=true,["bf_xiongsuan"]=true,["bf_yongjin"]=true,["gd_zezhu"]=true,["guandu_shicai"]=true,["guandu_yuanlue"]=true,["heg_chengliu"]=true,["heg_duanliang"]=true,["heg_duanxie"]=true,["heg_duwu"]=true,["heg_fengying"]=true,["heg_guikuang"]=true,["heg_guishu"]=true,["heg_huaiyi"]=true,["heg_jianglue"]=true,["heg_jiaping_Attach"]=true,["heg_jinfa"]=true,["heg_jinghe"]=true,["heg_kurou"]=true,["heg_longdan"]=true,["heg_lord_hongfa_Attach"]=true,["heg_lord_huibian"]=true,["heg_lord_jiahe_Attach"]=true,["heg_lord_lianzi"]=true,["heg_lord_shouyue_wusheng"]=true,["heg_lord_wendao"]=true,["heg_mobile_duoshi"]=true,["heg_mobile_paiyi"]=true,["heg_nos_guishu"]=true,["heg_nos_huaiyi"]=true,["heg_ov_hongyuan"]=true,["heg_paiyi"]=true,["heg_pojing"]=true,["heg_qiangxi"]=true,["heg_qingyin"]=true,["heg_quanjin"]=true,["heg_ruilve_attach"]=true,["heg_sanchen"]=true,["heg_shunfu"]=true,["heg_six_swords"]=true,["heg_tenyear_boyan"]=true,["heg_tenyear_fenglue"]=true,["heg_tenyear_mingfa"]=true,["heg_tenyear_weimeng"]=true,["heg_transfer"]=true,["heg_weidi"]=true,["heg_xianqu"]=true,["heg_xiejian"]=true,["heg_xuanhuoAttach"]=true,["heg_yinsha"]=true,["heg_yinyangyu"]=true,["heg_zaoyun"]=true,["heg_zhiheng"]=true,["heg_zhuangrong"]=true,["twyj_huzhu"]=true,["twyj_qijia"]=true,["twyj_rangyi"]=true,["twyj_zhuchen"]=true}
 for _,skill in ipairs(package_skills)do
- if effective_fill[skill.name]then sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end
+ if effective_fill[skill.name]then ai_fill_skill[skill.name]=skill.getTurnUseCard end
 end
 local state_fields={yinghun_po='player',yinghun_pochoice='scalar',yjzy_to='player',heg_gongxiu='scalar',heg_nos_daming='scalar',heg_triblade_Skill_target='player'}
 local function restore_state(ai)
@@ -7430,13 +7809,13 @@ local function wrap(body,row)
   end
   local previous_ai,previous_key,previous_request,previous_range=current_ai,current_key,current_request,range_pending
   current_ai=ai;current_key='extra:'..row.registry..'.'..table.concat(row.path,'.')
-  current_request=row.registry=='ai_fill_skill'and args[3]or row.registry=='ai_skill_use_func'and args[4]or row.registry=='ai_skill_use'and args[5]or nil;range_pending=nil
+  current_request=row.registry=='ai_fill_skill'and args[3]or row.registry=='ai_card_use'and args[4]or row.registry=='ai_skill_use'and args[3]or row.registry=='ai_skill_invoke'and args[3]or row.registry=='ai_skill_choice'and args[3]or nil;range_pending=nil
   local outer=ai and previous_ai~=ai
   local result=table.pack(pcall(function()if outer then restore_state(ai)end;return body(table.unpack(args,1,args.n))end))
   if result[1]and row.registry=='ai_fill_skill'and (previews[result[2]]or constructed[result[2]])then
    local converted=table.pack(pcall(resolve_preview,result[2],true));if converted[1]then result[2]=converted[2]else result=converted end
   end
-  if result[1]and row.registry=='ai_skill_use_func'then local use=args[2]
+  if result[1]and row.registry=='ai_card_use'then local use=args[3]
    if use and use.card and (previews[use.card]or constructed[use.card])then
     local converted=table.pack(pcall(resolve_preview,use.card,true));if converted[1]then use.card=converted[2]else result=converted end
    end
@@ -7788,56 +8167,56 @@ local entries={{registry="ai_ajustdamage_from",path={"PeaceSpell"},self_index=1,
 {registry="ai_skill_use",path={"@@twyj_rangyi"},self_index=1,original_override=false},
 {registry="ai_skill_use",path={"@@zhengbidiscard!"},self_index=1,original_override=false},
 {registry="ai_skill_use",path={"@heg_mouduan"},self_index=1,original_override=false},
-{registry="ai_skill_use_func",path={"#bf_nos_tiaodu"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#bf_qice"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#bf_xiongsuan"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#bf_yongjin"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#gd_zezhu"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#guandu_shicai"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#guandu_yuanlue"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_chengliu"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_duanxie"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_duwu"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_guikuang"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_huaiyi"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_jianglue"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_jiaping_Attach"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_jinfa"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_jinghe"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_kurou"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_lord_huibian"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_lord_jiahe_Attach"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_lord_lianzi"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_lord_wendao"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_mobile_paiyi"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_nos_huaiyi"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_ov_hongyuan"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_paiyi"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_pojing"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_qiangxi"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_qingyin"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_quanjin"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_ruilve"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_sanchen"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_shunfu"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_six_swords_Skill"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_tenyear_boyan"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_tenyear_fenglue"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_tenyear_mingfa"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_tenyear_weimeng"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_transfer"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_weidi"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_xianqu"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_xiejian"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_xuanhuo"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_yinyangyu"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_zaoyun"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#heg_zhuangrong"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#twyj_huzhu"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#twyj_qijia"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#twyj_rangyi"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"#twyj_zhuchen"},self_index=3,original_override=false},
-{registry="ai_skill_use_func",path={"heg_zhiheng"},self_index=3,original_override=true},
+{registry="ai_card_use",path={"#bf_nos_tiaodu"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#bf_qice"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#bf_xiongsuan"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#bf_yongjin"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#gd_zezhu"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#guandu_shicai"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#guandu_yuanlue"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_chengliu"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_duanxie"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_duwu"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_guikuang"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_huaiyi"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_jianglue"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_jiaping_Attach"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_jinfa"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_jinghe"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_kurou"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_lord_huibian"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_lord_jiahe_Attach"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_lord_lianzi"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_lord_wendao"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_mobile_paiyi"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_nos_huaiyi"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_ov_hongyuan"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_paiyi"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_pojing"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_qiangxi"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_qingyin"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_quanjin"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_ruilve"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_sanchen"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_shunfu"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_six_swords_Skill"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_tenyear_boyan"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_tenyear_fenglue"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_tenyear_mingfa"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_tenyear_weimeng"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_transfer"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_weidi"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_xianqu"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_xiejian"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_xuanhuo"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_yinyangyu"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_zaoyun"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#heg_zhuangrong"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#twyj_huzhu"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#twyj_qijia"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#twyj_rangyi"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"#twyj_zhuchen"},self_index=1,original_override=false},
+{registry="ai_card_use",path={"heg_zhiheng"},self_index=1,original_override=true},
 {registry="ai_target_revises",path={"heg_kongcheng"},self_index=0,original_override=false},
 {registry="ai_target_revises",path={"heg_mobile_qianxun"},self_index=3,original_override=false},
 {registry="ai_use_revises",path={"heg_paoxiao"},self_index=1,original_override=false},
@@ -7859,23 +8238,46 @@ local entries={{registry="ai_ajustdamage_from",path={"PeaceSpell"},self_index=1,
 {registry="SmartAI",path={"useCardheg_known_both"},self_index=1,original_override=false},
 {registry="SmartAI",path={"useCardheg_threaten_emperor"},self_index=1,original_override=false}}
 for _,row in ipairs(entries)do
- local t=row.registry=='SmartAI'and SmartAIView or row.registry=='ai_skill_use'and source_use_registry or sgs[row.registry]
+ local t=row.registry=='SmartAI'and SmartAIView or row.registry=='ai_skill_use'and ai_skill_use or row.registry=='ai_card_use'and ai_card_use or row.registry=='ai_skill_invoke'and ai_skill_invoke or row.registry=='ai_fill_skill'and ai_fill_skill or row.registry=='ai_skill_choice'and ai_skill_choice or sgs[row.registry]
  for i=1,#row.path-1 do t=t and t[row.path[i]]end
  local key=row.path[#row.path];local body=t and t[key]
  if type(body)=='function'then
   local wrapped=wrap(body,row)
   if row.registry=='ai_skill_use'then
-   source_use_registry[key]=wrapped
-   local previous=prior_extra_typed_uses[key]
-   if previous then
-    ai_skill_use[key]=function(self,prompt,request)
-     local facts=AIHegemony.facts(self.world)
-     if row.original_override and facts and facts.enabled==true and known(facts.original_overrides_loaded,'Original effective overrides') then return previous(self,prompt,request)end
-     return wrapped(self,prompt,request and request.handling_method,request and request.pattern,request and AILegacyRequest.new(request,self.room))
-    end
-   else sgs.ai_skill_use[key]=wrapped end
+   ai_skill_use[key]=wrapped
+   native_use_registry[key]=wrapped
   else t[key]=wrapped end
  end
 end
 sgs.ai_ajustdamage_from.heg_congjian=accepted_congjian_from
 sgs.ai_ajustdamage_to.heg_congjian=accepted_congjian_to
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["guandu_cangchu"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(self,"isFriend",to, from) and damage_call(to,"hasSkill","guandu_cangchu") then
+        		if card and sgs.card_damage_nature[damage_call(card,"getClassName")] == sgs.DamageStruct_Fire then
+        			return nil, true
+        		end
+        	end
+        return value
+    end
+    sgs.ai_need_damaged["guandu_cangchu"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_after_legacy" and context.rule == "guandu_cangchu" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "guandu_cangchu", {
+        {phase="need_hp_after_legacy", order=2, rule="guandu_cangchu"},
+    })
+end)()
+end

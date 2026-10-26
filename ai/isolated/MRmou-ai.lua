@@ -1,4 +1,4 @@
--- MRmou fixed b6025acc effective policies. Native scopes and disclosed DTOs only.
+-- Source: b6025acc ai/MRmou-ai.lua.
 local known = AIValue.requireKnown
 
 local function skill_suit_table(self,name)
@@ -160,12 +160,14 @@ local function mobile_costs(self)
     end
 end
 
-sgs.ai_fill_skill.MR_huishi = function(self,inclusive,request)
+ai_fill_skill.MR_huishi = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if not self:isWeak() then return end
     return self:bindSkillCard("MR_huishi", {}, request, nil, "#MR_huishi")
 end
 
-sgs.ai_skill_use_func["#MR_huishi"] = function(card,use,self,request)
+ai_card_use["#MR_huishi"] = function(self, card, use, request)
     self:sort(self.friends,"handcard")
     for _,target in sgs.list(self.friends)do
         if self:isFriend(target) and self:canDraw(target, self.player)
@@ -201,7 +203,7 @@ sgs.ai_can_damagehp.MR_yiji = function(self,from,card,to)
     return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from, to, 1, card)>0
     and self:canLoseHp(from, card, to)
 end
-sgs.ai_skill_use["@@MR_yiji"] = function(self,prompt)
+ai_skill_use["@@MR_yiji"] = function(self, prompt, request)
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards)
     self:sortByKeepValue(cards)
@@ -216,12 +218,14 @@ sgs.ai_skill_use["@@MR_yiji"] = function(self,prompt)
 end
 
 
-sgs.ai_skill_use["@mobilemouzhiheng"]=function(self,prompt)
+ai_skill_use["@mobilemouzhiheng"]=function(self, prompt, request)
     local costs=mobile_costs(self)
     if viable_costs(self,costs)then return "@MobileMouZhihengCard="..table.concat(costs,"+").."->."end
     return "."
 end
-sgs.ai_fill_skill.MR_jilve = function(self,inclusive,request)
+ai_fill_skill.MR_jilve = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if not(self.player:getStrategyFlag("MR_jilveWansha") or self.player:hasSkills("wansha|olwansha"))
     then
         for _,enemy in sgs.list(self.enemies)do
@@ -243,12 +247,14 @@ sgs.ai_fill_skill.MR_jilve = function(self,inclusive,request)
     end
 end
 
-sgs.ai_skill_use_func["#MR_jilve"]=function(card,use,self,request)
+ai_card_use["#MR_jilve"]=function(self, card, use, request)
     use.card = card
 end
 
 
-sgs.ai_fill_skill.MR_lianhuan = function(self,inclusive,request)
+ai_fill_skill.MR_lianhuan = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local cards = self:addHandPile()
     self:sortByUseValue(cards,true)
     local card
@@ -288,7 +294,7 @@ sgs.ai_fill_skill.MR_lianhuan = function(self,inclusive,request)
     return skillcard
 end
 
-sgs.ai_skill_use["@@MR_niepan"] = function(self, prompt)
+ai_skill_use["@@MR_niepan"] = function(self, prompt, request)
     local peaches = 1-self.player:getHp()
     if self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<peaches then
         return "#MR_niepan:.:"
@@ -308,13 +314,15 @@ end
 
 
 
-sgs.ai_fill_skill.MR_xuanhuo = function(self,inclusive,request)
+ai_fill_skill.MR_xuanhuo = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self:isWeak() or self.player:isKongcheng() then return end
     if self.player:usedTimes("#MR_xuanhuo") >= 1 then return end
     return self:legacySkillSeed("MR_xuanhuo", "#MR_xuanhuo", request)
 end
 
-sgs.ai_skill_use_func["#MR_xuanhuo"] = function(card,use,self,request)
+ai_card_use["#MR_xuanhuo"] = function(self, card, use, request)
     local cards = sgs.QList2Table(self.player:getCards("h"))
     self:sortByKeepValue(cards)
     use.card = self:bindSkillCard("MR_xuanhuo", {cards[1]:getEffectiveId()}, request, nil, "#MR_xuanhuo")
@@ -337,12 +345,14 @@ end
 
 
 
-sgs.ai_fill_skill.MR_fanjian = function(self,inclusive,request)
+ai_fill_skill.MR_fanjian = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:isKongcheng() then return nil end
     return self:legacySkillSeed("MR_fanjian", "#MR_fanjian", request)
 end
 
-sgs.ai_skill_use_func["#MR_fanjian"]= function(card,use,self,request)
+ai_card_use["#MR_fanjian"]= function(self, card, use, request)
     local cards = sgs.QList2Table(self.player:getHandcards())
     self:sortByUseValue(cards,true)
     self:sort(self.enemies,"defense")
@@ -470,7 +480,8 @@ end
 
 sgs.ai_use_priority["MR_fanjian"] = 0.2
 
-sgs.ai_skill_invoke.MR_haoshi = function(self,data)
+ai_skill_invoke.MR_haoshi = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local num = self.room:getOtherPlayers(self.player):first():getHandcardNum()
     for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
         num = math.min(num,p:getHandcardNum())
@@ -503,7 +514,7 @@ sgs.ai_skill_invoke.MR_haoshi = function(self,data)
             use = use+1
         end
     end
-    return self.player:getHandcardNum()+2-use<=num
+    return (self.player:getHandcardNum()+2-use<=num) or false
 end
 
 sgs.ai_skill_playerchosen.MR_haoshi = function(self,targets)
@@ -574,11 +585,13 @@ sgs.ai_can_damagehp.MR_jieming = function(self,from,card,to)
     end
 end
 
-sgs.ai_fill_skill.MR_quhu = function(self,inclusive,request)
+ai_fill_skill.MR_quhu = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:legacySkillSeed("MR_quhu", "#MR_quhu", request)
 end
 
-sgs.ai_skill_use_func["#MR_quhu"] = function(card,use,self,request)
+ai_card_use["#MR_quhu"] = function(self, card, use, request)
     if #self.enemies==0 then return end
     self:sort(self.enemies,"handcard")
 
@@ -606,12 +619,15 @@ sgs.ai_choicemade_filter.cardUsed["MR_quhu"] = function(self,player,carduse)
     self:setEventMemory("ai_quhu_effect",true)
 end
 
-sgs.ai_skill_invoke.MR_zhian = function(self,data)
+ai_skill_invoke.MR_zhian = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toCardUse().to:first()
     if target
     then
-        return not self:isFriend(target)
+        return (not self:isFriend(target)) or false
     end
+    return false
+
 end
 sgs.ai_skill_discard["MR_lingfa"] = function(self, discard_num, min_num, optional, include_equip)
     local cards = sgs.QList2Table(self.player:getCards("he"))
@@ -635,34 +651,39 @@ sgs.ai_skill_discard["MR_lingfa"] = function(self, discard_num, min_num, optiona
     return {}
 end
 
-sgs.ai_skill_choice.MR_zhian = function(self,choices,data)
+ai_skill_choice.MR_zhian = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local use = data:toCardUse()
     local items = choices:split("+")
     if self:isEnemy(use.from)
     then
         if self:isWeak(use.from)
-        then return items[#items]
+        then return ai_choice_result((items[#items]), options)
         elseif use.card:isKindOf("DelayedTrick")
         and self:isFriend(use.to:at(0))
         and self.player:getHandcardNum()>2
-        then return items[2]
+        then return ai_choice_result((items[2]), options)
         elseif use.card:isKindOf("EquipCard")
         and self.player:getHandcardNum()>2
-        then return items[2] end
+        then return ai_choice_result((items[2]), options) end
     elseif not self:isFriend(use.from)
     and use.card:isKindOf("DelayedTrick")
     and self:isFriend(use.to:at(0))
-    then return items[2] end
-    return items[1]
+    then return ai_choice_result((items[2]), options) end
+    return ai_choice_result((items[1]), options)
 end
 
 
 
-sgs.ai_fill_skill.MR_gongxin = function(self,inclusive,request)
+ai_fill_skill.MR_gongxin = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return self:bindSkillCard("MR_gongxin", {}, request, nil, "#MR_gongxin")
 end
 
-sgs.ai_skill_use_func["#MR_gongxin"]=function(card,use,self,request)
+ai_card_use["#MR_gongxin"]=function(self, card, use, request)
     self:sort(self.enemies,"handcard")
     self.enemies = sgs.reverse(self.enemies)
 
@@ -831,8 +852,10 @@ sgs.ai_skill_askforag.MR_gongxin = function(self,card_ids)
     return valuable
 end
 
-sgs.ai_skill_choice.MR_gongxin = function(self,choices)
-    local value,present=self:getStrategyMemory("MRmou.gongxin_choice");return value or "discard"
+ai_skill_choice.MR_gongxin = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
+    local value,present=self:getStrategyMemory("MRmou.gongxin_choice");return ai_choice_result((value or "discard"), options)
 end
 
 sgs.ai_use_value.MR_gongxin = 8.5
@@ -840,7 +863,10 @@ sgs.ai_use_priority.MR_gongxin = 9.5
 sgs.ai_card_intention.MR_gongxin = 80
 
 
-sgs.ai_skill_choice.MR_qingshi = function(self,choices,data)
+ai_skill_choice.MR_qingshi = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local items = choices:split("+")
     local use = data:toCardUse()
     if table.contains(items,"2")
@@ -856,7 +882,7 @@ sgs.ai_skill_choice.MR_qingshi = function(self,choices,data)
             end
         end
         if good > 0 then
-            return "2"
+            return ai_choice_result(("2"), options)
         end
     end
     if table.contains(items,"1") and use.card:isDamageCard() then
@@ -864,16 +890,16 @@ sgs.ai_skill_choice.MR_qingshi = function(self,choices,data)
             if self:isFriend(p) or self:cantDamageMore(use.from, p) then
                 break
             else
-                return "1"
+                return ai_choice_result(("1"), options)
             end
         end
     end
     for _,c in sgs.list(items)do
         if c:startsWith("3")
-        then return c
+        then return ai_choice_result((c), options)
         end
     end
-    return items[1]
+    return ai_choice_result((items[1]), options)
 end
 
 sgs.ai_ajustdamage_from.MR_qingshi = function(self, from, to, card, nature)
@@ -883,14 +909,15 @@ sgs.ai_ajustdamage_from.MR_qingshi = function(self, from, to, card, nature)
 end
 
 
-sgs.ai_fill_skill.MR_zhizhe = function(self,inclusive,request)
+ai_fill_skill.MR_zhizhe = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     self:updatePlayers()
     if self.player:isNude() then return end
 
     local handcards = sgs.QList2Table(self.player:getCards("h"))
     self:sortByUseValue(handcards, true)
     for _,c in ipairs(handcards) do
-        --local poi = sgs.Sanguosha:cloneCard(c, sgs.Card_NoSuit, -1)
         if c:isAvailable(self.player) and (c:isKindOf("BasicCard") or c:isNDTrick()) and self.player:getStrategyMark(c:objectName().."+MR_zhizhe-Clear") < 1 then
             local dummy_use = self:aiUseCard(c, dummy())
             if dummy_use.card and not (c:canRecast() and dummy_use.to:isEmpty()) then
@@ -899,8 +926,8 @@ sgs.ai_fill_skill.MR_zhizhe = function(self,inclusive,request)
         end
     end
 end
-sgs.ai_skill_choice.MR_jilve=function(self)
+ai_skill_choice.MR_jilve=function(self, options, request)
  local value,present=self:getStrategyMemory("MRmou.jilve_choice")
  if not present then ai_unsupported("MR_jilve global choice has no observed viewer write","MR_jilve")end
- return self:useKnowledgeEstimate({status="estimate",value=value,basis="MRmou.jilve_choice_viewer_partition"},"MR_jilve")
+ return ai_choice_result((self:useKnowledgeEstimate({status="estimate",value=value,basis="MRmou.jilve_choice_viewer_partition"},"MR_jilve")), options)
 end

@@ -1,5 +1,4 @@
--- Complete fixed b6025acc AnimationCardpack source bodies. All generated
--- material costs remain explicit proposals until native source validation.
+-- Source: b6025acc ai/AnimationCardpack-ai.lua.
 local known = AIValue.requireKnown
 
 local function copy(t)local out={};for _,v in ipairs(known(t,"card list"))do out[#out+1]=v end return out end
@@ -35,29 +34,31 @@ end
 --武器攻击范围
 sgs.weapon_range.Elucidator = 2
 
-sgs.ai_skill_invoke.Elucidator = function(self, data)
+ai_skill_invoke.Elucidator = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
     if self:isFriend(damage.to) and self:canDraw(damage.to, self.player) then
-        return true
+        return (true) or false
     end
     local slash = self:getCard("Slash")
     if slash then
         local dummy_use = self:aiUseCard(slash,{isDummy=true,extra_target=0,current_targets={},to=AIList.new({})})
 
         if dummy_use.card and not dummy_use.to:isEmpty() then
-            return true
+            return (true) or false
         end
     end
 
-    return false
+    return (false) or false
 end
 
-sgs.ai_skill_invoke.htms_rishi = function(self, data)
+ai_skill_invoke.htms_rishi = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if target and self:isEnemy(target) then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 
 sgs.ai_canliegong_skill.htms_rishi = function(self, from, to)
@@ -67,7 +68,9 @@ end
 sgs.weapon_range.chopper = 3
 
 
-sgs.ai_fill_skill.chopper = function(self,inclusive,request)
+ai_fill_skill.chopper = function(self, options, request)
+    local inclusive = options and options.inclusive
+
     if self.player:getHandcardNum()>self.player:getHp()
     or self.player:isKongcheng() then return end
     local spec=chopper_spec(self.player)
@@ -118,6 +121,7 @@ end
 --使用结构
 
 function SmartAIView:useCardmouthgun(card, use)
+    local recommend = self:targetRecommendScorer(card)
     if self.player:hasSkill("noswuyan") then return end
     --暂且忽略对队友使用嘴炮的可能性
 
@@ -140,7 +144,7 @@ function SmartAIView:useCardmouthgun(card, use)
     --目标选择
     self.enemies = self:sort(self.enemies, "handcard")
     self.enemies = reverse(self.enemies)
-    for _, enemy in ipairs(self.enemies) do
+    for _, enemy in ipairs(self:orderTargetsByRecommend(self.enemies, recommend)) do
         if enemy:getHandcardNum() < 5 and not enemy:isKongcheng() and self.player:distanceTo(enemy) <= math.max(1, self.player:getHp()) then
             use.card = card
             if use.to then use.to:append(enemy) end
@@ -148,9 +152,9 @@ function SmartAIView:useCardmouthgun(card, use)
         end
     end
 
---  use.card = card
     return
 end
+sgs.registerSkillCardType("mouthgun", "debuff")
 
 function sgs.ai_skill_pindian.mouthgun(minusecard, self, requestor)
     if requestor:getHandcardNum() == 1 then
@@ -161,7 +165,10 @@ function sgs.ai_skill_pindian.mouthgun(minusecard, self, requestor)
     local maxcard = self:getMaxCard()
     return self:isFriend(requestor) and self:getMinCard() or ( maxcard:getNumber() < 6 and  minusecard or maxcard )
 end
-sgs.ai_skill_choice["mouthgun"] = function(self, choices, data)
+ai_skill_choice["mouthgun"] = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local card = self:getEvaluationCard("mouthgun")
 
     local pindian = event_value(self,"pindian",self:getDecisionContext().pindian)
@@ -178,13 +185,13 @@ sgs.ai_skill_choice["mouthgun"] = function(self, choices, data)
         end
     end
     if self:ajustDamage(winner, self.player, 1, card) == 0 then
-        return "mouthgun_fail"
+        return ai_choice_result(("mouthgun_fail"), options)
     end
     if self:isWeak() then
-        return "mouthgun_qp"
+        return ai_choice_result(("mouthgun_qp"), options)
     end
-    if self:needToLoseHp(self.player, winner)  then return "mouthgun_fail" end
-    return "mouthgun_qp"
+    if self:needToLoseHp(self.player, winner)  then return ai_choice_result(("mouthgun_fail"), options) end
+    return ai_choice_result(("mouthgun_qp"), options)
 end
 
 
@@ -219,23 +226,25 @@ end
 
 sgs.ai_skill_cardask["@murasamekillb"] = sgs.ai_skill_cardask["@murasamekilla"]
 sgs.ai_skill_cardask["@murasamekillc"] = sgs.ai_skill_cardask["@murasamekilla"]
-sgs.ai_skill_invoke.Murasame = function(self, data)
+ai_skill_invoke.Murasame = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if target and self:isEnemy(target) then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 sgs.weapon_range.Murasame = 2
 
 sgs.weapon_range.tywz = 2
 
-sgs.ai_skill_invoke.tywz = function(self, data)
+ai_skill_invoke.tywz = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target = data:toDamage().to
     if target and self:isEnemy(target) then
-        return true
+        return (true) or false
     end
-    return false
+    return (false) or false
 end
 sgs.ai_choicemade_filter.skillInvoke.tywz = function(self,player,promptlist)
     -- The live Room CurrentDamageStruct is not projected into event callbacks.
@@ -276,7 +285,7 @@ sgs.ai_ajustdamage_from["@std"] = function(self, from, to, card, nature)
     return from:getStrategyMark("@std")
 end
 
-sgs.ai_skill_use["@strike_the_death"] = function(self, prompt)
+ai_skill_use["@strike_the_death"] = function(self, prompt, request)
     local dying = self.room:getCurrentDyingPlayer()
     if dying then
         local peaches = 1-dying:getHp()
@@ -355,7 +364,6 @@ sgs.ai_skill_discard.bunkasai = function(self,discard_num,optional,include_equip
     local cards = copy(self.player:getHandcards())
     local to_discard = {}
     local suit = {}
-    -- local use = sgs.filterData[sgs.CardUsed]:toCardUse()
     local context=self:getDecisionContext()
     if known(context.bunkasai_card_present,"bunkasai public card tag presence")==false then error("donor bunkasai: absent usecard tag before toString",0)end
     local use=event_value(self,"bunkasai UseHistory",context.bunkasai_use)
@@ -384,6 +392,7 @@ sgs.ai_skill_discard.bunkasai = function(self,discard_num,optional,include_equip
 end
 
 function SmartAIView:useCardtogether_go_die(card,use)
+    local recommend = self:targetRecommendScorer(card)
     local slashcount = self:getCardsNum("Slash")
     local cards = copy(self.player:getCards("he"))
     cards = self:sortByUseValue(cards, true)
@@ -392,7 +401,7 @@ function SmartAIView:useCardtogether_go_die(card,use)
         assert(slash)
         local dummy_use = self:aiUseCard(slash,{isDummy=true,extra_target=0,current_targets={},to=AIList.new({})})
         if dummy_use and dummy_use.card and not dummy_use.to:isEmpty() then
-            for _, p in ipairs(dummy_use.to) do
+            for _, p in ipairs(self:orderTargetsByRecommend(dummy_use.to, recommend)) do
                 if p:getHandcardNum() >= self.player:getHandcardNum() then
                     use.card = card
                     if use.to then use.to:append(p) end
@@ -402,11 +411,13 @@ function SmartAIView:useCardtogether_go_die(card,use)
         end
     end
 end
+sgs.registerSkillCardType("together_go_die", "debuff")
 sgs.ai_use_priority.together_go_die = sgs.ai_use_priority.Slash + 2
 
 function SmartAIView:useCardshuugakulyukou(card,use)
+    local recommend = self:targetRecommendScorer(card)
     self.friends_noself = self:sort(self.friends_noself,"defense")
-    for _,friend in ipairs(self.friends_noself)do
+    for _,friend in ipairs(self:orderTargetsByRecommend(self.friends_noself, recommend))do
         if  not friend:containsTrick("shuugakulyukou")
         then
             use.card = card
@@ -415,6 +426,7 @@ function SmartAIView:useCardshuugakulyukou(card,use)
         end
     end
 end
+sgs.registerSkillCardType("shuugakulyukou", "buff")
 
 sgs.ai_card_intention.shuugakulyukou = -40
 
@@ -428,9 +440,63 @@ Rho_Aias
 strike_the_death
 kotatsu]]
 
-ai_card_use.mouthgun=function(self,card,use)return self:useCardmouthgun(card,use)end
-ai_card_use.strike_the_death=function(self,card,use)return self:useCardstrike_the_death(card,use)end
-ai_card_use.rotenburo=function(self,card,use)return self:useCardrotenburo(card,use)end
-ai_card_use.bunkasai=function(self,card,use)return self:useCardbunkasai(card,use)end
-ai_card_use.together_go_die=function(self,card,use)return self:useCardtogether_go_die(card,use)end
-ai_card_use.shuugakulyukou=function(self,card,use)return self:useCardshuugakulyukou(card,use)end
+ai_card_use.mouthgun=function(self,card,use, request)return self:useCardmouthgun(card,use)end
+ai_card_use.strike_the_death=function(self,card,use, request)return self:useCardstrike_the_death(card,use)end
+ai_card_use.rotenburo=function(self,card,use, request)return self:useCardrotenburo(card,use)end
+ai_card_use.bunkasai=function(self,card,use, request)return self:useCardbunkasai(card,use)end
+ai_card_use.together_go_die=function(self,card,use, request)return self:useCardtogether_go_die(card,use)end
+ai_card_use.shuugakulyukou=function(self,card,use, request)return self:useCardshuugakulyukou(card,use)end
+
+-- Package-owned survival, damage-target and Slash-defense stages.
+do
+(function()
+    local previous = sgs.ai_need_damaged["tywz"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(from,"hasWeapon","tywz")  and card and damage_call(card,"isKindOf","Slash") and damage_call(to,"getMark","@hurt") >= damage_call(to,"getHp") then
+        		return nil, true
+        	end
+        return value
+    end
+    sgs.ai_need_damaged["tywz"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_before_damage" and context.rule == "tywz" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "tywz", {
+        {phase="need_hp_before_damage", order=11, rule="tywz"},
+    })
+end)()
+end
+do
+(function()
+    local previous = sgs.ai_need_damaged["hqiangwei"]
+    local policy = function(self, from, to, card, context)
+        local value, damage_call = context.value, context.query
+        local from, card, helpers = context.extra[1], context.extra[2], context.extra[3]
+        if damage_call(from,"hasWeapon","hqiangwei")  and card and damage_call(card,"isKindOf","Slash") and damage_call(to,"getMark","@hurt") >= damage_call(to,"getHp") then
+        		return nil, true
+        	end
+        return value
+    end
+    sgs.ai_need_damaged["hqiangwei"] = function(self, from, to, card, context)
+        if sgs.isValueHookContext(context) then
+            if context.phase == "need_hp_before_damage" and context.rule == "hqiangwei" then
+                return policy(self, from, to, card, context)
+            end
+            if type(previous) == "function" then return previous(self, from, to, card, context) end
+            return context.value
+        end
+        if type(previous) == "function" then return previous(self, from, to, card) end
+    end
+    sgs.declareValueHookStages("ai_need_damaged", "hqiangwei", {
+        {phase="need_hp_before_damage", order=12, rule="hqiangwei"},
+    })
+end)()
+end

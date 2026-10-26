@@ -1,5 +1,4 @@
--- Fixed donor b6025acc: yjcm2014-ai.lua. Policy uses pure views; only
--- current native action receipts authorize costs/targets. No legacy fallback.
+-- Source: b6025acc ai/yjcm2014-ai.lua.
 local known = AIValue.requireKnown
 
 local dummy = AIUsePlan.dummy
@@ -69,9 +68,10 @@ local function borrowed_ai(self,player)
     return known(nil,'player AI presence')
 end
 
-sgs.ai_fill_skill.dingpin = function(self,inclusive,request)
+ai_fill_skill.dingpin = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	self:setPriorityValue("DingpinCard",0,"dingpin")
-	--if not q(self.player,"canDiscard",self.player,"h") or q(self.player,"getMark","dingpin")==0xE then return false end
 	if not self.player:canDiscard(self.player, "h") then return false end
 	for _,p in sgs.qlist(self.room:getAlivePlayers())do
 		if not p:getStrategyFlag("dingpin") and p:isWounded() then
@@ -80,11 +80,10 @@ sgs.ai_fill_skill.dingpin = function(self,inclusive,request)
 		end
 	end
 end
-sgs.ai_skill_use_func.DingpinCard = function(card,use,self,request)
+ai_card_use.DingpinCard = function(self, card, use, request)
 	local cards = {}
 	local cardType = {}
 	for _,card in sgs.qlist(self.player:getHandcards())do
-		--if (q(self.player,"getMark","dingpin") & (1 << q(card,"getTypeId")))==0 then
 		if self.player:canDiscard(self.player, card:getKnownEffectiveId()) and self.player:getStrategyMark("dingpin_"..card:getType().."-Clear")==0 then
 			table.insert(cards,card)
 			if not table.contains(cardType,card:getTypeId()) then table.insert(cardType,card:getTypeId()) end
@@ -111,10 +110,11 @@ end
 sgs.ai_use_priority.DingpinCard = 0
 sgs.ai_card_intention.DingpinCard = -10
 
-sgs.ai_skill_invoke.faen = function(self,data)
+ai_skill_invoke.faen = function(self, options, request)
+	local data = request and self:getDecisionData(request) or nil
 	local player = data:toPlayer()
-	if self:needKongcheng(player, true) then return not self:isFriend(player) end
-	return self:isFriend(player)
+	if self:needKongcheng(player, true) then return (not self:isFriend(player)) or false end
+	return (self:isFriend(player)) or false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.faen = function(self,player,promptlist)
@@ -128,9 +128,9 @@ sgs.ai_choicemade_filter.skillInvoke.faen = function(self,player,promptlist)
 	end
 end
 
-sgs.ai_skill_invoke.sidi = true
+ai_skill_invoke.sidi = true
 
-sgs.ai_skill_use["@@sidi"] = function(self)
+ai_skill_use["@@sidi"] = function(self, prompt, request)
 	local current = self.room:getCurrent()
 	if self:isEnemy(current) then
 		if (getCardsNum("Slash",current,self.player)>0 or self.player:getPile("sidi"):length()>1)
@@ -151,7 +151,7 @@ sgs.ai_skill_cardask["@ol_sidi-discard"] = function(self,data,pattern)
 	local target = self.room:getCurrent()
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)
 	for _,h in sgs.list(cards)do
 		if self:isEnemy(target) and #cards>1
 		and self:matchGuanxingPattern(pattern, self.player, h)
@@ -160,7 +160,7 @@ sgs.ai_skill_cardask["@ol_sidi-discard"] = function(self,data,pattern)
     return "."
 end
 
-sgs.ai_skill_use["@@shenduan"] = function(self)
+ai_skill_use["@@shenduan"] = function(self, prompt, request)
 	for _,id in ipairs((self.player:getPropertyValue("shenduanForAI") or ""):split("+"))do
 		local card = visible(self,id)
 		local card_str = ("supply_shortage:shenduan[%s:%s]=%d"):format(card:getSuitString(),card:getNumberString(),id)
@@ -175,38 +175,38 @@ sgs.ai_skill_use["@@shenduan"] = function(self)
 	return "."
 end
 
-sgs.ai_skill_invoke.yonglve = function(self)
+ai_skill_invoke.yonglve = function(self, options, request)
 	local current = self.room:getCurrent()
 	local slash = self:evaluateSkillCard("_yonglve","slash",{})
 	if self:isFriend(current)
 	and choose_card(self,current,"j","dummyReason",sgs.Card_MethodDiscard) then
-		if not self:slashIsEffective(slash, current, self.player) then return true end
-		if not self:isWeak(current) or getKnownCard(current,self.player,"Jink")>0 then return true end
+		if not self:slashIsEffective(slash, current, self.player) then return (true) or false end
+		if not self:isWeak(current) or getKnownCard(current,self.player,"Jink")>0 then return (true) or false end
 	elseif self:isEnemy(current) then
-		if choose_card(self,current,"j","dummyReason",sgs.Card_MethodDiscard) then return true end
+		if choose_card(self,current,"j","dummyReason",sgs.Card_MethodDiscard) then return (true) or false end
 		for _,card in sgs.qlist(current:getJudgingArea())do
 			if card:isKindOf("SupplyShortage")
 			and (current:getHandcardNum()>4 or current:containsTrick("indulgence")) then
 				save_yonglve(self,card:getKnownEffectiveId())
-				return true
+				return (true) or false
 			elseif card:isKindOf("Indulgence")
 			and current:getHandcardNum()+self:ImitateResult_DrawNCards(current)<=self:getOverflow(current, true) then
 				save_yonglve(self,card:getKnownEffectiveId())
-				return true
+				return (true) or false
 			end
 		end
 		if self:isWeak(current) and current:getHp()==1
 		and getCardsNum("Jink",current,self.player)<1
 		and self:slashIsEffective(slash, current, self.player) then
 			save_yonglve(self,random_judge(self,current))
-			return true
+			return (true) or false
 		end
 	end
-	return false
+	return (false) or false
 end
 
-sgs.ai_skill_invoke.qiangzhi = function(self)
-	return not self:needKongcheng(self.player, true)
+ai_skill_invoke.qiangzhi = function(self, options, request)
+	return (not self:needKongcheng(self.player, true)) or false
 end
 
 sgs.ai_skill_playerchosen.qiangzhi = function(self,targetlist)
@@ -277,21 +277,23 @@ sgs.ai_skill_playerchosen.qiangzhi = function(self,targetlist)
 	return fasle
 end
 
-sgs.ai_skill_invoke.xiantu = function(self)
+ai_skill_invoke.xiantu = function(self, options, request)
 	local current = self.room:getCurrent()
 	if self:isFriend(current) then
-		if current:isLord() and self:isLordInDanger() then return true end
-		if self.player:getKnownRole()=="renegade" and not self:needToThrowArmor() then return false end
-		if self:getRoleEstimate(current)=="renegade" and not self:needToThrowArmor() then return false end
+		if current:isLord() and self:isLordInDanger() then return (true) or false end
+		if self.player:getKnownRole()=="renegade" and not self:needToThrowArmor() then return (false) or false end
+		if self:getRoleEstimate(current)=="renegade" and not self:needToThrowArmor() then return (false) or false end
 		for _,enemy in ipairs(self.enemies)do
 			if self:isWeak(enemy) and enemy:getHp()==1 and not self:slashProhibit(nil, enemy, current)
 				and (not sgs.isJinkAvailable(current,enemy) or getCardsNum("Jink",enemy,self.player)<1)
 				and (getCardsNum("Slash",current,self.player)>=1 or self:getCardsNum("Slash")>0) then
-				return true
+				return (true) or false
 			end
 		end
-		if not self.player:isWounded() and self:isWeak(current) then return true end
+		if not self.player:isWounded() and self:isWeak(current) then return (true) or false end
 	end
+	return false
+
 end
 
 sgs.ai_skill_discard.xiantu = function(self,discard_num,min_num,optional,include_equip)
@@ -343,14 +345,16 @@ sgs.ai_skill_playerchosen.newzhongyong = function(self,targetlist)
 	return sgs.ai_skill_playerchosen.zhongyong(self,targetlist)
 end
 
-sgs.ai_fill_skill.shenxing = function(self,inclusive,request)
+ai_fill_skill.shenxing = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	self:setPriorityValue("ShenxingCard",3,"shenxing")
 	if self.player:getCardCount(true)<2 then return false end
 	if self:getOverflow()<=0 then return false end
 	if self:isWeak() and self:getOverflow()<=1 then return false end
 	return self:legacySkillSeed("shenxing","ShenxingCard",request)
 end
-sgs.ai_skill_use_func.ShenxingCard = function(card,use,self,request)
+ai_card_use.ShenxingCard = function(self, card, use, request)
 	local unpreferedCards = {}
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	self:sortByKeepValue(cards)
@@ -359,7 +363,6 @@ sgs.ai_skill_use_func.ShenxingCard = function(card,use,self,request)
 	if self.player:getHp()<3 then
 		local zcards = self.player:getCards("he")
 		local use_slash,keep_jink,keep_analeptic,keep_weapon = false,false,false,nil
-		-- QVariant::toBool of the own tag (it holds the acquired skill name).
 		local wansha = self.player:getTag("JilveWansha")
 		local keep_slash = wansha~=nil and wansha~=false and wansha~=""
 		for _,zcard in sgs.qlist(zcards)do
@@ -463,7 +466,7 @@ end
 
 sgs.ai_use_priority.ShenxingCard = 3
 
-sgs.ai_skill_use["@@bingyi"] = function(self)
+ai_skill_use["@@bingyi"] = function(self, prompt, request)
 
 	local cards = self.player:getHandcards()
 	if cards:length()==0 then return "." end
@@ -695,26 +698,30 @@ sgs.ai_skill_cardask["@jiaojin"] = function(self,data)
 	return "."
 end
 
-sgs.ai_skill_choice.qieting = function(self,choices)
+ai_skill_choice.qieting = function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+
 	local target = self.room:getCurrent()
 	local id = choose_card(self,target,"e","dummyReason")
 	if id then
 		for i = 0,4 do
 			if target:getEquip(i) and target:getEquip(i):getEffectiveId()==id and string.find(choices,i) then
-				return i
+				return ai_choice_result((i), options)
 			end
 		end
 	end
-	return "draw"
+	return ai_choice_result(("draw"), options)
 end
 
 
-sgs.ai_fill_skill.xianzhou = function(self,inclusive,request)
+ai_fill_skill.xianzhou = function(self, options, request)
+    local inclusive = options and options.inclusive
+
 	if self.player:getEquips():isEmpty() then return end
 	return skill_card(self,"xianzhou","XianzhouCard",{},request)
 end
 
-sgs.ai_skill_use_func.XianzhouCard = function(card,use,self,request)
+ai_card_use.XianzhouCard = function(self, card, use, request)
 	if self:isWeak() then
 		for _,friend in ipairs(self.friends_noself)do
 			if friend:hasSkills(sgs.need_equip_skill) then
@@ -788,7 +795,7 @@ sgs.ai_card_intention.XianzhouCard = function(self,card,from,tos)
 	if not from:isWounded() then self:updateIntentions(from,tos,-10) end
 end
 
-sgs.ai_skill_use["@xianzhou"] = function(self,prompt)
+ai_skill_use["@xianzhou"] = function(self, prompt, request)
 	local prompt = prompt:split(":")
 	local num = prompt[#prompt]
 	local current = self.room:getCurrent()
@@ -837,8 +844,8 @@ sgs.ai_card_intention.XianzhouDamageCard = function(self,card,from,tos)
 	end
 end
 
-sgs.ai_skill_invoke.jianying = function(self)
-	return not self:needKongcheng(self.player, true)
+ai_skill_invoke.jianying = function(self, options, request)
+	return (not self:needKongcheng(self.player, true)) or false
 end
 
 sgs.ai_skill_playerchosen.youdi = function(self,targets)

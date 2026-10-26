@@ -1,15 +1,16 @@
--- Yue, effective donor b6025acc. Policy identities stay distinct from native
--- V2 products; only issued receipts can become submitted actions.
+-- Source: b6025acc ai/yue-ai.lua.
 local known = AIValue.requireKnown
 local function legacy(self,skill,class,request,user_string)
     -- Native projects the original SkillCard's owner lock and evaluation rules;
     -- borrowing the ordinary V2 product's rules would change source decisions.
     return (self:bindSkillCard(skill,{},request,user_string,class))
 end
-sgs.ai_fill_skill.jinxuanbei=function(self,inclusive,request)
+ai_fill_skill.jinxuanbei=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     return (self:legacySkillSeed("jinxuanbei","JinXuanbeiCard",request))
 end
-sgs.ai_skill_use_func.JinXuanbeiCard=function(card,use,self,request)
+ai_card_use.JinXuanbeiCard=function(self, card, use, request)
     self:sortInPlace(known(self.enemies, "hp"), "hp")
     local can=(self:getCardsNum("Jink"))>0 or not (self:isWeak())
     local function choose(target)
@@ -26,7 +27,9 @@ end
 -- These apparently unrelated keys are the literal donor assignments.
 sgs.ai_use_value.bf_zhenliangCard=4.4
 sgs.ai_use_priority.bf_zhenliangCard=3.8
-sgs.ai_fill_skill.jinxianwan=function(self,inclusive,request)
+ai_fill_skill.jinxianwan=function(self, options, request)
+    local inclusive = options and options.inclusive
+
     local slash=(self:evaluateSkillCard("jinxianwan","slash",{}))
     if (self.player:isChained()) and (slash:isAvailable(self.player)) then
         local use=(self:aiUseCard(slash))
@@ -37,7 +40,7 @@ sgs.ai_fill_skill.jinxianwan=function(self,inclusive,request)
         if use.card and use.to then return legacy(self,"jinxianwan","JinXianwanCard",request,"slash") end
     end
 end
-sgs.ai_skill_use_func.JinXianwanCard=function(card,use,self)
+ai_card_use.JinXianwanCard=function(self, card, use, request)
     if self.xw_to then use.card=card;use.to=self.xw_to end
 end
 sgs.ai_use_value.JinXianwanCard=9.4
@@ -45,9 +48,12 @@ sgs.ai_use_priority.JinXianwanCard=7.8
 sgs.ai_guhuo_card.jinxianwan=function(self,toname,class_name)
     return {skill="jinxianwan",legacy_class="JinXianwanCard",subcards={},user_string=toname}
 end
-sgs.ai_skill_invoke.jinwanyi=function(self,data)
+ai_skill_invoke.jinwanyi=function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target=data:toPlayer()
-    if target then return (self:isFriend(target)) and self:doDisCard(target,"ej") or self:doDisCard(target,"hej") end
+    if target then return ((self:isFriend(target)) and self:doDisCard(target,"ej") or self:doDisCard(target,"hej")) or false end
+    return false
+
 end
 sgs.ai_skill_playerchosen.jinwanyi=function(self,players)
     local targets=(self:sort(AIList.new(players),"hp"))
@@ -55,7 +61,10 @@ sgs.ai_skill_playerchosen.jinwanyi=function(self,players)
     for _,target in ipairs(targets) do if not (self:isEnemy(target)) then return target end end
     return targets[1]
 end
-sgs.ai_skill_invoke.jinmaihuo=function(self,data)
+ai_skill_invoke.jinmaihuo=function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local target=(data:toCardUse()).from
-    if target then return not (self:isFriend(target)) end
+    if target then return (not (self:isFriend(target))) or false end
+    return false
+
 end

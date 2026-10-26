@@ -1,5 +1,4 @@
--- Complete fixed b6025acc animecard policy bodies. Readonly native evaluations
--- supply hypothetical card rules; every eventual action retains native gates.
+-- Source: b6025acc ai/animecard-ai.lua.
 local known = AIValue.requireKnown
 
 local function has_skill(self, player, name)
@@ -37,16 +36,19 @@ end
 sgs.ai_slash_weaponfilter.Elucidator = function(self, to)
     return to:getHandcardNum() < 3
 end
-sgs.ai_skill_invoke.Se_Elucidator = function(self, data)
+ai_skill_invoke.Se_Elucidator = function(self, options, request)
+    local data = request and self:getDecisionData(request) or nil
     local effect = data:toCardEffect()
     local duel = self:evaluateSkillCard("Se_Elucidator", "duel", {})
     local use = {isDummy=true, extra_target=0, current_targets=self.room:getOtherPlayers(effect.to), to=AIList.new({})}
     local planned = self:evaluateCard(duel, use)
-    if planned.card and planned and planned.to and planned.to:contains(effect.to) then return true end
-    return false
+    if planned.card and planned and planned.to and planned.to:contains(effect.to) then return (true) or false end
+    return (false) or false
 end
 function SmartAIView:useCardreijyuu(card, use)
+    local recommend = self:targetRecommendScorer(card)
     local enemies, friends = known(self.enemies,"enemies"), known(self.friends_noself,"friends_noself")
+    enemies = self:orderTargetsByRecommend(enemies, recommend)
     if #enemies == 0 and #friends == 0 then return false end
     local weak
     for _, player in ipairs(enemies) do if self:isWeak(player) then weak=player end end
@@ -66,7 +68,8 @@ function SmartAIView:useCardreijyuu(card, use)
         end
     end
 end
-ai_card_use.reijyuu=function(self,card,use)return self:useCardreijyuu(card,use)end
+sgs.registerSkillCardType("reijyuu", "debuff")
+ai_card_use.reijyuu=function(self,card,use, request)return self:useCardreijyuu(card,use)end
 sgs.ai_use_priority.reijyuu=4.55
 sgs.ai_use_value.reijyuu=9
 sgs.ai_keep_value.reijyuu=1.0
@@ -84,7 +87,10 @@ sgs.ai_skill_playerchosen.reijyuu=function(self,targets)
     end
     return self.player
 end
-sgs.ai_skill_choice.reijyuu=function(self,choices,data)
+ai_skill_choice.reijyuu=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
     local context=self:getDecisionContext()
     local flagged=known(context.reijyuu_flagged_players,"public reijyuu selected-player flags")
     if not AIValue.isList(flagged) then ai_unsupported("invalid reijyuu public flag list","reijyuu") end
@@ -92,16 +98,16 @@ sgs.ai_skill_choice.reijyuu=function(self,choices,data)
     -- claim that all flags are absent and cannot silently choose Move.
     for _, name in ipairs(flagged) do
         local player=known(self.room:findPlayerByObjectName(name),"reijyuu flagged player")
-        if self:isFriend(player) then return "reijyuuMove" else return "reijyuuDamage" end
+        if self:isFriend(player) then return ai_choice_result(("reijyuuMove"), options) else return ai_choice_result(("reijyuuDamage"), options) end
     end
-    return "reijyuuMove"
+    return ai_choice_result(("reijyuuMove"), options)
 end
 function SmartAIView:useCardtacos(card,use)
     for _, player in ipairs(known(self.enemies,"enemies")) do if has_skill(self,player,"eastfast") then return end end
     for _, player in ipairs(known(self.friends,"friends")) do if has_skill(self,player,"SE_Jiawu") then return end end
     use.card=card
 end
-ai_card_use.tacos=function(self,card,use)return self:useCardtacos(card,use)end
+ai_card_use.tacos=function(self,card,use, request)return self:useCardtacos(card,use)end
 sgs.ai_card_intention.tacos=-40
 sgs.ai_keep_value.tacos=2.5
 sgs.ai_use_value.tacos=8

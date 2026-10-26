@@ -1,4 +1,4 @@
--- SmartAI only: deliberately isolated from extensions/nuyan.lua.
+-- Nuyan package policies.
 local active = {
     qiangxi=true,xuanhuo=true,kurou=true,luoyi=true,renxin=true,zhiman=true,
     baoli=true,quhu=true,zhenjun=true,zhilue=true,quanji=true,jizhen=true,
@@ -56,22 +56,26 @@ local fixed={kurou=true,luoyi=true,baoli=true,zhilue=true,quanji=true,zhiheng=tr
     pianchong=true,canshi=true,luanwu=true,fencheng=true,yanyu=true}
 local function register_ai(sp)
     local id,m=sp.id,sp.mode
-    sgs.ai_skill_invoke[id]=function(self,data)
-        if m=="fenji" then return self.player:getHp()>2 end
-        if m=="miji" then local u=data:toCardUse();return u.from and self:isEnemy(u.from) and self.player:getHp()>1 end
-        if m=="kuanggu" then return true end
-        return true
+    ai_skill_invoke[id]=function(self, options, request)
+        local data = request and self:getDecisionData(request) or nil
+        if m=="fenji" then return (self.player:getHp()>2) or false end
+        if m=="miji" then local u=data:toCardUse();return (u.from and self:isEnemy(u.from) and self.player:getHp()>1) or false end
+        if m=="kuanggu" then return (true) or false end
+        return (true) or false
     end
-    sgs.ai_skill_choice[id]=function(self,choices,data)
-        if choices:find("nuyan_recover",1,true) and self.player:isWounded() then return "nuyan_recover" end
-        if choices:find("nuyan_slash",1,true) and self:getCardsNum("Slash")>1 then return "nuyan_slash" end
-        if choices:find("nuyan_losehp",1,true) and self.player:getHp()<=2 and choices:find("nuyan_discard",1,true) then return "nuyan_discard" end
-        if choices:find("nuyan_draw",1,true) then return "nuyan_draw" end
+    ai_skill_choice[id]=function(self, options, request)
+    local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
+    local data = request and self:getDecisionData(request) or nil
+
+        if choices:find("nuyan_recover",1,true) and self.player:isWounded() then return ai_choice_result(("nuyan_recover"), options) end
+        if choices:find("nuyan_slash",1,true) and self:getCardsNum("Slash")>1 then return ai_choice_result(("nuyan_slash"), options) end
+        if choices:find("nuyan_losehp",1,true) and self.player:getHp()<=2 and choices:find("nuyan_discard",1,true) then return ai_choice_result(("nuyan_discard"), options) end
+        if choices:find("nuyan_draw",1,true) then return ai_choice_result(("nuyan_draw"), options) end
         if choices:find("nuyan_black",1,true) then
             local red,black=0,0;for _,c in sgs.qlist(self.player:getHandcards()) do if c:isRed() then red=red+1 else black=black+1 end end
-            return red>=black and "nuyan_red" or "nuyan_black"
+            return ai_choice_result((red>=black and "nuyan_red" or "nuyan_black"), options)
         end
-        local first=choices:match("[^+]+");return first
+        local first=choices:match("[^+]+");return ai_choice_result((first), options)
     end
     sgs.ai_skill_playerchosen[id]=function(self,targets)
         local t=sgs.QList2Table(targets);self:sort(t,"defense")
@@ -81,7 +85,7 @@ local function register_ai(sp)
     end
     if active[m] then
         local skill={name=id};table.insert(sgs.ai_skills,skill)
-        skill.getTurnUseCard=function(self)
+        skill.getTurnUseCard=function(self, options, request)
             local p=self.player
             if p:getMark(id .. "_used-PlayClear")>=maxuses(sp,p) then return end
             if costs[m] and p:getMark("@nuyan_nuqi")<costs[m] then return end
@@ -96,7 +100,7 @@ local function register_ai(sp)
             if m=="zhiheng" and #chosen==0 then return end
             return sgs.Card_Parse("#" .. id .. "Card:" .. selected_ids(chosen) .. ":")
         end
-        sgs.ai_skill_use_func["#" .. id .. "Card"]=function(card,use,self)
+        ai_card_use["#" .. id .. "Card"]=function(self, card, use, request)
             if fixed[m] then use.card=card;return end
             local p=self.player;local pool=friendly[m] and self.friends or self.enemies
             self:sort(pool,"defense")
@@ -122,7 +126,7 @@ local function register_ai(sp)
         sgs.ai_use_value["#" .. id .. "Card"]=5
     elseif card_names[m] then
         local skill={name=id};table.insert(sgs.ai_skills,skill)
-        skill.getTurnUseCard=function(self)
+        skill.getTurnUseCard=function(self, options, request)
             local p=self.player;local name=card_names[m]
             if name=="jink" then return end
             if costs[m] and p:getMark("@nuyan_nuqi")<costs[m] then return end
@@ -422,68 +426,68 @@ register_ai({id = "nuyan_huiling", mode = "huiling", classic = false, jie = fals
 register_ai({id = "nuyan_jd_huiling", mode = "huiling", classic = true, jie = false})
 register_ai({id = "nuyan_xizhan", mode = "xizhan", classic = false, jie = false})
 register_ai({id = "nuyan_jd_xizhan", mode = "xizhan", classic = true, jie = false})
-sgs.ai_skill_invoke["nuyan_bond_dianwei_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_yuanshao_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_yuanshao_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_guojia_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_guojia_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_xiahouyuan_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_xiahouyuan_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_caozhi_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_huangzhong_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhangfei_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_weiyan_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_liushan_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_xiaoqiao_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_lvmeng_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_dongzhuo_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_dongzhuo_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_yanliang_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_simayi_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_xunyu_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_xunyou_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_liubei_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_huangyueying_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_jiangwei_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_mayunlu_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_pangtong_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_pangtong_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_xushu_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_liaohua_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_sunquan_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_lingcao_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_sunjian_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhoutai_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhugeke_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_diaochan_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhangjiao_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhangjiao_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhurong_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhurong_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_menghuo_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_menghuo_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_huatuo_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_chengong_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_caifuren_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_yuanshu_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_jushou_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhenji_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_caopi_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_xinxianying_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_xizhicai_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_xizhicai_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhaoyun_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhaoyun_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_sunce_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_bulianshi_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_taishici_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_sunhao_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_lvbu_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_caiwenji_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_jiaxu_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_yuji_2"] = true
-sgs.ai_skill_invoke["nuyan_bond_yuji_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_liuqi_2"] = true
+ai_skill_invoke["nuyan_bond_dianwei_2"] = true
+ai_skill_invoke["nuyan_bond_yuanshao_1"] = true
+ai_skill_invoke["nuyan_bond_yuanshao_2"] = true
+ai_skill_invoke["nuyan_bond_guojia_1"] = true
+ai_skill_invoke["nuyan_bond_guojia_3"] = true
+ai_skill_invoke["nuyan_bond_xiahouyuan_2"] = true
+ai_skill_invoke["nuyan_bond_xiahouyuan_3"] = true
+ai_skill_invoke["nuyan_bond_caozhi_2"] = true
+ai_skill_invoke["nuyan_bond_huangzhong_2"] = true
+ai_skill_invoke["nuyan_bond_zhangfei_2"] = true
+ai_skill_invoke["nuyan_bond_weiyan_2"] = true
+ai_skill_invoke["nuyan_bond_liushan_2"] = true
+ai_skill_invoke["nuyan_bond_xiaoqiao_2"] = true
+ai_skill_invoke["nuyan_bond_lvmeng_2"] = true
+ai_skill_invoke["nuyan_bond_dongzhuo_2"] = true
+ai_skill_invoke["nuyan_bond_dongzhuo_3"] = true
+ai_skill_invoke["nuyan_bond_yanliang_3"] = true
+ai_skill_invoke["nuyan_bond_simayi_2"] = true
+ai_skill_invoke["nuyan_bond_xunyu_2"] = true
+ai_skill_invoke["nuyan_bond_xunyou_1"] = true
+ai_skill_invoke["nuyan_bond_liubei_2"] = true
+ai_skill_invoke["nuyan_bond_huangyueying_2"] = true
+ai_skill_invoke["nuyan_bond_jiangwei_2"] = true
+ai_skill_invoke["nuyan_bond_mayunlu_2"] = true
+ai_skill_invoke["nuyan_bond_pangtong_1"] = true
+ai_skill_invoke["nuyan_bond_pangtong_3"] = true
+ai_skill_invoke["nuyan_bond_xushu_2"] = true
+ai_skill_invoke["nuyan_bond_liaohua_2"] = true
+ai_skill_invoke["nuyan_bond_sunquan_3"] = true
+ai_skill_invoke["nuyan_bond_lingcao_2"] = true
+ai_skill_invoke["nuyan_bond_sunjian_2"] = true
+ai_skill_invoke["nuyan_bond_zhoutai_2"] = true
+ai_skill_invoke["nuyan_bond_zhugeke_2"] = true
+ai_skill_invoke["nuyan_bond_diaochan_2"] = true
+ai_skill_invoke["nuyan_bond_zhangjiao_1"] = true
+ai_skill_invoke["nuyan_bond_zhangjiao_3"] = true
+ai_skill_invoke["nuyan_bond_zhurong_1"] = true
+ai_skill_invoke["nuyan_bond_zhurong_2"] = true
+ai_skill_invoke["nuyan_bond_menghuo_1"] = true
+ai_skill_invoke["nuyan_bond_menghuo_2"] = true
+ai_skill_invoke["nuyan_bond_huatuo_2"] = true
+ai_skill_invoke["nuyan_bond_chengong_2"] = true
+ai_skill_invoke["nuyan_bond_caifuren_2"] = true
+ai_skill_invoke["nuyan_bond_yuanshu_2"] = true
+ai_skill_invoke["nuyan_bond_jushou_2"] = true
+ai_skill_invoke["nuyan_bond_zhenji_2"] = true
+ai_skill_invoke["nuyan_bond_caopi_2"] = true
+ai_skill_invoke["nuyan_bond_xinxianying_2"] = true
+ai_skill_invoke["nuyan_bond_xizhicai_1"] = true
+ai_skill_invoke["nuyan_bond_xizhicai_3"] = true
+ai_skill_invoke["nuyan_bond_zhaoyun_1"] = true
+ai_skill_invoke["nuyan_bond_zhaoyun_2"] = true
+ai_skill_invoke["nuyan_bond_sunce_3"] = true
+ai_skill_invoke["nuyan_bond_bulianshi_2"] = true
+ai_skill_invoke["nuyan_bond_taishici_2"] = true
+ai_skill_invoke["nuyan_bond_sunhao_2"] = true
+ai_skill_invoke["nuyan_bond_lvbu_2"] = true
+ai_skill_invoke["nuyan_bond_caiwenji_2"] = true
+ai_skill_invoke["nuyan_bond_jiaxu_2"] = true
+ai_skill_invoke["nuyan_bond_yuji_2"] = true
+ai_skill_invoke["nuyan_bond_yuji_3"] = true
+ai_skill_invoke["nuyan_bond_liuqi_2"] = true
 sgs.ai_skill_cardask["nuyan_discard"] = function(self, data, pattern, target)
     local t = cards_of(self.player); self:sortByKeepValue(t)
     for _, c in ipairs(t) do
@@ -491,40 +495,40 @@ sgs.ai_skill_cardask["nuyan_discard"] = function(self, data, pattern, target)
     end
     return "."
 end
-sgs.ai_skill_invoke["nuyan_bond_xiahoudun_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_fazheng_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_fazheng_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_dengai_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_caozhi_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_caozhi_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_liushan_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_dongzhuo_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_caocao_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_yujin_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_liubei_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_jiangwei_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_xushu_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_sunshangxiang_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_diaochan_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_liuxie_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_gongsunzan_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_gaoshun_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_jushou_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhenji_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_caopi_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_xinxianying_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhaoyun_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_zhaoxiang_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_sunce_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_taishici_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_sunhao_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_caiwenji_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_liru_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_lingju_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_lvlingqi_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_lvlingqi_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_yuejin_1"] = true
-sgs.ai_skill_invoke["nuyan_bond_yuejin_3"] = true
-sgs.ai_skill_invoke["nuyan_bond_wuyi_1"] = true
-sgs.ai_skill_invoke["nuyan_lianhuayiyi"] = true
-sgs.ai_skill_invoke["nuyan_miaojianxuanwei"] = true
+ai_skill_invoke["nuyan_bond_xiahoudun_1"] = true
+ai_skill_invoke["nuyan_bond_fazheng_1"] = true
+ai_skill_invoke["nuyan_bond_fazheng_3"] = true
+ai_skill_invoke["nuyan_bond_dengai_3"] = true
+ai_skill_invoke["nuyan_bond_caozhi_1"] = true
+ai_skill_invoke["nuyan_bond_caozhi_3"] = true
+ai_skill_invoke["nuyan_bond_liushan_1"] = true
+ai_skill_invoke["nuyan_bond_dongzhuo_1"] = true
+ai_skill_invoke["nuyan_bond_caocao_1"] = true
+ai_skill_invoke["nuyan_bond_yujin_1"] = true
+ai_skill_invoke["nuyan_bond_liubei_1"] = true
+ai_skill_invoke["nuyan_bond_jiangwei_1"] = true
+ai_skill_invoke["nuyan_bond_xushu_1"] = true
+ai_skill_invoke["nuyan_bond_sunshangxiang_3"] = true
+ai_skill_invoke["nuyan_bond_diaochan_1"] = true
+ai_skill_invoke["nuyan_bond_liuxie_1"] = true
+ai_skill_invoke["nuyan_bond_gongsunzan_3"] = true
+ai_skill_invoke["nuyan_bond_gaoshun_1"] = true
+ai_skill_invoke["nuyan_bond_jushou_3"] = true
+ai_skill_invoke["nuyan_bond_zhenji_3"] = true
+ai_skill_invoke["nuyan_bond_caopi_1"] = true
+ai_skill_invoke["nuyan_bond_xinxianying_1"] = true
+ai_skill_invoke["nuyan_bond_zhaoyun_3"] = true
+ai_skill_invoke["nuyan_bond_zhaoxiang_1"] = true
+ai_skill_invoke["nuyan_bond_sunce_1"] = true
+ai_skill_invoke["nuyan_bond_taishici_1"] = true
+ai_skill_invoke["nuyan_bond_sunhao_1"] = true
+ai_skill_invoke["nuyan_bond_caiwenji_1"] = true
+ai_skill_invoke["nuyan_bond_liru_3"] = true
+ai_skill_invoke["nuyan_bond_lingju_1"] = true
+ai_skill_invoke["nuyan_bond_lvlingqi_1"] = true
+ai_skill_invoke["nuyan_bond_lvlingqi_3"] = true
+ai_skill_invoke["nuyan_bond_yuejin_1"] = true
+ai_skill_invoke["nuyan_bond_yuejin_3"] = true
+ai_skill_invoke["nuyan_bond_wuyi_1"] = true
+ai_skill_invoke["nuyan_lianhuayiyi"] = true
+ai_skill_invoke["nuyan_miaojianxuanwei"] = true
