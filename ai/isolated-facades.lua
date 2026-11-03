@@ -2000,6 +2000,10 @@ function SmartAIView.new(request)
             ai.friends_noself = AIList.asLuaTable(ai:getFriends(nil, true))
             ai.enemies = AIList.asLuaTable(ai:getEnemies())
         end
+    else
+        ai.friends = AIList.asLuaTable(AIList.new({}))
+        ai.friends_noself = AIList.asLuaTable(AIList.new({}))
+        ai.enemies = AIList.asLuaTable(AIList.new({}))
     end
     if type(ai.installOriginalHegemonyHelpers) == "function" then ai:installOriginalHegemonyHelpers() end
     if type(ai.restoreEventKeepState) == "function" then ai:restoreEventKeepState() end
