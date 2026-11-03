@@ -1320,6 +1320,8 @@ function sgs.registerStandardModeAI(mode, normal_identity, hegemony, scenario)
         ["04_boss"]={first={"lord"}, second={"rebel"}},
         ["04_2v2"]={first={"loyalist"}, second={"rebel"}},
         ["05_ol"]={first={"lord", "loyalist"}, second={"rebel"}},
+        ["06_3v3"]={first={"lord", "loyalist"}, second={"renegade", "rebel"}},
+        ["06_XMode"]={first={"lord", "loyalist"}, second={"renegade", "rebel"}},
         ["06_ol"]={first={"lord", "loyalist"}, second={"rebel"}},
         ["08_defense"]={first={"loyalist"}, second={"rebel"}},
     }
