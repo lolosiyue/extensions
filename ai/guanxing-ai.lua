@@ -41,6 +41,15 @@ local function ShowGuanxingResult(self,up,bottom)
 end
 --end--
 
+-- KeyTrick (光玉) sits in the judging area but is never judged.
+local function pendingJudges(player)
+	local judges = {}
+	for _,jc in sgs.qlist(player:getJudgingArea())do
+		if not jc:isKindOf("KeyTrick") then table.insert(judges,jc) end
+	end
+	return judges
+end
+
 local function GuanXing(self,cards)
 	local up,bottom = {},getIdToCard(cards)
 	self:sortByUseValue(bottom,true)
@@ -56,7 +65,7 @@ local function GuanXing(self,cards)
 	end
 	local lightnings = {}
    	local target = self.room:getCurrent() or self.player
-	local judge = sgs.QList2Table(target:getJudgingArea())
+	local judge = pendingJudges(target)
 	local self_has_judged,willSkipDrawPhase,willSkipPlayPhase
 	if #judge>0 and target:getPhase()<sgs.Player_Play and not target:containsTrick("YanxiaoCard") then
 		judge = sgs.reverse(judge)
@@ -121,7 +130,7 @@ local function GuanXing(self,cards)
 		if np:faceUp() then break end
 		np = np:getNextAlive()
 	end
-	judge = sgs.QList2Table(np:getJudgingArea())
+	judge = pendingJudges(np)
 	for i,jc in ipairs(lightnings)do
 		if np:containsTrick(jc:objectName()) then continue end
 		table.insert(judge,jc)
@@ -192,8 +201,7 @@ local function XinZhan(self,cards)
 	local judged_list,has_judged = {},false
 	local up,bottom = {},getIdToCard(cards)
 	local np = self.player:getNextAlive()
-	local judge = np:getCards("j")
-	judge = sgs.QList2Table(judge)
+	local judge = pendingJudges(np)
 	for i,j in sgs.list(sgs.reverse(judge))do
 		local judge_str = sgs.ai_judgestring[j:objectName()]
 		if type(judge_str)=="string" then judge_str = {judge_str,true}
