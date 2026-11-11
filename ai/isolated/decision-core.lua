@@ -718,7 +718,7 @@ function SmartAIView:assignKeep(start)
 			end
 		end
 	end
-	if core_query(self.room,"getTurnCount")<=1 or #self.enemies<1 then self.keepdata.Jink = 4.2; self:persistKeepState() end
+	if core_query(self.room,"getTurnCount")<=1 or #(self.enemies or {})<1 then self.keepdata.Jink = 4.2; self:persistKeepState() end
 	if core_query(self,"getOverflow",nil,true)==1 then-- 特殊情况下还是要留闪，待补充...
 		self.keepdata.Analeptic = (self.keepdata.Jink or 5.2)+0.1
 		self:persistKeepState()

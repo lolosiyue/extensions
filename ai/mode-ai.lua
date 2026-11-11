@@ -1279,8 +1279,8 @@ standard_adjust_roles=function(world,state)
     end
 end
 
-function sgs.registerStandardModeAI(mode, normal_identity, hegemony, scenario)
-    if policies[mode] then return false end
+function sgs.registerStandardModeAI(mode, normal_identity, hegemony, scenario, mode_roles)
+    if policies[mode] then return true end
     -- Native admission supplies the existing normal-mode classification. Kingdom
     -- and scenario victory policies need their own explicit mode registration.
     if hegemony then
@@ -1313,18 +1313,25 @@ function sgs.registerStandardModeAI(mode, normal_identity, hegemony, scenario)
         generation=generation+1
         return true
     end
-    local fixed_teams = {
-        ["02_1v1"]={first={"lord"}, second={"renegade"}},
-        ["03_1v2"]={first={"lord"}, second={"rebel"}},
-        ["04_1v3"]={first={"lord"}, second={"rebel"}},
-        ["04_boss"]={first={"lord"}, second={"rebel"}},
-        ["04_2v2"]={first={"loyalist"}, second={"rebel"}},
-        ["05_ol"]={first={"lord", "loyalist"}, second={"rebel"}},
-        ["06_ol"]={first={"lord", "loyalist"}, second={"rebel"}},
-        ["08_defense"]={first={"loyalist"}, second={"rebel"}},
-    }
-    if fixed_teams[mode] then
-        sgs.registerModeAI(mode, {teams=fixed_teams[mode]})
+    -- Ordinary identity modes may also carry explicit roles (e.g. 50p).
+    -- Their renegade objectives must retain the identity policy.
+    local teams
+    if not normal_identity then
+        -- Native admission supplies GameModeStruct.roles; no userdata crosses VMs.
+        local roles = mode_roles or ""
+        if roles ~= "" then
+            teams = {first={}, second={}}
+            for _, entry in ipairs({{"Z", "lord", "first"}, {"C", "loyalist", "first"},
+                {"N", "renegade", "second"}, {"F", "rebel", "second"}}) do
+                if roles:find(entry[1], 1, true) then
+                    table.insert(teams[entry[3]], entry[2])
+                end
+            end
+            if #teams.first == 0 or #teams.second == 0 or roles:find("[^ZCNF]") then teams = nil end
+        end
+    end
+    if teams then
+        sgs.registerModeAI(mode, {teams=teams})
     elseif normal_identity then
         sgs.registerModeAI(mode, {relation=standard_relation,
             objective=standard_objective, gameProcess=standard_process,rolePredictable=standard_predictable,
@@ -1332,7 +1339,7 @@ function sgs.registerStandardModeAI(mode, normal_identity, hegemony, scenario)
     else
         return false
     end
-    standard_modes[mode] = normal_identity and not fixed_teams[mode] and "identity" or true
+    standard_modes[mode] = normal_identity and not teams and "identity" or true
     return true
 end
 
@@ -1506,7 +1513,10 @@ function sgs.evaluateModeAI(world, options, state_override)
         relation_scope=viewer_only and "viewer" or "full"}
     result.legacy_managed=result.managed and not base_mode(world) or false
     result.legacy_base_update=base_mode(world)
-    if not result.managed then return result end
+    if not result.managed then
+        result.error = "MODE_AI_UNMANAGED"
+        return result
+    end
     local state = state_override or mind(world.mode_id, world.self.object_name)
     if standard_modes[world.mode_id] == "identity" then
         state = clone_value(state)

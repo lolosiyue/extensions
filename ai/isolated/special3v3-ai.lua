@@ -28,7 +28,7 @@ ai_skill_choice["3v3_direction"] = function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
     local data = request and self:getDecisionData(request) or nil
 
-	local card = data:toCard()
+	local card = data and type(data.toCard) == "function" and data:toCard() or nil
 	local aggressive = (card and card:isKindOf("AOE"))
 	if self:isFriend(self.player:getNextAlive())==aggressive then return ai_choice_result(("cw"), options) else return ai_choice_result(("ccw"), options) end
 

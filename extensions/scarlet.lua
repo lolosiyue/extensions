@@ -1,4 +1,4 @@
-﻿extension = sgs.Package("scarlet")
+extension = sgs.Package("scarlet")
 extension_soldier = sgs.Package("s4_soldier")
 sgs.LoadTranslationTable {
     ["scarlet"] = "時語",
@@ -3153,7 +3153,10 @@ s4_tiaoxinVS = sgs.CreateViewAsSkillV2 {
         local slash = room:askForUseSlashTo(target, source, "@s4_tiaoxin:"..source:objectName(), false, false, false, source, nil, skill:objectName())
         if not slash then
             local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
-            duel:setSkillName(skill:objectName())
+            -- 決鬥由「被挑釁者」打出，不是技能持有者。用底線前綴讓引擎
+            -- 查不到視為技實例（skill-runtime-coordinator.cpp:1182 直接放行），
+            -- 否則會去 use.from 身上找 s4_tiaoxin，找不到就靜默 return false。
+            duel:setSkillName("_" .. skill:objectName())
             room:setCardFlag(duel, skill:objectName())
             local use = sgs.CardUseStruct()
             use.card = duel
@@ -7963,8 +7966,17 @@ end
 local function s4_gangluPreview(skill, request)
     local name = request:getUserString()
     if name == "" then
+        local pattern = request:getPattern()
+        if pattern == "" then
+            -- 出牌階段主動使用時 pattern 為空字串（player-decision-service.cpp:2439
+            -- 的 setCurrentCardUsePattern("")），沒有可反推的牌名。回 nil 走
+            -- ViewAsSkillV2::createCard 的 if (!card) return nullptr
+            -- （src/core/skill.cpp:656），本次不生成此技能牌。
+            -- 不可在此假設 cost 會補問牌名：cost 在 PLAY 首行就 return true。
+            return nil
+        end
         -- 回應情境沒有 dialog 宣告：比照 guhuo，pattern 首段即宣告，二次選擇留給 cost
-        name = request:getPattern():gsub("!$", ""):split("+")[1]:split("|")[1]
+        name = pattern:gsub("!$", ""):split("+")[1]:split("|")[1]
     end
     return s4_gangluCard(skill, request, name)
 end
