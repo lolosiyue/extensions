@@ -398,9 +398,10 @@ local function lua_facade_index(facade, self, key)
     return nil
 end
 
--- Keep the Lua lookup order live so later facade provider installation wins
--- over per-instance scalar metadata; no method or strategy value is cached.
-local facade_index = lua_facade_index
+-- Native fixed-cost table dispatch preserves this Lua lookup order and cold
+-- missing-value policy. Later provider installation still wins over scalar metadata.
+local make_facade_index = assert(ai_make_facade_index, "native facade table dispatch is unavailable")
+local card_facade_index = make_facade_index(CardView, lua_facade_index)
 
 local function new_facade(facade, view, aliases)
     if type(view) ~= "table" then
@@ -420,20 +421,16 @@ local function new_facade(facade, view, aliases)
     return setmetatable({ _view = view, _scalar_methods = scalar_methods }, facade)
 end
 
-PlayerView.__index = function(self, key)
-    return facade_index(PlayerView, self, key)
-end
+PlayerView.__index = make_facade_index(PlayerView, lua_facade_index)
 
 CardView.__index = function(self, key)
     local row=rawget(self,"_view");local request=type(row)=="table" and physical_card_provenance.rows[row]
     local state=request and physical_card_provenance.states[request]
     if state and state.poison then ai_unsupported(state.poison,"rushB.physical_mutation")end
-    return facade_index(CardView, self, key)
+    return card_facade_index(self, key)
 end
 
-SkillView.__index = function(self, key)
-    return facade_index(SkillView, self, key)
-end
+SkillView.__index = make_facade_index(SkillView, lua_facade_index)
 
 -- Display labels are not projected; nil means unknown.
 function PlayerView:screenName() return self._view.screen_name end
@@ -2522,9 +2519,7 @@ end
 -- 合法候選：全部由權威端在建立 request 時算好，這裡只查表。查不到就是「這次沒問到」，
 -- 回 nil，不會現場推規則，也沒有回頭問 Engine 的路。
 CandidateView = {}
-CandidateView.__index = function(self, key)
-    return facade_index(CandidateView, self, key)
-end
+CandidateView.__index = make_facade_index(CandidateView, lua_facade_index)
 
 local candidate_scalar_aliases = {
     candidate_id = "getCandidateId",
@@ -2652,9 +2647,7 @@ end
 -- 權威端照自己的紀錄重造同一張並逐欄比對。牌名、class_name 與技能名都不是授權。
 ConversionView = {}
 required_scalar_methods[ConversionView] = {targetFixed=true}
-ConversionView.__index = function(self, key)
-    return facade_index(ConversionView, self, key)
-end
+ConversionView.__index = make_facade_index(ConversionView, lua_facade_index)
 
 local conversion_scalar_aliases = {
     conversion_id = "getConversionId",
@@ -3414,9 +3407,7 @@ end
 
 -- 技能實例候選：同名多實例各自是一筆，來源關係（借用／轉化）由 source_* 保留。
 SkillActionView = {}
-SkillActionView.__index = function(self, key)
-    return facade_index(SkillActionView, self, key)
-end
+SkillActionView.__index = make_facade_index(SkillActionView, lua_facade_index)
 
 local skill_action_aliases = {
     activation_owner = "getActivationOwner",
@@ -3497,9 +3488,7 @@ end
 -- 事件上下文：權威端在事件發生當下轉成純值，照順序留一段有界紀錄。
 -- 這裡沒有 QVariant、沒有原生結構，也不會有「現在正在結算什麼」的即時查詢。
 EventView = {}
-EventView.__index = function(self, key)
-    return facade_index(EventView, self, key)
-end
+EventView.__index = make_facade_index(EventView, lua_facade_index)
 
 local event_aliases = {
     kind = "getKind",
