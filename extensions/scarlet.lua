@@ -2153,7 +2153,7 @@ s4_lieren_buff = sgs.CreateTargetModSkillV2 {
 			return false
 		end	
 		local from = ctx:getPrimary()
-		return from:hasSkill("s4_lieren") and ctx:getCard() and table.contains(card:getSkillNames(), "s4_lieren")
+		return from:hasSkill("s4_lieren") and ctx:getCard() and table.contains(ctx:getCard():getSkillNames(), "s4_lieren")
     end,
 }
 
