@@ -671,7 +671,7 @@ ai_skill_use["@@gfengying"] = function(self, prompt, request)
 	
 	local target = nil
 	for _,enemy in ipairs(self.enemies) do
-		if enemy:isAlive() and self:round50CanSlash(slash, enemy) and not self:slashProhibit(slash, enemy)
+		if enemy:isAlive() and self:canSlashWithGfengying(slash, enemy) and not self:slashProhibit(slash, enemy)
 			and self:slashIsEffective(slash, enemy) and self:isGoodTarget(enemy, self.enemies, slash) then
 			target = enemy
 			break

@@ -760,7 +760,7 @@ sgs.ai_skill_cardask["@defencefieldask"] = function(self, data, pattern, target,
 	if isUse then
 		if use.card and __htms_value_call(use.card,"hasFlag","NosJiefanUsed") then return "."  end
 		if not use.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,use.from)
-		or __htms_value_call(use.card,"isKindOf","NatureSlash") and dest:isChained() and self:isGoodChainTarget(dest,use.card,use.from)
+		or __htms_value_call(use.card,"isKindOf","NatureSlash") and dest:isChained() and self:isGoodChainTarget(dest, use.from, nil, nil, use.card)
 		or self:needToLoseHp(dest,use.from,use.card) and self:ajustDamage(use.from,dest,1,use.card)==1 then return "." end
 	end
 	if self:needToLoseHp(dest, nil, nil, true) then return "."  end
@@ -1647,7 +1647,7 @@ ai_skill_invoke.meihuomoyan = function(self, options, request)
 					if self:ajustDamage(use.from,use.to:first(),1,use.card)>1 then return (true) or false end
 
 					if self:getCardsNum("Jink")<1 then
-						if __htms_value_call(use.card,"isKindOf","NatureSlash") and use.to:first():isChained() and not self:isGoodChainTarget(use.to:first(),use.card,use.from) then return (true) or false end
+						if __htms_value_call(use.card,"isKindOf","NatureSlash") and use.to:first():isChained() and not self:isGoodChainTarget(use.to:first(), use.from, nil, nil, use.card) then return (true) or false end
 						if __htms_value_call(use.from,"hasSkill","nosqianxi") and __htms_value_call(use.from,"distanceTo",use.to:first())==1 then return (true) or false end
 						if self:isFriend(use.from) and self.role=="loyalist" and not __htms_value_call(use.from,"hasSkill","jueqing") and __htms_value_call(use.from,"isLord") and use.to:first():getHp()<2 then return (true) or false end
 						if (not (self:hasSkills(sgs.masochism_skill) or (use.to:first():hasSkill("tianxiang") and getKnownCard(use.to:first(),use.to:first(),"heart")>0)) or __htms_value_call(use.from,"hasSkill","jueqing"))  then
@@ -1686,7 +1686,7 @@ ai_skill_invoke.meihuomoyan = function(self, options, request)
 						if (use.to:first():hasArmorEffect("vine") or use.to:first():getMark("&kuangfeng")>0) and __htms_value_call(use.from,"getHandcardNum")>3
 						and not(__htms_value_call(use.from,"hasSkill","hongyan") and getKnownCard(use.to:first(),use.to:first(),"spade")>0)
 						then return (true) or false
-						elseif use.to:first():isChained() and not self:isGoodChainTarget(use.to:first(),nil,use.from)
+						elseif use.to:first():isChained() and not self:isGoodChainTarget(use.to:first(), use.from)
 						then return (true) or false end
 					elseif (__htms_value_call(use.card,"isKindOf","Snatch") or __htms_value_call(use.card,"isKindOf","Dismantlement"))
 					and self:getCardsNum("Peach")==use.to:first():getHandcardNum() and not use.to:first():isKongcheng()
@@ -2947,7 +2947,7 @@ end
 ai_skill_invoke.tjdzf = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if damage.from and damage.nature ~= sgs.DamageStruct_Normal and self:isFriend(damage.from) and self.player:isChained() and self:isGoodChainTarget(self.player, damage.card, damage.from, damage.damage) then return (false) or false end
+	if damage.from and damage.nature ~= sgs.DamageStruct_Normal and self:isFriend(damage.from) and self.player:isChained() and self:isGoodChainTarget(self.player, damage.from, nil, damage.damage, damage.card) then return (false) or false end
 
 	if self:needToLoseHp(damage.to,damage.from,damage.card) then return (false) or false end
 	return (true) or false
@@ -8116,7 +8116,7 @@ ai_skill_invoke.zhanshubuju = function(self, options, request)
 	if isUse then
 		if use.card and __htms_value_call(use.card,"hasFlag","NosJiefanUsed") then return (false) or false  end
 		if not use.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,use.from)
-		or __htms_value_call(use.card,"isKindOf","NatureSlash") and dest:isChained() and self:isGoodChainTarget(dest,use.card,use.from)
+		or __htms_value_call(use.card,"isKindOf","NatureSlash") and dest:isChained() and self:isGoodChainTarget(dest, use.from, nil, nil, use.card)
 		or self:needToLoseHp(dest,use.from,use.card) and self:ajustDamage(use.from,dest,1,use.card)==1 then return (false) or false end
 	end
 	if self:needToLoseHp(dest, nil, nil, true) then return (false) or false end

@@ -695,7 +695,8 @@ ai_skill_invoke.lieji = function(self, options, request)
 end
 
 ai_fill_skill.quzhou = function(self, options, request)
-	return parse(self,"@QuzhouCard=.:slash")
+    local source=known(self:findOfferedSkillAction("quzhou",request),"Quzhou native source")
+    return self:newCard("QuzhouCard",{skill="quzhou",instance=source.identity.activation_instance})
 end
 
 ai_card_use["QuzhouCard"] = function(self, card, use, request)
@@ -705,18 +706,20 @@ end
 sgs.ai_use_value.QuzhouCard = 5.4
 sgs.ai_use_priority.QuzhouCard = 2.8
 
-ai_skill_use["@@quzhou"] = function(self, prompt, request)
-	for _,id in sgs.list(self.player:getNotifiedTag("quzhouForAI"))do
-		local c = face(self,id)
-		local d = self:aiUseCard(c)
-		if d.card then
-			local tps = {}
-			for _,p in sgs.list(d.to)do
-				table.insert(tps,p:objectName())
-			end
-			return answer(self,c,tps)
-		end
-	end
+ai_skill_use["@@quzhou"] = function(self, options, request)
+    local source = AIValue.requireKnown(self:findOfferedSkillAction("quzhou", request), "Quzhou continuation source")
+    for _,card in ipairs(self:getConversions()) do
+        if card:getActivationSkillName()=="quzhou"
+            and card:getActivationInstanceId()==source.identity.activation_instance
+            and card:isAvailable() and card:matchesResponsePattern() then
+            local plan,status=self:tryUseCard(card)
+            if status=="unsupported" then error(plan,0) end
+            if plan and plan.card then return AIValue.requireKnown(plan:toAnswer(), "Quzhou native continuation") end
+            return {kind="pass"}
+        end
+    end
+    if not self:hasEnumeratedConversions() then ai_unsupported("Quzhou continuation conversions are incomplete", "quzhou") end
+    return {kind="pass"}
 end
 
 sgs.ai_skill_playerchosen.baojia = function(self,players)

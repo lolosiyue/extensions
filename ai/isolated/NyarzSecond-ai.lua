@@ -174,7 +174,7 @@ ai_skill_use["@@jxyangjie"] = function(self, prompt, request)
 
     for _,p in ipairs(all) do
         if self:isFriend(p) and p:getHp() == 1 then
-            if self:round50Prefix(slash, qtargets, p, "target_filter") and (not self:round50Prefix(slash, qtargets, p, "is_prohibited")) then
+            if self:queryJxyangjieTarget(slash, qtargets, p, "target_filter") and (not self:queryJxyangjieTarget(slash, qtargets, p, "is_prohibited")) then
                 table.insert(targets, p:objectName())
                 qtargets:append(p)      
             end

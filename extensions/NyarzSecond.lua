@@ -2572,7 +2572,7 @@ xssongwei = sgs.CreateTriggerSkillV2{
         end
     end,
     can_trigger = function(skill, event, room, player, data)
-    	if player and player:getKingdom() == "wei" then
+    	if player and player:hasLordSkillKingdom("wei") then
     		return nyarz_single_owner(skill, room, player)
     	end
     	return false
@@ -5821,7 +5821,7 @@ nyarz_zhangwu = sgs.CreateTriggerSkillV2{
             if player:getPhase() ~= sgs.Player_Start then return false end
             local can = false
             for _,p in sgs.qlist(room:getAllPlayers(true)) do
-                if p:getRole() == "loyalist" and p:getKingdom() == "shu" and p:isDead() then
+                if p:getRole() == "loyalist" and p:hasLordSkillKingdom("shu", player) and p:isDead() then
                     can = true
                     break
                 end

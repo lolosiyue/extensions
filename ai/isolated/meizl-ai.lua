@@ -4323,7 +4323,7 @@ function SmartAIView:UseAoeSkillValue_mei(element, players, card)
                     if source_query(self, "isGoodTarget", player, self.enemies, card) then
                         good = good + 2
                     end
-                    if self:isGoodChainTarget(player, card, self.player) then
+                    if self:isGoodChainTarget(player, self.player, nil, nil, card) then
                         good = good + 2
                     end
                     if self:isWeak(player) and not self:needDeath(player) then

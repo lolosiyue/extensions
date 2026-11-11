@@ -147,7 +147,7 @@ ai_card_use.JunxingCard = function(self, card, use, request)
 	for _,card in ipairs(cards)do
 		if card:isKindOf("Slash") then
 			local will_use = false
-			if use_slash_num<=known(card:getTargetModResidue(),"junxing.residue") then
+			if use_slash_num<=known(card:getTargetModResidue(self.player),"junxing.residue") then
 				local dummy_use = dummy()
 				self:useBasicCard(card,dummy_use)
 				if dummy_use.card then

@@ -447,7 +447,7 @@ sgs.ai_skill_playerchosen.kenewgirlshibing = function(self, targets)
 	end
 	for _,friend in ipairs(self.friends_noself)do
 		if friend:isChained() and dmg.nature~=sgs.DamageStruct_Normal
-		and not self:isGoodChainTarget(friend, dmg.card or dmg.nature, dmg.from, dmg.damage)
+		and not self:isGoodChainTarget(friend, dmg.from, not dmg.card and dmg.nature or nil, dmg.damage, dmg.card)
 		then
 		elseif friend:getHp()>=2 and dmg.damage<2
 		and self:needToLoseHp(friend)

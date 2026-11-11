@@ -504,7 +504,7 @@ luatuogu = sgs.CreateTriggerSkillV2 {
 
 		local others = room:getOtherPlayers(player)
 		for _, p in sgs.qlist(others) do
-			if p:getKingdom() == "shu" then
+			if p:hasLordSkillKingdom("shu", player) then
 				local choice = room:askForChoice(p, skill:objectName(), "tuoguhelper+tuogunonhelper")
 
 				local log = sgs.LogMessage()
@@ -804,7 +804,7 @@ luajiebing = sgs.CreateTriggerSkillV2 {
 	on_effect = function(skill, event, room, player, ctx)
 		room:broadcastSkillInvoke(skill:objectName())
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-			if p:getKingdom() == "wu" then
+			if p:hasLordSkillKingdom("wu", player) then
 				local card = room:askForCard(p, "..", "@luajiebing", ctx.original_data, sgs.Card_MethodNone)
 				if card then
 					room:obtainCard(player, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, p:objectName(), player:objectName(), "luajiebing", ""), false)

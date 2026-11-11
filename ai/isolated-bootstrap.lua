@@ -263,11 +263,12 @@ end
 local uncovered, uncovered_dropped = {}, 0
 local uncovered_limit = 64
 
-function ai_coverage.notCovered(kind, reason, key)
+function ai_coverage.notCovered(kind, reason, key, traceback)
     if type(kind) ~= "string" or type(reason) ~= "string" then return end
     -- One current diagnostic survives a full bounded history. Never retain a
     -- request, facade, card or target payload for native failure reporting.
-    ai_last_decision_failure = {reason = reason, key = type(key) == "string" and key or nil}
+    ai_last_decision_failure = {reason = reason, key = type(key) == "string" and key or nil,
+        traceback = ai_unsupported_trace_enabled and type(traceback)=="string" and traceback:sub(1,4096) or nil}
     if #uncovered >= uncovered_limit then
         uncovered_dropped = uncovered_dropped + 1
         return
@@ -364,7 +365,7 @@ function ai_decide(request)
     if not synchronized then
         if AIUnsupported.is(failure) then
             record_outcome(request.kind, "unsupported")
-            ai_coverage.notCovered(request.kind, failure.reason, failure.key)
+            ai_coverage.notCovered(request.kind, failure.reason, failure.key, failure.traceback)
             return nil
         end
         record_outcome(request.kind, "error")
@@ -406,7 +407,7 @@ function ai_decide(request)
             record_outcome(request.kind, "native-rejected")
         else
             record_outcome(request.kind, "unsupported")
-            ai_coverage.notCovered(request.kind, answer.reason, answer.key)
+            ai_coverage.notCovered(request.kind, answer.reason, answer.key, answer.traceback)
         end
         return nil
     end
@@ -419,7 +420,7 @@ function ai_decide(request)
     end
     record_outcome(request.kind, status)
     if status == "unsupported" then
-        ai_coverage.notCovered(request.kind, answer.reason, answer.key)
+        ai_coverage.notCovered(request.kind, answer.reason, answer.key, answer.traceback)
         return nil
     end
     if type(result) == "table" and type(self_view.useKnowledgeEstimate) == "function" then

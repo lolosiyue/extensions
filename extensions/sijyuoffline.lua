@@ -11638,7 +11638,7 @@ sfofl_mujunCard = sgs.CreateSkillCard {
     target_fixed = false,
     will_throw = false,
     filter = function(self, targets, to_select, player)
-        return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and to_select:getKingdom() == "qun"
+        return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and to_select:hasLordSkillKingdom("qun", player)
     end,
     on_use = function(self, room, player, targets)
         room:removePlayerMark(player, "@sfofl_mujun")
@@ -11990,7 +11990,7 @@ sfofl_xiongyeCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = false,
 	filter = function(self, targets, to_select, player)
-		return #targets < player:getHandcardNum() and to_select:objectName() ~= player:objectName() and to_select:getKingdom() == "qun"
+		return #targets < player:getHandcardNum() and to_select:objectName() ~= player:objectName() and to_select:hasLordSkillKingdom("qun", player)
 	end,
     feasible = function(self, targets, player)
         return #targets <= player:getHandcardNum() and #targets > 0
@@ -23261,7 +23261,7 @@ sfofl_jiquan = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Frequent,
 	events = {sgs.EventPhaseStart},
 	can_trigger = function(skill, event, room, player, data)
-		if not (player and player:getKingdom() == "west") then return false end
+		if not (player and player:hasLordSkillKingdom("west")) then return false end
 		if player:getPhase() ~= sgs.Player_Start then return false end
 		local names, who = {}, {}
         for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
@@ -39235,7 +39235,7 @@ sfofl_e4_qianlong = sgs.CreateTriggerSkillV2{
 			local n = 5
 			if player:hasLordSkill("sfofl_e4_weitong") then
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-					if p:getKingdom() == "wei" then n = 8 break end
+					if p:hasLordSkillKingdom("wei", player) then n = 8 break end
 				end
 			end
 			local used = {}
@@ -39343,7 +39343,7 @@ sfofl_e4_weitong = sgs.CreateTriggerSkillV2{
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasLordSkill("sfofl_e4_weitong")) then return false end
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-			if p:getKingdom() == "wei" then return skill:objectName() end
+			if p:hasLordSkillKingdom("wei", player) then return skill:objectName() end
 		end
 		return false
 	end,

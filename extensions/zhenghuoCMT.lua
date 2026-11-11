@@ -574,7 +574,7 @@ weidaiZHCMT = sgs.CreateTriggerSkillV2 {
 	change_skill = true,
 	priority = { 3, 2 },
 	can_trigger = function(skill, event, room, player, data)
-		if player and player:getKingdom() == "wei" then return skill:objectName() end
+		if player and player:hasLordSkillKingdom("wei") then return skill:objectName() end
 		return false
 	end,
 	on_cost = function(skill, event, room, player, ctx)
@@ -610,7 +610,7 @@ weidaiZHCMT = sgs.CreateTriggerSkillV2 {
 						local others = room:getOtherPlayers(use.from)
 						local non_wei_targets = sgs.SPlayerList()
 						for _, q in sgs.qlist(others) do
-							if q:getKingdom() ~= "wei" and not use.to:contains(q) and use.from:canSlash(q, use.card) then
+							if not q:hasLordSkillKingdom("wei", p) and not use.to:contains(q) and use.from:canSlash(q, use.card) then
 								non_wei_targets:append(q)
 							end
 						end
@@ -989,7 +989,7 @@ dangzhengZHCMTVS = sgs.CreateViewAsSkillV2 {
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player or request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		if player:getKingdom() == "wu" then
+		if player:hasLordSkillKingdom("wu") then
 			return not player:hasFlag("ForbiddangzhengZHCMT")
 		end
 		return false

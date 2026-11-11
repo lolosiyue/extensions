@@ -352,7 +352,7 @@ ai_skill_invoke.ice_sword = function(self, options, request)
 	local target = damage.to
 	if query(self,"isFriend",target) then
 		if query(self,"needToLoseHp",target,self.player,damage.card) then return (false) or false
-		elseif target:isChained() and query(self,"isGoodChainTarget",target,damage.card) then return (false) or false
+		elseif target:isChained() and query(self, "isGoodChainTarget", target, nil, nil, nil, damage.card) then return (false) or false
 		elseif query(self,"isWeak",target) or damage.damage>1 then return (true) or false
 		elseif query(target,"getLostHp")<1 then return (false) or false end
 		return (true) or false

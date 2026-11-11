@@ -1056,7 +1056,7 @@ local function meow_tianxiang_policy(self, data, method)
         if friend:getLostHp() + dmg.damage > 1 and friend:isAlive()
         then
             if friend:isChained() and dmg.nature ~= sgs.DamageStruct_Normal
-                and not self:isGoodChainTarget(friend, dmg.card or dmg.nature, dmg.from, dmg.damage)
+                and not self:isGoodChainTarget(friend, dmg.from, not dmg.card and dmg.nature or nil, dmg.damage, dmg.card)
             then
             elseif friend:getHp() >= 2 and dmg.damage < 2
                 and (friend:hasSkills("yiji|buqu|nosbuqu|shuangxiong|zaiqi|yinghun|jianxiong|fangzhu")
@@ -1324,7 +1324,7 @@ function ai_skill_invoke.MeowZhenlie(self, options, request)
                 or jink_num == 0
                 or self:getCardsNum("Jink") < jink_num
                 or (use.from:hasSkill("dahe") and self.player:hasFlag("dahe") and not hasHeart) then
-                if use.card:isKindOf("NatureSlash") and self.player:isChained() and not self:isGoodChainTarget(self.player, use.card, use.from) then return (true) or false end
+                if use.card:isKindOf("NatureSlash") and self.player:isChained() and not self:isGoodChainTarget(self.player, use.from, nil, nil, use.card) then return (true) or false end
                 if use.from:hasSkill("nosqianxi") and use.from:distanceTo(self.player) == 1 then return (true) or false end
                 if self:isFriend(use.from) and self.role == "loyalist" and not self:hasJueqingEffect(use.from, self.player, sgs.card_damage_nature[use.card:getClassName()]) and use.from:isLord() and self.player:getHp() == 1 then return (true) or false end
                 if (not (self:hasSkills(sgs.masochism_skill) or (self.player:hasSkill("tianxiang") and getKnownCard(self.player, self.player, "heart") > 0)) or self:hasJueqingEffect(use.from, self.player, sgs.card_damage_nature[use.card:getClassName()]))
@@ -1369,7 +1369,7 @@ function ai_skill_invoke.MeowZhenlie(self, options, request)
                 if (self.player:hasArmorEffect("vine") or self.player:getMark("&kuangfeng") > 0) and use.from:getHandcardNum() > 3
                     and not (use.from:hasSkill("hongyan") and getKnownCard(self.player, self.player, "spade") > 0) then
                     return (self:doDisCard(use.from, "he")) or false
-                elseif self.player:isChained() and not self:isGoodChainTarget(self.player, nil, use.from)
+                elseif self.player:isChained() and not self:isGoodChainTarget(self.player, use.from)
                 then
                     return (self:doDisCard(use.from, "he")) or false
                 end

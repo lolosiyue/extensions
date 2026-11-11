@@ -249,7 +249,7 @@ rushB_jiuyuan = sgs.CreateTriggerSkillV2{
 	events = {sgs.PreCardUsed},
 	frequency = sgs.Skill_Compulsory,
 	can_trigger = function(skill, event, room, player, data)
-		if not (player and player:isAlive() and player:getKingdom() == "wu") then return false end
+		if not (player and player:isAlive() and player:hasLordSkillKingdom("wu")) then return false end
 		local names, objs = {}, {}
 		for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
 			if p:hasLordSkill(skill:objectName()) and player:objectName() ~= p:objectName() then
@@ -297,7 +297,7 @@ rushB_jiuyuanRec = sgs.CreateTriggerSkillV2{
 		local data = ctx.original_data
 		if event == sgs.TargetConfirmed then
 			local use = data:toCardUse()
-			if use.card:isKindOf("Peach") and use.from and (use.from:getKingdom() == "wu") and (player:objectName() ~= use.from:objectName()) and player:hasFlag("Global_Dying") then
+			if use.card:isKindOf("Peach") and use.from and (use.from:hasLordSkillKingdom("wu", player)) and (player:objectName() ~= use.from:objectName()) and player:hasFlag("Global_Dying") then
 				room:setCardFlag(use.card, "jiuyuanRec")
 			end
 		elseif event == sgs.PreHpRecover then
@@ -4237,7 +4237,7 @@ mmou_huangtian = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Compulsory,
 	can_trigger = function(skill, event, room, player, data)
 		if event == sgs.EventPhaseStart and player and player:getPhase() == sgs.Player_RoundStart
-			and not player:isKongcheng() and player:getKingdom() == "qun" then
+			and not player:isKongcheng() and player:hasLordSkillKingdom("qun") then
 		    local names, objs = {}, {}
 		    for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
 		        if p:objectName() ~= player:objectName() and p:hasLordSkill(skill:objectName()) then

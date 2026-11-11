@@ -344,7 +344,7 @@ luaRhuogen = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.Dying },
 	can_trigger = function(skill, event, room, player, data)
-		if not (player and player:getKingdom() == "wu") then return false end
+		if not (player and player:hasLordSkillKingdom("wu")) then return false end
 		local dying = data:toDying()
 		local target = dying.who
 		if target and target:hasLordSkill(skill:objectName()) and target:objectName() ~= player:objectName() then

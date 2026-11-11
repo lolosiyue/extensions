@@ -794,7 +794,7 @@ ai_skill_invoke.dev_meihuo = function(self, options, request)
 		elseif use.card:isKindOf("IceSlash") then nature = sgs.DamageStruct_Ice end
 		if self:canDraw() then
 			if self:isFriend(use.from) then
-				return (self:isGoodChainTarget(self.player, nature, use.from)
+				return (self:isGoodChainTarget(self.player, use.from, nature)
 				and self:slashIsEffective(use.card, self.player, use.from)) or false
 			end
 			return (true) or false

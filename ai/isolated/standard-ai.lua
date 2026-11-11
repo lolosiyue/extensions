@@ -717,8 +717,8 @@ sgs.ai_skill_discard.nosfencheng = function(self,discard_num,min_num,optional,in
     if liru and liru:isAlive() and liru:hasSkills("juece|nosjuece") then juece_effect = true end
     if not self:damageIsEffective(self.player,sgs.DamageStruct_Fire,liru) then return {} end
     if juece_effect and self:isEnemy(liru) and self.player:getEquips():isEmpty() and self.player:getHandcardNum()==1 and not self:needKongcheng()
-        and not (self.player:isChained() or not self:isGoodChainTarget(self.player,"F",liru)) then return {} end
-    if self:isGoodChainTarget(self.player,"F",liru) or self:needToLoseHp(self.player,liru) then return {} end
+        and not (self.player:isChained() or not self:isGoodChainTarget(self.player, liru, "F")) then return {} end
+    if self:isGoodChainTarget(self.player, liru, "F") or self:needToLoseHp(self.player,liru) then return {} end
     local to_discard = self:recommendDiscard(discard_num,min_num,false,include_equip)
     if #to_discard<discard_num then return {} end
     for _,id in ipairs(to_discard)do
@@ -3366,7 +3366,7 @@ ai_skill_invoke.nosdanshou = function(self, options, request)
     elseif phase==sgs.Player_Play then
         if damage.chain or chained_count(self)>0 then
             for _,ap in sgs.qlist(self.room:getAllPlayers())do
-                if ap:isChained() and self:isGoodChainTarget(ap,damage.card,nil,damage.damage) then return (false) or false end
+                if ap:isChained() and self:isGoodChainTarget(ap, nil, nil, damage.damage, damage.card) then return (false) or false end
             end
             return (true) or false
         elseif self:getOverflow()>=2 then
@@ -4416,8 +4416,8 @@ getNosFenchengValue=function(self,player)
     if not player:canDiscard(player, "he") then return self:isWeak(player) and 1.5 or 1 end
     if self.player:hasSkills("juece|nosjuece") and self:isEnemy(player)
     and player:getEquips():isEmpty() and player:getHandcardNum()==1 and not self:needKongcheng(player)
-    and not (player:isChained() or not self:isGoodChainTarget(player,"F")) then return self:isWeak(player) and 1.5 or 1 end
-    if self:isGoodChainTarget(player,"F") or self:needToLoseHp(player,self.player) then return -0.1 end
+    and not (player:isChained() or not self:isGoodChainTarget(player, nil, "F")) then return self:isWeak(player) and 1.5 or 1 end
+    if self:isGoodChainTarget(player, nil, "F") or self:needToLoseHp(player,self.player) then return -0.1 end
     local num = player:getEquips():length()-player:getHandcardNum()
     if num<0 then
         if self:needToThrowArmor(player) then num = 1 else num = 0 end

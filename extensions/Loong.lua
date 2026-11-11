@@ -1877,7 +1877,7 @@ lxtx_guiming = sgs.CreateTriggerSkillV2{
 	on_effect = function(skill, event, room, player, ctx)
 	    local n, targets = 0, sgs.SPlayerList()
 		for _,p in sgs.qlist(room:getAlivePlayers()) do
-		    if p:getKingdom() == "wu" or p:getMark("&mwu") > 0 then n = n + 1 targets:append(p) end
+		    if p:hasLordSkillKingdom("wu", player) or p:getMark("&mwu") > 0 then n = n + 1 targets:append(p) end
 	    end
 		if n < 1 or targets:length() < 1 then return false end
 		local log = sgs.LogMessage()

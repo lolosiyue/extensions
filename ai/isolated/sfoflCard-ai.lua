@@ -11679,7 +11679,7 @@ sgs.ai_skill_cardask["@sfofl_shanwu"] = function(self, data, pattern, target, ta
 	if use.card and package_known(use.card,"hasFlag","NosJiefanUsed") then return "." end
 
 	if not use.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,use.from)
-		or package_known(use.card,"isKindOf","NatureSlash") and package_known(self.player,"isChained") and package_known(self,"isGoodChainTarget",target,use.card,use.from)
+		or package_known(use.card,"isKindOf","NatureSlash") and package_known(self.player,"isChained") and package_known(self, "isGoodChainTarget", target, use.from, nil, nil, use.card)
 		or package_known(self,"needToLoseHp",target,use.from,use.card) and package_known(self,"ajustDamage",use.from,target,1,use.card)==1 then return "." end
 	if package_known(self,"needToLoseHp",target, use.from,use.card, true, true) then return "." end
 	if getCardsNum("Jink", target, self.player) == 0 then return true end

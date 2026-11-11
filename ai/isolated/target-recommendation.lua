@@ -751,7 +751,7 @@ sgs.registerGlobalTargetRecommend("chain_slash_friend", function(self, from, to,
 		return 0
 	end
 	if self:isFriend(from, to) and hasChainEffect(to, from) then
-		if self:isGoodChainTarget(to, card, from) then
+		if self:isGoodChainTarget(to, from, nil, nil, card) then
 			return 10
 		end
 	end

@@ -365,14 +365,17 @@ do
                     local skillName, nature
                     if id == 1 then skillName, nature = "emjr_cc_jinglei", sgs.DamageStruct_Thunder
                     elseif id == 3 then skillName, nature = "emjr_cc_tianhuo", sgs.DamageStruct_Fire end
-                    if skillName and qualifyingSlash(use.card, id) then
-                        for _, damaged in ipairs(hitEnemies) do
-                            if source:isAlive() and source:hasSkill(skillName) and hasTreasureAccess(source, id)
-                                and canSpendSpirit(source) and room:askForSkillInvoke(source, skillName, ToData(damaged)) then
-                                loseSpirit(room, source)
-                                for _, target in ipairs(groupTargets(room, source, false)) do
-                                    if target ~= damaged then makeDamage(room, nil, target, 1, nature, skillName) end
-                                end
+                    -- The original asks once per slash use; the AOE excludes every enemy damaged by it.
+                    if skillName and qualifyingSlash(use.card, id) and #hitEnemies > 0
+                        and source:isAlive() and source:hasSkill(skillName) and hasTreasureAccess(source, id)
+                        and canSpendSpirit(source)
+                        and room:askForSkillInvoke(source, skillName, ToData(hitEnemies[1])) then
+                        loseSpirit(room, source)
+                        local damagedNames = {}
+                        for _, damaged in ipairs(hitEnemies) do damagedNames[damaged:objectName()] = true end
+                        for _, target in ipairs(groupTargets(room, source, false)) do
+                            if not damagedNames[target:objectName()] then
+                                makeDamage(room, nil, target, 1, nature, skillName)
                             end
                         end
                     end
@@ -893,7 +896,7 @@ do
                 ["emjr_cc_jinglei"] = "驚雷",
                 [":emjr_cc_jinglei"] = "你使用普通【殺】或雷【殺】結算完且實際對敵方造成傷害後，可以消耗1點靈氣，對除受傷敵方外的所有敵方角色各造成1點無來源雷電傷害。神獸發動此技能不消耗靈氣。",
                 ["emjr_cc_diyou"] = "地佑",
-                [":emjr_cc_diyou"] = "出牌階段限一次，你可以棄置一張基本牌，消耗1點靈氣，令所有友方角色各回復1點體力。神獸發動此技能不消耗靈氣。",
+                [":emjr_cc_diyou"] = "出牌階段限一次，若有友方角色已受傷，你可以棄置一張基本牌，消耗1點靈氣，令所有友方角色各回復1點體力。神獸發動此技能不消耗靈氣。",
                 ["emjr_cc_tianhuo"] = "天火",
                 [":emjr_cc_tianhuo"] = "你使用普通【殺】或火【殺】結算完且實際對敵方造成傷害後，可以消耗1點靈氣，對除受傷敵方外的所有敵方角色各造成1點無來源火焰傷害。神獸發動此技能不消耗靈氣。",
                 ["emjr_cc_hundun"] = "混沌",

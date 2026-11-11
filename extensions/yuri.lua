@@ -13677,7 +13677,7 @@ solidarity = sgs.CreateTriggerSkillV2{
 		if not player:isLord() then return false end
 		local damage = data:toDamage()
 		local target = damage.to
-		if not target or target:objectName() == player:objectName() or target:getKingdom() ~= "wei" then return false end
+		if not target or target:objectName() == player:objectName() or not target:hasLordSkillKingdom("wei", player) then return false end
 		if damage.damage > 0 and target:isAlive() then
 			return skill:objectName() .. "*" .. damage.damage
 		end
@@ -13694,7 +13694,7 @@ solidarity = sgs.CreateTriggerSkillV2{
 		if event == sgs.Damage and player:isLord() then
 			local damage = data:toDamage()
 			local target = damage.to
-			if not target or target:objectName() == player:objectName() or target:getKingdom() ~= "wei" then return false end
+			if not target or target:objectName() == player:objectName() or not target:hasLordSkillKingdom("wei", player) then return false end
 			if damage.damage > 0 then
 				if not target:isAlive() or not player:isAlive() then return false end
 				local players = sgs.SPlayerList()
@@ -16047,14 +16047,14 @@ restrained = sgs.CreateTriggerSkillV2{
 		local maxcard = 0
 		local wuNum = 0
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-			if p:isAlive() and p:getKingdom() == "wu" then
+			if p:isAlive() and p:hasLordSkillKingdom("wu", player) then
 				wuNum = wuNum+1
 			end
 		end
 		-- player:gainMark("@book")
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 			local handCards = p:getHandcardNum()
-			if player:isLord() and player:hasSkill("ienoimei") and p:getKingdom() == "wu" then handCards = handCards + wuNum end
+			if player:isLord() and player:hasSkill("ienoimei") and p:hasLordSkillKingdom("wu", player) then handCards = handCards + wuNum end
 			if not p:isKongcheng() and handCards > maxcard then
 				maxcard = handCards
 			end
@@ -16090,7 +16090,7 @@ frequency = sgs.Skill_Compulsory,
 events = {sgs.TurnedOver, sgs.ChainStateChanged},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive()) then return false end
-		if player:hasSkill(skill:objectName()) or player:isKongcheng() or player:getKingdom() ~= "shu" then return false end
+		if player:hasSkill(skill:objectName()) or player:isKongcheng() or not player:hasLordSkillKingdom("shu") then return false end
 		local holder = room:findPlayerBySkillName(skill:objectName())
 		if holder and holder:isLord() then return skill:objectName(), holder end
 		return false

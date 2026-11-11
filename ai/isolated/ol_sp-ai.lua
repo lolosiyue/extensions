@@ -45,10 +45,10 @@ local function decode(wire)
  local ids={};if raw~='.'and raw~=''then for v in raw:gmatch('[^+]+')do local id=tonumber(v);if not id or id<0 or id%1~=0 then ai_unsupported('source cost literal is malformed',wire)end;ids[#ids+1]=id end end
  return cls,ids,user,names
 end
-local function parse(self,wire)
+local function parse(self,wire,request)
  if wire:sub(1,1)~='@'and wire:sub(1,1)~='#'then return self:evaluateSourcePropertyCard('ol_sp', wire)end
- local cls,ids,user=decode(wire);if #ids==0 and not user then return self:legacySkillSeed(providers[cls], cls, self.request)end
- return self:evaluateTurnSkillCard(providers[cls], cls, ids, self.request, user)
+ local cls,ids,user=decode(wire);if #ids==0 and not user then return self:legacySkillSeed(providers[cls], cls, request)end
+ return self:evaluateTurnSkillCard(providers[cls], cls, ids, request, user)
 end
 local function proposal(self,wire)local cls,ids,user=decode(wire);return{skill=providers[cls],legacy_class=cls,subcards=ids,user_string=user}end
 local function response(self,wire)local cls,ids,user,names=decode(wire);local c=self:bindSkillCard(providers[cls], ids, self.request, user, cls);return{kind='use_card',card_spec=c:toCardSpec(),targets=names}end
@@ -223,7 +223,7 @@ sgs.ai_skill_askforag.xianlve = function(self,card_ids)
 end
 
 ai_fill_skill.zaowang = function(self, options, request)
-	return parse(self,"@ZaowangCard=.")
+	return parse(self,"@ZaowangCard=.",request)
 end
 
 ai_card_use["ZaowangCard"] = function(self, card, use, request)
@@ -574,7 +574,7 @@ sgs.ai_skill_playerchosen.jixianzl = function(self,players)
 end
 
 ai_fill_skill.jinhui = function(self, options, request)
-	return parse(self,"@JinhuiCard=.")
+	return parse(self,"@JinhuiCard=.",request)
 end
 
 ai_card_use["JinhuiCard"] = function(self, card, use, request)
@@ -815,7 +815,7 @@ end
 ai_fill_skill.weimeng = function(self, options, request)
 	if self.player:getHp()>0
 	then
-		return parse(self,"@WeimengCard=.")
+		return parse(self,"@WeimengCard=.",request)
 	end
 end
 
@@ -880,7 +880,7 @@ ai_skill_choice.yusui = function(self, options, request)
 end
 
 ai_fill_skill.boyan = function(self, options, request)
-	return parse(self,"@BoyanCard=.")
+	return parse(self,"@BoyanCard=.",request)
 end
 
 ai_card_use["BoyanCard"] = function(self, card, use, request)
@@ -1045,7 +1045,7 @@ end
 ai_fill_skill.jinchongxin = function(self, options, request)
 	if self.player:getCardCount()>1
 	then
-		return parse(self,"@JinChongxinCard=.")
+		return parse(self,"@JinChongxinCard=.",request)
 	end
 end
 
@@ -1136,7 +1136,7 @@ ai_fill_skill.channi = function(self, options, request)
 		table.insert(toids,c:getKnownEffectiveId())
 	end
 	if #toids<1 then return end
-	return parse(self,"@ChanniCard="..table.concat(toids,"+"))
+	return parse(self,"@ChanniCard="..table.concat(toids,"+"),request)
 end
 
 ai_card_use["ChanniCard"] = function(self, card, use, request)
@@ -1259,7 +1259,7 @@ ai_skill_invoke.qibie = function(self, options, request)
 end
 
 ai_fill_skill.yijiao = function(self, options, request)
-	return parse(self,"@YijiaoCard=.")
+	return parse(self,"@YijiaoCard=.",request)
 end
 
 ai_card_use["YijiaoCard"] = function(self, card, use, request)
@@ -1374,7 +1374,7 @@ end
 ai_fill_skill.lieyi = function(self, options, request)
 	if #self.toUse<2
 	then
-		return parse(self,"@LieyiCard=.")
+		return parse(self,"@LieyiCard=.",request)
 	end
 end
 
@@ -1431,7 +1431,7 @@ ai_fill_skill.manwang = function(self, options, request)
 	if #toids<1 or #cards<3 then return end
 	if self.player:hasSkill("panqin") and #toids<2 then return end
 	if self:isWeak() and #toids<3 then return end
-	return parse(self,"@ManwangCard="..table.concat(toids,"+"))
+	return parse(self,"@ManwangCard="..table.concat(toids,"+"),request)
 end
 
 ai_card_use["ManwangCard"] = function(self, card, use, request)
@@ -1484,7 +1484,7 @@ ai_fill_skill.dunshi = function(self, options, request)
 				then
 					save_targets(self,"dunshi_to",dummy.to)
 					sgs.ai_use_priority.DunshiCard = sgs.ai_use_priority[dc:getClassName()]
-					return parse(self,"@DunshiCard=.:"..pn)
+					return parse(self,"@DunshiCard=.:"..pn,request)
 				end
 			end
 		end
@@ -1600,7 +1600,7 @@ ai_skill_use["@@chenjian3"] = function(self, prompt, request)
 end
 
 ai_fill_skill.yuanyu = function(self, options, request)
-	return parse(self,"@YuanyuCard=.")
+	return parse(self,"@YuanyuCard=.",request)
 end
 
 ai_card_use["YuanyuCard"] = function(self, card, use, request)
@@ -1848,14 +1848,14 @@ ai_fill_skill.shengong = function(self, options, request)
 					local l = pc:getEquipSlot()
 					if(i==l)then
 						save_player(self,"shengongTo",p)
-						return parse(self,"@ShengongCard="..c:getId())
+						return parse(self,"@ShengongCard="..c:getId(),request)
 					end
 				end
 			end
 			for _,p in sgs.list(self.friends)do
 				if(p:hasEquipArea(i) and not p:getEquip(i))then
 					save_player(self,"shengongTo",p)
-					return parse(self,"@ShengongCard="..c:getId())
+					return parse(self,"@ShengongCard="..c:getId(),request)
 				end
 			end
 		end
@@ -1908,7 +1908,7 @@ ai_fill_skill.weimian = function(self, options, request)
 	for _,p in sgs.list(self.friends)do
 		if self:isWeak(p) or p:getHandcardNum()<2 and self:canDraw(p) then
 			save_player(self,"weimianTo",p)
-			return parse(self,"@WeimianCard=.")
+			return parse(self,"@WeimianCard=.",request)
 		end
 	end
 end
@@ -2041,7 +2041,7 @@ ai_fill_skill.kouchao = function(self, options, request)
 					save_plan(self,"kouchaoUse",d)
 					save_choice(self,"kouchao",cn)
 					sgs.ai_use_priority.KouchaoCard = sgs.ai_use_priority[dc:getClassName()]
-					return parse(self,"@KouchaoCard=.")
+					return parse(self,"@KouchaoCard=.",request)
 				end
 			end
 		end
@@ -2087,7 +2087,7 @@ sgs.ai_guhuo_card.kouchao = function(self,toname,class_name)
 end
 
 ai_fill_skill.hunjiang = function(self, options, request)
-	return parse(self,"@HunjiangCard=.")
+	return parse(self,"@HunjiangCard=.",request)
 end
 
 ai_card_use["HunjiangCard"] = function(self, card, use, request)
@@ -2130,7 +2130,7 @@ sgs.ai_skill_playerschosen.hunjiang = function(self,players,x)
 end
 
 ai_fill_skill.jinlan = function(self, options, request)
-	return parse(self,"@JinlanCard=.")
+	return parse(self,"@JinlanCard=.",request)
 end
 
 ai_card_use["JinlanCard"] = function(self, card, use, request)
@@ -2302,7 +2302,7 @@ ai_fill_skill.fushi = function(self, options, request)
   	for _,id in sgs.list(fss)do
 		table.insert(ids,id)
 		if #ids>fss:length()/2 then
-			return parse(self,"@FushiCard="..table.concat(ids,"+"))
+			return parse(self,"@FushiCard="..table.concat(ids,"+"),request)
 		end
 	end
 end
@@ -2430,7 +2430,7 @@ sgs.ai_skill_playerchosen.fushi3 = function(self,players)
 end
 
 ai_fill_skill.zuolian = function(self, options, request)
-	return parse(self,"@ZuolianCard=.")
+	return parse(self,"@ZuolianCard=.",request)
 end
 
 ai_card_use["ZuolianCard"] = function(self, card, use, request)
@@ -2519,7 +2519,7 @@ ai_fill_skill.weifu = function(self, options, request)
 	cards = self:sortByKeepValueInPlace(cards)
   	for _,c in sgs.list(cards)do
 		if self.player:isJilei(c) then continue end
-		return parse(self,"@WeifuCard="..c:getId())
+		return parse(self,"@WeifuCard="..c:getId(),request)
 	end
 end
 
@@ -2638,7 +2638,7 @@ ai_skill_use["@@qingzhe"] = function(self, prompt, request)
 end
 
 ai_fill_skill.olyicheng = function(self, options, request)
-	return parse(self,"@olYichengCard=.")
+	return parse(self,"@olYichengCard=.",request)
 end
 
 ai_card_use["olYichengCard"] = function(self, card, use, request)
@@ -2672,7 +2672,7 @@ ai_skill_use["@@olyicheng"] = function(self, prompt, request)
 end
 
 ai_fill_skill.chanshuang = function(self, options, request)
-	return parse(self,"@ChanshuangCard=.")
+	return parse(self,"@ChanshuangCard=.",request)
 end
 
 ai_card_use["ChanshuangCard"] = function(self, card, use, request)
@@ -2789,7 +2789,7 @@ sgs.ai_guhuo_card.xuanzhu = function(self,toname,class_name)
 end
 
 ai_fill_skill.qushi = function(self, options, request)
-	return parse(self,"@QushiCard=.")
+	return parse(self,"@QushiCard=.",request)
 end
 
 ai_card_use["QushiCard"] = function(self, card, use, request)
@@ -2978,7 +2978,7 @@ ai_skill_invoke.shuiyue = function(self, options, request)
 end
 
 ai_fill_skill.pingduan = function(self, options, request)
-	return parse(self,"@PingduanCard=.")
+	return parse(self,"@PingduanCard=.",request)
 end
 
 ai_card_use["PingduanCard"] = function(self, card, use, request)
@@ -3145,12 +3145,12 @@ ai_fill_skill.renxian = function(self, options, request)
 	sgs.ai_use_priority.RenxianCard = 2.2
 	if #ids==2 and #ids==#ids2 then
 		sgs.ai_use_priority.RenxianCard = 11.2
-		return parse(self,"@RenxianCard="..table.concat(ids2,"+"))
+		return parse(self,"@RenxianCard="..table.concat(ids2,"+"),request)
 	elseif #ids<1 then
 		sgs.ai_use_priority.RenxianCard = 11.2
-		return parse(self,"@RenxianCard=.")
+		return parse(self,"@RenxianCard=.",request)
 	else
-		return parse(self,"@RenxianCard=.")
+		return parse(self,"@RenxianCard=.",request)
 	end
 end
 
@@ -3167,7 +3167,7 @@ ai_fill_skill.yanliangvs = function(self, options, request)
 	for i,c in sgs.list(cards)do
 		if i<=#cards/2 and c:isKindOf("EquipCard") then
 			if self:aiUseCard(evaluation(self,"analeptic")).card then
-				return parse(self,"@YanliangCard="..c:getId())
+				return parse(self,"@YanliangCard="..c:getId(),request)
 			end
 		end
 	end
@@ -3497,7 +3497,7 @@ ai_fill_skill.shuzi = function(self, options, request)
 				table.insert(ids,h:getKnownId())
 				if #ids==2 then
 					save_player(self,"shuzi_to",p)
-					return parse(self,"@ShuziCard="..table.concat(ids,"+"))
+					return parse(self,"@ShuziCard="..table.concat(ids,"+"),request)
 				end
 			else
 				ids = {h:getKnownId()}
@@ -3587,7 +3587,7 @@ ai_fill_skill.olliyong = function(self, options, request)
 				if d.card then
 					save_targets(self,"olliyong_to",d.to)
 					sgs.ai_use_priority.OLLiyongCard = sgs.ai_use_priority.Duel
-					return parse(self,"@OLLiyongCard="..h:getId())
+					return parse(self,"@OLLiyongCard="..h:getId(),request)
 				end
 			end
 		else
@@ -3598,7 +3598,7 @@ ai_fill_skill.olliyong = function(self, options, request)
 					save_targets(self,"olliyong_to",sgs.SPlayerList())
 					save_targets(self,"olliyong_to",{p})
 					sgs.ai_use_priority.OLLiyongCard = 1.2
-					return parse(self,"@OLLiyongCard="..h:getId())
+					return parse(self,"@OLLiyongCard="..h:getId(),request)
 				end
 			end
 		end
@@ -3616,7 +3616,7 @@ sgs.ai_use_value.OLLiyongCard = 5.4
 sgs.ai_use_priority.OLLiyongCard = 1.2
 
 ai_fill_skill.bojue = function(self, options, request)
-	return parse(self,"@BojueCard=.")
+	return parse(self,"@BojueCard=.",request)
 end
 
 ai_card_use["BojueCard"] = function(self, card, use, request)
@@ -3645,7 +3645,7 @@ sgs.ai_skill_cardask["xiongni1"] = function(self,data,pattern)
 end
 
 ai_fill_skill.fengshang = function(self, options, request)
-	return parse(self,"@FengshangCard=.")
+	return parse(self,"@FengshangCard=.",request)
 end
 
 ai_card_use["FengshangCard"] = function(self, card, use, request)
@@ -3784,7 +3784,7 @@ ai_skill_use["@@jigu"] = function(self, prompt, request)
 	and string.format("@JiguCard=%s",table.concat(valid,"+"))
 end
 
-local function r52_jiewan_selected(self,wire,request)
+local function jiewan_selected_action(self,wire,request)
  local cls,ids,user,names=decode(wire)
  local c=self:bindSkillCard("jiewan", ids, request, user, cls)
  return {kind="use_card",card_spec=c:toCardSpec(),targets=names}
@@ -3811,11 +3811,11 @@ ai_skill_use["@@jiewan"] = function(self, prompt, request)
 			end
 			local d = self:aiUseCard(dc)
 			if d.card then
-				if d.to:length()<1 then return r52_jiewan_selected(self,"@JiewanCard="..table.concat(ids,"+"),request) end
+				if d.to:length()<1 then return jiewan_selected_action(self,"@JiewanCard="..table.concat(ids,"+"),request) end
 				for _,p in sgs.list(d.to)do
 					table.insert(tos,p:objectName())
 				end
-				return r52_jiewan_selected(self,"@JiewanCard="..table.concat(ids,"+").."->"..table.concat(tos,"+"),request)
+				return jiewan_selected_action(self,"@JiewanCard="..table.concat(ids,"+").."->"..table.concat(tos,"+"),request)
 			end
 		end
 	end
@@ -3862,7 +3862,7 @@ sgs.ai_use_priority.olspxixiangCard = 2.2
 
 ai_fill_skill.olspzhubei = function(self, options, request)
     return not self:isWeak()
-	and parse(self,"#olspzhubeiCard:.:")
+	and parse(self,"#olspzhubeiCard:.:",request)
 end
 
 ai_card_use["#olspzhubeiCard"] = function(self, card, use, request)
@@ -3902,7 +3902,7 @@ sgs.ai_skill_playerchosen.olmoujiaodi = function(self,players)
 end
 
 ai_fill_skill.olmoubaojing = function(self, options, request)
-	return parse(self,"#olmoubaojingCard:.:")
+	return parse(self,"#olmoubaojingCard:.:",request)
 end
 
 ai_card_use["#olmoubaojingCard"] = function(self, card, use, request)
@@ -4145,7 +4145,7 @@ ai_skill_use["@@skilleffectp"] = function(self, prompt, request)
 end
 
 ai_fill_skill.olshoushu = function(self, options, request)
-	return parse(self,"#olshoushuCard:.:")
+	return parse(self,"#olshoushuCard:.:",request)
 end
 
 ai_card_use["#olshoushuCard"] = function(self, card, use, request)
@@ -4208,7 +4208,7 @@ function sgs.ai_cardsview.lixian(self,class_name,player)
 end
 
 ai_fill_skill.wenren = function(self, options, request)
-	return parse(self,"@WenrenCard=.")
+	return parse(self,"@WenrenCard=.",request)
 end
 
 ai_card_use["WenrenCard"] = function(self, card, use, request)
@@ -4331,7 +4331,7 @@ ai_fill_skill.qiaozhi = function(self, options, request)
 	cards = self:sortByKeepValueInPlace(cards)
   	for _,h in sgs.list(cards)do
 		if self:canDraw() and not self.player:isJilei(h) and self:getKeepValue(h)<6 then
-			return parse(self,"@QiaozhiCard="..h:getLegacyStringKey())
+			return parse(self,"@QiaozhiCard="..h:getLegacyStringKey(),request)
 		end
 	end
 end
@@ -4392,7 +4392,7 @@ ai_skill_choice.fengwei = function(self, options, request)
 end
 
 ai_fill_skill.zonghu = function(self, options, request)
-	return parse(self,"@ZonghuCard=.")
+	return parse(self,"@ZonghuCard=.",request)
 end
 
 ai_card_use["ZonghuCard"] = function(self, card, use, request)
@@ -4415,7 +4415,7 @@ ai_card_use["ZonghuCard"] = function(self, card, use, request)
 	if #self:poisonCards(ids)>#ids/2 then
 		self:sortInPlace(self.enemies)
 		for _,p in sgs.list(self.enemies)do
-			use.card = parse(self,"@ZonghuCard="..table.concat(ids,"+")..":slash")
+			use.card = parse(self,"@ZonghuCard="..table.concat(ids,"+")..":slash",request)
 			save_player(self,"zonghuTo",p)
 			return
 		end
@@ -4424,14 +4424,14 @@ ai_card_use["ZonghuCard"] = function(self, card, use, request)
   	for _,p in sgs.list(self.friends_noself)do
 		if self:canDraw(p) then
 			save_player(self,"zonghuTo",p)
-			use.card = parse(self,"@ZonghuCard="..table.concat(ids,"+")..":slash")
+			use.card = parse(self,"@ZonghuCard="..table.concat(ids,"+")..":slash",request)
 			return
 		end
 	end
     for _,p in sgs.list(self.room:getOtherPlayers(self.player))do
 		if self:isEnemy(p) then continue end
 		save_player(self,"zonghuTo",p)
-		use.card = parse(self,"@ZonghuCard="..table.concat(ids,"+")..":slash")
+		use.card = parse(self,"@ZonghuCard="..table.concat(ids,"+")..":slash",request)
 		return
 	end
 end
@@ -4533,8 +4533,8 @@ ai_fill_skill.lunzhan = function(self, options, request)
 			table.insert(ids,h:getKnownId())
 			if #ids>5 then break end
 		else
-			if #ids<1 then return parse(self,"@LunzhanCard=.") end
-			return parse(self,"@LunzhanCard="..table.concat(ids,"+"))
+			if #ids<1 then return parse(self,"@LunzhanCard=.",request) end
+			return parse(self,"@LunzhanCard="..table.concat(ids,"+"),request)
 		end
 	end
 end
@@ -4584,7 +4584,7 @@ ai_fill_skill.lucun = function(self, options, request)
 				if dc:canRecast() and d.to:length()<1 then continue end
 				save_targets(self,"lucunTo",d.to)
 				sgs.ai_use_priority.LucunCard = sgs.ai_use_priority[dc:getClassName()]
-				return parse(self,"@LucunCard=.:"..pn)
+				return parse(self,"@LucunCard=.:"..pn,request)
 			end
 		end
 	end
@@ -4639,7 +4639,7 @@ sgs.ai_skill_playerchosen.pengbi = function(self,players)
 end
 
 ai_fill_skill.dici = function(self, options, request)
-	return parse(self,"@DiciCard=.")
+	return parse(self,"@DiciCard=.",request)
 end
 
 ai_card_use["DiciCard"] = function(self, card, use, request)
@@ -4712,7 +4712,7 @@ ai_skill_invoke.liance = function(self, options, request)
 end
 
 ai_fill_skill.ol2shanjia = function(self, options, request)
-	return parse(self,"@OL2ShanjiaCard=.:slash")
+	return parse(self,"@OL2ShanjiaCard=.:slash",request)
 end
 
 ai_card_use["OL2ShanjiaCard"] = function(self, card, use, request)
@@ -4822,7 +4822,7 @@ ai_skill_use["@@olqingshi"] = function(self, prompt, request)
 end
 
 ai_fill_skill.kuanmo = function(self, options, request)
-	return not self:isWeak() and parse(self,"@KuanmoCard=.")
+	return not self:isWeak() and parse(self,"@KuanmoCard=.",request)
 end
 
 ai_card_use["KuanmoCard"] = function(self, card, use, request)
@@ -4877,7 +4877,7 @@ ai_fill_skill.gangqian = function(self, options, request)
 					local d = self:aiUseCard(dc, dummy(true,0,bps))
 					if d.card then
 						save_plan(self,"gangqianUse",d)
-						return parse(self,"@GangqianCard="..c:getLegacyStringKey())
+						return parse(self,"@GangqianCard="..c:getLegacyStringKey(),request)
 					end
 				end
 				dc=named(self,"gangqian","fire_slash",{})
@@ -4932,7 +4932,7 @@ ai_fill_skill.miluo = function(self, options, request)
 	end
 	if #tps>0 then
 		memory(self,"miluo_to",tps,true)
-		return parse(self,"@MiluoCard="..table.concat(ids,"+"))
+		return parse(self,"@MiluoCard="..table.concat(ids,"+"),request)
 	end
 end
 
@@ -4998,7 +4998,7 @@ ai_fill_skill.oljueyan = function(self, options, request)
 				if d.card then
 					save_plan(self,"oljueyanUse",d)
 					sgs.ai_use_priority.OLJueyanCard = sgs.ai_use_priority[c:getClassName()]
-					return parse(self,"@OLJueyanCard="..c:getLegacyStringKey()..":"..c:objectName())
+					return parse(self,"@OLJueyanCard="..c:getLegacyStringKey()..":"..c:objectName(),request)
 				end
 			end
 		end
@@ -5023,7 +5023,7 @@ sgs.ai_guhuo_card.oljueyan = function(self,toname,class_name)
 end
 
 ai_fill_skill.suyi = function(self, options, request)
-	return parse(self,"@SuyiCard=.:slash")
+	return parse(self,"@SuyiCard=.:slash",request)
 end
 
 ai_card_use["SuyiCard"] = function(self, card, use, request)
@@ -5059,7 +5059,7 @@ ai_fill_skill.xiewei = function(self, options, request)
 			local d = self:aiUseCard(dc)
 			if d.card then
 				save_plan(self,"xieweiUse",d)
-				return parse(self,"@XieweiCard="..table.concat(ids,"+")..":slash")
+				return parse(self,"@XieweiCard="..table.concat(ids,"+")..":slash",request)
 			end
 		end
 	end
@@ -5100,7 +5100,7 @@ ai_fill_skill.youque = function(self, options, request)
 	end
 	for _,c in sgs.list(cards)do
 		if c:getNumber()==n then
-			return parse(self,"@YouqueCard="..c:getLegacyStringKey())
+			return parse(self,"@YouqueCard="..c:getLegacyStringKey(),request)
 		end
 	end
 end
@@ -5267,20 +5267,46 @@ ai_skill_invoke.zhitian = function(self, options, request)
 	return (self:isEnemy(effect.to)) or false
 end
 
+local function zhitian_epoch(self)
+    local epochs = AIWorldLifecycle and AIWorldLifecycle.epochs(self.world, "flag")
+    return known(type(epochs)=="table" and epochs[self.player:objectName()], "Zhitian flag-clear epoch")
+end
+
+ai_fill_skill.zhitian = function(self, options, request)
+    -- Peeking is free and repeatable in the rules. Remember only an actual AG
+    -- response, so speculative planning cannot consume the once-per-turn policy.
+    if memory(self,"zhitianSeenEpoch")==zhitian_epoch(self) then return nil end
+    local source = known(self:findOfferedSkillAction("zhitian", request), "Zhitian native source")
+    return self:newCard("ZhitianCard", {skill="zhitian", instance=source.identity.activation_instance})
+end
+
+ai_card_use.ZhitianCard = function(self, card, use) use.card=card end
+sgs.ai_use_priority.ZhitianCard = 10
+ai_skill_askforag.zhijue = function(self, options, request)
+    memory(self,"zhitianSeenEpoch",zhitian_epoch(self),true)
+    return {kind="pass"}
+end
+
 ai_fill_skill.zhijue = function(self, options, request)
 	if self.player:getChangeSkillState("zhijue")==1 then
-		local dc = named(self,"zhijue","fire_attack",{self.player:getStrategyMark("zhijueId")})
-		return dc
+		local source = known(self:findOfferedSkillAction("zhijue", request), "Zhijue native source")
+		-- The authority supplies the fixed deck material. Do not construct a
+		-- recipe by looking up the undisclosed deck card's face.
+		local card = self:newCard("fire_attack", {skill="zhijue", instance=source.identity.activation_instance})
+		if card then return card end
+		if not self:hasEnumeratedConversions() then ai_unsupported("Zhijue native conversion is incomplete", "zhijue") end
+		return nil
 	end
 	local cards = self.player:getCards("h")
 	cards = self:sortByUseValueInPlace(cards)
 	for _,c in sgs.list(cards)do
 		if table.contains(self.toUse,c) or not c:isDamageCard()
 		or self.player:getStrategyMark(c:getColorString().."zhijueColor-Clear")>0 then continue end
-		local dc = named(self,"zhijue",c:objectName(),{},false)
+		local dc = self:evaluateOwnerViewAsCard({source_key="zhijue", skill="_zhijue", name=c:objectName(),
+			suit=sgs.Card_SuitToBeDecided, number=-1, subcards={}, can_recast=false})
 		local d = self:aiUseCard(dc)
 		if d.card and d.to:length()>0 then
-			save_plan(self,"zhijueUse",d)
+			memory(self,"zhijueName",c:objectName(),true)
 			local ids = {}
 			for _,h in sgs.list(cards)do
 				if c:getColor()==h:getColor() then
@@ -5288,14 +5314,39 @@ ai_fill_skill.zhijue = function(self, options, request)
 				end
 			end
 			sgs.ai_use_priority.ZhijueCard = sgs.ai_use_priority[c:getClassName()]
-			return parse(self,"@ZhijueCard="..table.concat(ids,"+"))
+			return parse(self,"@ZhijueCard="..table.concat(ids,"+"),request)
 		end
 	end
 end
 
 ai_card_use["ZhijueCard"] = function(self, card, use, request)
 	use.card = card
-	use.to = load_plan(self,"zhijueUse").to
+	-- The first action is target-fixed. Its later ordinary card selects targets
+	-- in the @@ response against a new authoritative request.
+end
+
+ai_skill_choice.zhijue = function(self, options, request)
+    local preferred = memory(self, "zhijueName")
+    for _, name in ipairs(options.choices) do
+        if name == preferred then return ai_choice_result(name, options) end
+    end
+    return ai_choice_result(known(options.choices[1], "Zhijue offered declaration"), options)
+end
+
+ai_skill_use["@@zhijue"] = function(self, options, request)
+    local source = known(self:findOfferedSkillAction("zhijue", request), "Zhijue continuation source")
+    for _, card in ipairs(self:getConversions()) do
+        if card:getActivationSkillName() == "zhijue"
+            and card:getActivationInstanceId() == source.identity.activation_instance
+            and card:isAvailable() and card:matchesResponsePattern() then
+            local plan, status = self:tryUseCard(card)
+            if status == "unsupported" then error(plan, 0) end
+            if plan and plan.card then return known(plan:toAnswer(), "Zhijue native continuation") end
+            return {kind="pass"}
+        end
+    end
+    if not self:hasEnumeratedConversions() then ai_unsupported("Zhijue continuation conversions are incomplete", "zhijue") end
+    return {kind="pass"}
 end
 
 sgs.ai_use_value.ZhijueCard = 5.4
@@ -5307,7 +5358,7 @@ ai_skill_invoke.olduduan = function(self, options, request)
 end
 
 ai_fill_skill.yinglve = function(self, options, request)
-	return parse(self,"@YinglveCard=.")
+	return parse(self,"@YinglveCard=.",request)
 end
 
 ai_card_use["YinglveCard"] = function(self, card, use, request)
@@ -5369,7 +5420,7 @@ ai_fill_skill.huanpei = function(self, options, request)
 			if d.card then
 				save_targets(self,"huanpei_to",d.to)
 				sgs.ai_use_priority.HuanpeiCard = sgs.ai_use_priority[dc:getClassName()]
-				return parse(self,"@HuanpeiCard=.:"..cn)
+				return parse(self,"@HuanpeiCard=.:"..cn,request)
 			end
 		end
 	end
@@ -5434,7 +5485,7 @@ ai_fill_skill.fuzhai = function(self, options, request)
 end
 
 ai_fill_skill.dinglun = function(self, options, request)
-	return parse(self,"@DinglunCard=.")
+	return parse(self,"@DinglunCard=.",request)
 end
 
 ai_card_use["DinglunCard"] = function(self, card, use, request)
@@ -5549,7 +5600,7 @@ ai_fill_skill.oljinjin = function(self, options, request)
 			if d.card then
 				save_targets(self,"oljinjin_to",d.to)
 				sgs.ai_use_priority.OLJinjinCard = sgs.ai_use_priority[dc:getClassName()]-2
-				return parse(self,"@OLJinjinCard=.:"..cn)
+				return parse(self,"@OLJinjinCard=.:"..cn,request)
 			end
 		end
 	end
@@ -5589,7 +5640,7 @@ sgs.ai_skill_playerchosen.quanyu2 = function(self,players)
 end
 
 ai_fill_skill.qiangang = function(self, options, request)
-	return parse(self,"@QiangangCard=.")
+	return parse(self,"@QiangangCard=.",request)
 end
 
 ai_card_use["QiangangCard"] = function(self, card, use, request)

@@ -38,7 +38,7 @@ local registry_names = {
     "ai_target_revises", "ai_useto_revises", "ai_skill_defense", "ai_card_priority",
     "ai_poison_card", "ai_skill_playerschosen", "ai_used_revises", "ai_skill_carduse",
     "ai_target_recommend", "ai_target_recommend_global", "ai_damage_reason_suppress_intention",
-    "ai_damage_from_flag_intention", "ai_voluntary_give_skills", "ai_card_combo_use", "ai_dont_hurt_from",
+    "ai_damage_from_flag_intention", "ai_damage_effect", "ai_voluntary_give_skills", "ai_card_combo_use", "ai_dont_hurt_from",
     "ai_dont_hurt_to", "ai_hasBuquEffect_skill", "ai_canNiepan_skill", "ai_hasTuntianEffect_skill",
     "ai_getLeastHandcardNum_skill", "ai_getBestHp_skill", "ai_getOverflow_skill", "ai_hasManjuanEffect_skill",
     "ai_canliegong_skill", "damageSkillsList",

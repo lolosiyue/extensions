@@ -1799,7 +1799,7 @@ ov_yujuevsCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, from)
 		if to_select:hasSkill("ov_yujue") and to_select:objectName() ~= from:objectName() and #targets < 1 then
 			local n = 2 - from:getMark(to_select:objectName() .. "ov_yujue-PlayClear")
-			if to_select:hasLordSkill("ov_fengqi") and from:getKingdom() == "qun" then
+			if to_select:hasLordSkill("ov_fengqi") and from:hasLordSkillKingdom("qun", to_select) then
 				n = n + 2
 			end
 			if n > 0 then
@@ -1835,7 +1835,7 @@ ov_yujuevs = sgs.CreateViewAsSkillV2 {
 					for _, lh in sgs.list(player:getAliveSiblings()) do
 						if lh:hasSkill("ov_yujue") then
 							local n = 2 - player:getMark(lh:objectName() .. "ov_yujue-PlayClear")
-							if lh:hasLordSkill("ov_fengqi") and player:getKingdom() == "qun" then
+							if lh:hasLordSkill("ov_fengqi") and player:hasLordSkillKingdom("qun", lh) then
 								n = n + 2
 							end
 							if n > 0 then
@@ -1863,7 +1863,7 @@ ov_yujuevs = sgs.CreateViewAsSkillV2 {
 				for _, lh in sgs.list(player:getAliveSiblings()) do
 					if lh:hasSkill("ov_yujue") then
 						local n = 2 - player:getMark(lh:objectName() .. "ov_yujue-PlayClear")
-						if lh:hasLordSkill("ov_fengqi") and player:getKingdom() == "qun" then
+						if lh:hasLordSkill("ov_fengqi") and player:hasLordSkillKingdom("qun", lh) then
 							n = n + 2
 						end
 						if n > 0 then
@@ -2172,7 +2172,7 @@ ov_fengqi = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_Compulsory,
 	can_trigger = function(self, event, room, player, data)
 		local function __triggerable(_, target, room, event, _, data)
-		if target and target:isAlive() and target:getKingdom() == "qun" then
+		if target and target:isAlive() and target:hasLordSkillKingdom("qun") then
 			for _, owner in sgs.qlist(target:getAliveSiblings()) do
 				if owner:hasLordSkill(self) then
 					return true
@@ -4520,7 +4520,7 @@ ov_luannianVS = sgs.CreateViewAsSkillV2 {
 
 					for _, p in sgs.list(player:getAliveSiblings()) do
 						if p:hasLordSkill("ov_luannian") and p:getMark("ov_luannian-PlayClear") < 1 then
-							return player:getKingdom() == "qun"
+							return player:hasLordSkillKingdom("qun", p)
 						end
 					end
 		end
@@ -6140,7 +6140,7 @@ ov_zhuitingVS = sgs.CreateViewAsSkillV2 {
 					end
 					for _, p in sgs.list(player:getAliveSiblings()) do
 						if p:hasLordSkill("ov_zhuiting") and p:getMark("ov_zhuiting") > 0 then
-							return player:getKingdom() == "qun" or player:getKingdom() == "wei"
+							return player:hasLordSkillKingdom("qun", p) or player:hasLordSkillKingdom("wei", p)
 						end
 					end
 		end
@@ -6209,7 +6209,7 @@ ov_zhuiting = sgs.CreateTriggerSkillV2 {
 		local room = player:getRoom()
 		if player:hasLordSkill(self, true) then
 			for _, p in sgs.list(room:getOtherPlayers(player)) do
-				if p:getKingdom() ~= "qun" and p:getKingdom() ~= "wei" or p:hasSkill("ov_zhuitingvs") then
+				if not p:hasLordSkillKingdom("qun", player) and not p:hasLordSkillKingdom("wei", player) or p:hasSkill("ov_zhuitingvs") then
 					continue
 				end
 				room:attachSkillToPlayer(p, "ov_zhuitingvs")
@@ -6351,7 +6351,7 @@ ov_shijunvs = sgs.CreateViewAsSkillV2 {
 
 					for _, p in sgs.list(player:getAliveSiblings()) do
 						if p:hasLordSkill("ov_shijun") and p:getPile("rice"):isEmpty() and p:getMark("ov_shijun-PlayClear") < 1 then
-							return player:getKingdom() == "qun"
+							return player:hasLordSkillKingdom("qun", p)
 						end
 					end
 		end
@@ -12724,7 +12724,7 @@ ov_juxiangVS = sgs.CreateViewAsSkillV2 {
 
 					for _, p in sgs.list(player:getAliveSiblings()) do
 						if p:hasLordSkill("ov_juxiang") and p:getMark("ov_juxiang-PlayClear") < 1 then
-							return player:getKingdom() == "qun" and player:hasEquip()
+							return player:hasLordSkillKingdom("qun", p) and player:hasEquip()
 						end
 					end
 		end
@@ -17216,10 +17216,10 @@ ov_polu = sgs.CreateTriggerSkillV2 {
 			local death = data:toDeath()
 			if player:hasLordSkill(self) then
 				local n = player:getMark("&ov_polu") + 1
-				if death.damage and death.damage.from and death.damage.from:getKingdom() == "wu" then
+				if death.damage and death.damage.from and death.damage.from:hasLordSkillKingdom("wu", player) then
 					room:askForUseCard(player, "@@ov_polu", "ov_polu0:" .. n)
 				end
-				if death.who:getKingdom() == "wu" then
+				if death.who:hasLordSkillKingdom("wu", player) then
 					room:askForUseCard(player, "@@ov_polu", "ov_polu0:" .. n)
 				end
 			end
@@ -17266,7 +17266,7 @@ ov_qiushou = sgs.CreateTriggerSkillV2 {
 						room:sendCompulsoryTriggerLog(owner, "ov_qiushou", true, true)
 						local aps = sgs.SPlayerList()
 						for _, p in sgs.qlist(room:getAllPlayers()) do
-							if p:getKingdom() == "shu" or p:getKingdom() == "qun" then
+							if p:hasLordSkillKingdom("shu", owner) or p:hasLordSkillKingdom("qun", owner) then
 								aps:append(p)
 							end
 						end
@@ -17684,7 +17684,7 @@ ov_chongwang = sgs.CreateTriggerSkillV2 {
 				event == sgs.EventPhaseStart
 				and player:getPhase() == sgs.Player_Play
 				and player:getMark("ov_chongwang" .. owner:objectName()) < 1
-				and player:getKingdom() == "qun"
+				and player:hasLordSkillKingdom("qun", owner)
 				and player:getCardCount() > 0
 			then
 				player:setTag("ov_chongwang", ToData(owner))
@@ -23733,7 +23733,7 @@ ov_yanzuo = sgs.CreateTriggerSkillV2 {
 	events = { sgs.Damage },
 	can_trigger = function(self, event, room, player, data)
 		local function __triggerable(_, target, room, event, _, data)
-		return target and target:isAlive() and target:getKingdom() == "shu"
+		return target and target:isAlive() and target:hasLordSkillKingdom("shu")
 			end
 		if not __triggerable(self, player, room, event, player, data) then return false end
 		local owner = player

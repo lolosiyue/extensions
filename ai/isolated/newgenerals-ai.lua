@@ -23,7 +23,7 @@ local function pattern_names(self,class)
     end
     return known(AICardCatalog.patternNames(),'pattern names')
 end
-local function r45_handpile(self,flags)
+local function cards_with_hand_pile(self,flags)
     local cards=sgs.QList2Table(source_query(self.player, "getCards", flags))
     local ids=self.player:getHandPile()
     if not AIValue.isList(ids)then ai_unsupported("actual hand-pile contains an unobserved material","newgenerals.hand_pile")end
@@ -81,18 +81,18 @@ resolve_preview=function(c)
             skill=st.skill,name=st.name,suit=st.suit,number=st.number,subcards=copy(st.costs)})
         st.ai:inheritLegacyCardIdentity(r,c);st.cached=r;return r
     end
-    local r45={keolkenshang=true,keolyilie=true,moujiang=true,mobilexiaoni=true,keolweilin=true,
+    local owner_view_as_skills={keolkenshang=true,keolyilie=true,moujiang=true,mobilexiaoni=true,keolweilin=true,
         _xdyifu=true,ofsifen=true,_ofsifen=true,ofjunwei=true,_ofyouchong=true,godshenji=true}
-    if r45[st.skill] then
+    if owner_view_as_skills[st.skill] then
         local spec={source_key='newgenerals.'..st.skill,skill=st.skill,name=st.name,
             suit=st.suit,number=st.number,subcards=copy(st.costs)}
         if st.recast~=nil then spec.can_recast=st.recast end
         local r=source_query(st.ai, 'evaluateOwnerViewAsCard', spec)
         st.ai:inheritLegacyCardIdentity(r,c);st.cached=r;return r
     end
-    local r42={moulveying='moulveying',mouyingwu='mouyingwu',_mouxieji='mouxieji'}
-    if r42[st.skill] then
-        local r=source_query(st.ai, 'evaluateOwnerViewAsCard', {source_key='newgenerals.'..r42[st.skill],
+    local view_as_source_aliases={moulveying='moulveying',mouyingwu='mouyingwu',_mouxieji='mouxieji'}
+    if view_as_source_aliases[st.skill] then
+        local r=source_query(st.ai, 'evaluateOwnerViewAsCard', {source_key='newgenerals.'..view_as_source_aliases[st.skill],
             skill=st.skill,name=st.name,suit=st.suit,number=st.number,subcards=copy(st.costs)})
         st.ai:inheritLegacyCardIdentity(r,c);st.cached=r;return r
     end
@@ -137,8 +137,8 @@ end
 local function select_preview(self,c,request)
     local st=preview_specs[c];if not st then return c end
     local r=resolve_preview(c)
-    local r45turn={keolshuangxiong=true,keolkenshang=true,keolyilie=true,moujiang=true,mobilexiaoni=true,keolweilin=true}
-    if st.skill=='mouluanji' or r45turn[st.skill] then
+    local turn_conversion_skills={keolshuangxiong=true,keolkenshang=true,keolyilie=true,moujiang=true,mobilexiaoni=true,keolweilin=true}
+    if st.skill=='mouluanji' or turn_conversion_skills[st.skill] then
         local selected=source_query(self, 'evaluateTurnConversion', st.skill, r:getClassName(), {name=st.name,skill=st.skill,suit=st.suit,number=st.number,subcards=copy(st.costs)}, request)
         return self:inheritLegacyCardIdentity(selected,c)
     end
@@ -169,7 +169,7 @@ end
 local function scope_list(self,key)return AIList.new(copy(scope(self,key)))end
 -- Selected borrowed physical products must retain the native request's six
 -- identities. The raw request DTO is not an AiLegacyRequestView.
-local function r45_selected_borrowed(self,card,targets,names)
+local function select_borrowed_physical_card(self,card,targets,names)
     local request=AILegacyRequest.new(self.request,self.room)
     if not request or not request:isValid() then
         ai_unsupported("borrowed physical source request is incomplete","newgenerals.preview")
@@ -2442,7 +2442,7 @@ ai_skill_use["@@keolzhuri"] = function(self, prompt, request)
                     table.insert(tos,p:objectName())
                 end
                 if source_query(c2, "canRecast") and #tos<1 then continue end
-                return r45_selected_borrowed(self,c2,d.to,tos)
+                return select_borrowed_physical_card(self,c2,d.to,tos)
             end
         end
     end
@@ -2788,7 +2788,7 @@ ai_fill_skill.keolkenshang = function(self, options, request)
 
     local dc = preview(self)
     mutate(self,dc,"skill","keolkenshang")
-    local cards = r45_handpile(self,"he")
+    local cards = cards_with_hand_pile(self,"he")
     cards = sgs.QList2Table(cards)
     self:sortByKeepValue(cards)
     for i,c in sgs.list(cards)do
@@ -2804,7 +2804,7 @@ function sgs.ai_cardsview.keolkenshang(self,class_name,player)
     if cn then
         local dc = preview(self,cn)
         mutate(self,dc,"skill","keolkenshang")
-        local cards = r45_handpile(self,"he")
+        local cards = cards_with_hand_pile(self,"he")
         cards = sgs.QList2Table(cards)
         self:sortByKeepValue(cards)
         for i,c in sgs.list(cards)do
@@ -5251,7 +5251,7 @@ end
 
 -- This source predicate may legitimately return nil. Only the actual audited
 -- helper provider can establish that nil; missing facts/providers stay unknown.
-local function r43_mouluanji_damage(self,enemy)
+local function mouluanji_damage_effective(self,enemy)
     local provider=self.damageIsEffective
     if type(provider)~='function' then ai_unsupported('Mouluanji damage provider unavailable','newgenerals.mouluanji') end
     local value=provider(self,enemy)
@@ -5274,7 +5274,7 @@ ai_fill_skill.mouluanji = function(self, options, request)
             if enemy:getHp()==1
             and not source_query(enemy, "hasArmorEffect", "Vine")
             and not source_query(self, "hasEightDiagramEffect", enemy)
-            and r43_mouluanji_damage(self,enemy)
+            and mouluanji_damage_effective(self,enemy)
             and self:isWeak(enemy) and getCardsNum("Jink",enemy,self.player)+getCardsNum("Peach",enemy,self.player)+getCardsNum("Analeptic",enemy,self.player)<1
             then useAll = true end
         end
@@ -6261,7 +6261,7 @@ end
 
 -- Native result is for this exact raw-skill FireSlash and this Choice judge.
 -- Do not substitute the generic name:fire_slash snapshot or foreign legality.
-local function r48_yantaoluan_can_slash(self,target,card)
+local function yantaoluan_can_slash(self,target,card)
     local actual=resolve_preview(card)
     local row=known(rawget(actual,'_view'),'Yantaoluan native face')
     local value=row.source_yantaoluan_can_slash
@@ -6280,7 +6280,7 @@ ai_skill_choice.yantaoluan = function(self, options, request)
     local items = choices:split("+")
     local judge = data:toJudge()
     if self:isEnemy(judge.who) then
-        if r48_yantaoluan_can_slash(self,judge.who,preview(self,"fire_slash","_yantaoluan")) then
+        if yantaoluan_can_slash(self,judge.who,preview(self,"fire_slash","_yantaoluan")) then
             return ai_choice_result(("yantaoluan2"), options)
         end
     end
@@ -6741,7 +6741,7 @@ ai_skill_use["@@keolsaoguslash"] = function(self, prompt, request)
                 for _,p in sgs.list(d.to)do
                     table.insert(tos,p:objectName())
                 end
-                return r45_selected_borrowed(self,c,d.to,tos)
+                return select_borrowed_physical_card(self,c,d.to,tos)
             end
         end
     end
@@ -6865,7 +6865,7 @@ end
 ai_fill_skill.keolweilin = function(self, options, request)
     local inclusive = options and options.inclusive
 
-    local cards = r45_handpile(self,"he")
+    local cards = cards_with_hand_pile(self,"he")
     cards = sgs.QList2Table(cards)
     if #cards<1 then return end
     self:sortByKeepValue(cards)
@@ -6887,7 +6887,7 @@ ai_fill_skill.keolweilin = function(self, options, request)
 end
 
 function sgs.ai_cardsview.keolweilin(self,class_name,player)
-    local cards = r45_handpile(self,"he")
+    local cards = cards_with_hand_pile(self,"he")
     cards = sgs.QList2Table(cards)
     if #cards<1 then return end
     self:sortByKeepValue(cards)
@@ -7018,7 +7018,7 @@ end
 -- Only the actually chosen readonly product binds a new response receipt.
 -- Recast(false) is a source planning mutation; it is not serialized in the
 -- donor wire or copied onto the separately native-produced selected card.
-local function r48_xdfangchan_wire(self,card)
+local function xdfangchan_selected_wire(self,card)
     if source_query(card, 'isEvaluationOnly') and card:getKnownSkillName(false)=='_xdfangchan' then
         local selected=source_query(self, 'bindOriginalSelectedConversion', {
             name=card:objectName(),skill='_xdfangchan',suit=card:getSuit(),
@@ -7039,7 +7039,7 @@ ai_skill_use["@@xdfangchan"] = function(self, prompt, request)
         for _,p in sgs.list(d.to)do
             table.insert(tos,p:objectName())
         end
-        return r48_xdfangchan_wire(self,d.card).."->"..table.concat(tos,"+")
+        return xdfangchan_selected_wire(self,d.card).."->"..table.concat(tos,"+")
     end
 end
 
@@ -7338,8 +7338,8 @@ end
 sgs.ai_use_priority.Younantongdang = 3.4
 sgs.ai_keep_value.Younantongdang = 3
 sgs.ai_use_value.Younantongdang = 3.7
-sgs.ai_nullification.Younantongdang = function(self,trick,from,to,positive)
-    return sgs.ai_nullification.IronChain(self,trick,from,to,positive)
+sgs.ai_nullification.Younantongdang = function(self,trick,from,to,positive,null_num,keep)
+    return sgs.ai_nullification.IronChain(self,trick,from,to,positive,null_num,keep)
 end
 
 function SmartAIView:useCardLeigongzhuwo(card,use)
@@ -7466,8 +7466,8 @@ end
 sgs.ai_use_priority.Wutianwujie = 3.4
 sgs.ai_keep_value.Wutianwujie = 3
 sgs.ai_use_value.Wutianwujie = 8.7
-sgs.ai_nullification.Wutianwujie = function(self,trick,from,to,positive)
-    return sgs.ai_nullification.ExNihilo(self,trick,from,to,positive)
+sgs.ai_nullification.Wutianwujie = function(self,trick,from,to,positive,null_num,keep)
+    return sgs.ai_nullification.ExNihilo(self,trick,from,to,positive,null_num,keep)
 end
 
 sgs.ai_card_intention.Wutianwujie = -66
@@ -7481,7 +7481,7 @@ end
 ai_card_use["#ofsifenCard"] = function(self, card, use, request)
     local n = source_query(self.player, "getMark", "ofsifenRed-PlayClear")
     if n>0 then
-        local cards = r45_handpile(self,"he")
+        local cards = cards_with_hand_pile(self,"he")
         cards = sgs.QList2Table(cards)
         self:sortByKeepValue(cards)
         local ids = {}
@@ -7593,7 +7593,7 @@ sgs.ai_use_value.offunanCard = 4.5
 sgs.ai_use_priority.offunanCard = 2.7
 
 function sgs.ai_cardsview.ofjunwei(self,class_name,player)
-    local cards = r45_handpile(self,"he")
+    local cards = cards_with_hand_pile(self,"he")
     cards = sgs.QList2Table(cards)
     self:sortByKeepValue(cards)
     for i,c in sgs.list(cards)do

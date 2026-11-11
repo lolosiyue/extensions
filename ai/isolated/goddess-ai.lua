@@ -306,7 +306,7 @@ function SmartAIView:useCardshot(card,use)
 		and self:ajustDamage(self.player, target, 1, use.card or card)~=0 then
 			if (card:isKindOf("thunder_shot") or card:isKindOf("fire_shot"))
 			and chain(self,target,self.player) then
-				if self:isGoodChainTarget(target, card) then
+				if self:isGoodChainTarget(target, nil, nil, nil, card) then
 					use.card = card
 					use.to:append(target)
 				end
@@ -376,7 +376,7 @@ sgs.ai_skill_cardask["shot-jink"] = function(self,data,pattern,target)
 	if (type(data)=="table" or type(data)=="userdata") and effect and effect.card then slash = effect.card end
 	local source = target or (effect and effect.from)
 	if not source or nullfilter(self,data,pattern,source)=="."
-	or (slash:isKindOf("fire_shot") or slash:isKindOf("thunder_shot")) and self.player:isChained() and self:isGoodChainTarget(self.player, slash, source)then return "." end
+	or (slash:isKindOf("fire_shot") or slash:isKindOf("thunder_shot")) and self.player:isChained() and self:isGoodChainTarget(self.player, source, nil, nil, slash)then return "." end
 	local n = self:ajustDamage(source, self.player, 1, (effect and effect.card) or slash)
 	if self:needToLoseHp(self.player, source, slash) and n==1
 	then return "." end
@@ -441,7 +441,7 @@ sgs.ai_skill_cardask["Kai-Jink"] = function(self,data,pattern,target)
 	if isUse then
 		if use.card and use.card:hasFlag("NosJiefanUsed") then return getKai()  end
 		if not use.from or nullfilter(self,data,pattern,use.from)
-		or use.card:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, use.card, use.from)
+		or use.card:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, use.from, nil, nil, use.card)
 		or self:needToLoseHp(self.player, use.from, use.card) and self:ajustDamage(use.from, self.player, 1, use.card)==1 then return "." end
 	end
 	if self:needToLoseHp(self.player, use.from, use.card, true) then return "."  end

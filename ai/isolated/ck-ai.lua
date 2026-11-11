@@ -299,7 +299,7 @@ ai_skill_invoke.ckyongchang = function(self, options, request)
 	if effect.card and (effect.card:hasFlag("NosJiefanUsed")) then return (false) or false  end
 
 	if not effect.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,effect.from)
-		or (effect.card:isKindOf("NatureSlash")) and (self.player:isChained()) and (self:isGoodChainTarget(dest,effect.card,effect.from))
+		or (effect.card:isKindOf("NatureSlash")) and (self.player:isChained()) and (self:isGoodChainTarget(dest, effect.from, nil, nil, effect.card))
 		or (self:needToLoseHp(dest,effect.from,effect.card)) and (self:ajustDamage(effect.from,dest,1,effect.card))==1 then return (false) or false end
 	if (self:needToLoseHp(dest,effect.from,effect.card,true,true)) then return (false) or false end
 	if (self:getCardsNum("Jink")) == 0 then return (true) or false end

@@ -11,7 +11,7 @@ AIList = {}
 AIList.__index = AIList
 local facade_kinds = setmetatable({}, {__mode = "k"})
 local lua_array_origins = setmetatable({}, {__mode = "k"})
-local r45_physical={rows=setmetatable({},{__mode="k"}),states=setmetatable({},{__mode="k"})}
+local physical_card_provenance={rows=setmetatable({},{__mode="k"}),states=setmetatable({},{__mode="k"})}
 
 function AIValue.kind(value)
     if type(value) ~= "table" then return nil end
@@ -28,8 +28,9 @@ function AIValue.isSkill(value) return AIValue.kind(value) == "skill" end
 -- APIs with type(object.method), and provider methods retain their full ABI.
 -- Preserve known false/zero/empty values and the original unsupported object.
 function AIValue.requireKnown(value, key, reason)
-    if AIUnsupported and AIUnsupported.is(value) then error(value, 0) end
     if value == nil then ai_unsupported(reason or "isolated AI value is unknown", key) end
+    -- Same signal identity predicate, without a function call for scalar facts.
+    if type(value) == "table" and AIUnsupported and getmetatable(value) == AIUnsupported then error(value, 0) end
     return value
 end
 
@@ -125,7 +126,7 @@ local function call_values(object, method, ...)
         ai_unsupported("isolated AI method is unavailable", method)
     end
     local result = table.pack(provider(object, ...))
-    if AIUnsupported and AIUnsupported.is(result[1]) then error(result[1], 0) end
+    if type(result[1]) == "table" and AIUnsupported and getmetatable(result[1]) == AIUnsupported then error(result[1], 0) end
     return result, provider
 end
 
@@ -299,6 +300,8 @@ local card_scalar_aliases = {
     skill_name = "getSkillName",
     source_skill = "getSourceSkillName",
     can_recast = "canRecast",
+    transferable = "isTransferable",
+    printed_transferable = "getPrintedTransferable",
     will_throw = "willThrow",
     red = "isRed",
     black = "isBlack"
@@ -349,17 +352,27 @@ local function scalar_method_name(field_name, value_type, aliases)
 end
 
 local scalar_getters = {}
-local function make_scalar_getter(field_name)
-    local getter = scalar_getters[field_name]
+local function make_scalar_getter(field_name, required_method)
+    local getters = scalar_getters[field_name]
+    if not getters then getters = {}; scalar_getters[field_name] = getters end
+    local key = required_method or false
+    local getter = getters[key]
     if getter then return getter end
+    -- Field identity and its nullable/required contract are immutable metadata.
+    -- Read the current row each time; no card/player value is cached here.
     getter = function(self)
         local view = rawget(self, "_view")
-        if type(view) ~= "table" then
-            return nil
+        local value
+        if type(view) == "table" then value = view[field_name] end
+        if required_method then
+            -- Keep the shared value contract inline on this hot scalar path;
+            -- the current row is still read on every invocation.
+            if value == nil then ai_unsupported("isolated AI value is unknown", required_method) end
+            if type(value) == "table" and AIUnsupported and getmetatable(value) == AIUnsupported then error(value, 0) end
         end
-        return view[field_name]
+        return value
     end
-    scalar_getters[field_name] = getter
+    getters[key] = getter
     return getter
 end
 
@@ -385,8 +398,8 @@ local function lua_facade_index(facade, self, key)
     return nil
 end
 
--- The native primitive implements this exact table lookup, without caching or
--- native-object access. Bind it directly to avoid an extra Lua call per lookup.
+-- Keep the Lua lookup order live so later facade provider installation wins
+-- over per-instance scalar metadata; no method or strategy value is cached.
 local facade_index = lua_facade_index
 
 local function new_facade(facade, view, aliases)
@@ -399,14 +412,8 @@ local function new_facade(facade, view, aliases)
         if value_type == "string" or value_type == "number" or value_type == "boolean" then
             local method_name = scalar_method_name(field_name, value_type, aliases)
             if rawget(facade, method_name) == nil and scalar_methods[method_name] == nil then
-                local raw_getter = make_scalar_getter(field_name)
-                if required_scalar_methods[facade] and required_scalar_methods[facade][method_name] then
-                    scalar_methods[method_name] = function(self)
-                        return AIValue.requireKnown(raw_getter(self), method_name)
-                    end
-                else
-                    scalar_methods[method_name] = raw_getter
-                end
+                local required = required_scalar_methods[facade] and required_scalar_methods[facade][method_name]
+                scalar_methods[method_name] = make_scalar_getter(field_name, required and method_name or nil)
             end
         end
     end
@@ -418,8 +425,8 @@ PlayerView.__index = function(self, key)
 end
 
 CardView.__index = function(self, key)
-    local row=rawget(self,"_view");local request=type(row)=="table" and r45_physical.rows[row]
-    local state=request and r45_physical.states[request]
+    local row=rawget(self,"_view");local request=type(row)=="table" and physical_card_provenance.rows[row]
+    local state=request and physical_card_provenance.states[request]
     if state and state.poison then ai_unsupported(state.poison,"rushB.physical_mutation")end
     return facade_index(CardView, self, key)
 end
@@ -465,11 +472,11 @@ function PlayerView.new(view)
 end
 
 function CardView.new(view)
-    if type(view)=="table" and r45_physical.card_view then view=r45_physical.card_view(view)end
+    if type(view)=="table" and physical_card_provenance.card_view then view=physical_card_provenance.card_view(view)end
     local result = new_facade(CardView, view, card_scalar_aliases)
     if result then
         facade_kinds[result] = "card"
-        if r45_physical.card_created then r45_physical.card_created(result)end
+        if physical_card_provenance.card_created then physical_card_provenance.card_created(result)end
     end
     return result
 end
@@ -530,7 +537,7 @@ local function copy_value(value)
     for key, item in pairs(value) do
         copy[key] = copy_value(item)
     end
-    r45_physical.rows[copy]=r45_physical.rows[value]
+    physical_card_provenance.rows[copy]=physical_card_provenance.rows[value]
     return copy
 end
 
@@ -543,6 +550,20 @@ local function wrap_values(values, constructor)
         result[#result + 1] = wrapped
     end
     return result
+end
+
+local function snapshot_cards(player, zone, values)
+    if not AIValue.isList(values) then return nil end
+    local cache=rawget(player,"_zone_card_views")
+    if not cache then cache={};rawset(player,"_zone_card_views",cache)end
+    local entry=cache[zone]
+    if not entry or entry.source~=values then
+        local cards=wrap_values(values,CardView.new)
+        if not cards then return nil end
+        entry={source=values,cards=cards};cache[zone]=entry
+    end
+    -- Preserve the snapshot card identities; list mutation stays caller-local.
+    return AIList.new(entry.cards)
 end
 
 function PlayerView:getMark(mark_name)
@@ -611,7 +632,7 @@ local function standard_strategy_flag(player, name)
 end
 
 function PlayerView:getStrategyFlag(name)
-    local value = self:hasFlag(name)
+    local value = self:queryFlag(name)
     local ai = self._room and self._room._ai
     if value == true then return true end
     if not ai then return nil end
@@ -625,6 +646,9 @@ function PlayerView:getStrategyFlag(name)
     if strategy and type(policy) == "table" and type(policy.strategy_flags_cleared) == "table"
         and policy.strategy_flags_cleared[self:objectName()] then return false end
     if name == "CurrentPlayer" then return value end
+    if value == nil then
+        ai_coverage.notCovered(ai.request.kind, "private strategy flag uses an inactive prior", name)
+    end
     return ai:useKnowledgeEstimate({status="estimate", value=false, player=self:objectName(), flag=name,
         basis="unobserved_private_flag_inactive_prior"}, "Player.getStrategyFlag")
 end
@@ -641,7 +665,7 @@ function PlayerView:hasLordSkill(skill_name)
     local skills = self:getSkills()
     if not skills then
         if foreign_skill_absence_unknown(self) then
-            ai_unsupported("foreign skill absence is unknown", skill_name)
+            return nil
         end
         return nil
     end
@@ -653,7 +677,7 @@ function PlayerView:hasLordSkill(skill_name)
         end
     end
     if foreign_skill_absence_unknown(self) then
-        ai_unsupported("foreign skill absence is unknown", skill_name)
+        return nil
     end
     return false
 end
@@ -674,18 +698,15 @@ function PlayerView:hasSkill(skill_name, include_lose)
     end
     local index = rawget(self, "_skill_index")
     if type(index) ~= "table" then
-        if foreign_skill_absence_unknown(self) then
-            ai_unsupported("foreign skill absence is unknown", skill_name)
-        end
         return nil
     end
     if instance_id ~= nil then
         local skill = index.by_instance[base_name .. "#" .. instance_id]
-        if type(skill) == "table" and (include_lose == true or not skill.invalid) then
-            return true
-        end
+        -- A disclosed exact instance proves its own validity independently of
+        -- undisclosed instances with the same skill name.
+        if type(skill) == "table" then return include_lose == true or not skill.invalid end
         if foreign_skill_absence_unknown(self) then
-            ai_unsupported("foreign skill absence is unknown", skill_name)
+            return nil
         end
         return false
     end
@@ -693,7 +714,7 @@ function PlayerView:hasSkill(skill_name, include_lose)
         if include_lose == true or not skill.invalid then return true end
     end
     if foreign_skill_absence_unknown(self) then
-        ai_unsupported("foreign skill absence is unknown", skill_name)
+        return nil
     end
     return false
 end
@@ -782,12 +803,12 @@ end
 
 function PlayerView:getEquips()
     local view = rawget(self, "_view")
-    return wrap_values(type(view) == "table" and view.equips or nil, CardView.new)
+    return snapshot_cards(self,"e",type(view) == "table" and view.equips or nil)
 end
 
 function PlayerView:getJudgingArea()
     local view = rawget(self, "_view")
-    return wrap_values(type(view) == "table" and view.judging_area or nil, CardView.new)
+    return snapshot_cards(self,"j",type(view) == "table" and view.judging_area or nil)
 end
 
 -- Common SmartAI queries derived from visible facts; hidden zones never become
@@ -869,7 +890,7 @@ function PlayerView:isAllNude()
 end
 
 -- Authority facts preserve discard locks; a nonempty zone alone is not legality.
--- The viewer's Player::canDiscard(who, zones); zones is one of h/e/j/he/hj/ej/hej.
+-- Native answers cover zone sets and exact physical IDs visible to the viewer.
 function PlayerView:canDiscard(who, flags)
     who = who or self
     if not AIValue.isPlayer(who) then return nil end
@@ -877,15 +898,10 @@ function PlayerView:canDiscard(who, flags)
     local row = type(rows) == "table" and rows[who:objectName()]
     if type(row) ~= "table" then return nil end
     if type(flags) == "number" then
-        -- canDiscard(to, card_id): the viewer's own card is its jilei bit; a public
-        -- card of another player follows that player's zone answer.
-        local card = self._room._ai and self._room._ai:getKnownCardById(flags)
-        if not card then return nil end
-        if who:objectName() == self:objectName() and card._view.jilei ~= nil then return not card._view.jilei end
-        local place = self._room:getCardPlace(flags)
-        local zone = place == sgs.Player_PlaceEquip and "e" or place == sgs.Player_PlaceDelayedTrick and "j"
-            or place == sgs.Player_PlaceHand and "h" or nil
-        return zone and row[zone] or nil
+        if flags < 0 or flags % 1 ~= 0 then return nil end
+        -- A zone answer is existential; only the native answer for this visible
+        -- physical card proves its legality. Preserve known false as false.
+        return row["id:" .. tostring(math.floor(flags))]
     end
     return row[tostring(flags)]
 end
@@ -931,55 +947,62 @@ function PlayerView:hasWeapon(name)
     return card ~= nil and (name == nil or card:objectName() == name or card:isKindOf(name))
 end
 
-function PlayerView:hasArmorEffect(name, source)
-    -- The snapshot covers the source-independent equipped armor query only.
-    if source ~= nil then return nil end
+function PlayerView:hasArmorEffect(name, source, need_area)
+    -- The snapshot uses the default area gate. A source only adds MethodEffect
+    -- restrictions, so a proven absence stays false; presence needs that source.
+    if need_area == false then return nil end
     -- With a view-as equipment source the authority lists every effective armor
     -- name; a class name matches the physical armor only, as in Player.
     local effects = self._view.armor_effect_names
     if AIValue.isList(effects) then
-        if name == nil or name == "" then return #effects > 0 end
-        local physical = self:getArmor()
-        for _, effect in ipairs(effects) do
-            if effect == name or physical and physical:objectName() == effect and physical:isKindOf(name) then return true end
+        local active = #effects > 0
+        if name ~= nil and name ~= "" then
+            active = false
+            for _, effect in ipairs(effects) do
+                if effect == name then
+                    active = true
+                    break
+                end
+            end
+            -- A disclosed exact effect name needs no physical-card lookup.
+            -- Class-name queries still resolve the current physical armor.
+            if not active and #effects > 0 then
+                local physical = self:getArmor()
+                if physical and physical:isKindOf(name) then
+                    for _, effect in ipairs(effects) do
+                        if physical:objectName() == effect then active = true; break end
+                    end
+                end
+            end
         end
-        return false
+        if active and source ~= nil then return nil end
+        return active
     end
     local active = self._view.active_armor_name
     if type(active) ~= "string" then
-        -- Finite Original source names only. A pure host proof may establish
-        -- absence from an empty public equipment domain; never infer true or
-        -- read foreign private armor/nullification state.
-        local ai=self._room and self._room._ai
-        local h=ai and ai.world and AIHegemony.facts(ai.world)
-        if (name=='SilverLion'or name=='EightDiagram'or name=='bazhen'or name=='Vine'or name=='IronArmor'or name=='RenwangShield'or name=='PeaceSpell'or name=='Breastplate')
-            and ai.request and ai.request.kind~='event'
-            and h and h.enabled==true and h.original_overrides_loaded==true
-            and type(ai_original_sd_choice)=='function' then
-            local result=ai_original_sd_choice{op='public_armor_absence',target=self:objectName(),name=name}
-            if type(result)=='table'and result.kind=='original_sd_choice'and result.known==true and result.value==false then return false end
-        end
         return nil
     end
-    if name == nil or name == "" then return active ~= "" end
-    local armor = self:getArmor()
-    return active ~= "" and (active == name or armor ~= nil and armor:isKindOf(name))
+    local matches = active ~= ""
+    if name ~= nil and name ~= "" then
+        local armor = self:getArmor()
+        matches = matches and (active == name or armor ~= nil and armor:isKindOf(name))
+    end
+    if matches and source ~= nil then return nil end
+    return matches
 end
 
+-- Nullable fact query, captured before the strategy wrapper may estimate from
+-- public equipment. It never manufactures a fact or records an estimate.
+PlayerView.queryArmorEffect = PlayerView.hasArmorEffect
+
 function PlayerView:hasFlag(name)
-    local kurouAI=self._room and self._room._ai
-    local kurouFacts=kurouAI and AIHegemony.facts(kurouAI.world)
-    if name=='Kurou_toDie' and kurouAI and kurouFacts and kurouFacts.enabled==true and kurouFacts.original_overrides_loaded==true then
-        if self:objectName()~=kurouAI.player:objectName()then
-            ai_unsupported('foreign Original Kurou policy flag is private','Kurou_toDie')
-        end
-        return kurouAI:getOriginalKurouToDie()
-    end
-    local ai=self._room and self._room._ai
-    local h=ai and AIHegemony.facts(ai.world)
-    if name=='willSkipPlayPhase' and ai and self:objectName()==ai.player:objectName()
-        and h and h.enabled==true and h.original_overrides_loaded==true then
-        return ai:readOriginalGuanxingShadow()
+    local ai = self._room and self._room._ai
+    local h = ai and AIHegemony.facts(ai.world)
+    if (name == "willSkipPlayPhase" or name == "Kurou_toDie" or name == "AI_needCrossbow")
+        and h and h.enabled == true and h.original_overrides_loaded == true then
+        if self:objectName() == ai.player:objectName() then return ai:hasStrategyPlayerFlag(self, name) end
+        -- Other AIs' private policy memory is never a public flag fact.
+        if name ~= "willSkipPlayPhase" then return nil end
     end
     local policy = self._room and self._room._world.mode_policy
     local strategy = standard_strategy_flag(self,name) or name == "AI_HuangtianPindian" or name == "AI_MizhaoTarget" or name == "AI_doNotSave" or name == "AIGlobal_NeedToWake" or name == "needCrossbow"
@@ -1014,7 +1037,7 @@ function PlayerView:getHandcards()
     -- Only the request viewer receives hand identities. Unknown is not an empty hand.
     local cards = rawget(self, "_hand_cards")
     if type(cards) ~= "table" then return nil end
-    return wrap_values(cards, CardView.new)
+    return snapshot_cards(self,"h",cards)
 end
 
 function PlayerView:handCards()
@@ -1026,7 +1049,7 @@ function PlayerView:handCards()
 end
 
 function PlayerView:isLastHandCard(card, contain)
-    if not AIValue.isCard(card) then return nil end
+    if not AIValue.isCard(card) and not AIValue.isConversion(card) then return nil end
     local hand = self:handCards()
     if hand == nil then return nil end
     local virtual = card:isVirtualCard()
@@ -1044,11 +1067,13 @@ function PlayerView:isLastHandCard(card, contain)
             end
         end
     end
-    return #hand == 1 and hand:contains(card:getEffectiveId())
+    local id = AIValue.isConversion(card) and card:getPhysicalProductId() or card:getEffectiveId()
+    if not virtual and (type(id) ~= "number" or id < 0) then return nil end
+    return #hand == 1 and hand:contains(id)
 end
 
 function PlayerView:isJilei(card)
-    if not AIValue.isCard(card) then return nil end
+    if not AIValue.isCard(card) and not AIValue.isConversion(card) then return nil end
     local view = rawget(card, "_view")
     if type(view) == "table" and (view.evaluation_owner or view.activation_owner) == self:objectName()
         and type(view.jilei) == "boolean" then return view.jilei end
@@ -1062,17 +1087,30 @@ function PlayerView:isJilei(card)
     return row.jilei
 end
 
-function PlayerView:isLocked(card)
-    if not AIValue.isCard(card) then return nil end
+function PlayerView:isLocked(card, isHandcard)
+    if not AIValue.isCard(card) and not AIValue.isConversion(card) then return nil end
     local view = rawget(card, "_view")
-    if type(view) == "table" and (view.evaluation_owner or view.activation_owner) == self:objectName()
+    if isHandcard ~= true and type(view) == "table" and (view.evaluation_owner or view.activation_owner) == self:objectName()
         and type(view.locked) == "boolean" then return view.locked end
+    -- Printed/acquired evaluations already carry exact limitation maps. Follow
+    -- Player::isLocked's current use/response reason instead of requiring a hand row.
+    local ai = self._room and self._room._ai
+    local reason = ai and ai.request and ai.request.reason
+    if type(reason) == "number" then
+        local method = reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+            and sgs.Card_MethodResponse or sgs.Card_MethodUse
+        local limited = self:queryCardLimited(card, method, isHandcard)
+        if type(limited) == "boolean" then return limited end
+    end
+    if isHandcard == true then return nil end
     if card:isVirtualCard() ~= false then return nil end
     local own = rawget(self, "_own_card_rows")
     local state = type(own) == "table" and own[card:getEffectiveId()]
     if type(state) ~= "table" or type(state.locked) ~= "boolean" then return nil end
     return state.locked
 end
+
+PlayerView.queryLocked = PlayerView.isLocked
 
 function PlayerView:getCards(flags)
     if type(flags) ~= "string" or flags == "" or string.find(flags, "[^hej]") then
@@ -1097,8 +1135,8 @@ function PlayerView:getKnownCards()
     local view = rawget(self, "_view")
     if type(view) ~= "table" then return nil end
     local own = rawget(self, "_hand_cards")
-    if type(own) == "table" then return wrap_values(own, CardView.new) end
-    return wrap_values(view.known_cards, CardView.new)
+    if type(own) == "table" then return self:getHandcards() end
+    return snapshot_cards(self,"known",view.known_cards)
 end
 
 function PlayerView:isHandVisible()
@@ -1247,17 +1285,24 @@ end
 function PlayerView:getSkills()
     local view = rawget(self, "_view")
     if type(view) ~= "table" or not AIValue.isList(view.skills) then return nil end
-    return wrap_values(copy_value(view.skills), SkillView.new)
+    -- Skill DTOs are immutable for one PlayerView/request. Preserve shared skill
+    -- identity while each caller receives its own mutable list container.
+    local skills=rawget(self,"_skill_views")
+    if not skills then skills=wrap_values(view.skills,SkillView.new);rawset(self,"_skill_views",skills)end
+    return skills and AIList.new(skills) or nil
 end
 
 -- Player::getVisibleSkillList uses the deduplicated, name-ordered skill map.
 -- Invalid instances remain visible; validity is a separate hasSkill question.
 function PlayerView:getVisibleSkillList(include_equip)
+    local key=include_equip and "equipment" or "ordinary"
+    local cache=rawget(self,"_visible_skill_views")
+    if cache and cache[key] then return AIList.new(cache[key]) end
     local skills = self:getSkills()
     if not skills then return nil end
     -- Player::hasEquipSkill: a skill named after an equipment card.
     local equips
-    if type(ai_card_catalog) == "table" then
+    if not include_equip and type(ai_card_catalog) == "table" then
         equips = {}
         for _, row in ipairs(ai_card_catalog) do
             if row.type_id == sgs.Card_TypeEquip then equips[row.name] = true end
@@ -1278,33 +1323,31 @@ function PlayerView:getVisibleSkillList(include_equip)
         end
     end
     table.sort(rows, function(a, b) return a:objectName() < b:objectName() end)
+    if not cache then cache={};rawset(self,"_visible_skill_views",cache)end
+    cache[key]=rows
     return AIList.new(rows)
 end
 
+-- Capture the nullable provider before required_raw_methods wraps public calls.
+local has_skill = PlayerView.hasSkill
 function PlayerView:hasSkills(skill_names)
     if type(skill_names) ~= "string" then return false end
-    local view = rawget(self, "_view")
-    if type(view) ~= "table" or not AIValue.isList(view.skills) then return nil end
-    -- Match Player::hasSkills: OR groups of AND terms, including empty terms.
+    -- Evaluate OR-of-AND using three values: a known false term settles an AND
+    -- even after unknown terms; a known true group settles the entire OR.
     local unknown = false
     for group in string.gmatch(skill_names .. "|", "(.-)|") do
-        local matches = true
+        local matches, group_unknown = true, false
         for name in string.gmatch(group .. "+", "(.-)%+") do
-            local ok, value = pcall(self.hasSkill, self, name)
-            if not ok then
-                if AIUnsupported and AIUnsupported.is(value) then
-                    unknown = true
-                    matches = false
-                    break
-                end
-                error(value, 0)
-            end
-            if value == nil then unknown = true; matches = false; break end
-            if not value then matches = false; break end
+            local value = has_skill(self, name)
+            if value == false then matches = false; break end
+            if value == nil then group_unknown = true end
         end
-        if matches then return true end
+        if matches then
+            if not group_unknown then return true end
+            unknown = true
+        end
     end
-    if unknown then ai_unsupported("skill absence is unknown", skill_names) end
+    if unknown then return nil end
     return false
 end
 
@@ -1356,7 +1399,7 @@ function CardView:hasSuit()
     return suit == "spade" or suit == "club" or suit == "heart" or suit == "diamond"
 end
 
--- R53 Diou source dependency. Native owner-hand observation only; flags or
+-- Diou source dependency. Native owner-hand observation only; flags or
 -- material identity alone never manufacture a known tip result.
 function CardView:hasTip(name, split)
     local view=rawget(self,"_view")
@@ -1386,9 +1429,15 @@ function CardView:hasFlag(name)
         and name:sub(1, 8) == "visible_" then return nil end
     if type(view) == "table" and view.flags_complete == true then return false end
     local flags = type(view) == "table" and view.flags or nil
-    if not AIValue.isList(flags) then return nil end
-    for _, flag in ipairs(flags) do if flag == name then return true end end
-    return false
+    if rawget(self,"_raw_flags_source") ~= flags or rawget(self,"_raw_flags_index") == nil then
+        if not AIValue.isList(flags) then return nil end
+        local index = {}
+        for _, flag in ipairs(flags) do if type(flag) == "string" then index[flag] = true end end
+        -- Physical alias synchronization replaces these immutable lists. Keep
+        -- the index outside the DTO and rebuild when that list identity changes.
+        self._raw_flags_source, self._raw_flags_index = flags, index
+    end
+    return self._raw_flags_index[name] == true
 end
 
 function CardView:isKindOf(card_type)
@@ -1400,12 +1449,12 @@ function CardView:isKindOf(card_type)
     if type(kind_of) ~= "table" then
         return nil
     end
-    for _, name in ipairs(kind_of) do
-        if name == card_type then
-            return true
-        end
+    if rawget(self,"_raw_kind_source") ~= kind_of then
+        local index = {}
+        for _, name in ipairs(kind_of) do if type(name) == "string" then index[name] = true end end
+        self._raw_kind_source, self._raw_kind_index = kind_of, index
     end
-    return false
+    return self._raw_kind_index[card_type] == true
 end
 
 -- 卡牌結構與技能種類：子牌與類別鏈是純值，`inherits` 只比對快照裡的類別名，
@@ -1841,12 +1890,26 @@ function AIHegemony.facts(world)
     if world.self and world.self.role == "careerist" then own = "careerist" end
     facts.enabled = enabled
     facts.original_overrides_loaded = enabled
+    -- Shared category definitions belong to this isolated VM. They are static
+    -- strategy metadata, not a query to SmartAI or another player's state.
+    for key, value in pairs(sgs) do
+        if type(key) == "string" and key:match("_skill$") and type(value) == "string" then
+            facts[key] = value
+        end
+    end
     facts.players = players
     if not enabled then facts.own_kingdom = (type(own) == "string" and own ~= "") and own or "unknown" end
     facts.view_as_presence = registry_presence("ai_view_as")
     facts.cardsview_presence = registry_presence("ai_cardsview")
     facts.need_damaged_presence = registry_presence("ai_need_damaged")
     facts.armor_value_presence = registry_presence("ai_armor_value")
+    -- Original resets weapon values before registering these exact case-sensitive
+    -- names; ordinary lower-case values must not silently reappear in this mode.
+    local original_values={["Axe"]=true,["DoubleSword"]=true,["Fan"]=true,["GudingBlade"]=true,["HBlade"]=true,["HDragonPhoenix"]=true,["HHalberd"]=true,["HSixSwords"]=true,["HTriblade"]=true,["IceSword"]=true,["KylinBow"]=true,["QinggangSword"]=true,["Spear"]=true}
+    local filters=registry_presence("ai_slash_weaponfilter")
+    facts.weapon_values=setmetatable({}, {__index=function(_,name)
+        return {value_callback=original_values[name]==true,filter_callback=filters[name]}
+    end})
     facts.trick_prohibit_functions = trick_prohibit
     hegemony_cache[world] = facts
     return facts
@@ -1881,7 +1944,7 @@ function SmartAIView.new(request)
         or request.world_view.self.object_name ~= request.viewer then
         return nil
     end
-    r45_physical.mark(request)
+    physical_card_provenance.mark(request)
     local room = RoomView.new(request.world_view)
     if not room then return nil end
     local ai = setmetatable({
@@ -2098,6 +2161,24 @@ function SmartAIView:getDecisionContext(request)
       local use = context[use_key]
       if type(use) == "table" then
         wrap_event(use)
+        -- The native root request carries its context in options.context.
+        -- Supplied or separately constructed inquiry requests cannot declare
+        -- themselves an exact native use, even with copied response fields.
+        if (request == nil or request == self.request) and not supplied
+            and use_key == "use" and use.response_list_known == true then
+            if not AIValue.isCard(use.card) or not AIValue.isList(use.no_respond_list) then
+                ai_unsupported("actual card-use response list is unavailable", "context.use")
+            end
+            for _, name in ipairs(use.no_respond_list) do
+                if type(name) ~= "string" or name == "" then
+                    ai_unsupported("actual card-use response name is invalid", "context.use")
+                end
+            end
+            local scope = request or self.request
+            use.card._actual_use_response_names = {viewer=scope.viewer,
+                decision_id=scope.decision_id, state_revision=scope.state_revision,
+                names=copy_value(use.no_respond_list)}
+        end
         if AIValue.isList(use.to) then
             local targets = AIList.new({})
             for _, name in ipairs(use.to) do
@@ -2771,15 +2852,16 @@ end
 function ConversionView:getId() return self:getEffectiveId() end
 function ConversionView:getPhysicalProductId()
     local rules = self._view.evaluation_rules
-    local id = type(rules) == "table" and rules.physical_product_id or nil
+    local id = self._view.physical_product_id
+    if id == nil then id = type(rules) == "table" and rules.physical_product_id or nil end
     if type(id) ~= "number" or id < 0 or id % 1 ~= 0 then return nil end
     return id -- Native disclosed product identity, never a payment/receipt ID.
 end
 
 -- 值型答案。送出去的是票；牌名、花色、點數與成本一起送，只是讓權威端能比對出不一致
--- 並拒絕，不是授權來源。V1 技能的評估收據沒有答案，送出時改由 SmartAI 回答。
+-- 並拒絕，不是授權來源。V1 技能的評估收據不提供 isolated 提交授權，未知分支交由 dispatcher 處理。
 function ConversionView:toCardSpec()
-    if self._view.legacy_v1 then ai_unsupported("V1 skill falls back to SmartAI", self:getActivationSkillName()) end
+    if self._view.legacy_v1 then ai_unsupported("V1 skill has no isolated submission authority", self:getActivationSkillName()) end
     local subcards = self:getSubcards()
     local ids = {}
     if subcards then
@@ -2915,7 +2997,7 @@ end
 
 -- A skill card the strategy proposes. The authority builds it on submission: a V2
 -- instance from its skill action, costs and user string (canActivate and quota are
--- rechecked). A V1 skill card is evaluated only; submitting it falls back to SmartAI.
+-- rechecked). A V1 skill card is evaluation-only and carries no isolated submission authority.
 -- Targets are the authority's to validate, so the receipt claims no target legality
 -- of its own.
 local skill_action_receipt_base = 1000000
@@ -2957,9 +3039,37 @@ function SmartAIView:registerSkillActionReceipt(spec)
         legacy_identity_token = fresh_policy_identity(policy_identity_scope(self)),
         authority_validates_targets = true, skill_action_answer = answer,
         legacy_v1 = answer == nil}
+    local empty = identity.empty_selection
+    local native_candidate
+    if #costs == 0 and (spec.user_string == nil or spec.user_string == "")
+        and type(empty) == "table" and type(empty.card) == "table"
+        and empty.card.class_name == class_name then
+        local face = empty.card
+        native_candidate = empty.candidate
+        if face.type_id ~= sgs.Card_TypeSkill or face.conversion_id ~= nil
+            or not AIValue.isList(face.subcards) or #face.subcards ~= 0
+            or type(native_candidate) ~= "table" or type(native_candidate.available) ~= "boolean"
+            or type(native_candidate.limited) ~= "boolean" then
+            ai_unsupported("empty-selection receipt projection is incomplete", spec.skill)
+        end
+        -- Reuse the same actual source product as the sealed readonly plan.
+        -- Keep receipt authority and activation identity separate from that face.
+        for _, key in ipairs({"name", "class_name", "type_id", "subtype", "suit", "number",
+            "red", "black", "skill_name", "skill_names", "skill_names_complete", "subcards",
+            "virtual_card", "target_fixed", "damage_card", "can_recast", "single_target",
+            "handling_method", "will_throw", "flags", "flags_complete", "known_flags",
+            "legacy_string_key", "legacy_sort_key", "evaluation_rules", "evaluation_owner",
+            "target_residue", "target_mod_residue", "target_mod_distance", "target_mod_extra",
+            "limits", "limits_hand", "prohibited", "locked", "jilei", "analeptic_static_available"}) do
+            row[key] = copy_value(face[key])
+        end
+        row.kind_of_names = copy_value(face.kind_of)
+    end
     indexes.conversions[#indexes.conversions + 1] = row
     indexes.conversions_by_id[id] = row
-    return ConversionView.new(copy_value(row))
+    local receipt = ConversionView.new(copy_value(row))
+    if native_candidate then receipt._evaluation_candidate = copy_value(native_candidate) end
+    return receipt
 end
 
 function SmartAIView:getConversion(conversion_id)
@@ -3101,7 +3211,7 @@ function RoomView:distanceTo(from, to)
     return row[to:objectName()]
 end
 
-local function r34_distance_integer(value)
+local function valid_distance_integer(value)
     return type(value)=="number" and value==value and value~=math.huge
         and value~=-math.huge and value%1==0
 end
@@ -3117,7 +3227,7 @@ function PlayerView:distanceTo(other, fix)
         if from==name then return 0 end
         local base=world and world.distances and world.distances[from]
         local zero=type(base)=="table" and base[name] or nil
-        if not r34_distance_integer(zero) then return nil end
+        if not valid_distance_integer(zero) then return nil end
         if zero>1 or fix<0 then return math.max(zero+fix,1) end
         return nil
     end
@@ -3249,10 +3359,13 @@ function PlayerView:canSlash(other, card, distance_limit, range_fix)
         local candidate = room._ai:getCardCandidate(tonumber(key:sub(4)))
         local legal = candidate and candidate:getLegalTargets()
         if legal then
-            for _, target in ipairs(legal) do
-                if target:objectName() == other:objectName() then return true end
+            -- Candidate targets are object-name strings, not PlayerView values.
+            for _, name in ipairs(legal) do
+                if type(name) ~= "string" then return nil end
+                if name == other:objectName() then return true end
             end
-            return false
+            if candidate:hasCompleteCoverage() == true then return false end
+            return nil -- Partial target coverage cannot prove a target illegal.
         end
     end
     if room and room._ai and type(distance_limit) == "boolean" and type(range_fix) == "number" then
@@ -3272,12 +3385,21 @@ function PlayerView:canSlash(other, card, distance_limit, range_fix)
     return nil
 end
 
-function PlayerView:aliveCount()
+function PlayerView:aliveCount(include_removed)
     local room = rawget(self, "_room")
     if not room then return nil end
+    if include_removed ~= nil and type(include_removed) ~= "boolean" then return nil end
     local players = room:getAlivePlayers()
     if not players then return nil end
-    return #players
+    if include_removed then return #players end
+    -- Native aliveCount() excludes temporarily removed seats by default.
+    local count = 0
+    for _, player in ipairs(players) do
+        local removed = player:isRemoved()
+        if type(removed) ~= "boolean" then return nil end
+        if not removed then count = count + 1 end
+    end
+    return count
 end
 
 function PlayerView:isMale()
@@ -3501,31 +3623,44 @@ end
 -- Revalidation is deliberately conservative: absent projections remain
 -- unknown, while a visible mismatch invalidates the intent before authority
 -- sees it.  The final candidate/cost authorization still belongs to authority.
+function SmartAIView:validateTargetSequence(candidate, targets)
+    if not candidate or not AIValue.isList(targets) then return nil end
+    if candidate:hasCompleteCoverage() == true then
+        local _, finish = candidate:getTargetSelection(targets)
+        return finish
+    end
+    -- Full enumeration can be incomplete while this one ordered sequence is
+    -- provable. Query only an issued physical ticket; never relabel its coverage.
+    if not AIValue.isCandidate(candidate) or type(ai_evaluate_card) ~= "function" then return nil end
+    local card_id, candidate_id = candidate:getCardId(), candidate:getCandidateId()
+    if type(card_id) ~= "number" or card_id < 0 or type(candidate_id) ~= "number" or candidate_id < 0 then return nil end
+    local request = self.request
+    local result = ai_evaluate_card({operation="target_sequence", viewer=request.viewer,
+        decision_id=request.decision_id, state_revision=request.state_revision,
+        card_id=card_id, candidate_id=candidate_id, targets=copy_value(targets)})
+    if type(result) ~= "table" or result.known ~= true then
+        return nil, type(result) == "table" and result.error or "target sequence query is unavailable"
+    end
+    if result.operation ~= "target_sequence" or result.viewer ~= request.viewer
+        or result.decision_id ~= request.decision_id or result.state_revision ~= request.state_revision
+        or result.card_id ~= card_id or result.candidate_id ~= candidate_id
+        or type(result.accepted) ~= "boolean" or not AIValue.isList(result.targets)
+        or #result.targets ~= #targets then return nil, "target sequence receipt does not match request" end
+    for i, name in ipairs(targets) do
+        if result.targets[i] ~= name then return nil, "target sequence receipt changed target order" end
+    end
+    return result.accepted
+end
+
 function SmartAIView:validatePlannedIntent(kind, intent)
     if type(intent) ~= "table" then return nil, "unknown" end
     if kind == "target" then
         local row = self._indexes and self._indexes.candidates_by_id[intent.candidate_id]
         local candidate = row and CandidateView.new(copy_value(row)) or nil
         if not candidate then return nil, "unknown" end
-        local legal = candidate:getLegalTargets()
-        if not legal then return nil, "unknown" end
-        if not AIValue.isList(intent.targets) then return nil, "unknown" end
-        if candidate:hasCompleteCoverage() ~= true then return nil, "unknown" end
-        local function same(a, b)
-            if #a ~= #b then return false end
-            for index = 1, #a do if a[index] ~= b[index] then return false end end
-            return true
-        end
-        local offset = 0
-        repeat
-            local combinations, next_offset = candidate:getTargetCombinations(offset)
-            if not combinations then return nil, "unknown" end
-            for _, row in ipairs(combinations) do
-                if same(row, intent.targets) then return true, "valid" end
-            end
-            offset = next_offset
-        until offset == nil
-        return false, "invalidated"
+        local valid = self:validateTargetSequence(candidate, intent.targets)
+        if valid == nil then return nil, "unknown" end
+        return valid, valid and "valid" or "invalidated"
     elseif kind == "cost" then
         local row = self._indexes and self._indexes.conversions_by_id[intent.conversion_id]
         local conversion = row and ConversionView.new(copy_value(row)) or nil
@@ -3642,10 +3777,14 @@ function SmartAIView:relationTo(other, another)
     local policy = self.world.mode_policy
     if type(policy) ~= "table" or not policy.managed or policy.error ~= nil then return nil end
     local from = another or self.player
-    if not from or not other then return "unknown" end
-    local rows = policy.relations or {}
-    local row = rows[from:objectName()]
-    return row and row[other:objectName()] or "unknown"
+    if not from or not other then return nil end
+    local rows = policy.relations
+    local row = type(rows) == "table" and rows[from:objectName()]
+    local relation = type(row) == "table" and row[other:objectName()]
+    if relation == "friend" or relation == "enemy" or relation == "neutral" or relation == "unknown" then
+        return relation
+    end
+    return nil -- Only an explicitly projected "unknown" is a known policy value.
 end
 
 local function objective_controller_linked(ai, first, second)
@@ -3662,8 +3801,8 @@ end
 local function legacy_managed_relation(ai, other, another)
     local policy = ai.world and ai.world.mode_policy
     if type(policy) ~= "table" or policy.legacy_managed ~= true then return false end
-    -- An explicit unknown matrix entry is a legal negative predicate answer;
-    -- unavailable policy, targets and omitted entries remain data gaps.
+    -- The viewer's own policy is required. A foreign policy is private; its
+    -- missing row may only inform an explicitly labelled strategic estimate.
     if not policy.managed or policy.error ~= nil then
         ai_unsupported("legacy managed relation policy is unavailable", "relationTo")
     end
@@ -3672,10 +3811,26 @@ local function legacy_managed_relation(ai, other, another)
     if objective_controller_linked(ai, from, other) then return true, "friend" end
     local rows = policy.relations
     local row = type(rows) == "table" and from and rows[from:objectName()]
+    local relation
+    if type(row) == "table" then relation = row[other:objectName()] end
+    local hegemony = AIHegemony.facts(ai.world)
+    if relation == nil and from and from:objectName() ~= ai.player:objectName()
+        and hegemony and hegemony.enabled == true then
+        local public_friend = from:isPublicHegemonyFriend(other)
+        if type(public_friend) ~= "boolean" then
+            ai_unsupported("public relationship projection is unavailable", "relationTo")
+        end
+        -- No public alliance is not evidence of hostility. Unknown contributes
+        -- to neither side of a forecast; it never becomes a private policy row.
+        local estimate = public_friend and "friend" or "unknown"
+        ai_coverage.notCovered(ai.request.kind, "foreign relationship uses public evidence only", "relationTo")
+        return true, ai:useKnowledgeEstimate({status="estimate", value=estimate,
+            viewer=ai.player:objectName(), observer=from:objectName(), target=other:objectName(),
+            basis="public_alliance_or_unresolved_foreign_policy"}, "relationTo")
+    end
     if type(row) ~= "table" then
         ai_unsupported("legacy managed relation row is unavailable", "relationTo")
     end
-    local relation = type(row) == "table" and row[other:objectName()]
     if relation == "friend" or relation == "enemy" or relation == "neutral" or relation == "unknown" then
         return true, relation
     end
@@ -3894,6 +4049,9 @@ end
 function AIValue.isSkillActionRequest(request)
     if type(request) ~= "table" or type(request.skill_action) ~= "table" then return false end
     local action = request.skill_action
+    if action.equipment_activation == true then
+        return AILegacyRequest.new(request):isValid()
+    end
     return type(request.viewer) == "string" and request.viewer ~= ""
         and valid_instance_ref(action.activation_owner, action.activation_skill,
             action.activation_instance)
@@ -3903,6 +4061,15 @@ end
 
 function AILegacyRequest:isValid()
     local action = self._action
+    if action.equipment_activation == true then
+        -- Equipment activation has instance zero; its physical source, rather
+        -- than a fabricated general-skill instance, authenticates the request.
+        return type(self._request.viewer) == "string" and self._request.viewer ~= ""
+            and action.activation_owner == self._request.viewer
+            and type(action.source_owner) == "string" and type(action.source_skill) == "string"
+            and type(action.source_instance) == "number" and action.source_instance >= 0
+            and action.source_instance % 1 == 0 and SkillActionView.new(action):isValid()
+    end
     return type(self._request.viewer) == "string" and self._request.viewer ~= ""
         and valid_instance_ref(action.activation_owner, action.activation_skill,
             action.activation_instance)
@@ -3951,7 +4118,8 @@ end
 function AIUnsupported.new(reason, key)
     assert(type(reason) == "string" and reason ~= "", "an unsupported signal needs a reason")
     assert(key == nil or type(key) == "string", "an unsupported key must be a name")
-    return setmetatable({reason = reason, key = key}, AIUnsupported)
+    return setmetatable({reason = reason, key = key,
+        traceback = ai_unsupported_trace_enabled and debug.traceback("", 2) or nil}, AIUnsupported)
 end
 
 function AIUnsupported.is(value)
@@ -4178,14 +4346,13 @@ local function normalize_selection(value, kind)
         end
         local row = value.random_card_choice
         assert(type(row) == "table" and getmetatable(row) == nil and type(row.token) == "string"
-            and type(row.index) == "number" and row.index >= 1 and row.index % 1 == 0
-            and type(row.avoid_wounded_enemy_silver_lion) == "boolean", "invalid random card choice")
+            and type(row.index) == "number" and row.index >= 1 and row.index % 1 == 0, "invalid random card choice")
         local count = 0
         for key in pairs(row) do
-            assert(key == "token" or key == "index" or key == "avoid_wounded_enemy_silver_lion", "invalid random field")
+            assert(key == "token" or key == "index", "invalid random field")
             count = count + 1
         end
-        assert(count == 3, "incomplete random choice")
+        assert(count == 2, "incomplete random choice")
         return {kind="answer", random_card_choice=copy_value(row)}, "answer"
     end
     if value.card_spec ~= nil then
@@ -4368,6 +4535,7 @@ end
 ConversionView.willThrow = make_scalar_getter("will_throw")
 ConversionView.containsJinchantuoqiao = make_scalar_getter("contains_jinchantuoqiao")
 ConversionView.matchesResponsePattern = make_scalar_getter("matches_response_pattern")
+ConversionView.getUserString = make_scalar_getter("declared_name")
 -- Personality settings are this VM's own AI settings; timing comes from the world.
 function SmartAIView:getResponsePolicy()
     local function lines(name)
@@ -4524,6 +4692,8 @@ local function projected_card_rule(player, card)
         -- other player's prototype rules below.
         if row.printed_evaluation ~= true then return nil end
     end
+    if AIValue.isConversion(card) and type(row)=="table" and row.activation_owner==player:objectName()
+        and type(row.limits)=="table" then return row end
     -- A locally evaluated face carries its owner's availability; a basic face
     -- takes its prototype's corrections (every Slash the Slash's).
     if type(row) == "table" and row.evaluation_only == true and type(row.available) == "boolean"
@@ -4547,7 +4717,8 @@ local function projected_card_rule(player, card)
     if type(row) == "table" and key and key:sub(1, 3) == "id:" and type(row.limits) == "table"
         and player:objectName() == (player._room and player._room._world.self.object_name) then
         return {limits = row.limits, limits_hand = row.limits_hand, prohibited = row.prohibited,
-            available = row.available, target_mod_residue = row.target_mod_residue,
+            available = row.available, analeptic_static_available = row.analeptic_static_available,
+            target_mod_residue = row.target_mod_residue,
             target_mod_distance = row.target_mod_distance, target_mod_extra = row.target_mod_extra}
     end
     -- A card the viewer may take in this question carries its taker's rules.
@@ -4567,6 +4738,7 @@ local function projected_card_rule(player, card)
         local limits = {[tostring(sgs.Card_MethodUse)] = rules.use_limited,
             [tostring(sgs.Card_MethodResponse)] = rules.response_limited}
         return {limits = limits, limits_hand = limits, available = rules.available,
+            analeptic_static_available = rules.analeptic_static_available,
             target_mod_residue = rules.target_mod_residue, target_mod_distance = rules.target_mod_distance,
             target_mod_extra = rules.target_mod_extra}
     end
@@ -4577,10 +4749,11 @@ end
 local function prototype_available(player, class_name)
     local rules = AIValue.isPlayer(player) and type(player._view.prototype_rules) == "table"
         and player._view.prototype_rules[class_name]
-    if type(rules) ~= "table" or type(rules.available) ~= "boolean" then
+    local field = class_name == "Analeptic" and "analeptic_static_available" or "available"
+    if type(rules) ~= "table" or type(rules[field]) ~= "boolean" then
         ai_unsupported(class_name .. " prototype availability is not projected", class_name)
     end
-    return rules.available
+    return rules[field]
 end
 function sgs.Slash_IsAvailable(player) return prototype_available(player, "Slash") end
 function sgs.Analeptic_IsAvailable(player) return prototype_available(player, "Analeptic") end
@@ -4596,6 +4769,9 @@ function PlayerView:isCardLimited(card, method, is_handcard)
     if type(limits) ~= "table" then return nil end
     return limits[tostring(method)]
 end
+-- Keep nullable knowledge separate from the required fact getter. Strategies
+-- must explicitly account for unknown foreign limitation rules.
+PlayerView.queryCardLimited = PlayerView.isCardLimited
 function PlayerView:isProhibited(other, card)
     local rule = projected_card_rule(self, card)
     if type(rule) ~= "table" or type(rule.prohibited) ~= "table" or not AIValue.isPlayer(other) then return nil end
@@ -4604,6 +4780,9 @@ end
 
 function CardView:isAnalepticAvailable(player)
     if not AIValue.isPlayer(player) or self:isKindOf("Analeptic") ~= true then return nil end
+    local view=self._view
+    if AIValue.isConversion(self) and view.activation_owner==player:objectName()
+        and type(view.analeptic_static_available)=="boolean" then return view.analeptic_static_available end
     local rule=projected_card_rule(player,self)
     if type(rule)~="table" then return nil end
     local value=rule.analeptic_static_available
@@ -4629,11 +4808,31 @@ function PlayerView:getAttackRange(include_weapon)
 end
 
 -- Evaluation DTOs never grant authorization to submit a card.
+local owner_evaluations = setmetatable({}, {__mode="k"})
+local function evaluation_same(a,b,depth)
+    if type(a)~=type(b) then return false end
+    if type(a)~='table' then return a==b end
+    depth=(depth or 0)+1
+    if depth>24 or getmetatable(a)~=nil or getmetatable(b)~=nil then
+        ai_unsupported('evaluation profile is not pure bounded data','evaluation')
+    end
+    for k,v in pairs(a)do if not evaluation_same(v,b[k],depth)then return false end end
+    for k in pairs(b)do if a[k]==nil then return false end end
+    return true
+end
 function CardView:isEvaluationOnly() return self._view.evaluation_only == true end
 function CardView:isStrategySeed() return self._view.strategy_seed == true end
 function SmartAIView:getEvaluationCandidate(card)
     if type(card) ~= "table" then return nil end
     local scoped = rawget(card, "_evaluation_candidate")
+    local saved = owner_evaluations[card]
+    if saved and (saved.owner ~= self or saved.request ~= self.request
+        or saved.viewer ~= self.request.viewer or saved.decision_id ~= self.request.decision_id
+        or saved.state_revision ~= self.request.state_revision
+        or not evaluation_same(saved.face, rawget(card, "_view"))
+        or not evaluation_same(saved.candidate, scoped)) then
+        ai_unsupported("native card evaluation changed or escaped its request", "evaluation")
+    end
     if ((AIValue.isCard(card) and card:isEvaluationOnly()) or AIValue.isConversion(card)) and type(scoped) == "table" then
         return CandidateView.new(copy_value(scoped))
     end
@@ -4713,16 +4912,22 @@ CandidateView.getAvailabilityWithHistoryOffset = CandidateView.isAvailableWithHi
 -- fillSkillCards' view of one skill at Play. An activatable V2 instance comes from
 -- request.skill_actions with its play-time action; a V2 skill without one has
 -- instance -1; any other skill is instance 0 with its owner-only view-as fields.
-function SmartAIView:getFillSkillContext(name)
+function SmartAIView:getFillSkillContext(name, exact_action)
     local owner = self.player:objectName()
     local actions = type(self._indexes) == "table" and self._indexes.skill_actions_by_name
+    local selected
+    if exact_action ~= nil then
+        selected = self:findOfferedSkillAction(name, {skill_action = exact_action})
+        if not selected then ai_unsupported("fill action was not offered to this request", name) end
+    end
     for _, action in ipairs(actions and actions[name] or {}) do
-        if action.activation_owner == owner then
+        if action.activation_owner == owner and (not selected or action == selected.identity) then
             local request = {viewer = self.request.viewer, decision_id = self.request.decision_id,
                 state_revision = self.request.state_revision, kind = self.request.kind,
                 reason = sgs.CardUseStruct_CARD_USE_REASON_PLAY, pattern = "", prompt = "",
                 handling_method = sgs.Card_MethodUse, skill_action = copy_value(action)}
             return {known = true, instance_id = action.activation_instance, has_view_as = true,
+                equipment_activation = action.equipment_activation == true, action = action,
                 enabled_at_play = true, request = AILegacyRequest.new(request, self.room)}
         end
     end
@@ -4744,7 +4949,43 @@ function RoomView:getPublicSkill(name)
     end
     return nil
 end
+local function original_strategy_shadow(self, name, value)
+    -- The owner shadow survives callback errors, and expires with native flag clears.
+    local key = name == "willSkipPlayPhase" and "original.guanxing_shadow" or "original.strategy_flag." .. name
+    local owner = self.player:objectName()
+    local epochs = AIWorldLifecycle and AIWorldLifecycle.epochs(self.world, "flag")
+    local epoch = type(epochs) == "table" and epochs[owner]
+    if type(epoch) ~= "number" or epoch < 0 or epoch % 1 ~= 0 then
+        ai_unsupported("Original strategy flag-clear epoch is unavailable", name)
+    end
+    if value ~= nil then
+        assert(type(value) == "boolean", "invalid Original strategy shadow")
+        AIValue.requireKnown(self:remember(key, {epoch=epoch, value=value}),
+            "Original strategy shadow memory")
+        return value
+    end
+    local stored = self:recall(key)
+    if stored ~= nil then
+        if type(stored) ~= "table" or type(stored.epoch) ~= "number" or type(stored.value) ~= "boolean" then
+            ai_unsupported("Original strategy shadow memory is malformed", name)
+        end
+        if stored.epoch == epoch then return stored.value end
+    end
+    -- No shadow in this clear epoch: start from the disclosed native flag list.
+    -- Absence from a complete owner list is false; an absent list stays unknown.
+    local flags = AIValue.requireKnown(self.player._view.flags, "Original strategy owner flags")
+    for _, flag in ipairs(flags) do if flag == name then return true end end
+    return false
+end
 function SmartAIView:hasStrategyPlayerFlag(player, name)
+    local hegemony = AIHegemony.facts(self.world)
+    if (name == "willSkipPlayPhase" or name == "Kurou_toDie" or name == "AI_needCrossbow")
+        and hegemony and hegemony.enabled == true and hegemony.original_overrides_loaded == true then
+        if player:objectName() ~= self.player:objectName() then return nil end
+        if name == "willSkipPlayPhase" and self._strategy_evaluation
+            and type(self._original_guanxing_dummy) == "boolean" then return self._original_guanxing_dummy end
+        return original_strategy_shadow(self, name)
+    end
     local policy = self.world.mode_policy
     local rows = type(policy) == "table" and policy.strategy_flags
     rows = type(rows) == "table" and rows[player:objectName()]
@@ -4754,13 +4995,28 @@ function SmartAIView:hasStrategyPlayerFlag(player, name)
     return nil
 end
 function SmartAIView:setStrategyPlayerFlag(player, name, value)
-    if name=='willSkipPlayPhase' then
-        local hegemony=AIHegemony.facts(self.world)
-        assert(player==self.player and self.request.kind=='guanxing' and hegemony
-            and hegemony.original_overrides_loaded==true,'Original Guanxing strategy flag scope')
-        return self:writeOriginalGuanxingShadow(value)
-    end
     assert(AIValue.isPlayer(player) and type(value) == "boolean", "invalid strategy flag")
+    local hegemony = AIHegemony.facts(self.world)
+    if name == "willSkipPlayPhase" or ((name == "Kurou_toDie" or name == "AI_needCrossbow")
+        and hegemony and hegemony.enabled == true and hegemony.original_overrides_loaded == true) then
+        assert(player == self.player and hegemony and hegemony.enabled == true
+            and hegemony.original_overrides_loaded == true, "Original strategy flag owner scope")
+        if name == "willSkipPlayPhase" then
+            assert(self.request.kind == "guanxing", "Original Guanxing strategy flag scope")
+            if self._strategy_evaluation then self._original_guanxing_dummy = value
+            else original_strategy_shadow(self, name, value) end
+        else
+            -- Kurou's reached fill prefix persists even during dummy planning or
+            -- failure; Collateral retains its not-use.isDummy guard at the caller.
+            original_strategy_shadow(self, name, value)
+        end
+        local policy = self.world.mode_policy
+        assert(type(policy) == "table" and type(policy.strategy_flags) == "table", "strategy flags not projected")
+        local owner = player:objectName()
+        policy.strategy_flags[owner] = policy.strategy_flags[owner] or {}
+        policy.strategy_flags[owner][name] = value
+        return value
+    end
     local valid = standard_strategy_flag(player,name) or name == "AI_HuangtianPindian" or name == "AI_MizhaoTarget" or name == "AI_doNotSave" or name == "AIGlobal_NeedToWake" or name == "needCrossbow"
         or (type(name) == "string" and name:sub(1,7) == "duelTo_" and self.room:findPlayerByObjectName(name:sub(8)) ~= nil)
     valid = valid or name == "weapon_done_" .. self.player:objectName() .. "_" .. player:objectName()
@@ -4981,51 +5237,48 @@ function SmartAIView:skillCardFace(skill, class_name, costs, request, user_strin
     local seed_id = -(2000000 + self._turn_seed_serial)
     local row = {id = seed_id, effective_id = costs[1] or seed_id, name = lua_card and class_name:sub(2) or class_name,
         class_name = face, kind_of = {face, "SkillCard", "Card"}, type_id = sgs.Card_TypeSkill,
+        -- Source allocation identity survives selection; it is not a native receipt.
+        legacy_identity_token = fresh_policy_identity(policy_identity_scope(self)),
         suit = sgs.Card_NoSuit, number = 0, skill_name = skill, subcards = copy_value(costs),
         user_string = user_string, virtual_card = true, evaluation_only = true, strategy_seed = false,
         available = available, legacy_string_key = wire, legacy_sort_key = wire, flags = {}, can_recast = false,
         evaluation_owner = self.player:objectName()}
+    local candidate
+    local empty = identity.empty_selection
+    if #costs == 0 and (user_string == nil or user_string == "") and type(empty) == "table"
+        and type(empty.card) == "table" and empty.card.class_name == face then
+        local native_face = empty.card
+        candidate = empty.candidate
+        if native_face.type_id ~= sgs.Card_TypeSkill or native_face.conversion_id ~= nil
+            or not AIValue.isList(native_face.subcards) or #native_face.subcards ~= 0
+            or type(candidate) ~= "table" or type(candidate.available) ~= "boolean"
+            or type(candidate.limited) ~= "boolean" then
+            ai_unsupported("empty-selection policy projection is incomplete", skill)
+        end
+        -- This face and its target combinations belong to this offered action.
+        -- A fresh policy id is not a conversion id or submission capability.
+        local policy_id, token = row.id, row.legacy_identity_token
+        row = copy_value(native_face)
+        row.id, row.effective_id = policy_id, policy_id
+        row.legacy_identity_token = token
+        row.evaluation_only, row.strategy_seed = true, false
+        row.evaluation_owner = self.player:objectName()
+        row.available = candidate.available
+        candidate = copy_value(candidate)
+    end
     for key, value in pairs({activation_owner = identity.activation_owner, activation_skill = identity.activation_skill,
         activation_instance = identity.activation_instance, source_owner = identity.source_owner,
-        source_skill = identity.source_skill, source_instance = identity.source_instance}) do
+        source_skill = identity.source_skill, source_instance = identity.source_instance,
+        equipment_activation = identity.equipment_activation, physical_equipment = copy_value(identity.physical_equipment)}) do
         row[key] = value
     end
-    return row
-end
-
-function SmartAIView:legacySkillSeed(skill, class_name, request)
-    local row = self:skillCardFace(skill, class_name, {}, request)
-    row.strategy_seed = true
-    local seed = CardView.new(row)
-    local fields = {activation_owner="getActivationOwner",activation_skill="getActivationSkillName",
-        activation_instance="getActivationInstanceId",source_owner="getSourceOwner",
-        source_skill="getSourceSkillName",source_instance="getSourceInstanceID"}
-    for key, method in pairs(fields) do
-        local field = key
-        seed[method] = function() return row[field] end
-    end
-    seed.getAuthorityCard = function() return nil end
-    seed.toCardSpec = function() ai_unsupported("unpaid strategy seed cannot be submitted",skill) end
-    seed.isAvailable = function(_, player)
-        if player == nil or player:objectName() == self.player:objectName() then return row.available end
-    end
-    return seed
+    return row, candidate
 end
 
 -- The only alternative to complete target enumeration is an authentic,
 -- request-local Qiuxin source-query profile. It never grants action authority.
 local qiuxin_source_cards=setmetatable({}, {__mode='k'})
-local function qiuxin_same(a,b,depth)
-    if type(a)~=type(b) then return false end
-    if type(a)~='table' then return a==b end
-    depth=(depth or 0)+1
-    if depth>24 or getmetatable(a)~=nil or getmetatable(b)~=nil then
-        ai_unsupported('Qiuxin source profile is not pure bounded data','qiuxin_profile')
-    end
-    for k,v in pairs(a)do if not qiuxin_same(v,b[k],depth)then return false end end
-    for k in pairs(b)do if a[k]==nil then return false end end
-    return true
-end
+
 local function qiuxin_stamp(ai,key)
     local r=ai.request
     if type(r)~='table' or r.viewer~=ai.player:objectName()
@@ -5075,9 +5328,9 @@ local function qiuxin_entry(ai,card)
     local entries=qiuxin_source_cards[ai]
     local saved=entries and entries[card]
     if not saved then return nil end
-    if saved.request~=ai.request or not qiuxin_same(saved.stamp,qiuxin_stamp(ai,saved.source_key))
-        or not qiuxin_same(saved.face,rawget(card,'_view'))
-        or not qiuxin_same(saved.candidate,rawget(card,'_evaluation_candidate'))then
+    if saved.request~=ai.request or not evaluation_same(saved.stamp,qiuxin_stamp(ai,saved.source_key))
+        or not evaluation_same(saved.face,rawget(card,'_view'))
+        or not evaluation_same(saved.candidate,rawget(card,'_evaluation_candidate'))then
         ai_unsupported('Qiuxin source profile identity changed','qiuxin_profile')
     end
     return saved
@@ -5117,69 +5370,112 @@ function SmartAIView:evaluateOwnerViewAsCard(spec)
         or type(spec.suit) ~= "number" or type(spec.number) ~= "number" or not AIValue.isList(spec.subcards) then
         ai_unsupported("owner view-as face is incomplete", "evaluateOwnerViewAsCard")
     end
-    local base = self:getEvaluationCard(spec.name)
-    if not base then ai_unsupported("owner view-as product is outside the card catalog", spec.name) end
-    local materials = {}
-    for index, id in ipairs(spec.subcards) do
-        materials[index] = self:getKnownCardById(id)
-        if not materials[index] then ai_unsupported("owner view-as material is not visible", "evaluateOwnerViewAsCard") end
-    end
-    -- Card::getSuit/getNumber: an unset printing derives from the material.
-    local suit, number = spec.suit, spec.number
-    if suit < 0 or suit > 5 then
-        suit = sgs.Card_NoSuit
-        if #materials == 1 then
-            suit = materials[1]:getSuit()
-        elseif #materials > 1 then
-            local color = materials[1]:getColor()
-            for index = 2, #materials do
-                if materials[index]:getColor() ~= color then color = nil break end
-            end
-            if color == 0 then suit = sgs.Card_NoSuitRed elseif color == 1 then suit = sgs.Card_NoSuitBlack end
+    local face, candidate, native
+    local hegemony = AIHegemony.facts(self.world)
+    if hegemony and hegemony.enabled == true then
+        if type(ai_evaluate_card) ~= "function" then
+            ai_unsupported("native card evaluation is unavailable", "evaluateOwnerViewAsCard")
         end
+        local query = copy_value(spec)
+        query.viewer, query.decision_id, query.state_revision = self.request.viewer, self.request.decision_id, self.request.state_revision
+        native = ai_evaluate_card(query)
+        if type(native) ~= "table" or native.known ~= true then
+            ai_unsupported(type(native) == "table" and native.error or "invalid native card evaluation", "evaluateOwnerViewAsCard")
+        end
+        if native.viewer ~= self.request.viewer or native.decision_id ~= self.request.decision_id
+            or native.state_revision ~= self.request.state_revision or native.evaluation_only ~= true
+            or native.context_kind ~= "activate" or native.handling_method ~= sgs.Card_MethodUse
+            or type(native.spec) ~= "table" or type(native.spec.instance_id) ~= "number"
+            or native.spec.instance_id % 1 ~= 0
+            or (spec.skill == "" and (native.spec.instance_id ~= 0 or #spec.subcards ~= 0)
+                or spec.skill ~= "" and native.spec.instance_id < 0)
+            or type(native.card) ~= "table" or native.card.evaluation_only ~= true
+            or native.card.evaluation_owner ~= self.player:objectName() or native.card.conversion_id ~= nil
+            or type(native.candidate) ~= "table" or native.candidate.candidate_id ~= -1
+            or type(native.card_rules) ~= "table" then
+            ai_unsupported("native card evaluation identity is incomplete", "evaluateOwnerViewAsCard")
+        end
+        -- The host resolves an unambiguous skill instance, or instance zero
+        -- backed by native equipment source preparation. Neither is a ticket.
+        -- Unset printing is resolved from materials, not overwritten with guesses.
+        query.instance_id = query.instance_id or native.spec.instance_id
+        if not evaluation_same(query, native.spec) or native.card.name ~= spec.name
+            or native.card.skill_name ~= spec.skill or not evaluation_same(native.card.subcards, spec.subcards) then
+            ai_unsupported("native card evaluation does not match its specification", "evaluateOwnerViewAsCard")
+        end
+        face, candidate = copy_value(native.card), copy_value(native.candidate)
+        face.evaluation_rules = copy_value(native.card_rules)
+    else
+        local base = self:getEvaluationCard(spec.name)
+        if not base then ai_unsupported("owner view-as product is outside the card catalog", spec.name) end
+        local materials = {}
+        for index, id in ipairs(spec.subcards) do
+            materials[index] = self:getKnownCardById(id)
+            if not materials[index] then ai_unsupported("owner view-as material is not visible", "evaluateOwnerViewAsCard") end
+        end
+        -- Card::getSuit/getNumber: an unset printing derives from the material.
+        local suit, number = spec.suit, spec.number
+        if suit < 0 or suit > 5 then
+            suit = sgs.Card_NoSuit
+            if #materials == 1 then
+                suit = materials[1]:getSuit()
+            elseif #materials > 1 then
+                local color = materials[1]:getColor()
+                for index = 2, #materials do
+                    if materials[index]:getColor() ~= color then color = nil break end
+                end
+                if color == 0 then suit = sgs.Card_NoSuitRed elseif color == 1 then suit = sgs.Card_NoSuitBlack end
+            end
+        end
+        if number <= 0 then number = #materials == 1 and materials[1]:getNumber() or 0 end
+        if type(suit) ~= "number" or type(number) ~= "number" then
+            ai_unsupported("owner view-as material printing is unknown", "evaluateOwnerViewAsCard")
+        end
+        local suits = {[0] = "spade", "club", "heart", "diamond", "no_suit_black", "no_suit_red"}
+        local number_string = number == 10 and "10" or number > 13 and "JOKER"
+            or string.sub("0A23456789-JQK", number + 1, number + 1)
+        local wire = spec.name .. ":" .. spec.skill .. "[" .. (suits[suit] or "no_suit") .. ":" .. number_string
+            .. "]=" .. (#spec.subcards > 0 and table.concat(spec.subcards, "+") or ".")
+        face = copy_value(base._view)
+        face.suit, face.number = suit, number
+        face.red = suit == sgs.Card_Heart or suit == sgs.Card_Diamond or suit == sgs.Card_NoSuitRed
+        face.black = suit == sgs.Card_Spade or suit == sgs.Card_Club or suit == sgs.Card_NoSuitBlack
+        face.skill_name, face.skill_names = spec.skill, {spec.skill}
+        face.subcards = copy_value(spec.subcards)
+        if spec.can_recast ~= nil then face.can_recast = spec.can_recast end
+        face.evaluation_owner = self.player:objectName()
+        -- A basic product follows its printed prototype's rules (every Slash the Slash's).
+        local prototypes = type(self.player._view.prototype_rules) == "table" and self.player._view.prototype_rules or {}
+        local rules = prototypes[face.class_name]
+        for _, kind in ipairs(face.kind_of or {}) do if kind == "Slash" then rules = prototypes.Slash end end
+        face.available = type(rules) ~= "table" or (rules.available == true and rules.use_limited ~= true)
+        -- Without materials the product is the printed card the question may have
+        -- evaluated: its rules and complete targets. Otherwise targets are unknown.
+        local printed = #spec.subcards == 0 and printed_card_evaluation(self, spec.name) or nil
+        face.evaluation_rules = printed and copy_value(printed.card_rules) or nil
+        if printed then face.available = printed.card_rules.available end
+        face.legacy_string_key, face.legacy_sort_key = wire, wire
+        candidate = printed and copy_value(printed.candidate) or {card_id = -1,
+            available = face.available, limited = false, complete_coverage = false,
+            target_filter_empty = type(rules) == "table" and copy_value(rules.target_filter_empty) or nil,
+            extra_target_count = type(rules) == "table" and rules.extra_target or nil}
     end
-    if number <= 0 then number = #materials == 1 and materials[1]:getNumber() or 0 end
-    if type(suit) ~= "number" or type(number) ~= "number" then
-        ai_unsupported("owner view-as material printing is unknown", "evaluateOwnerViewAsCard")
-    end
-    local suits = {[0] = "spade", "club", "heart", "diamond", "no_suit_black", "no_suit_red"}
-    local number_string = number == 10 and "10" or number > 13 and "JOKER"
-        or string.sub("0A23456789-JQK", number + 1, number + 1)
-    local wire = spec.name .. ":" .. spec.skill .. "[" .. (suits[suit] or "no_suit") .. ":" .. number_string
-        .. "]=" .. (#spec.subcards > 0 and table.concat(spec.subcards, "+") or ".")
-    local face = copy_value(base._view)
-    face.suit, face.number = suit, number
-    face.red = suit == sgs.Card_Heart or suit == sgs.Card_Diamond or suit == sgs.Card_NoSuitRed
-    face.black = suit == sgs.Card_Spade or suit == sgs.Card_Club or suit == sgs.Card_NoSuitBlack
-    face.skill_name, face.skill_names = spec.skill, {spec.skill}
-    face.subcards = copy_value(spec.subcards)
-    if spec.can_recast ~= nil then face.can_recast = spec.can_recast end
-    face.evaluation_owner = self.player:objectName()
-    -- A basic product follows its printed prototype's rules (every Slash the Slash's).
-    local prototypes = type(self.player._view.prototype_rules) == "table" and self.player._view.prototype_rules or {}
-    local rules = prototypes[face.class_name]
-    for _, kind in ipairs(face.kind_of or {}) do if kind == "Slash" then rules = prototypes.Slash end end
-    face.available = type(rules) ~= "table" or (rules.available == true and rules.use_limited ~= true)
-    -- Without materials the product is the printed card the question may have
-    -- evaluated: its rules and complete targets. Otherwise targets are unknown.
-    local printed = #spec.subcards == 0 and printed_card_evaluation(self, spec.name) or nil
-    face.evaluation_rules = printed and copy_value(printed.card_rules) or nil
-    if printed then face.available = printed.card_rules.available end
     face.legacy_identity_token = fresh_policy_identity(policy_identity_scope(self))
-    face.legacy_string_key, face.legacy_sort_key = wire, wire
     local card = CardView.new(face)
-    card._evaluation_candidate = printed and copy_value(printed.candidate) or {card_id = -1,
-        available = face.available, limited = false, complete_coverage = false,
-        target_filter_empty = type(rules) == "table" and copy_value(rules.target_filter_empty) or nil,
-        extra_target_count = type(rules) == "table" and rules.extra_target or nil}
+    card._evaluation_candidate = candidate
     card.getAuthorityCard = function() return nil end
     card.toCardSpec = function() ai_unsupported("owner view-as evaluation has no submission receipt", "evaluateOwnerViewAsCard") end
+    if native then
+        owner_evaluations[card] = {owner=self, request=self.request, viewer=native.viewer,
+            decision_id=native.decision_id, state_revision=native.state_revision,
+            face=copy_value(face), candidate=copy_value(candidate)}
+    end
     qiuxin_register(self,card,spec)
     return card
 end
 
 -- A V1 view-as product is evaluated only; the receipt keeps the evaluated face,
--- and submitting it falls back to SmartAI.
+-- and carries no isolated submission authority.
 function SmartAIView:registerViewAsReceipt(face)
     local indexes = self._indexes
     if type(indexes) ~= "table" or type(indexes.conversions) ~= "table" then
@@ -5270,6 +5566,14 @@ local function turn_source(request)
             result[key]=turn_checked(request[method](request),key)
         end
     end
+    local raw_request = native and request or type(request) == "table" and rawget(request, "_request")
+    local action = type(raw_request) == "table" and raw_request.skill_action
+    if type(action) == "table" and action.equipment_activation == true then
+        -- Seal physical provenance as well as the six instance fields. The
+        -- zero-instance equipment path must not drift to another source.
+        result.equipment_activation = true
+        result.physical_equipment = copy_value(action.physical_equipment)
+    end
     return result
 end
 local function turn_saved(ai,card)
@@ -5297,7 +5601,10 @@ function SmartAIView:inheritLegacyCardIdentity(result, source)
     local query_entry=query_entries and query_entries[result]
     query_entry=query_entry and query_entry.source_key=='newgenerals.mouxieji'
         and qiuxin_entry(self,result) or nil
+    local owner_entry=owner_evaluations[result]
+    if owner_entry then self:getEvaluationCandidate(result) end
     local value=inherit_unsealed_identity(self,result,source)
+    if owner_entry then owner_entry.face.legacy_identity_token=result._view.legacy_identity_token end
     if entry then entry.face.legacy_identity_token=result._view.legacy_identity_token end
     if query_entry then query_entry.face.legacy_identity_token=result._view.legacy_identity_token end
     return value
@@ -5378,9 +5685,9 @@ function SmartAIView:evaluateTurnConversion(skill,class_name,spec,request)
     audited.miuyan={"FireAttack","fire_attack"}
     audited.huiyun={"FireAttack","fire_attack"}
     audited.zonglve={"Slash","slash"}
-    local r49Products={fuzhai={ex_nihilo="ExNihilo",collateral="Collateral"},olquxi={dismantlement="Dismantlement",snatch="Snatch"}}
-    local r49Product=r49Products[skill]
-    if r49Product and type(spec)=="table" and r49Product[spec.name] then audited[skill]={r49Product[spec.name],spec.name} end
+    local nonrecast_products={fuzhai={ex_nihilo="ExNihilo",collateral="Collateral"},olquxi={dismantlement="Dismantlement",snatch="Snatch"}}
+    local nonrecast_product=nonrecast_products[skill]
+    if nonrecast_product and type(spec)=="table" and nonrecast_product[spec.name] then audited[skill]={nonrecast_product[spec.name],spec.name} end
     audited.olhuoji={"FireAttack","fire_attack"}
     audited.ollianhuan={"IronChain","iron_chain"}
     audited.xiedou={"Duel","duel"}
@@ -5435,18 +5742,18 @@ function SmartAIView:evaluateTurnConversion(skill,class_name,spec,request)
             or skill=="_heg_zhenxi" and {indulgence="Indulgence",supply_shortage="SupplyShortage"}
         if products and products[spec.name] then audited[skill]={products[spec.name],spec.name} end
     end
-    local r45_turn={keolkenshang=true,keolyilie=true,moujiang=true,mobilexiaoni=true,keolweilin=true}
-    local r45_product=r45_turn[skill] and type(spec)=="table" and {class_name,spec.name} or nil
-    if r45_product then audited[skill]=r45_product end
-    local r41_products={f_luanshe={"ArcheryAttack","archery_attack"},
+    local newgenerals_turn_sources={keolkenshang=true,keolyilie=true,moujiang=true,mobilexiaoni=true,keolweilin=true}
+    local newgenerals_product=newgenerals_turn_sources[skill] and type(spec)=="table" and {class_name,spec.name} or nil
+    if newgenerals_product then audited[skill]=newgenerals_product end
+    local fcdiy_products={f_luanshe={"ArcheryAttack","archery_attack"},
         sp_taoyuanyi={"GodSalvation","god_salvation"},sp_qianlixing={"Slash","slash"},
         sp_hengsaoqianjun={"Slash","slash"}}
-    local r41_product=r41_products[skill]
-    if r41_product then audited[skill]=r41_product end
+    local fcdiy_product=fcdiy_products[skill]
+    if fcdiy_product then audited[skill]=fcdiy_product end
     -- Fixed Maotu/Yinhu names/materials are independently bounded by the
     -- native readonly constructor; these entries never mint selected authority.
-    local r49my=(skill=="mtzhihe" or skill=="yhduwei" or skill=="yhxinghan")
-    if r49my and type(spec)=="table" then
+    local maotu_yuheng_product=(skill=="mtzhihe" or skill=="yhduwei" or skill=="yhxinghan")
+    if maotu_yuheng_product and type(spec)=="table" then
         if skill~="yhxinghan" or (class_name=="Slash" and spec.name=="slash") then audited[skill]={class_name,spec.name} end
     end
     local product=audited[skill]
@@ -5484,11 +5791,11 @@ function SmartAIView:evaluateTurnConversion(skill,class_name,spec,request)
         if skill=="hfgushi" then valid_costs=count==0
         elseif skill=="xiedou" then valid_costs=count>0
         elseif skill=="mtzhihe" then valid_costs=count>=1 and count<=4
-        elseif r45_product then valid_costs=(skill=="keolkenshang" and count>=2 and count<=999)
+        elseif newgenerals_product then valid_costs=(skill=="keolkenshang" and count>=2 and count<=999)
             or (skill=="moujiang" and count>=1 and count<=999)
             or (skill=="keolyilie" and count==2)
             or ((skill=="mobilexiaoni" or skill=="keolweilin") and count==1)
-        elseif r41_product then valid_costs=skill=="f_luanshe" and count>=1 and count<=999
+        elseif fcdiy_product then valid_costs=skill=="f_luanshe" and count>=1 and count<=999
             or skill=="sp_hengsaoqianjun" and count==2
             or (skill=="sp_qianlixing" or skill=="sp_taoyuanyi") and count==1
         elseif overseas then valid_costs=(skill=="ov_sidai" or skill=="ov_bimeng") and count>=0 and count<=256 or skill=="ov_cairu" and count==2 or skill=="ov_juexing" and count==0 or (skill~="ov_sidai" and skill~="ov_bimeng" and skill~="ov_cairu" and skill~="ov_juexing" and count==1)
@@ -5504,14 +5811,20 @@ function SmartAIView:evaluateTurnConversion(skill,class_name,spec,request)
         ai_unsupported("turn hypothesis is outside the audited source catalog","turn_conversion")
     end
     local allowed={name=true,skill=true,suit=true,number=true,subcards=true}
-    if skill=="ov_cairu" or r49Product then
+    if skill=="ov_cairu" or nonrecast_product then
         if spec.can_recast~=false then ai_unsupported("audited source disables recast","turn_conversion")end
         allowed.can_recast=true
     end
     for key in pairs(spec) do if not allowed[key] then ai_unsupported("turn hypothesis has an unexpected field",tostring(key)) end end
     local stamp,source=turn_snapshot(self),turn_source(request)
     local exact=copy_value(spec)
-    local native=copy_value(exact);native.source_key=(skill=="mouluanji" or skill=="keolshuangxiong" or r45_product) and "newgenerals."..skill or r41_product and "fcDIY."..skill or skill
+    local native=copy_value(exact);native.source_key=(skill=="mouluanji" or skill=="keolshuangxiong" or newgenerals_product) and "newgenerals."..skill or fcdiy_product and "fcDIY."..skill or skill
+    -- Keep the callback's exact same-skill source through the readonly query.
+    -- Cross-skill hypotheses must resolve their own source, not borrow this one.
+    if source and source.activation_owner==self.player:objectName()
+        and source.activation_skill==spec.skill:gsub("^_", "") then
+        native.instance_id=source.activation_instance
+    end
     local card=turn_checked(self:evaluateOwnerViewAsCard(native),"turn_conversion")
     if not AIValue.isCard(card) or card:getClassName()~=class_name
         or type(((skill=="LuaYanjiu" or skill=="jieyou" or skill=="oljiuchi" or skill=="jiuchi") and {card._view.source_analeptic_available} or {card._view.available})[1])~="boolean"
@@ -5524,10 +5837,10 @@ function SmartAIView:evaluateTurnConversion(skill,class_name,spec,request)
     -- Zuzhanding constructs NoSuit/0, then Card derives its face from the
     -- selected material. Bind precisely that observed face; final comparison
     -- still checks every native face, cost, skill and printing field.
-    if skill=="jijiu" or skill=="nosguose" or skill=="fan" or skill=="touzhi" or skill=="zuzhanding" or skill=="lxtx_zhangwu" or skill=="peiniang" or skill=="zhifeng" or skill=="godlongnu" or overseas or r41_product or r45_product or skill=="mouluanji" or skill=="keolshuangxiong" or r49Product or skill=="miuyan" or skill=="huiyun" or skill=="zonglve" or skill=="newlonghun" or skill=="gdlonghun" or skill=="zhanjue" or skill=="olzhanjue" or skill=="qhstandardqixi" or r49my or skill=="soulfire" or hc49Product then exact.suit,exact.number=card:getSuit(),card:getNumber() end
+    if skill=="jijiu" or skill=="nosguose" or skill=="fan" or skill=="touzhi" or skill=="zuzhanding" or skill=="lxtx_zhangwu" or skill=="peiniang" or skill=="zhifeng" or skill=="godlongnu" or overseas or fcdiy_product or newgenerals_product or skill=="mouluanji" or skill=="keolshuangxiong" or nonrecast_product or skill=="miuyan" or skill=="huiyun" or skill=="zonglve" or skill=="newlonghun" or skill=="gdlonghun" or skill=="zhanjue" or skill=="olzhanjue" or skill=="qhstandardqixi" or maotu_yuheng_product or skill=="soulfire" or hc49Product then exact.suit,exact.number=card:getSuit(),card:getNumber() end
     -- can_recast is readonly source state, not an action-spec field. The sealed
     -- face comparison below still requires the real provider product to match.
-    if skill=="ov_cairu" or r49Product then exact.can_recast=nil end
+    if skill=="ov_cairu" or nonrecast_product then exact.can_recast=nil end
     entries[card]={skill=skill,class_name=class_name,spec=exact,request=self.request,stamp=stamp,
         source=source,skill_request=request,face=copy_value(card._view),candidate=copy_value(card._evaluation_candidate),
         available=((skill=="LuaYanjiu" or skill=="jieyou" or skill=="oljiuchi" or skill=="jiuchi") and {card._view.source_analeptic_available} or {card._view.available})[1]}
@@ -5578,9 +5891,9 @@ function SmartAIView:evaluateTurnSkillCard(skill,class_name,costs,request,user_s
         ai_unsupported("readonly SkillCard is outside audited source vocabulary",skill)
     end
     local stamp,source=turn_snapshot(self),turn_source(request)
-    local row=self:skillCardFace(skill,class_name,costs,request,user_string)
+    local row,candidate=self:skillCardFace(skill,class_name,costs,request,user_string)
     local card=CardView.new(row)
-    card._evaluation_candidate={card_id=-1,available=row.available,limited=false}
+    card._evaluation_candidate=candidate or {card_id=-1,available=row.available,limited=false}
     card.getAuthorityCard=function()return nil end
     card.toCardSpec=function()ai_unsupported("readonly source SkillCard has no authority",skill)end
     local entries=readonly_turn_cards[self]
@@ -5590,6 +5903,28 @@ function SmartAIView:evaluateTurnSkillCard(skill,class_name,costs,request,user_s
         face=copy_value(row),candidate=copy_value(card._evaluation_candidate),available=row.available}
     return card
 end
+function SmartAIView:legacySkillSeed(skill, class_name, request)
+    -- Keep seeds on the same request/source seal as selected cost plans.
+    -- The seed flag never grants payment; only final materialization may bind.
+    local seed = self:evaluateTurnSkillCard(skill, class_name, {}, request)
+    local entry = turn_saved(self, seed)
+    local row = seed._view
+    row.strategy_seed, entry.face.strategy_seed = true, true
+    local fields = {activation_owner="getActivationOwner",activation_skill="getActivationSkillName",
+        activation_instance="getActivationInstanceId",source_owner="getSourceOwner",
+        source_skill="getSourceSkillName",source_instance="getSourceInstanceID"}
+    for key, method in pairs(fields) do
+        local field = key
+        seed[method] = function() return row[field] end
+    end
+    seed.getAuthorityCard = function() return nil end
+    seed.toCardSpec = function() ai_unsupported("unpaid strategy seed cannot be submitted",skill) end
+    seed.isAvailable = function(_, player)
+        if player == nil or player:objectName() == self.player:objectName() then return row.available end
+    end
+    return seed
+end
+
 function SmartAIView:legacySkillSeedWithCosts(skill,class_name,request,costs)
     return self:evaluateTurnSkillCard(skill,class_name,costs,request)
 end
@@ -5935,13 +6270,32 @@ function SmartAIView:evaluateZenhuiCard()
 end
 
 function SmartAIView:cardNoResponseNames(card)
-    local authority = type(card.getAuthorityCard)=="function" and card:getAuthorityCard() or card
-    local rule = projected_card_rule(self.player,authority)
-    if type(rule)=="table" and AIValue.isList(rule.no_response) then return AIList.new(rule.no_response) end
-    local rows = nil -- Per-card NoResponse tags are not projected.
-    local names = type(rows)=="table" and rows[tostring(card:getEffectiveId())]
-    return AIValue.isList(names) and AIList.new(names) or nil
+    if not AIValue.isCard(card) and not AIValue.isConversion(card) then
+        ai_unsupported("response-list query requires a visible card", "cardNoResponseNames")
+    end
+    local witness = rawget(card, "_actual_use_response_names")
+    if witness ~= nil then
+        local scope = self.request
+        if type(witness) ~= "table" or witness.viewer ~= scope.viewer
+            or witness.decision_id ~= scope.decision_id or witness.state_revision ~= scope.state_revision
+            or not AIValue.isList(witness.names) then
+            ai_unsupported("actual card-use response witness is outside this request", "cardNoResponseNames")
+        end
+        for _, name in ipairs(witness.names) do
+            if type(name) ~= "string" or name == "" then
+                ai_unsupported("actual card-use response name is invalid", "cardNoResponseNames")
+            end
+        end
+        return AIList.new(copy_value(witness.names))
+    end
+    local name = AIValue.requireKnown(card:objectName(), "visible response-query card name")
+    ai_coverage.notCovered(self.request.kind,
+        "planning card has no verified actual-use response list", "cardNoResponseNames")
+    return self:useKnowledgeEstimate({value=AIList.new({}), status="estimate",
+        viewer=self.request.viewer, card_name=name, response_names="",
+        basis="no_verified_actual_use; response_prevention_not_yet_observed"}, "cardNoResponseNames")
 end
+
 function CardView:getTargetModDistance(player)
     local row
     if player then row=projected_card_rule(player,self) else row=self._view.evaluation_rules end
@@ -6095,7 +6449,7 @@ end
 -- Owner-only native range hypotheses. Profiles are query data, never action tickets.
 local owner_range_states = setmetatable({}, {__mode="k"})
 local owner_range_active_ai
-local r44_card_owner=setmetatable({},{__mode="k"})
+local range_card_owners=setmetatable({},{__mode="k"})
 -- Only wrappers created here may attest their underlying provider. Entries live
 -- for their lexical hypothesis scope; no name-based or upvalue inference.
 local owner_range_providers=setmetatable({}, {__mode="k"})
@@ -6123,13 +6477,13 @@ function SmartAIView.isOwnerRangeProvider(self,name,provider,expected)
 end
 local function range_pack(...) return {n=select('#',...),...} end
 local range_unpack = table.unpack or unpack
-local function r44_current_state(ai)
+local function current_owner_range_state(ai)
     local state=owner_range_states[ai]
     if not state then return nil end
     if state.poisoned then ai_unsupported('owner range continuation is invalid','owner_range')end
-    -- Ordinary R19 scopes remain lexical. R44 state may survive a source
+    -- Ordinary range scopes remain lexical. Continuation state may survive a source
     -- clear/error until this same decision ends, never beyond that boundary.
-    if state.continuation or state.r44_live then
+    if state.continuation or state.live_range_state then
         local result=ai_evaluate_owner_range_card{session_current=true}
         local r=ai.request
         if type(result)~='table' or result.kind~='owner_range_session'
@@ -6143,7 +6497,7 @@ end
 local function range_ai(player)
     local room=type(player)=="table" and rawget(player,"_room")
     local ai=room and room._ai
-    return ai and ai.player==player and r44_current_state(ai) and ai or nil
+    return ai and ai.player==player and current_owner_range_state(ai) and ai or nil
 end
 local function range_spec(card)
     if not (AIValue.isCard(card) or AIValue.isConversion(card)) then
@@ -6172,15 +6526,15 @@ local function range_spec(card)
         can_recast=recast,flags=flags}
 end
 local function range_profile(ai,card)
-    local state=r44_current_state(ai)
+    local state=current_owner_range_state(ai)
     if not state then return nil end
     if state.poisoned then ai_unsupported('owner range continuation is invalid','owner_range')end
-    r44_card_owner[card]=ai
+    range_card_owners[card]=ai
     local qiuxin=qiuxin_entry(ai,card)
     local found=state.profiles[card]
     if found then
-        if not qiuxin_same(found.face,card._view) then ai_unsupported('range card face changed in scope','owner_range') end
-        if qiuxin and not qiuxin_same(found.candidate._view,found.row.candidate)then
+        if not evaluation_same(found.face,card._view) then ai_unsupported('range card face changed in scope','owner_range') end
+        if qiuxin and not evaluation_same(found.candidate._view,found.row.candidate)then
             ai_unsupported('Qiuxin range candidate identity changed','qiuxin_profile')
         end
         return found
@@ -6229,7 +6583,7 @@ local function range_profile(ai,card)
 end
 local range_base_residue=CardView.getTargetResidue
 function CardView:getTargetResidue(target)
-    local ai=owner_range_active_ai or r44_card_owner[self]
+    local ai=owner_range_active_ai or range_card_owners[self]
     if ai and owner_range_states[ai] then
         local rows=range_profile(ai,self).row.card.target_residue
         return type(rows)=="table" and rows[AIValue.isPlayer(target) and target:objectName() or target] or nil
@@ -6312,10 +6666,10 @@ end
 for _,name in ipairs({"isLocked","isJilei"}) do
     local previous=PlayerView[name]
     local key=name=="isLocked" and "locked" or "jilei"
-    PlayerView[name]=function(self,card)
+    PlayerView[name]=function(self,card,isHandcard)
         local ai=range_ai(self)
-        if ai then return range_profile(ai,card).row.card[key] end
-        return previous(self,card)
+        if ai and (name~="isLocked" or isHandcard~=true) then return range_profile(ai,card).row.card[key] end
+        return previous(self,card,isHandcard)
     end
 end
 local range_base_eval=SmartAIView.getEvaluationCandidate
@@ -6351,7 +6705,7 @@ function SmartAIView:cardTargetFilter(card,prefix,target)
     end
     return range_base_filter(self,card,prefix,target)
 end
-local r44_extra_base=SmartAIView.isAuditedExtra99SourceQueryPlan
+local base_extra_target_query_plan=SmartAIView.isAuditedExtra99SourceQueryPlan
 function SmartAIView:isAuditedExtra99SourceQueryPlan(card,use)
     local state=owner_range_states[self]
     if state then
@@ -6360,7 +6714,7 @@ function SmartAIView:isAuditedExtra99SourceQueryPlan(card,use)
             return type(use)=='table' and use.isDummy==true and use.extra_target==profile.range_extra
         end
     end
-    return r44_extra_base(self,card,use)
+    return base_extra_target_query_plan(self,card,use)
 end
 SmartAIView.isQiuxinSourceQueryPlan=SmartAIView.isAuditedExtra99SourceQueryPlan
 function SmartAIView:writeOwnerRangeQinggang(card,enabled)
@@ -6381,7 +6735,7 @@ function SmartAIView:writeOwnerRangeQinggang(card,enabled)
     state.profiles[card]=nil
     self:setStrategyCardFlag(card,'Qinggang',enabled)
 end
-local r44_live_source_keys={['GodShijun']=true,['kejieshengzhuihun']=true,['mouwusheng']=true,['@mouxianchou-slash']=true,['@@f_yonghunSlash']=true,['BearingDownBorder']=true,['@sfofl_bearing_down_border']=true,['sfofl_jubing']=true,['@@sfofl_qifeng']=true,['shenghua']=true,['shijun']=true,['@@luazhuixi']=true,['@@luayonglue']=true,['@PlusZhongyong']=true,['SixQiaoxie']=true,['#sfofl_shuangren']=true,['sfofl_sitong']=true,['sfofl_jiaozheng']=true,['sfofl_qingjin']=true,['#sfofl_zainei']=true,['#sfofl_sixi']=true,['sfofl_juedou']=true}
+local live_range_source_keys={['GodShijun']=true,['kejieshengzhuihun']=true,['mouwusheng']=true,['@mouxianchou-slash']=true,['@@f_yonghunSlash']=true,['BearingDownBorder']=true,['@sfofl_bearing_down_border']=true,['sfofl_jubing']=true,['@@sfofl_qifeng']=true,['shenghua']=true,['shijun']=true,['@@luazhuixi']=true,['@@luayonglue']=true,['@PlusZhongyong']=true,['SixQiaoxie']=true,['#sfofl_shuangren']=true,['sfofl_sitong']=true,['sfofl_jiaozheng']=true,['sfofl_qingjin']=true,['#sfofl_zainei']=true,['#sfofl_sixi']=true,['sfofl_juedou']=true}
 local function with_owner_range(self,flag,source_key,closure,invoke)
     if type(closure)~="function" then ai_unsupported("owner hypothesis callback unavailable","owner_range") end
     return invoke(function(data)
@@ -6401,7 +6755,7 @@ local function with_owner_range(self,flag,source_key,closure,invoke)
             request=request,player=self.player,viewer=request and request.viewer,
             decision_id=request and request.decision_id,state_revision=request and request.state_revision}
         owner_range_states[self]=state
-        state.r44_live=r44_live_source_keys[source_key]==true
+        state.live_range_state=live_range_source_keys[source_key]==true
         local created={}
         self._evaluation_scope=nil
         -- Instance dispatch keeps the original planner (including void methods).
@@ -6433,13 +6787,13 @@ local function with_owner_range(self,flag,source_key,closure,invoke)
         return range_unpack(result,2,result.n)
     end)
 end
-local r44_sources={InfinityAttackRange={GodShijun=true,kejieshengzhuihun=true,mouwusheng=true,
+local owner_range_sources={InfinityAttackRange={GodShijun=true,kejieshengzhuihun=true,mouwusheng=true,
     ['@mouxianchou-slash']=true,['@@f_yonghunSlash']=true,BearingDownBorder=true,
     ['@sfofl_bearing_down_border']=true,sfofl_jubing=true,['@@sfofl_qifeng']=true},
     slashNoDistanceLimit={shenghua=true,shijun=true,['@@luazhuixi']=true,['@@luayonglue']=true,
     ['@PlusZhongyong']=true,SixQiaoxie=true,['#sfofl_shuangren']=true,sfofl_sitong=true,
     sfofl_jiaozheng=true,sfofl_qingjin=true,['#sfofl_zainei']=true,['#sfofl_sixi']=true,sfofl_juedou=true}}
-local function r44_refresh(self)
+local function refresh_owner_range_state(self)
     local data=ai_evaluate_owner_range_card{owner_state=true}
     if type(data)~='table' or data.kind~='owner_range_hypothesis' or data.viewer~=self.player:objectName()
         or type(data.in_attack_range)~='table' or type(data.InfinityAttackRange)~='boolean'
@@ -6466,7 +6820,7 @@ local function r44_refresh(self)
 end
 function SmartAIView:withOwnerRange(flag,source_key,closure)
     if type(ai_with_owner_range)~="function" then ai_unsupported("native owner range scope unavailable","owner_range") end
-    local finite=r44_sources[flag] and r44_sources[flag][source_key]
+    local finite=owner_range_sources[flag] and owner_range_sources[flag][source_key]
     local result=range_pack(pcall(with_owner_range,self,flag,source_key,closure,function(callback)
         if finite then return ai_with_owner_range(flag,source_key,callback,closure)end
         return ai_with_owner_range(flag,source_key,callback)
@@ -6475,15 +6829,15 @@ function SmartAIView:withOwnerRange(flag,source_key,closure)
         -- C++ has already performed the actual source clear on normal return,
         -- or retained the reached true prefix on error. Reflect that state even
         -- when an outer source pcall catches the error. No Lua state restamp.
-        local synced=range_pack(pcall(r44_refresh,self))
+        local synced=range_pack(pcall(refresh_owner_range_state,self))
         if not synced[1] then
             local old=owner_range_states[self]
             owner_range_states[self]={poisoned=true,data={},profiles={},parent=old}
             if result[1] then error(synced[2],0)end
         end
     end
-    if r45_physical.refresh then
-        local refreshed=range_pack(pcall(r45_physical.refresh,self))
+    if physical_card_provenance.refresh then
+        local refreshed=range_pack(pcall(physical_card_provenance.refresh,self))
         if not refreshed[1] and result[1] then error(refreshed[2],0)end
     end
     if not result[1] then error(result[2],0)end
@@ -6502,8 +6856,8 @@ function SmartAIView:withOwnerDistanceAdjustment(source_key,delta,closure)
             return callback(data)
         end)
     end))
-    if r45_physical.refresh then
-        local refreshed=range_pack(pcall(r45_physical.refresh,self))
+    if physical_card_provenance.refresh then
+        local refreshed=range_pack(pcall(physical_card_provenance.refresh,self))
         if not refreshed[1] and result[1] then error(refreshed[2],0)end
     end
     if not result[1] then error(result[2],0)end
@@ -6719,7 +7073,7 @@ function SmartAIView:bindOverseasNiwoSelected(costs)
  return self:legacyResponsePolicyCard(authority,policy)
 end
 
--- Finite R29 raw numeric registry continuity. No private foreign values are
+-- Finite raw numeric registry continuity. No private foreign values are
 -- returned; unknown provenance remains a typed refusal, including raw nil reads.
 function SmartAIView:readOverseasPriority(key)
     if type(key)~='string' or type(ai_overseas_priority)~='function' then
@@ -6810,65 +7164,27 @@ function SmartAIView:getOriginalGuanxingClone(name,suit,number)
     return card
 end
 
-local function original_guanxing_shadow_host(value)
-    if type(ai_original_guanxing_shadow)~='function'then ai_unsupported('Original Guanxing shadow host unavailable','willSkipPlayPhase')end
-    local row
-    if value==nil then row=ai_original_guanxing_shadow()else row=ai_original_guanxing_shadow(value)end
-    if type(row)~='table'or getmetatable(row)~=nil or row.kind~='original_guanxing_shadow'
-        or row.known~=true or type(row.value)~='boolean'or(value~=nil and row.value~=value)then
-        ai_unsupported(type(row)=='table'and row.reason or'Original Guanxing shadow unknown','willSkipPlayPhase')
-    end
-    return row.value
-end
-function SmartAIView:readOriginalGuanxingShadow()
-    if self._strategy_evaluation and type(self._original_guanxing_dummy)=='boolean'then
-        return self._original_guanxing_dummy
-    end
-    return original_guanxing_shadow_host()
-end
-function SmartAIView:writeOriginalGuanxingShadow(value)
-    assert(type(value)=='boolean','invalid Original Guanxing shadow')
-    if self._strategy_evaluation then self._original_guanxing_dummy=value
-    else original_guanxing_shadow_host(value)end
-    local policy=self.world.mode_policy
-    assert(type(policy)=='table'and type(policy.strategy_flags)=='table','strategy flags not projected')
-    local name=self.player:objectName()
-    policy.strategy_flags[name]=policy.strategy_flags[name]or{}
-    policy.strategy_flags[name].willSkipPlayPhase=value
-end
-
 function PlayerView:getFormation()
-    -- Hegemony formations are not projected.
-    local row=nil
-    if type(row)~='table'or row.known~=true or not AIValue.isList(row.names)
-        or row.names[1]~=self:objectName()then
-        ai_unsupported(type(row)=='table'and row.reason or'public formation is unavailable','getFormation')
+    local h = self._room and AIHegemony.facts(self._room._world)
+    if not h or h.enabled ~= true then ai_unsupported("public formation requires Hegemony relations", "getFormation") end
+    local count = AIValue.requireKnown(self:aliveCount(false), "formation alive count")
+    local result, boundary = AIList.new({self}), count
+    -- Mirror Player::getFormation's directed order and exclusion of removed seats.
+    for step = 1, count - 1 do
+        local player = AIValue.requireKnown(self:getNextAlive(step), "formation next seat")
+        if AIValue.requireKnown(self:isPublicHegemonyFriend(player), "formation public relation") then
+            result:append(player)
+        else boundary = step break end
     end
-    local result={}
-    for _,name in ipairs(row.names)do
-        if type(name)~='string'then ai_unsupported('malformed public formation member','getFormation')end
-        local p=self._room:findPlayerByObjectName(name,true)
-        if not p then ai_unsupported('public formation member is outside roster','getFormation')end
-        result[#result+1]=p
+    local previous = self
+    for _ = 1, count - boundary - 1 do
+        -- Native getLastAlive advances through getPreviousAlive(1) each time.
+        previous = AIValue.requireKnown(previous:getNextAlive(count - 1), "formation previous seat")
+        if AIValue.requireKnown(self:isPublicHegemonyFriend(previous), "formation public relation") then
+            result:append(previous)
+        else break end
     end
-    return AIList.new(result) -- Preserve source order and native duplicate predecessor.
-end
-
--- Finite owner-only native shadow; source writes are not gameplay flag writes.
-local function r36_kurou_host(value)
- if type(ai_original_kurou_shadow)~='function'then ai_unsupported('Original Kurou shadow host unavailable','Kurou_toDie')end
- local row;if value==nil then row=ai_original_kurou_shadow()else row=ai_original_kurou_shadow(value)end
- if type(row)~='table'or getmetatable(row)~=nil or row.kind~='original_kurou_shadow'or row.known~=true or type(row.value)~='boolean'or(value~=nil and row.value~=value)then
-  ai_unsupported(type(row)=='table'and row.reason or'Original Kurou shadow unknown','Kurou_toDie')
- end
- return row.value
-end
-function SmartAIView:getOriginalKurouToDie()return r36_kurou_host()end
-function SmartAIView:setOriginalKurouToDie(value)
- assert(type(value)=='boolean','Original Kurou shadow requires boolean')
- -- Reached source prefix remains written on both ordinary and typed errors.
- -- Unlike action authority, this private policy observation is not rolled back.
- return r36_kurou_host(value)
+    return result
 end
 
 -- Fixed Original heg-standard_cards2411-2689 SD flag handoff. Pure private
@@ -6894,8 +7210,9 @@ function SmartAIView:withOriginalSDChoice(card,use,body)
  local view=card._view;local source
  if type(view)=='table'and type(view.readonly_recipe_key)=='string'and view.readonly_recipe_key~=''then source={recipe_key=view.readonly_recipe_key}
  elseif AIValue.isCard(card)and not card:isVirtualCard()then source={id=card:getEffectiveId()}
+ elseif AIValue.isConversion(card)and type(card:getConversionId())=='number'and card:getConversionId()>0 then source={conversion_id=card:getConversionId()}
  else ai_unsupported('Original SD source object lacks native retained/owner identity','Original SD')end
- local result=host(self,{op='enter',source=source,reason=reason})
+ local result=host(self,{op='enter',source=source,reason=reason,dummy=use and use.isDummy==true})
  if type(result.scope)~='string'or result.scope==''then ai_unsupported('Original SD scope missing','Original SD')end
  local old=active[self];active[self]={scope=result.scope,reason=reason,use=use,request=self.request}
  local values=table.pack(pcall(body))
@@ -6907,22 +7224,6 @@ function SmartAIView:withOriginalSDChoice(card,use,body)
  return table.unpack(values,2,values.n)
 end
 function SmartAIView:hasOriginalSDPlanningScope()return active[self]~=nil end
-function SmartAIView:originalSDHasSilverLion(target)
- if not AIValue.isPlayer(target)then ai_unsupported('Original SilverLion target malformed','Original SD')end
- local value=target:hasArmorEffect('SilverLion')
- if type(value)=='boolean'then return value end
- local scope=active[self]
- local proposal={op='silver_lion',target=target:objectName()}
- if scope then
-  if scope.request~=self.request then ai_unsupported('Original SilverLion request changed','Original SD')end
-  proposal.scope=scope.scope
- end
- local row=host(self,proposal)
- -- The extra proof only certifies this finite negative. It grants no general
- -- foreign armor predicate and cannot manufacture a positive value.
- if row.value~=false then ai_unsupported('Original SilverLion public absence unproved','Original SD')end
- return false
-end
 function SmartAIView:sampleOriginalSDRandom(target,flags)
  local scope=active[self]
  if not scope or scope.request~=self.request or not AIValue.isPlayer(target)then ai_unsupported('Original SD source sampling outside call tree','Original SD')end
@@ -6930,13 +7231,21 @@ function SmartAIView:sampleOriginalSDRandom(target,flags)
  if type(row.count)~='number'or row.count<0 or row.count%1~=0 or type(row.token)~='string'then ai_unsupported('Original SD source domain malformed','Original SD')end
  if row.count==0 then return nil end
  local ordinal=math.random(0,row.count-1)
- local avoid=false
- local armor=self:originalSDHasSilverLion(target)
- if armor then
+ -- Adjust the sampled position in Lua; native retains the hidden domain.
+ if AIValue.callKnown(target,'hasArmorEffect','SilverLion') then
   local enemy=self:isEnemy(target);if enemy==nil then ai_unsupported('Original target relation unknown','Original SD')end
-  if enemy then local wounded=target:isWounded();if wounded==nil then ai_unsupported('Original wound state unknown','Original SD')end;avoid=wounded end
+  if enemy then
+   local wounded=target:isWounded();if wounded==nil then ai_unsupported('Original wound state unknown','Original SD')end
+   local armor=target:getArmor()
+   if wounded and armor and armor:isKindOf('SilverLion') then
+    local visible=AIValue.requireKnown(row.visible_card_indices,'Original visible random indices')
+    if visible[tostring(armor:getKnownEffectiveId())]==ordinal+1 then
+     if ordinal+1<row.count then ordinal=ordinal+1 elseif ordinal>0 then ordinal=ordinal-1 end
+    end
+   end
+  end
  end
- local result=host(self,{op='select',scope=scope.scope,token=row.token,ordinal=ordinal,avoid=avoid})
+ local result=host(self,{op='select',scope=scope.scope,token=row.token,ordinal=ordinal})
  if type(result.handle)~='string'or result.handle==''then ai_unsupported('Original SD selected handle missing','Original SD')end
  local handle={};handles[handle]={self=self,scope=scope,token=result.handle,target=target:objectName()};return handle
 end
@@ -6968,7 +7277,7 @@ function SmartAIView:brandOriginalRandomChoice(result)
  answers[result]=self;return result
 end
 function SmartAIView:isOriginalOpaqueCardChoice(result)return type(result)=='table'and answers[result]==self end
--- Insert inside choices-round37-sd-facade.inc before its final end.
+-- Snatch and Dismantlement source observations share this facade scope.
 function SmartAIView:originalHegemonyCanGet(target,key)
  local scope=active[self]
  if not scope or scope.request~=self.request or not AIValue.isPlayer(target)then ai_unsupported('Original canGet outside sealed source call tree','Original canGet')end
@@ -6976,26 +7285,6 @@ function SmartAIView:originalHegemonyCanGet(target,key)
  local row=host(self,{op='can_get',scope=scope.scope,target=target:objectName(),key=key})
  if type(row.value)~='boolean'then ai_unsupported('Original canGet result unknown','Original canGet')end
  return row.value
-end
-end
-
--- Finite owner-only AI_needCrossbow observation. Foreign reader is deliberately
--- absent: the source's cross-viewer private strategy flag is not public fact.
-do
-local function crossbow(self,request)
- if type(ai_original_crossbow_shadow)~='function'then ai_unsupported('Original Crossbow observer unavailable','AI_needCrossbow')end
- local row=ai_original_crossbow_shadow(request)
- if type(row)~='table'or row.kind~='original_crossbow_shadow'or row.known~=true or type(row.value)~='boolean'then ai_unsupported(type(row)=='table'and row.reason or'Original Crossbow state unknown','AI_needCrossbow')end
- return row.value
-end
-function SmartAIView:getOriginalNeedCrossbow()return crossbow(self,{op='read'})end
-function SmartAIView:setOriginalNeedCrossbow(value,card)
- if value~=true or not(AIValue.isCard(card)or AIValue.isConversion(card))or card:isKindOf('Collateral')~=true then ai_unsupported('Original Crossbow finite source write malformed','AI_needCrossbow')end
- local row=card._view;local source
- if type(row)=='table'and type(row.readonly_recipe_key)=='string'and row.readonly_recipe_key~=''then source={recipe_key=row.readonly_recipe_key}
- elseif AIValue.isCard(card)and card:isVirtualCard()==false then source={id=card:getEffectiveId()}
- else ai_unsupported('Original Crossbow source object has no owned/retained witness','AI_needCrossbow')end
- return crossbow(self,{op='write',source=source})
 end
 end
 
@@ -7383,10 +7672,10 @@ end
 
 end
 
--- R45 fixed RushB physical setters. Private row provenance follows only this
+-- fixed RushB physical setters. Private row provenance follows only this
 -- file's copies of actual request DTOs; neither IDs nor legacy tokens are tickets.
 do
- local P=r45_physical
+ local P=physical_card_provenance
  local function state(request)
   local s=P.states[request];if not s then s={aliases={},views={},ids={}};P.states[request]=s end;return s
  end
@@ -7563,9 +7852,9 @@ do
 end
 
 do
-local r46_slots={xdyifuvsTo=true,xdyifuvsUse=true,godshenji_use=true}
-local function r46_call(self,slot,op,payload)
- if not r46_slots[slot]or type(ai_newgenerals_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','newgenerals.saved_plan')end
+local newgenerals_saved_slots={xdyifuvsTo=true,xdyifuvsUse=true,godshenji_use=true}
+local function query_newgenerals_saved_slot(self,slot,op,payload)
+ if not newgenerals_saved_slots[slot]or type(ai_newgenerals_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','newgenerals.saved_plan')end
  local r=ai_newgenerals_saved_slot(slot,op,payload)
  if AIUnsupported.is(r)then error(r,0)end
  if type(r)~='table'or r.error then ai_unsupported(type(r)=='table'and r.error or'saved-plan bridge returned no observation','newgenerals.saved_plan')end
@@ -7575,7 +7864,7 @@ end
 function SmartAIView:writeNewgeneralsSavedSlot(slot,value,actualCard)
  if slot=='xdyifuvsTo'then
   if not AIValue.isPlayer(value)then ai_unsupported('source saved target is not a Player','newgenerals.saved_plan')end
-  return r46_call(self,slot,'write',{target=value:objectName()})
+  return query_newgenerals_saved_slot(self,slot,'write',{target=value:objectName()})
  end
  if slot~='xdyifuvsUse'and slot~='godshenji_use'then ai_unsupported('unknown saved source slot','newgenerals.saved_plan')end
  if type(value)~='table'or(not AIValue.isCard(actualCard)and not AIValue.isConversion(actualCard))then ai_unsupported('source plan/Card shape unavailable','newgenerals.saved_plan')end
@@ -7601,10 +7890,10 @@ function SmartAIView:writeNewgeneralsSavedSlot(slot,value,actualCard)
  end
  local names={}
  for _,p in ipairs(value.to)do if not AIValue.isPlayer(p)then ai_unsupported('saved source target not Player','newgenerals.saved_plan')end;names[#names+1]=p:objectName()end
- return r46_call(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
+ return query_newgenerals_saved_slot(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
 end
 function SmartAIView:readNewgeneralsSavedSlot(slot)
- local r=r46_call(self,slot,'read',{})
+ local r=query_newgenerals_saved_slot(self,slot,'read',{})
  if r.status=='absent'then return nil end
  if r.status=='player'then
   local p=self.room:findPlayerByObjectName(r.target,true)
@@ -7622,9 +7911,9 @@ end
 end
 
 do
-local r47_slots={kezufuxunUse=true,zuchengqiUse=true,kezumingjieUse=true,kezulilunUse=true}
-local function r47_call(self,slot,op,payload)
- if not r47_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','olClan.saved_plan')end
+local saved_source_slots={kezufuxunUse=true,zuchengqiUse=true,kezumingjieUse=true,kezulilunUse=true}
+local function query_saved_source_slot(self,slot,op,payload)
+ if not saved_source_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','olClan.saved_plan')end
  local r=ai_olclan_saved_slot(slot,op,payload)
  if AIUnsupported.is(r)then error(r,0)end
  if type(r)~='table'or r.error then ai_unsupported(type(r)=='table'and r.error or'saved-plan bridge returned no observation','olClan.saved_plan')end
@@ -7632,7 +7921,7 @@ local function r47_call(self,slot,op,payload)
  return r
 end
 function SmartAIView:writeOlClanSavedSlot(slot,value,actualCard)
- if not r47_slots[slot]then ai_unsupported('unknown saved source slot','olClan.saved_plan')end
+ if not saved_source_slots[slot]then ai_unsupported('unknown saved source slot','olClan.saved_plan')end
  if type(value)~='table'or(not AIValue.isCard(actualCard)and not AIValue.isConversion(actualCard))then ai_unsupported('source plan/Card shape unavailable','olClan.saved_plan')end
  local view=rawget(actualCard,'_view');if type(view)~='table'then ai_unsupported('saved Card native identity absent','olClan.saved_plan')end
  local selector
@@ -7659,10 +7948,10 @@ function SmartAIView:writeOlClanSavedSlot(slot,value,actualCard)
   fields={isDummy=true,extra_target=extra,current_targets_empty=true}
  local names={}
  for _,p in ipairs(value.to)do if not AIValue.isPlayer(p)then ai_unsupported('saved source target not Player','olClan.saved_plan')end;names[#names+1]=p:objectName()end
- return r47_call(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
+ return query_saved_source_slot(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
 end
 function SmartAIView:readOlClanSavedSlot(slot)
- local r=r47_call(self,slot,'read',{})
+ local r=query_saved_source_slot(self,slot,'read',{})
  if r.status=='pass'then return{card=false}end
  if r.status~='plan'or type(r.wire)~='string'or not AIValue.isList(r.targets)then ai_unsupported('saved source plan result malformed','olClan.saved_plan')end
  local to={};for _,name in ipairs(r.targets)do local p=self.room:findPlayerByObjectName(name,true);if not p then ai_unsupported('saved source target not projected','olClan.saved_plan')end;to[#to+1]=p end
@@ -7716,7 +8005,7 @@ function SmartAIView:readOlClanSuitSlot()
 end
 end
 
--- R50 finite actual-Self scalar fields. Calls occur only at reached source reads/writes.
+-- finite actual-Self scalar fields. Calls occur only at reached source reads/writes.
 do
  local slots={wannawin=true,jiewq_lose=true,s3_fans_handou_card=true,s3_jxwj_ganglichoice=true,
   guanxu_friends=true,isfriend=true,qianlong_use=true,thwuyanDp=true,thwuyanHs=true,shilie_n=true,yuanrongIds=true}
@@ -7792,7 +8081,7 @@ do
 
 end
 
--- R53 two finite actual-gameplay-Self target slots.
+-- two finite actual-gameplay-Self target slots.
 do
  local slots={luochong_to=true,cl_to=true,diting_to=true,youlong_to=true,secondjinzhi_to=true,xiaoxinf_to=true,fengying_to=true,fuping_to=true,jiusiTo=true,fuhui_to=true,jg_to=true,mx_to=true,shouli_to=true,tj_to=true,shouxingTo=true,geassTarget=true,tychendeTo=true}
  -- SmartAI kept these targets on its per-player object. Like the scalar slots
@@ -7873,7 +8162,7 @@ do
  end
 end
 
--- R53: true shared tag prefix; unknown foreign/entry history stays unknown.
+-- true shared tag prefix; unknown foreign/entry history stays unknown.
 function SmartAIView:goodatwepRoomTag(op,target)
  if (op~='read'and op~='write')or(op=='write'and not AIValue.isPlayer(target))
   or(op=='read'and target~=nil)or type(ai_source_immediate_effect)~='function'then
@@ -7888,7 +8177,7 @@ function SmartAIView:goodatwepRoomTag(op,target)
  end
 end
 
--- R53 exact HTMS shared-tag prefix. No generic Room tag API or foreign memory.
+-- exact HTMS shared-tag prefix. No generic Room tag API or foreign memory.
 function SmartAIView:yohaneRoomTag(key,op,value)
  if(key~='ai_yohane_card_id'and key~='ai_yohane_player')or(op~='write'and op~='take')
   or type(ai_source_immediate_effect)~='function'then ai_unsupported('Yohane tag operation unavailable',tostring(key))end
@@ -7913,7 +8202,7 @@ function SmartAIView:yohaneRoomTag(key,op,value)
  end
 end
 
--- R50 source-timed native prefix, never a staged strategy-memory effect.
+-- source-timed native prefix, never a staged strategy-memory effect.
 function SmartAIView:sourceImmediateEffect(source,op,target,key,costs)
  if type(ai_source_immediate_effect)~='function' or not AIValue.isPlayer(target)then
   ai_unsupported('finite native source effect unavailable',source)
@@ -7934,9 +8223,9 @@ function SmartAIView:sourceImmediateEffect(source,op,target,key,costs)
 end
 
 
--- R50 fixed Nyarz source consumers. Keys are existing native-issued recipes,
+-- fixed Nyarz source consumers. Keys are existing native-issued recipes,
 -- never reconstructed cards or selected authority.
-function SmartAIView:round50CanSlash(card,target)
+function SmartAIView:canSlashWithGfengying(card,target)
  local row=AIValue.isCard(card) and rawget(card,'_view')
  if type(row)~='table' or row.round50_source~='gfengying' or row.evaluation_owner~=self.player:objectName()
   or type(row.readonly_recipe_key)~='string' or row.readonly_recipe_key=='' or type(ai_card_target_filter)~='function' then
@@ -7945,7 +8234,7 @@ function SmartAIView:round50CanSlash(card,target)
  if type(value)~='table' or type(value.accepted)~='boolean' then ai_unsupported(type(value)=='table' and value.error or 'exact Gfengying Slash result unavailable','gfengying')end
  return value.accepted
 end
-function SmartAIView:round50Prefix(card,prefix,target,operation)
+function SmartAIView:queryJxyangjieTarget(card,prefix,target,operation)
  local row=AIValue.isCard(card) and rawget(card,'_view')
  if type(row)~='table' or row.round50_source~='jxyangjie' or row.evaluation_owner~=self.player:objectName()
   or type(row.readonly_recipe_key)~='string' or row.readonly_recipe_key=='' or type(ai_card_target_filter)~='function'
@@ -7957,7 +8246,7 @@ function SmartAIView:round50Prefix(card,prefix,target,operation)
  if type(v)~='table' or type(v.accepted)~='boolean'then ai_unsupported(type(v)=='table' and v.error or 'prefix native result missing','jxyangjie')end
  return v.accepted
 end
-function SmartAIView:round50SkillDescription(skill,player)
+function SmartAIView:getActorSkillDescription(skill,player)
  local value=nil -- Skill descriptions are not projected.
  if type(value)~='string'then ai_unsupported('actor-specific public skill description unavailable','chenfusui')end
  return value
@@ -8011,7 +8300,7 @@ do
  end
 end
 
--- R51: exact Manjuan current reference and actual-Self scalar. No CardView or
+-- exact Manjuan current reference and actual-Self scalar. No CardView or
 -- payment capability is created for an opaque catalogue index.
 do
  local refs=setmetatable({},{__mode='k'})
@@ -8059,7 +8348,7 @@ do
  end
 end
 
--- R52: exact reached Rangyi clone/add then selected raw-question receipt.
+-- exact reached Rangyi clone/add then selected raw-question receipt.
 do
  local pending=setmetatable({},{__mode='k'})
  local function bad(why)ai_unsupported(why,'twyj_rangyi.question')end
@@ -8104,7 +8393,7 @@ do
  end
 end
 
--- R53 ordinary Collateral only. This is the actual native flag, not the
+-- ordinary Collateral only. This is the actual native flag, not the
 -- Original AI_needCrossbow shadow or a deferred strategy-effect overlay.
 function SmartAIView:collateralCrossbowFlag(op,target,card)
  if type(ai_source_immediate_effect)~='function'or not AIValue.isPlayer(target)then
@@ -8126,11 +8415,11 @@ function SmartAIView:collateralCrossbowFlag(op,target,card)
  return true
 end
 
--- R53 exact actual-own Diou saved plan; never reconstruct a remembered spec.
+-- exact actual-own Diou saved plan; never reconstruct a remembered spec.
 do
-local r47_slots={diouUse=true}
-local function r47_call(self,slot,op,payload)
- if not r47_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','diou.saved_plan')end
+local saved_source_slots={diouUse=true}
+local function query_saved_source_slot(self,slot,op,payload)
+ if not saved_source_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','diou.saved_plan')end
  local r=ai_olclan_saved_slot(slot,op,payload)
  if AIUnsupported.is(r)then error(r,0)end
  if type(r)~='table'or r.error then ai_unsupported(type(r)=='table'and r.error or'saved-plan bridge returned no observation','diou.saved_plan')end
@@ -8139,7 +8428,7 @@ local function r47_call(self,slot,op,payload)
 end
 function SmartAIView:writeDiouSavedPlan(value)
  local slot="diouUse";local actualCard=type(value)=="table"and value.card
- if not r47_slots[slot]then ai_unsupported('unknown saved source slot','diou.saved_plan')end
+ if not saved_source_slots[slot]then ai_unsupported('unknown saved source slot','diou.saved_plan')end
  if type(value)~='table'or(not AIValue.isCard(actualCard)and not AIValue.isConversion(actualCard))then ai_unsupported('source plan/Card shape unavailable','diou.saved_plan')end
  local view=rawget(actualCard,'_view');if type(view)~='table'then ai_unsupported('saved Card native identity absent','diou.saved_plan')end
  local selector
@@ -8157,11 +8446,11 @@ function SmartAIView:writeDiouSavedPlan(value)
   fields={isDummy=true,extra_target=extra,current_targets_empty=true}
  local names={}
  for _,p in ipairs(value.to)do if not AIValue.isPlayer(p)then ai_unsupported('saved source target not Player','diou.saved_plan')end;names[#names+1]=p:objectName()end
- return r47_call(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
+ return query_saved_source_slot(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
 end
 function SmartAIView:readDiouSavedPlan()
  local slot="diouUse"
- local r=r47_call(self,slot,'read',{})
+ local r=query_saved_source_slot(self,slot,'read',{})
  if r.status~='plan'or type(r.wire)~='string'or not AIValue.isList(r.targets)then ai_unsupported('saved source plan result malformed','diou.saved_plan')end
  local to={};for _,name in ipairs(r.targets)do local p=self.room:findPlayerByObjectName(name,true);if not p then ai_unsupported('saved source target not projected','diou.saved_plan')end;to[#to+1]=p end
  -- The fixed Diou reader only calls toString after its target loop. This pure observation is neither a
@@ -8246,11 +8535,11 @@ function SmartAIView:copyNamedSourcePriority(key,card,source_class)
  if type(r)~='table'or r.known~=true or r.written~=true then ai_unsupported('actual priority copy is not admitted',key)end
 end
 
--- R53b exact actual own Zhuning plan and false proposal prefix.
+-- exact actual own Zhuning plan and false proposal prefix.
 do
-local r47_slots={zhuning_d=true}
-local function r47_call(self,slot,op,payload)
- if not r47_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','zhuning.saved_plan')end
+local saved_source_slots={zhuning_d=true}
+local function query_saved_source_slot(self,slot,op,payload)
+ if not saved_source_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','zhuning.saved_plan')end
  local r=ai_olclan_saved_slot(slot,op,payload)
  if AIUnsupported.is(r)then error(r,0)end
  if type(r)~='table'or r.error then ai_unsupported(type(r)=='table'and r.error or'saved-plan bridge returned no observation','zhuning.saved_plan')end
@@ -8259,7 +8548,7 @@ local function r47_call(self,slot,op,payload)
 end
 function SmartAIView:writeZhuningSavedPlan(value)
  local slot="zhuning_d";local actualCard=type(value)=="table"and value.card
- if not r47_slots[slot]then ai_unsupported('unknown saved source slot','zhuning.saved_plan')end
+ if not saved_source_slots[slot]then ai_unsupported('unknown saved source slot','zhuning.saved_plan')end
  if type(value)~='table'or(actualCard~=nil and actualCard~=false and not AIValue.isCard(actualCard)and not AIValue.isConversion(actualCard))then ai_unsupported('source plan/Card shape unavailable','zhuning.saved_plan')end
  local cardState=actualCard==nil and'nil'or actualCard==false and'false'or'card'
  local view=cardState=='card'and rawget(actualCard,'_view')or{};if type(view)~='table'then ai_unsupported('saved Card native identity absent','zhuning.saved_plan')end
@@ -8279,11 +8568,11 @@ function SmartAIView:writeZhuningSavedPlan(value)
   fields={isDummy=true,extra_target=extra,current_targets_empty=true}
  local names={}
  for _,p in ipairs(value.to)do if not AIValue.isPlayer(p)then ai_unsupported('saved source target not Player','zhuning.saved_plan')end;names[#names+1]=p:objectName()end
- return r47_call(self,slot,'write',{selector=selector,targets=names,source_fields=fields,card_state=cardState})
+ return query_saved_source_slot(self,slot,'write',{selector=selector,targets=names,source_fields=fields,card_state=cardState})
 end
 function SmartAIView:readZhuningSavedPlan()
  local slot="zhuning_d"
- local r=r47_call(self,slot,'read',{})
+ local r=query_saved_source_slot(self,slot,'read',{})
  if r.status=='absent'then return nil end
  if r.status~='plan'or type(r.wire)~='string'or not AIValue.isList(r.targets)then ai_unsupported('saved source plan result malformed','zhuning.saved_plan')end
  local to={};for _,name in ipairs(r.targets)do local p=self.room:findPlayerByObjectName(name,true);if not p then ai_unsupported('saved source target not projected','zhuning.saved_plan')end;to[#to+1]=p end
@@ -8432,11 +8721,11 @@ do
  end
 end
 
--- R53 exact actual-own Tyfenwu saved plan; never reconstruct a remembered spec.
+-- exact actual-own Tyfenwu saved plan; never reconstruct a remembered spec.
 do
-local r47_slots={tyfenwuUse=true}
-local function r47_call(self,slot,op,payload)
- if not r47_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','tyfenwu.saved_plan')end
+local saved_source_slots={tyfenwuUse=true}
+local function query_saved_source_slot(self,slot,op,payload)
+ if not saved_source_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','tyfenwu.saved_plan')end
  local r=ai_olclan_saved_slot(slot,op,payload)
  if AIUnsupported.is(r)then error(r,0)end
  if type(r)~='table'or r.error then ai_unsupported(type(r)=='table'and r.error or'saved-plan bridge returned no observation','tyfenwu.saved_plan')end
@@ -8445,7 +8734,7 @@ local function r47_call(self,slot,op,payload)
 end
 function SmartAIView:writeTyfenwuSavedPlan(value)
  local slot="tyfenwuUse";local actualCard=type(value)=="table"and value.card
- if not r47_slots[slot]then ai_unsupported('unknown saved source slot','tyfenwu.saved_plan')end
+ if not saved_source_slots[slot]then ai_unsupported('unknown saved source slot','tyfenwu.saved_plan')end
  if type(value)~='table'or(not AIValue.isCard(actualCard)and not AIValue.isConversion(actualCard))then ai_unsupported('source plan/Card shape unavailable','tyfenwu.saved_plan')end
  local view=rawget(actualCard,'_view');if type(view)~='table'then ai_unsupported('saved Card native identity absent','tyfenwu.saved_plan')end
  local selector
@@ -8463,11 +8752,11 @@ function SmartAIView:writeTyfenwuSavedPlan(value)
   fields={isDummy=true,extra_target=extra,current_targets_empty=true}
  local names={}
  for _,p in ipairs(value.to)do if not AIValue.isPlayer(p)then ai_unsupported('saved source target not Player','tyfenwu.saved_plan')end;names[#names+1]=p:objectName()end
- return r47_call(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
+ return query_saved_source_slot(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
 end
 function SmartAIView:readTyfenwuSavedPlan()
  local slot="tyfenwuUse"
- local r=r47_call(self,slot,'read',{})
+ local r=query_saved_source_slot(self,slot,'read',{})
  if r.status=='pass'then return{card=false}end
  if r.status~='plan'or type(r.wire)~='string'or type(r.class_name)~='string'or type(r.spec)~='table'or not AIValue.isList(r.targets)then ai_unsupported('Tyfenwu source observation malformed','tyfenwu.saved_plan')end
  local to=AIList.new{};for _,name in ipairs(r.targets)do local p=self.room:findPlayerByObjectName(name,true);if not p then ai_unsupported('Tyfenwu target not projected','tyfenwu.saved_plan')end;to:append(p)end
@@ -8492,11 +8781,11 @@ function SmartAIView:materializeTyfenwuSaved(card,targets)
  return{kind='use_card',card_spec=paid:toCardSpec(),targets=copy_value(targets)}
 end
 
--- R53 exact actual-own Tyqingkou saved plan; never reconstruct a remembered spec.
+-- exact actual-own Tyqingkou saved plan; never reconstruct a remembered spec.
 do
-local r47_slots={tyqingkouUse=true}
-local function r47_call(self,slot,op,payload)
- if not r47_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','tyqingkou.saved_plan')end
+local saved_source_slots={tyqingkouUse=true}
+local function query_saved_source_slot(self,slot,op,payload)
+ if not saved_source_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','tyqingkou.saved_plan')end
  local r=ai_olclan_saved_slot(slot,op,payload)
  if AIUnsupported.is(r)then error(r,0)end
  if type(r)~='table'or r.error then ai_unsupported(type(r)=='table'and r.error or'saved-plan bridge returned no observation','tyqingkou.saved_plan')end
@@ -8505,7 +8794,7 @@ local function r47_call(self,slot,op,payload)
 end
 function SmartAIView:writeTyqingkouSavedPlan(value)
  local slot="tyqingkouUse";local actualCard=type(value)=="table"and value.card
- if not r47_slots[slot]then ai_unsupported('unknown saved source slot','tyqingkou.saved_plan')end
+ if not saved_source_slots[slot]then ai_unsupported('unknown saved source slot','tyqingkou.saved_plan')end
  if type(value)~='table'or(not AIValue.isCard(actualCard)and not AIValue.isConversion(actualCard))then ai_unsupported('source plan/Card shape unavailable','tyqingkou.saved_plan')end
  local view=rawget(actualCard,'_view');if type(view)~='table'then ai_unsupported('saved Card native identity absent','tyqingkou.saved_plan')end
  local selector
@@ -8523,11 +8812,11 @@ function SmartAIView:writeTyqingkouSavedPlan(value)
   fields={isDummy=true,extra_target=extra,current_targets_empty=true}
  local names={}
  for _,p in ipairs(value.to)do if not AIValue.isPlayer(p)then ai_unsupported('saved source target not Player','tyqingkou.saved_plan')end;names[#names+1]=p:objectName()end
- return r47_call(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
+ return query_saved_source_slot(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
 end
 function SmartAIView:readTyqingkouSavedPlan()
  local slot="tyqingkouUse"
- local r=r47_call(self,slot,'read',{})
+ local r=query_saved_source_slot(self,slot,'read',{})
  if r.status=='pass'then return{card=false}end
  if r.status~='plan'or type(r.wire)~='string'or type(r.class_name)~='string'or type(r.spec)~='table'or not AIValue.isList(r.targets)then ai_unsupported('Tyqingkou source observation malformed','tyqingkou.saved_plan')end
  local to=AIList.new{};for _,name in ipairs(r.targets)do local p=self.room:findPlayerByObjectName(name,true);if not p then ai_unsupported('Tyqingkou target not projected','tyqingkou.saved_plan')end;to:append(p)end
@@ -8555,9 +8844,9 @@ function SmartAIView:materializeTyqingkouSaved(card,targets)
 end
 
 do
-local r47_slots={gengduUse=true}
-local function r47_call(self,slot,op,payload)
- if not r47_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','gengdu.saved_plan')end
+local saved_source_slots={gengduUse=true}
+local function query_saved_source_slot(self,slot,op,payload)
+ if not saved_source_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','gengdu.saved_plan')end
  local r=ai_olclan_saved_slot(slot,op,payload)
  if AIUnsupported.is(r)then error(r,0)end
  if type(r)~='table'or r.error then ai_unsupported(type(r)=='table'and r.error or'saved-plan bridge returned no observation','gengdu.saved_plan')end
@@ -8566,7 +8855,7 @@ local function r47_call(self,slot,op,payload)
 end
 function SmartAIView:writeGengduSavedPlan(value)
  local slot="gengduUse";local actualCard=type(value)=="table"and value.card
- if not r47_slots[slot]then ai_unsupported('unknown saved source slot','gengdu.saved_plan')end
+ if not saved_source_slots[slot]then ai_unsupported('unknown saved source slot','gengdu.saved_plan')end
  if type(value)~='table'or(actualCard~=nil and actualCard~=false and not AIValue.isCard(actualCard)and not AIValue.isConversion(actualCard))then ai_unsupported('source plan/Card shape unavailable','gengdu.saved_plan')end
  local cardState=actualCard==nil and'nil'or actualCard==false and'false'or'card'
  local view=cardState=='card'and rawget(actualCard,'_view')or{};if type(view)~='table'then ai_unsupported('saved Card native identity absent','gengdu.saved_plan')end
@@ -8586,11 +8875,11 @@ function SmartAIView:writeGengduSavedPlan(value)
   fields={isDummy=true,extra_target=extra,current_targets_empty=true}
  local names={}
  for _,p in ipairs(value.to)do if not AIValue.isPlayer(p)then ai_unsupported('saved source target not Player','gengdu.saved_plan')end;names[#names+1]=p:objectName()end
- return r47_call(self,slot,'write',{selector=selector,targets=names,source_fields=fields,card_state=cardState})
+ return query_saved_source_slot(self,slot,'write',{selector=selector,targets=names,source_fields=fields,card_state=cardState})
 end
 function SmartAIView:readGengduSavedPlan()
  local slot="gengduUse"
- local r=r47_call(self,slot,'read',{})
+ local r=query_saved_source_slot(self,slot,'read',{})
  if r.status=='absent'then return{card=false}end
  if r.status~='plan'or type(r.wire)~='string'or not AIValue.isList(r.targets)then ai_unsupported('saved source plan result malformed','gengdu.saved_plan')end
  local to={};for _,name in ipairs(r.targets)do local p=self.room:findPlayerByObjectName(name,true);if not p then ai_unsupported('saved source target not projected','gengdu.saved_plan')end;to[#to+1]=p end
@@ -8628,7 +8917,7 @@ function SmartAIView:queryMingfaSavedCard(method,target)
 end
 end
 
--- R53 actual game-Self Peiqi record. Each source field access stays a separate operation.
+-- actual game-Self Peiqi record. Each source field access stays a separate operation.
 do
  local function query(self,op,key,value)
   if getmetatable(self)~=SmartAIView or type(ai_peiqi_source_record)~='function'then error(AIUnsupported.new('Peiqi actual record host unavailable','peiqiData'),0)end
@@ -8664,7 +8953,7 @@ do
  end
 end
 
--- R53 Daoji actual Card identity, not a saved-face reconstruction.
+-- Daoji actual Card identity, not a saved-face reconstruction.
 do
  local function query(self,op,input)
   if getmetatable(self)~=SmartAIView or type(ai_daoji_source_card)~='function'then error(AIUnsupported.new('Daoji actual Card host unavailable','daoji_throwcard'),0)end
@@ -8697,11 +8986,11 @@ do
 end
 
 
--- R53 exact actual-own Tychende saved plan; never reconstruct a remembered spec.
+-- exact actual-own Tychende saved plan; never reconstruct a remembered spec.
 do
-local r47_slots={tychendeUse=true}
-local function r47_call(self,slot,op,payload)
- if not r47_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','tychende.saved_plan')end
+local saved_source_slots={tychendeUse=true}
+local function query_saved_source_slot(self,slot,op,payload)
+ if not saved_source_slots[slot]or type(ai_olclan_saved_slot)~='function'then ai_unsupported('finite saved-plan bridge unavailable','tychende.saved_plan')end
  local r=ai_olclan_saved_slot(slot,op,payload)
  if AIUnsupported.is(r)then error(r,0)end
  if type(r)~='table'or r.error then ai_unsupported(type(r)=='table'and r.error or'saved-plan bridge returned no observation','tychende.saved_plan')end
@@ -8710,7 +8999,7 @@ local function r47_call(self,slot,op,payload)
 end
 function SmartAIView:writeTychendeSavedPlan(value)
  local slot="tychendeUse";local actualCard=type(value)=="table"and value.card
- if not r47_slots[slot]then ai_unsupported('unknown saved source slot','tychende.saved_plan')end
+ if not saved_source_slots[slot]then ai_unsupported('unknown saved source slot','tychende.saved_plan')end
  if type(value)~='table'or(not AIValue.isCard(actualCard)and not AIValue.isConversion(actualCard))then ai_unsupported('source plan/Card shape unavailable','tychende.saved_plan')end
  local view=rawget(actualCard,'_view');if type(view)~='table'then ai_unsupported('saved Card native identity absent','tychende.saved_plan')end
  local selector
@@ -8728,11 +9017,11 @@ function SmartAIView:writeTychendeSavedPlan(value)
   fields={isDummy=true,extra_target=extra,current_targets_empty=true}
  local names={}
  for _,p in ipairs(value.to)do if not AIValue.isPlayer(p)then ai_unsupported('saved source target not Player','tychende.saved_plan')end;names[#names+1]=p:objectName()end
- return r47_call(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
+ return query_saved_source_slot(self,slot,'write',{selector=selector,targets=names,source_fields=fields})
 end
 function SmartAIView:readTychendeSavedPlan()
  local slot="tychendeUse"
- local r=r47_call(self,slot,'read',{})
+ local r=query_saved_source_slot(self,slot,'read',{})
  if r.status=='pass'then return{card=false}end
  if r.status~='plan'or type(r.wire)~='string'or type(r.class_name)~='string'or type(r.spec)~='table'or not AIValue.isList(r.targets)then ai_unsupported('Tychende source observation malformed','tychende.saved_plan')end
  local to=AIList.new{};for _,name in ipairs(r.targets)do local p=self.room:findPlayerByObjectName(name,true);if not p then ai_unsupported('Tychende target not projected','tychende.saved_plan')end;to:append(p)end
@@ -8838,6 +9127,9 @@ end
 -- is required to be complete; optional lookups and strategy projections keep
 -- their existing nil semantics.  Capture the class provider once so a wrapper
 -- never re-enters facade __index or fabricates an unknown method.
+-- Preserve the final nullable provider (including range hypotheses) separately
+-- from direct hasFlag calls, which must not treat unknown as false in Lua.
+PlayerView.queryFlag = PlayerView.hasFlag
 local required_raw_methods = {
     [PlayerView] = {
         isAlive=true, isKongcheng=true, isWounded=true, isNude=true,
@@ -8855,7 +9147,7 @@ local required_raw_methods = {
         isAdjacentTo=true, isCardLimited=true, isProhibited=true,
         hasEquipArea=true, hasJudgeArea=true, hasTreasure=true, getChangeSkillState=true,
         getMark=true, getStrategyMark=true,
-        getStrategyFlag=true, getEquips=true, getJudgingArea=true,
+        hasFlag=true, getStrategyFlag=true, getEquips=true, getJudgingArea=true,
         getHandcards=true, handCards=true, getCards=true,
         getVisibleSkillList=true, getAliveSiblings=true, getMarkNames=true,
         getKnownCards=true, getPileNames=true, getPile=true,
@@ -8884,12 +9176,94 @@ local function install_required_raw_method(facade, method_name)
     if wrapped[method_name] then return end
     wrapped[method_name] = true
     facade[method_name] = function(self, ...)
-        local result = table.pack(provider(self, ...))
-        if AIUnsupported and AIUnsupported.is(result[1]) then error(result[1], 0) end
-        if result[1] == nil then
-            ai_unsupported("required facade value is unavailable", method_name)
+        -- This registry contains single-value fact queries, including list-valued facts.
+        -- Preserve live evaluation and unknown handling without a temporary result array.
+        local result = provider(self, ...)
+        if type(result) == "table" and AIUnsupported and getmetatable(result) == AIUnsupported then error(result, 0) end
+        if result == nil and facade == PlayerView
+            and (method_name == "hasArmorEffect" or method_name == "hasSkill" or method_name == "hasSkills"
+                or method_name == "hasLordSkill" or method_name == "isLocked" or method_name == "isCardLimited") then
+            local ai = self._room and self._room._ai
+            local hegemony = ai and AIHegemony.facts(ai.world)
+            if ai and hegemony and hegemony.enabled == true and self:objectName() ~= ai.player:objectName() then
+                if method_name == "isLocked" or method_name == "isCardLimited" then
+                    local card, methodOrHandcard, isHandcard = ...
+                    local handlingMethod
+                    if method_name == "isLocked" then isHandcard = methodOrHandcard
+                    else handlingMethod = methodOrHandcard end
+                    if (not AIValue.isCard(card) and not AIValue.isConversion(card))
+                        or (isHandcard ~= nil and type(isHandcard) ~= "boolean")
+                        or (method_name == "isLocked" and type(ai.request.reason) ~= "number")
+                        or (method_name == "isCardLimited" and handlingMethod ~= sgs.Card_MethodUse
+                            and handlingMethod ~= sgs.Card_MethodResponse) then
+                        ai_unsupported("card limitation prediction lacks a visible card or request reason", method_name)
+                    end
+                    local name = AIValue.requireKnown(card:objectName(), "public card name")
+                    ai_coverage.notCovered(ai.request.kind, "foreign card limitation uses an unobserved-restriction prior", method_name)
+                    return ai:useKnowledgeEstimate({status="estimate", value=false,
+                        viewer=ai.player:objectName(), target=self:objectName(), card_name=name,
+                        reason=ai.request.reason, handling_method=handlingMethod, is_handcard=isHandcard==true,
+                        basis="visible_card; foreign_private_use_response_limitation_unobserved"}, method_name)
+                end
+                if method_name ~= "hasArmorEffect" then
+                    local index = rawget(self, "_skill_index")
+                    if type(index) ~= "table" or type(index.by_name) ~= "table" or type(index.by_instance) ~= "table" then
+                        ai_unsupported("public skill projection is unavailable", method_name)
+                    end
+                    local expression, include_lose = ...
+                    -- A disclosed lord skill requires its projected effectiveness;
+                    -- only unobserved presence follows the shared absence estimate.
+                    if method_name == "hasLordSkill" and #(index.by_name[expression] or {}) > 0 then
+                        ai_unsupported("disclosed lord skill effectiveness is unavailable", method_name)
+                    end
+                    -- Estimate only the final unknown result. The nullable
+                    -- provider has already evaluated the full three-value query.
+                    ai_coverage.notCovered(ai.request.kind, "unobserved skill presence is not proven", method_name)
+                    return ai:useKnowledgeEstimate({status="estimate", value=false,
+                        viewer=ai.player:objectName(), target=self:objectName(), skills=expression,
+                        include_lose=include_lose == true, basis="unobserved_skill_presence_not_proven"}, method_name)
+                end
+                local name, source, need_area = ...
+                local equips = AIValue.requireKnown(self:getEquips(), "public equipment projection")
+                local alive = AIValue.requireKnown(self:isAlive(), "public alive state")
+                local area = need_area == false or AIValue.requireKnown(self:hasEquipArea(1), "public armor area")
+                local matches, visible = false, {}
+                for _, armor in ipairs(equips) do
+                    if armor:isKindOf("Armor") then
+                        visible[#visible + 1] = armor:objectName()
+                        if name == nil or name == "" or armor:objectName() == name or armor:isKindOf(name) then
+                            matches = true
+                        end
+                    end
+                end
+                -- This is a strategy estimate, never a completed fact projection.
+                -- queryArmorEffect retains the original nullable provider above.
+                ai_coverage.notCovered(ai.request.kind, "armor strategy uses public equipment only", method_name)
+                return ai:useKnowledgeEstimate({status="estimate", value=alive and area and matches,
+                    viewer=ai.player:objectName(), target=self:objectName(), armor=name or "",
+                    source=source and source:objectName() or "", visible_equipment=table.concat(visible, "+"),
+                    basis="public_physical_armor; virtual_armor_and_private_equipment_effect_rules_unresolved"}, method_name)
+            end
         end
-        return table.unpack(result, 1, result.n)
+        if result == nil then
+            local detail = "required facade value is unavailable"
+            if facade == PlayerView and method_name == "isCardLimited" then
+                -- Inspect only the already-visible face and the same pure rule
+                -- projection; do not infer limits from source availability.
+                local card, method, inHand = ...
+                local face = type(card) == "table" and rawget(card, "_view") or {}
+                face = type(face) == "table" and face or {}
+                local rule = projected_card_rule(self, card)
+                local limits = type(rule) == "table" and (inHand == true and rule.limits_hand or not inHand and rule.limits)
+                detail = detail .. string.format(
+                    " (class=%s id=%s conversion=%s evaluation=%s seed=%s receipt=%s method=%s hand=%s rules=%s limits=%s)",
+                    tostring(face.class_name), tostring(face.effective_id), tostring(face.conversion_id),
+                    tostring(face.evaluation_only), tostring(face.strategy_seed), tostring(face.authority_validates_targets),
+                    tostring(method), tostring(inHand), type(rule), type(limits))
+            end
+            ai_unsupported(detail, method_name)
+        end
+        return result
     end
 end
 

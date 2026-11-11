@@ -1079,7 +1079,7 @@ sgs.ai_skill_cardchosen.xuanfeng=function(self,who,flags)
  local context=self:getDecisionContext()
  local row=known(context.random_card_choices and context.random_card_choices.xuanfeng_first_hand,"xuanfeng.opaque_hand")
  if row.count~=count or row.source_first~=true then ai_unsupported("original first hand ordinal is not authorized","xuanfeng.first_hand")end
- return {kind="answer",random_card_choice={token=row.token,index=1,avoid_wounded_enemy_silver_lion=false}}
+ return {kind="answer",random_card_choice={token=row.token,index=1}}
 end
 sgs.ai_choicemade_filter.cardChosen.xuanfeng=sgs.ai_choicemade_filter.cardChosen.dismantlement
 ai_skill_use["@@nospaiyi"]=function(self,prompt,request)

@@ -1942,7 +1942,7 @@ ai_skill_invoke.fatejiejie = function(self, options, request)
 	if effect.card and effect.card:hasFlag("NosJiefanUsed") then return (false) or false  end
 
 	if not effect.from or self:standardNullFilter(data, pattern, effect.from)
-		or effect.card:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, effect.card, effect.from)
+		or effect.card:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, effect.from, nil, nil, effect.card)
 		or self:needToLoseHp(self.player, effect.from, effect.card) and self:ajustDamage(effect.from, self.player, 1, effect.card)==1 then return (false) or false end
 	if self:needToLoseHp(self.player, effect.from, effect.card, true, true) then return (false) or false end
 	if self:getCardsNum("Jink") == 0 then return (true) or false end

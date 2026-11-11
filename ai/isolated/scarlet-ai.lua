@@ -2188,7 +2188,7 @@ sgs.ai_skill_discard.s4_txbw_general_duel = function(self, discard_num, min_num,
     return self:askForDiscard("dummy", min_num, min_num, false, include_equip)
 end
 
--- Round21 fixed donor scarlet-ai.lua:2450-2460. This callback retains the
+-- fixed donor scarlet-ai.lua:2450-2460. This callback retains the
 -- flag-before-mark short circuit; an undisclosed card flag is not false.
 ai_skill_invoke.s4_wuhu_fuyong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil

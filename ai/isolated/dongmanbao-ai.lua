@@ -1424,13 +1424,13 @@ function SmartAIView:findSE_DixianTarget(player, SE_Dixian_value)
 		local value = 0
 		if not self:damageIsEffective(enemy, sgs.DamageStruct_Fire, player) then return 100 end
 		if self:cantbeHurt(enemy, player, 1) or self:objectiveLevel(enemy) < 3
-			or (enemy:isChained() and not self:isGoodChainTarget(enemy, sgs.DamageStruct_Fire, player, 1)) then
+			or (enemy:isChained() and not self:isGoodChainTarget(enemy, player, sgs.DamageStruct_Fire, 1)) then
 			return 100
 		end
 		if not self:isGoodTarget(enemy, self.enemies, nil) then value = value + 50 end
 		if enemy:hasSkills(sgs.exclusive_skill) then value = value + 10 end
 		if enemy:hasSkills(sgs.masochism_skill) then value = value + 5 end
-		if enemy:isChained() and self:isGoodChainTarget(enemy, sgs.DamageStruct_Fire, player, 1) and #(self:getChainedEnemies(player)) > 1 then
+		if enemy:isChained() and self:isGoodChainTarget(enemy, player, sgs.DamageStruct_Fire, 1) and #(self:getChainedEnemies(player)) > 1 then
 			value =
 				value - 25
 		end
@@ -2253,7 +2253,7 @@ ai_skill_invoke.Lichang = function(self, options, request)
 	if isUse then
 		if use.card and use.card:hasFlag("NosJiefanUsed") then return (false) or false  end
 		if not use.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,use.from)
-		or use.card:isKindOf("NatureSlash") and  self.player:isChained() and self:isGoodChainTarget(self.player, use.card, use.from)
+		or use.card:isKindOf("NatureSlash") and  self.player:isChained() and self:isGoodChainTarget(self.player, use.from, nil, nil, use.card)
 		or self:needToLoseHp(self.player, use.from, use.card) and self:ajustDamage(use.from, self.player, 1, use.card)==1 then return (false) or false end
 	end
 	
@@ -6753,7 +6753,7 @@ end
 ai_skill_invoke["SE_Tiansuo"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	if self:isEnemy(use.to:at(0)) and self:isGoodChainTarget(use.to:at(0), use.card, use.from) then return (true) or false end
+	if self:isEnemy(use.to:at(0)) and self:isGoodChainTarget(use.to:at(0), use.from, nil, nil, use.card) then return (true) or false end
 	return (false) or false
 end
 
@@ -6839,10 +6839,10 @@ ai_card_use["#se_gatecard"] = function(self, card, use, request)
 		
 		for _, enemy in ipairs(self.enemies) do
 			if self:isGoodTarget(enemy, self.enemies, nil) then
-				if self:slashIsEffective(thunder_slash, enemy, self.player) and self:isGoodChainTarget(enemy, thunder_slash, self.player) and self.player:canSlash(enemy, thunder_slash, false) then
+				if self:slashIsEffective(thunder_slash, enemy, self.player) and self:isGoodChainTarget(enemy, self.player, nil, nil, thunder_slash) and self.player:canSlash(enemy, thunder_slash, false) then
 					target = enemy
 					self:setStrategyMemory("dongmanbao.GateNatural", "thunder_slash")
-				elseif self:slashIsEffective(fire_slash, enemy, self.player) and self:isGoodChainTarget(enemy, fire_slash, self.player) and self.player:canSlash(enemy, fire_slash, false) then
+				elseif self:slashIsEffective(fire_slash, enemy, self.player) and self:isGoodChainTarget(enemy, self.player, nil, nil, fire_slash) and self.player:canSlash(enemy, fire_slash, false) then
 					target = enemy
 					self:setStrategyMemory("dongmanbao.GateNatural", "fire_slash")
 				elseif self:slashIsEffective(normal_slash, enemy, self.player) and self.player:canSlash(enemy, normal_slash, false) then

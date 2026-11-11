@@ -2504,7 +2504,7 @@ correct_func = function(self, ctx)
 		end
 		if player:hasLordSkill("mouxueyi") then
 			for _, p in sgs.qlist(player:getAliveSiblings()) do
-				if p:getKingdom() == "qun" then
+				if p:hasLordSkillKingdom("qun", player) then
 					n = n + 2
 				end
 			end
@@ -14470,7 +14470,7 @@ on_effect = function(self, event, room, player, ctx)
 			move.from_places:contains(sgs.Player_PlaceEquip)
 			and move.from:isAlive()
 			and move.from:objectName() ~= player:objectName()
-			and move.from:getKingdom() == "qun"
+			and move.from:hasLordSkillKingdom("qun", player)
 			and player:hasLordSkill(self)
 			and player:getWeapon() == nil
 		then
@@ -16455,11 +16455,11 @@ can_activate = function(self, request)
 			return player:getMark("moujiangUse-PlayClear") < 1 and player:getHandcardNum() > 0
 		else
 			local wu = 0
-			if player:getKingdom() == "wu" then
+			if player:hasLordSkillKingdom("wu", player) then
 				wu = wu + 1
 			end
 			for _, w in sgs.qlist(player:getAliveSiblings()) do
-				if w:getKingdom() == "wu" then
+				if w:hasLordSkillKingdom("wu", player) then
 					wu = wu + 1
 				end
 			end
@@ -16608,7 +16608,7 @@ on_effect = function(self, event, room, player, ctx)
 				room:doSuperLightbox(player, self:objectName())
 				local wu = 0
 				for _, p in sgs.qlist(room:getAllPlayers()) do
-					if p:getKingdom() == "wu" then
+					if p:hasLordSkillKingdom("wu", player) then
 						wu = wu + 1
 					end
 				end
@@ -16617,7 +16617,7 @@ on_effect = function(self, event, room, player, ctx)
 				end
 				room:addPlayerMark(player, "mzbBUFFmja")
 				for _, q in sgs.qlist(room:getOtherPlayers(player)) do
-					if q:getKingdom() == "wu" then
+					if q:hasLordSkillKingdom("wu", player) then
 						player:setFlags("mouzhibaDamage" .. q:objectName())
 						room:damage(sgs.DamageStruct(self:objectName(), nil, q))
 						player:setFlags("-mouzhibaDamage" .. q:objectName())
@@ -16626,7 +16626,7 @@ on_effect = function(self, event, room, player, ctx)
 			end
 		else
 			local death = data:toDeath()
-			if death.who:getKingdom() == "wu" and death.damage and death.damage.reason == self:objectName() and player:hasFlag("mouzhibaDamage" .. death.who:objectName()) then
+			if death.who:hasLordSkillKingdom("wu", player) and death.damage and death.damage.reason == self:objectName() and player:hasFlag("mouzhibaDamage" .. death.who:objectName()) then
 				room:drawCards(player, 3, self:objectName())
 			end
 		end
@@ -16704,7 +16704,7 @@ on_effect = function(self, event, room, player, ctx)
 				room:doSuperLightbox(player, self:objectName())
 				local wu = 0
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-					if p:getKingdom() == "wu" then
+					if p:hasLordSkillKingdom("wu", player) then
 						wu = wu + 1
 					end
 				end
@@ -16713,7 +16713,7 @@ on_effect = function(self, event, room, player, ctx)
 				end
 				room:addPlayerMark(player, "mzbBUFFmja")
 				for _, q in sgs.qlist(room:getOtherPlayers(player)) do
-					if q:getKingdom() == "wu" then
+					if q:hasLordSkillKingdom("wu", player) then
 						player:setFlags("mouzhibasDamage" .. q:objectName())
 						room:damage(sgs.DamageStruct(self:objectName(), nil, q))
 						player:setFlags("-mouzhibasDamage" .. q:objectName())
@@ -16722,7 +16722,7 @@ on_effect = function(self, event, room, player, ctx)
 			end
 		else
 			local death = data:toDeath()
-			if death.who:getKingdom() == "wu" and death.damage and death.damage.reason == self:objectName() and player:hasFlag("mouzhibasDamage" .. death.who:objectName()) then
+			if death.who:hasLordSkillKingdom("wu", player) and death.damage and death.damage.reason == self:objectName() and player:hasFlag("mouzhibasDamage" .. death.who:objectName()) then
 				room:drawCards(player, 3, self:objectName())
 			end
 		end
@@ -17887,7 +17887,7 @@ on_effect = function(self, event, room, player, ctx)
 			local use = data:toCardUse()
 			if use.card:getTypeId() > 0 and player:hasLordSkill(self:objectName()) then
 				for _, p in sgs.list(use.to) do
-					if p ~= player and p:getKingdom() == "qun" and player:getMark("mouxueyiDC-Clear") < 2 then
+					if p ~= player and p:hasLordSkillKingdom("qun", player) and player:getMark("mouxueyiDC-Clear") < 2 then
 						room:sendCompulsoryTriggerLog(player, self)
 						player:addMark("mouxueyiDC-Clear")
 						player:drawCards(1, self:objectName())
@@ -18355,7 +18355,7 @@ on_effect = function(self, event, room, player, ctx)
 				player:setTag("mouhujiaDamage", data)
 				local tos = sgs.SPlayerList()
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-					if p:getKingdom() == "wei" then
+					if p:hasLordSkillKingdom("wei", player) then
 						tos:append(p)
 					end
 				end
@@ -18861,7 +18861,7 @@ moujijiangCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, source)
 		if #targets == 1 then
 			if to_select:inMyAttackRange(targets[1]) and to_select:getHp() >= source:getHp() and to_select:objectName() ~= source:objectName() then
-				return to_select:getKingdom() == "shu"
+				return to_select:hasLordSkillKingdom("shu", source)
 			end
 		end
 		return #targets < 1
@@ -25172,7 +25172,7 @@ jiudingmoujiuyuanCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	filter = function(self, targets, to_select, player)
-		return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and to_select:getKingdom() == "wu" and not to_select:getEquips():isEmpty()
+		return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and to_select:hasLordSkillKingdom("wu", player) and not to_select:getEquips():isEmpty()
 	end,
 	on_use = function(self, room, source, targets)
 		local dc = dummyCard()
@@ -25199,7 +25199,7 @@ can_activate = function(self, request)
 			return
 		end
 		for _, p in sgs.qlist(player:getAliveSiblings()) do
-			if p:getKingdom() == "wu" and p:hasEquip() then
+			if p:hasLordSkillKingdom("wu", player) and p:hasEquip() then
 				return true
 			end
 		end
@@ -29684,7 +29684,7 @@ offunanCard = sgs.CreateSkillCard {
 }
 local function hasShu(player)
 	for _, p in sgs.qlist(player:getAliveSiblings()) do
-		if p:getKingdom() == "shu" then
+		if p:hasLordSkillKingdom("shu", player) then
 			return player:hasTurn()
 		end
 	end
@@ -38288,7 +38288,7 @@ end,
 on_effect = function(self, event, room, player, ctx)
 	return (function(self,event,player,data,room)
 		if event==sgs.EventPhaseStart then
-			if player:getPhase()==sgs.Player_RoundStart and player:getKingdom()=="west" then
+			if player:getPhase()==sgs.Player_RoundStart and player:hasLordSkillKingdom("west") then
 				for _,p in sgs.qlist(room:getAllPlayers())do
 					if p:hasLordSkill(self) and p:getLostHp()>0 then
 						room:sendCompulsoryTriggerLog(p,self)

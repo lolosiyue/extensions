@@ -232,7 +232,7 @@ function SmartAIView:getKeepValue(card,kept)
 			x = x+(core_query(self,"isWeak") and 3.2 or 2.2)
 			if core_query(self,"needToThrowArmor") then x = x-7 end
 		elseif core_query(card,"isKindOf","Weapon") then x = x+(core_query(owner,"getPhase")<=sgs.Player_Play and core_query(self,"slashIsAvailable",nil,false) and 1.4 or 1.2)
-		elseif core_query(card,"isKindOf","WoodenOx") then x = x+(core_query(owner,"getPile","wooden_ox"):length()*2.2)
+		elseif core_query(card,"isKindOf","WoodenOx") then x = x+(core_query(owner,"getPileCount","wooden_ox")*2.2)
 		elseif core_query(card,"isKindOf","DefensiveHorse") then x = x+(core_query(self,"isWeak") and 2.3 or 1.9)
 		elseif core_query(card,"isKindOf","OffensiveHorse") then x = x+1.7
 		else x = x+1.8 end
@@ -1204,7 +1204,7 @@ local equipment_call = AIValue.bindQuery {
 local function equipment_count(self, kind, owner)
     return equipment_known(getCardsNum(kind,owner,self.player),kind)
 end
-local function r32_optional_equipment(player,method)
+local function optional_equipment(player,method)
     local result=value_call(player,method)
     if result~=nil then return result end
     local row=rawget(player,"_view")
@@ -1213,7 +1213,7 @@ local function r32_optional_equipment(player,method)
     end
     return nil
 end
-local function r32_equipment_callback(callback,...)
+local function equipment_filter_result(callback,...)
     local result=callback(...)
     if AIUnsupported.is(result) then error(result,0) end
     return result
@@ -1241,7 +1241,7 @@ function SmartAIView:evaluateWeapon(card, owner, target)
         if equipment_call(owner, "hasSkill", "kurou") then
             value = value + equipment_count(self, "Peach,Analeptic", owner) + equipment_call(self.player, "getHp")
         end
-        if slashes > 0 and r32_optional_equipment(owner,"getWeapon") and not equipment_call(self, "hasCrossbowEffect", owner) then
+        if slashes > 0 and optional_equipment(owner,"getWeapon") and not equipment_call(self, "hasCrossbowEffect", owner) then
             for _, enemy in ipairs(enemies) do
                 if equipment_call(owner, "distanceTo", enemy) <= range
                     and (slashes > 1 or equipment_count(self, "Jink", enemy) < 1) then value = value + 5 end
@@ -1250,12 +1250,12 @@ function SmartAIView:evaluateWeapon(card, owner, target)
     end
     local callback = sgs.ai_weapon_value[equipment_call(card,"objectName")]
     if type(callback) == "function" then
-        value = value + (r32_equipment_callback(callback,self,nil,owner) or 0)
+        value = value + (equipment_filter_result(callback,self,nil,owner) or 0)
         for _, enemy in ipairs(enemies) do
             if equipment_call(owner, "distanceTo", enemy) <= range then
                 local filter = sgs.ai_slash_weaponfilter[equipment_call(card,"objectName")]
-                if type(filter) == "function" and r32_equipment_callback(filter,self,enemy,owner) then value = value + 1 end
-                value = value + (r32_equipment_callback(callback,self,enemy,owner) or 0)
+                if type(filter) == "function" and equipment_filter_result(filter,self,enemy,owner) then value = value + 1 end
+                value = value + (equipment_filter_result(callback,self,enemy,owner) or 0)
             end
         end
     end
@@ -1269,11 +1269,11 @@ function SmartAIView:evaluateArmor(card, owner)
         -- Engine IDs may name any lawfully disclosed current card, not only
         -- the evaluated owner's zones. Unknown foreign/hidden IDs stay unknown.
         card=equipment_known(self:getKnownCardById(card),"armor card identity")
-    else card=card or r32_optional_equipment(owner,"getArmor") end
+    else card=card or optional_equipment(owner,"getArmor") end
     local value = 0
     for _, skill in ipairs(equipment_call(owner,"getVisibleSkillList",true)) do
         local callback = sgs.ai_armor_value[equipment_call(skill, "objectName")]
-        if type(callback) == "function" then value = value + (r32_equipment_callback(callback,owner,self,card) or 0)
+        if type(callback) == "function" then value = value + (equipment_filter_result(callback,owner,self,card) or 0)
         elseif type(callback) == "number" then value = value + callback end
     end
     if card then
@@ -1284,7 +1284,7 @@ function SmartAIView:evaluateArmor(card, owner)
             if equipment_call(owner, "hasSkills", "qixi|guidao") then value = value + 0.5 end
         end
         local callback = sgs.ai_armor_value[equipment_call(card, "objectName")]
-        if type(callback) == "function" then value = value + (r32_equipment_callback(callback,owner,self,card) or 0)
+        if type(callback) == "function" then value = value + (equipment_filter_result(callback,owner,self,card) or 0)
         elseif type(callback) == "number" then value = value + callback end
     end
     return value
@@ -1497,7 +1497,11 @@ function SmartAIView:pickTargets(use, count)
 end
 
 -- Plans use CardView and PlayerView values; use.to is an AIList.
-AIUsePlan = {}
+-- The registry ABI is a full plan. Original installers explicitly mark the
+-- exported callbacks whose admitted donor bodies retain nullable dummy targets.
+-- Keep those function identities if the core is reloaded after registrations.
+AIUsePlan = {original_nil_targets = AIUsePlan and AIUsePlan.original_nil_targets
+    or setmetatable({}, {__mode = "k"})}
 AIUsePlan.__index = AIUsePlan
 
 function AIUsePlan.new(...)
@@ -2261,7 +2265,7 @@ function SmartAIView:canAttack(enemy,attacker,nature)
 	or core_query(self,"objectiveLevel",enemy)<=2
 	or core_query(self,"cantbeHurt",enemy,self.player,damage)
 	or not core_query(self,"damageIsEffective",enemy,nature,attacker)
-	or nature~=sgs.DamageStruct_Normal and core_query(enemy,"isChained") and not core_query(self,"isGoodChainTarget",enemy,nature)
+	or nature~=sgs.DamageStruct_Normal and core_query(enemy,"isChained") and not core_query(self, "isGoodChainTarget", enemy, nil, nature)
 	then return false end
 	return true
 end
@@ -2423,12 +2427,12 @@ function SmartAIView:findLeijiTarget(player,leiji_value,slasher,latest_version)
 		end
 		if good_query(self, "cantbeHurt", enemy,player,latest_version==1 and 1 or 2)
 		or good_query(self, "objectiveLevel", enemy)<3
-		or (good_query(enemy, "isChained") and not good_query(self, "isGoodChainTarget", enemy,sgs.DamageStruct_Thunder,player,latest_version==1 and 1 or 2))
+		or (good_query(enemy, "isChained") and not good_query(self, "isGoodChainTarget", enemy, player, sgs.DamageStruct_Thunder, latest_version==1 and 1 or 2))
 		then return 100 end
 		if not latest_version and good_query(enemy, "hasArmorEffect", "silver_lion") then value = value+20 end
 		if good_query(enemy, "hasSkills", sgs.exclusive_skill) then value = value+10 end
 		if good_query(enemy, "hasSkills", sgs.masochism_skill) then value = value+5 end
-		if good_query(enemy, "isChained") and good_query(self, "isGoodChainTarget", enemy,sgs.DamageStruct_Thunder,player,latest_version==1 and 1 or 2)
+		if good_query(enemy, "isChained") and good_query(self, "isGoodChainTarget", enemy, player, sgs.DamageStruct_Thunder, latest_version==1 and 1 or 2)
 		and #good_query(self, "getChainedEnemies", player)>1 then value = value-25 end
 		if good_query(enemy, "isLord") then value = value-5 end
 		value = value+good_query(enemy, "getHp")+good_query(self, "getDefenseSlash", enemy)*0.01
@@ -2512,7 +2516,7 @@ sgs.ai_poison_card.shit = true
 -- Source hand-membership is exact for the owner. For a foreign input, only an
 -- already disclosed location can establish that membership; a visible face
 -- alone cannot reveal that it moved into a hidden hand.
-local function round32_poison_hand_contains(self, owner, id)
+local function poison_hand_contains(self, owner, id)
     if not AIValue.isPlayer(owner) or owner:objectName() == self.player:objectName() then
         return discard_query(owner, "handCards"):contains(id)
     end
@@ -2529,7 +2533,7 @@ local function round32_poison_hand_contains(self, owner, id)
     ai_unsupported("foreign poison-card hand membership is not disclosed", "poisonCards")
 end
 
-local function round32_poison_face(self, id)
+local function poison_card_face(self, id)
     local card = self:getKnownCardById(id)
     if AIUnsupported.is(card) then error(card, 0) end
     if card then return card end
@@ -2574,9 +2578,9 @@ function SmartAIView:poisonCards(flags, owner)
     end
     for _, item in ipairs(flags) do
         local card, id = item, item
-        if type(item) == "number" then card = round32_poison_face(self,item)
+        if type(item) == "number" then card = poison_card_face(self,item)
         else id = discard_query(item,"getEffectiveId") end
-        if round32_poison_hand_contains(self,owner,id) then
+        if poison_hand_contains(self,owner,id) then
             local seen = false
             for _, known in ipairs(value_known(getKnownCards(owner,self.player),"poisonCards known cards")) do
                 seen = discard_query(known,"getId") == id
@@ -3405,10 +3409,10 @@ end
 
 -- IsDis/getDamageValue share request-local, reentrant last-writer state.
 -- All source readers run before the outer call ends; no facade survives it.
-local r32_active_source_closures
-local function r32_with_source_closures(self, callback)
+local active_source_closures
+local function with_source_closures(self, callback)
     local request = self.request
-    local active = r32_active_source_closures
+    local active = active_source_closures
     if active and (request == nil or not rawequal(active.request, request)
         or active.viewer ~= request.viewer or active.decision ~= request.decision_id
         or active.revision ~= request.state_revision) then
@@ -3418,16 +3422,16 @@ local function r32_with_source_closures(self, callback)
     if outermost then
         active = {request=request, viewer=request and request.viewer,
             decision=request and request.decision_id, revision=request and request.state_revision}
-        r32_active_source_closures = active
+        active_source_closures = active
     end
     local ok, result = pcall(callback, active)
-    if outermost then r32_active_source_closures = nil end
+    if outermost then active_source_closures = nil end
     if not ok then error(result, 0) end
     return result
 end
 
 function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reason)
-    return r32_with_source_closures(self, function(r32_globals)
+    return with_source_closures(self, function(source_closures)
 	local friends,enemies = {},{}
 	if players then
 		for _,p in sgs.list(players)do
@@ -3443,7 +3447,7 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 	reason = reason or ""
 	local player_table = {}
 	no_dis = no_dis==false
-	r32_globals.IsDis = function(from,to)
+	source_closures.IsDis = function(from,to)
 		if reason=="zhujinqiyuan" then
 			if allocation_query(from,"distanceTo",to)>1
 			then no_dis = false else no_dis = true end
@@ -3454,13 +3458,13 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 
 	if flags:contains("e") then
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			local dangerous = allocation_query(self,"getDangerousCard",enemy)
 			if dangerous and allocation_query(self,"doDisCard",enemy,dangerous,no_dis)
 			then table.insert(player_table,enemy) end
 		end
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(enemy,"hasArmorEffect","EightDiagram")
 			and enemy:getArmor() and not allocation_query(self,"needToThrowArmor",enemy) then
 				if allocation_query(self,"doDisCard",enemy,enemy:getArmor():getEffectiveId(),no_dis)
@@ -3470,7 +3474,7 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 	end
 	if flags:contains("j") then
 		for _,friend in sgs.list(friends)do
-			r32_globals.IsDis(self.player,friend)
+			source_closures.IsDis(self.player,friend)
 			if (allocation_query(friend,"containsTrick","indulgence") and not allocation_query(friend,"hasSkill","keji") or allocation_query(friend,"containsTrick","supply_shortage"))
 			and (allocation_query(friend,"containsTrick","qhstandard_indulgence") and not allocation_query(friend,"hasSkill","keji") or allocation_query(friend,"containsTrick","supply_shortage"))
 			and not allocation_query(friend,"containsTrick","YanxiaoCard") and not (allocation_query(friend,"hasSkill","qiaobian") and not allocation_query(friend,"isKongcheng"))
@@ -3478,14 +3482,14 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 			then table.insert(player_table,friend) end
 		end
 		for _,friend in sgs.list(friends)do
-			r32_globals.IsDis(self.player,friend)
+			source_closures.IsDis(self.player,friend)
 			if allocation_query(self,"hasWizard",enemies,true)
 			and allocation_query(friend,"containsTrick","lightning")
 			and allocation_query(self,"doDisCard",friend,"j",no_dis)
 			then table.insert(player_table,friend) end
 		end
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(self,"hasWizard",enemies,true)
 			and allocation_query(enemy,"containsTrick","lightning")
 			and allocation_query(self,"doDisCard",enemy,"j",no_dis)
@@ -3494,12 +3498,12 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 	end
 	if flags:contains("e") then
 		for _,friend in sgs.list(friends)do
-			r32_globals.IsDis(self.player,friend)
+			source_closures.IsDis(self.player,friend)
 			if allocation_query(self,"doDisCard",friend,"e",no_dis)
 			then table.insert(player_table,friend) end
 		end
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(self,"doDisCard",enemy,"e",no_dis) then
 				local valuable = allocation_query(self,"getValuableCard",enemy)
 				if valuable and allocation_query(self,"doDisCard",enemy,valuable,no_dis)
@@ -3507,7 +3511,7 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 			end
 		end
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(self,"hasSkills",sgs.need_equip_skill, enemy) then
 				for _,e in sgs.list(allocation_query(enemy,"getEquips"))do
 					if allocation_query(self,"doDisCard",enemy,allocation_query(e,"getId"),no_dis)
@@ -3516,7 +3520,7 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 			end
 		end
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(enemy,"hasSkills","jijiu|beige|mingce|weimu|heg_qingcheng") then
 				for _,e in sgs.list(allocation_query(enemy,"getEquips"))do
 					if allocation_query(self,"doDisCard",enemy,allocation_query(e,"getId"),no_dis)
@@ -3527,7 +3531,7 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 	end
 	if flags:contains("h") then
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(enemy,"getHandcardNum")<=2 and allocation_query(enemy,"getHandcardNum")>0
 			and not(allocation_query(self,"hasTuntianEffect",enemy) and not allocation_query(enemy,"hasFlag","CurrentPlayer")) then
 				local flag = string.format("%s_%s_%s","visible",allocation_query(self.player,"objectName"),allocation_query(enemy,"objectName"))
@@ -3542,7 +3546,7 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 	end
 	if flags:contains("e") then
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(enemy,"hasEquip")
 			and allocation_query(self,"doDisCard",enemy,"e",no_dis)
 			then table.insert(player_table,enemy) end
@@ -3550,7 +3554,7 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 	end
 	if flags:contains("j") then
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(self,"doDisCard",enemy,"j",no_dis)
 			then table.insert(player_table,enemy) end
 		end
@@ -3559,34 +3563,34 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 		allocation_query(self,"sort",enemies,"handcard")
 
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(self,"hasSkills",sgs.dont_kongcheng_skill, enemy) then
 				if allocation_query(self,"doDisCard",enemy,"h",no_dis)
 				then table.insert(player_table,enemy) end
 			end
 		end
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(self,"hasSkills",sgs.cardneed_skill, enemy) then
 				if allocation_query(self,"doDisCard",enemy,"h",no_dis)
 				then table.insert(player_table,enemy) end
 			end
 		end
 		for _,enemy in sgs.list(enemies)do
-			r32_globals.IsDis(self.player,enemy)
+			source_closures.IsDis(self.player,enemy)
 			if allocation_query(self,"doDisCard",enemy,"h",no_dis)
 			then table.insert(player_table,enemy) end
 		end
 		local zhugeliang = self.room:findPlayerBySkillName("kongcheng")
 		if zhugeliang then
-			r32_globals.IsDis(self.player,zhugeliang)
+			source_closures.IsDis(self.player,zhugeliang)
 			if allocation_query(self,"isFriend",zhugeliang) and allocation_query(zhugeliang,"getHandcardNum")==1
 			and allocation_query(self,"getEnemyNumBySeat",self.player,zhugeliang)>0 and allocation_query(zhugeliang,"getHp")<=2
 			and allocation_query(self,"doDisCard",zhugeliang,"h",no_dis)
 			then table.insert(player_table,zhugeliang) end
 		end
 		for _,friend in sgs.list(friends)do
-			r32_globals.IsDis(self.player,friend)
+			source_closures.IsDis(self.player,friend)
 			if allocation_query(self,"hasTuntianEffect",friend) then
 				if allocation_query(self,"doDisCard",friend,"h",no_dis)
 				then table.insert(player_table,friend) end
@@ -3629,7 +3633,7 @@ end
 -- remain owner-provided dependencies. No native userdata or hidden hand reads.
 local damage_target_known = AIValue.requireKnown
 function SmartAIView:findPlayerToDamage(damage,player,nature,targets,base_value,card)
-    return r32_with_source_closures(self, function(r32_globals)
+    return with_source_closures(self, function(source_closures)
 	damage = damage or 1
 	base_value = base_value or 0
 	targets = targets or self.room:getOtherPlayers(player)
@@ -3642,7 +3646,7 @@ function SmartAIView:findPlayerToDamage(damage,player,nature,targets,base_value,
 	end
 	nature = nature or "N"
 
-	r32_globals.getDamageValue = function(target,self_only)
+	source_closures.getDamageValue = function(target,self_only)
 		-- Early validation checks using modern functions
 		if not self_only then
 			-- Check if damage is effective at all
@@ -3699,7 +3703,7 @@ function SmartAIView:findPlayerToDamage(damage,player,nature,targets,base_value,
 			elseif allocation_query(target, "isChained") then
 				for _,p in ipairs(self.room:getOtherPlayers(target))do
 					if allocation_query(p, "isChained") then
-						value = value+r32_globals.getDamageValue(p,true)
+						value = value+source_closures.getDamageValue(p,true)
 					end
 				end
 				value = sgs.runValueHookStages(sgs.ai_target_damage, "damage_chain", self, target, value, allocation_query, count, player, card, nature)
@@ -3712,7 +3716,7 @@ function SmartAIView:findPlayerToDamage(damage,player,nature,targets,base_value,
 	end
 	local bcv = {}
 	for _,p in ipairs(targets)do
-		bcv[allocation_query(p, "objectName")] = r32_globals.getDamageValue(p)
+		bcv[allocation_query(p, "objectName")] = source_closures.getDamageValue(p)
 	end
 	local function func(a,b)
 		return bcv[a:objectName()]>bcv[b:objectName()]
@@ -4086,18 +4090,12 @@ function SmartAIView:validateStrategyUsePlan(use, branch, evaluation)
         end
     end
     if candidate then
-        if candidate:hasCompleteCoverage() ~= true then
-            return AIUnsupported.new("target combinations are incomplete", "targets"), "unsupported"
+        local valid, detail = self:validateTargetSequence(candidate, branch.selected_targets)
+        if valid == nil then
+            return AIUnsupported.new(detail or "target sequence legality is unknown", "targets"), "unsupported"
         end
-        if candidate:targetFixed() then
-            if #use.to ~= 0 or candidate:isFeasibleWithNoTarget() ~= true then
-                return AIUnsupported.new("strategy proposed an illegal target sequence", "targets"), "unsupported"
-            end
-        else
-            local _, finish = candidate:getTargetSelection(branch.selected_targets)
-            if finish ~= true then
-                return AIUnsupported.new("strategy proposed an illegal target sequence", "targets"), "unsupported"
-            end
+        if valid ~= true then
+            return AIUnsupported.new("strategy proposed an illegal target sequence", "targets"), "unsupported"
         end
     end
     -- A revise may replace the original card. Its final ticket, never the input
@@ -4261,7 +4259,7 @@ ai_card_use.Slash = function(self, card, use, request)
             and plan_query(self, "slashIsEffective", actual, target, self.player)
             and plan_query(self, "ajustDamage", self.player, target, 1, actual) ~= 0 then
             if card:isKindOf("NatureSlash") and plan_chain(self, target, self.player) then
-                if not plan_query(self, "isGoodChainTarget", target, card) then return end
+                if not plan_query(self, "isGoodChainTarget", target, nil, nil, nil, card) then return end
             end
             -- 首選、額外目標與備援都經過同一否決檢查，不能重新選回被否決者。
             if score(target, 0) == nil then return end
@@ -4783,7 +4781,7 @@ function SmartAIView:useCardFireAttack(card, use)
             and plan_query(self, "objectiveLevel", enemy) > 2 and plan_query(self, "isGoodTarget", enemy, sorted, card)
             and (plan_query(self, "hasJueqingEffect", self.player, enemy)
                 or not (plan_query(enemy, "hasSkill", "jianxiong") and not plan_query(self, "isWeak", enemy)
-                    or plan_query(enemy, "isChained") and not plan_query(self, "isGoodChainTarget", enemy, card)
+                    or plan_query(enemy, "isChained") and not plan_query(self, "isGoodChainTarget", enemy, nil, nil, nil, card)
                     or plan_query(self, "needToLoseHp", enemy, self.player, card))) then enemies[#enemies + 1] = enemy end
     end
     enemies = plan_recommend_order(self, enemies, recommend_score)
@@ -4802,7 +4800,7 @@ function SmartAIView:useCardFireAttack(card, use)
         end
     end
     if plan_query(self.player, "getHandcardNum") > 1 and plan_role(self, self.player) ~= "renegade" and attack_self
-        and plan_query(self, "isGoodChainTarget", self.player, card) and not plan_query(self, "cantbeHurt", self.player)
+        and plan_query(self, "isGoodChainTarget", self.player, nil, nil, nil, card) and not plan_query(self, "cantbeHurt", self.player)
         and recommend_score(self.player, 0) ~= nil then
         if plan_query(self, "canNiepan", self.player) or value_known(hasBuquEffect(self.player), "Buqu effect")
             or plan_query(self, "getCardsNum", "Peach,Analeptic") + plan_query(self.player, "getHp") > plan_query(self, "ajustDamage", self.player, self.player, 1, card) then targets[#targets + 1] = self.player end
@@ -5163,7 +5161,7 @@ local function plan_exclude(self,players,card)
 end
 -- The fixed isCurrent body: preserve identity/name checks and their short
 -- circuit order. A non-table current_targets value is not repaired to a list.
-local function r53_collateral_current(use,to)
+local function collateral_current_target(use,to)
  if AIList.isNativeList(use.current_targets)then return use.current_targets:contains(to)end
  if type(use.current_targets)=='table'then
   for _,p in ipairs(use.current_targets)do if p==to or p==to:objectName()then return true end end
@@ -5188,7 +5186,7 @@ function SmartAIView:useCardCollateral(card,use)
 	table.sort(fromList,cmp)
 	function useToCard(to)
 		return to:getWeapon()
-		and not(use.to:contains(to) or r53_collateral_current(use,to)
+		and not(use.to:contains(to) or collateral_current_target(use,to)
 		or plan_query(self.player, "isProhibited", to,card))
 	end
 	-- 借刀的推薦只評估可選持武器者；第二人仍按該持有者的殺規則配對。
@@ -5661,11 +5659,14 @@ ai_fill_skill = ai_fill_skill or {}
 function SmartAIView:fillSkillCards(cards)
     cards = sgs.QList2Table(value_known(cards,"fill card list"))
     self.active_skill_requests = self.active_skill_requests or {}
-    local function fill(name)
-        local context = value_known(value_call(self, "getFillSkillContext", name), "fill skill context")
+    local filled_actions = {}
+    local function fill(name, exact_action)
+        local context = value_known(value_call(self, "getFillSkillContext", name, exact_action), "fill skill context")
         if context.known ~= true or type(context.instance_id) ~= "number" then ai_unsupported("fill skill instance is unknown", name) end
         local instance, request = context.instance_id, context.request
-        if instance > 0 and (not request or request:isValid() ~= true) then return end
+        local equipment = context.equipment_activation == true
+        if context.action and filled_actions[context.action] then return end
+        if (instance > 0 or equipment) and (not request or request:isValid() ~= true) then return end
         local callback = ai_fill_skill[name]
         if type(callback) ~= "function" and request then callback = ai_fill_skill[request:getSourceSkillName()] end
         if type(callback) ~= "function" or instance < 0 then return end
@@ -5674,10 +5675,13 @@ function SmartAIView:fillSkillCards(cards)
             if context.enabled_at_play == nil then ai_unsupported("view-as play availability is unknown", name) end
             if not context.enabled_at_play then return end
             -- A usable V1 view-as skill hands this Play decision to SmartAI.
-            if instance == 0 and self.request.kind == "activate" then
+            if instance == 0 and not equipment and self.request.kind == "activate" then
                 ai_unsupported("V1 skill falls back to SmartAI", name)
             end
         end
+        -- The canonical offered row identifies the action across roster/mark and
+        -- equipment scans; equal skill names do not collapse distinct sources.
+        if context.action then filled_actions[context.action] = true end
         local filled = callback(self, {inclusive = #cards < 1}, request and request._request)
         if AIUnsupported.is(filled) then error(filled, 0) end
         if AIValue.isCard(filled) or AIValue.isConversion(filled) then filled = {filled}
@@ -5690,8 +5694,8 @@ function SmartAIView:fillSkillCards(cards)
                 if not candidate and not seed then ai_unsupported("fill callback returned an unauthorized card", name) end
                 -- A V2 seed needs its offered instance; a V1 seed (instance 0) pays
                 -- through its legacy card class in bindSkillCard.
-                if seed and instance~=0 and (not request or instance<1) then ai_unsupported("strategy seed lacks an active source instance",name) end
-                if instance > 0 and value_known(value_call(card, "isVirtualCard"), "filled virtual identity") then
+                if seed and (instance~=0 or equipment) and (not request or request:isValid()~=true) then ai_unsupported("strategy seed lacks an active source instance",name) end
+                if (instance > 0 or equipment) and value_known(value_call(card, "isVirtualCard"), "filled virtual identity") then
                     if readonly_turn_conversion(self, card) then
                         if value_call(self, "readonlyTurnConversionMatchesRequest", card, request) ~= true then
                             ai_unsupported("filled readonly policy card does not match its skill instance", name)
@@ -5718,6 +5722,13 @@ function SmartAIView:fillSkillCards(cards)
     for _, mark in ipairs(value_known(self.player:getMarkNames(), "fill skill marks")) do
         if core_query(self.player,"getMark",mark) > 0 and mark:sub(1,12) == "ViewAsSkill_" then
             fill((mark:gsub("ViewAsSkill_", ""):gsub("Effect", "")))
+        end
+    end
+    -- Equipment actions need not appear in the general-skill roster. Preserve
+    -- that roster and mark order, then visit each remaining exact equipment row.
+    for _, action in ipairs(self.request.skill_actions or {}) do
+        if action.equipment_activation == true then
+            fill(action.activation_skill, action)
         end
     end
     return cards
@@ -5934,10 +5945,31 @@ function SmartAIView:recordTurnUse(cards)
 end
 
 
--- BEGIN R37 ORIGINAL INITIALIZE PRESENCE
--- R37 owner-only source lifecycle. Absence of a witness is never constructor {}.
+-- BEGIN ORIGINAL INITIALIZE PRESENCE
+-- owner-only source lifecycle. Absence of a witness is never constructor {}.
 local function original_turn_presence(self,write)
-    return nil -- The original-hegemony turn-use witness is not projected.
+    local request=self.request
+    if type(request)~="table" then return nil end
+    local owner=self.player:objectName()
+    local stamp=owner..":"..tostring(request.decision_id)..":"..tostring(request.state_revision)
+    local row=self._original_turn_presence
+    if not row or row.continuity_stamp~=stamp then
+        local saved,present=self:getStrategyMemory("original.turn_use_presence")
+        if present and (type(saved)~="table" or (saved.state~="empty" and saved.state~="nil" and saved.state~="unknown")) then
+            ai_unsupported("Original private turn-use presence is malformed","original_initialize.toUse")
+        end
+        -- A new viewer mind initializes toUse={}; a nonempty prior observation
+        -- cannot recreate old CardViews or supply current submission authority.
+        local state=present and saved.state or "empty"
+        row={known=state~="unknown",state=state,continuity_stamp=stamp}
+        self._original_turn_presence=row
+    end
+    if write~=nil then
+        if write~="empty" and write~="nil" and write~="unknown" then return nil end
+        row.state,row.known=write,true
+        value_known(self:setStrategyMemory("original.turn_use_presence",{state=write}),"Original private turn-use presence write")
+    end
+    return row
 end
 function SmartAIView:restoreOriginalHegemonyTurnUsePresence()
     if self._original_to_use_restored then return end
@@ -5967,7 +5999,7 @@ function SmartAIView:getOriginalHegemonyCurrentTurnUse()
     -- The native witness is unknown for a future inquiry, never a stale receipt.
     return self.toUse
 end
--- END R37 ORIGINAL INITIALIZE PRESENCE
+-- END ORIGINAL INITIALIZE PRESENCE
 local original_turn_numbers={retain=2,predictedRange=1,slashAvail=1}
 function SmartAIView:restoreOriginalTurnState()
     local state,present=self:getStrategyMemory("original_turn_state")
@@ -6021,7 +6053,21 @@ end
 local function hpipe_dispatch(self,card,use,kind)
  local method=({[0]='useSkillCard',[1]='useBasicCard',[2]='useTrickCard',[3]='useEquipCard'})[kind]
  if not method or type(self[method])~='function'then ai_unsupported('Original card type dispatcher unavailable',tostring(kind))end
- self[method](self,card,use)
+ if not use.isDummy then return self[method](self,card,use) end
+ -- Only a failed hypothetical proposal is discarded. Source-timed observations
+ -- retain their existing prefix semantics; this is not a general transaction.
+ local prediction={}
+ for key in pairs(original_turn_numbers)do prediction[key]=self[key] end
+ prediction.weaponUsed=self.weaponUsed
+ prediction.slash_distance_limit=self.slash_distance_limit
+ local ok,signal=AIUnsupported.capture(self[method],self,card,use)
+ if not ok then
+  for key in pairs(original_turn_numbers)do self[key]=prediction[key] end
+  self.weaponUsed=prediction.weaponUsed
+  self.slash_distance_limit=prediction.slash_distance_limit
+  if signal.native_rejected or signal.terminal_response_selection then error(signal,0) end
+  return signal
+ end
 end
 local function original_get_turn_use(self)
     -- Native V2 fill binds each candidate to the current activation request.
@@ -6036,6 +6082,11 @@ local function original_get_turn_use(self)
 	end
 
 	local turnUse = {}
+    -- Fill callbacks inspect the plan being built, not the previous decision's
+    -- cleared (nil) list. This is a witnessed current list, never a stale plan.
+    self.toUse = turnUse
+    self:recordOriginalHegemonyTurnUsePresence()
+    local unknown
 	local slash = hpipe_q(self,"getEvaluationCard","slash")
 	local slashAvail = 1 + hpipe_q(slash,"getTargetModResidue",self.player)
 	self.slashAvail = slashAvail
@@ -6056,9 +6107,9 @@ local function original_get_turn_use(self)
 		local dummy_use = { isDummy = true }
 
 		local type = hpipe_q(card,"getTypeId")
-		hpipe_dispatch(self,card,dummy_use,type)
-
-		if dummy_use.card then
+        local signal=hpipe_dispatch(self,card,dummy_use,type)
+        if signal then unknown=unknown or signal
+        elseif dummy_use.card then
 			if hpipe_q(dummy_use.card,"isKindOf","Slash") then
 				if hpipe_q(self,"hasStrategyCardFlag",dummy_use.card,"AIGlobal_KillOff") then table.insert(slashes, dummy_use.card) break end
 				table.insert(slashes, dummy_use.card)
@@ -6085,7 +6136,7 @@ local function original_get_turn_use(self)
 		end
 	end
 
-	return turnUse
+	return turnUse,unknown
 end
 
 function SmartAIView:originalHegemonyGetTurnUse()
@@ -6100,29 +6151,49 @@ end
 function SmartAIView:originalHegemonyActivate(use)
 	hpipe_q(self,"updatePlayers")
 	self:assignKeep(true)
-	self.toUse = hpipe_q(self,"getTurnUse")
+    local unknown
+    self.toUse,unknown = self:getTurnUse()
+    if not self.toUse then ai_unsupported("Original turn proposals are unavailable","getTurnUse")end
     self:recordOriginalHegemonyTurnUsePresence()
 	self:sortByDynamicUsePriority(self.toUse)
 	for _, card in ipairs(self.toUse) do
-		if not hpipe_q(self.player,"isCardLimited",card, hpipe_q(card,"getHandlingMethod"))
-			or (hpipe_q(card,"canRecast") and not hpipe_q(self.player,"isCardLimited",card, sgs.Card_MethodRecast)) then
-			local type = hpipe_q(card,"getTypeId")
+		local type = hpipe_q(card,"getTypeId")
+        local available
+        local skill_plan = type == sgs.Card_TypeSkill
+            and (is_strategy_seed(card) or readonly_turn_conversion(self,card))
+        if type == sgs.Card_TypeSkill and not skill_plan then
+            -- Dummy callbacks can replace a seed with a registered receipt.
+            -- Resolve the strategy face first so a policy evaluation cannot
+            -- borrow its underlying receipt's different rules.
+            local candidate = strategy_candidate(self,card)
+            skill_plan = AIValue.isConversion(candidate) and candidate._view.authority_validates_targets == true
+        end
+        if skill_plan then
+            -- Plans and skill-action receipts use source availability; native
+            -- materialization/submission still validates costs and targets.
+            available = hpipe_q(self,"canMethodUse",card,self.toUse)
+        else
+            available = not hpipe_q(self.player,"isCardLimited",card,hpipe_q(card,"getHandlingMethod"))
+                or (hpipe_q(card,"canRecast") and not hpipe_q(self.player,"isCardLimited",card,sgs.Card_MethodRecast))
+        end
+		if available then
 
 			hpipe_dispatch(self,card,use,type)
 
 			if use.card ~= nil then
 				self:clearOriginalHegemonyTurnUse()
-				return
+				return unknown
 			end
 			if use.card and hpipe_q(use.card,"isKindOf","Slash") and (not use.to or hpipe_q(use.to,"isEmpty")) then
 				self:clearOriginalHegemonyTurnUse()
-				return
+				return unknown
 			end
 
 			if use.card then self:speak(hpipe_q(use.card,"getClassName"), hpipe_q(self.player,"isFemale")) end
 		end
 	end
 	self:clearOriginalHegemonyTurnUse()
+    if unknown then error(unknown,0)end
 end
 
 
@@ -6149,7 +6220,7 @@ function SmartAIView:clearOriginalHegemonyTurnUse()
 end
 function SmartAIView:originalHegemonyPlanTurnUse()
     local use=AIUsePlan.new()
-    self:originalHegemonyActivate(use)
+    local unknown=self:originalHegemonyActivate(use)
     if use.card and value_call(use.card,"isEvaluationOnly")==true then
         -- Original selectors can reason about lawful hypothetical conversions.
         -- Bind only the already selected specification; never retry strategy
@@ -6158,9 +6229,13 @@ function SmartAIView:originalHegemonyPlanTurnUse()
     end
     local plan,status=self:validateStrategyUsePlan(use)
     if status=="unsupported" then error(plan,0) end
-    if status=="declined" then return nil end
+    if status=="declined" then
+        if unknown then error(unknown,0)end
+        return nil
+    end
     local answer=plan:toAnswer()
     if not answer then ai_unsupported("Original final plan cannot be serialized","planning")end
+    if unknown then ai_coverage.notCovered(self.request.kind,unknown.reason,unknown.key,unknown.traceback)end
     return answer,plan
 end
 
@@ -6448,14 +6523,18 @@ ai_register_handler("activate", function(self, request)
     end
     local plan, _, unknown = self:planTurnUse()
     if unknown then error(unknown, 0) end
-    if unknown_skill then error(unknown_skill, 0) end
+    if unknown_skill then
+        if original_turn_pipeline(self) and plan then
+            ai_coverage.notCovered(request.kind,unknown_skill.reason,unknown_skill.key,unknown_skill.traceback)
+        else error(unknown_skill, 0) end
+    end
     if not plan then return {kind = "pass"} end
     return plan
 end)
 
 
 -- [C12] Card threat and paid nullification decisions
--- R31: optional equipment is source nil when absent, but a missing public
+-- optional equipment is source nil when absent, but a missing public
 -- equipment snapshot is not evidence of absence. Keep each original getter call.
 local function nullify_equipment(player, method)
     if AIValue.isPlayer(player) then damage_call(player, "getEquips") end
@@ -6618,7 +6697,7 @@ function SmartAIView:shouldInvokeCostNullifySkill(use, need_discard, need_losehp
 
 	-- 属性杀连环判断
 	if damage_call(card,"isKindOf","NatureSlash") and damage_call(target,"isChained") then
-		if not damage_call(self,"isGoodChainTarget",target, card, use.from) then
+		if not damage_call(self, "isGoodChainTarget", target, use.from, nil, nil, card) then
 			threat_level = threat_level + 2
 		end
 	end

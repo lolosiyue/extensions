@@ -277,7 +277,7 @@ sr_yongbing = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.Damage},
 	can_trigger = function(skill, event, room, player, data)
-		if not (player and player:isAlive() and player:getKingdom() == "shu") then return false end
+		if not (player and player:isAlive() and player:hasLordSkillKingdom("shu")) then return false end
 		local damage = data:toDamage()
 		if not (damage.card and damage.card:isKindOf("Slash")) then return false end
 		local trigger_list_skill, trigger_list_who = {}, {}
@@ -2558,7 +2558,7 @@ sr_fuzhengcard = sgs.CreateSkillCard{
 	will_throw = true,
 	filter = function(self, targets, to_select, player)
 		if #targets>=2 then return false end
-		return to_select:getKingdom() == "wu" and to_select:objectName() ~= player:objectName()
+		return to_select:hasLordSkillKingdom("wu", player) and to_select:objectName() ~= player:objectName()
 	end,
 	feasible = function(self, targets, player)
 		return #targets<=2
@@ -2618,7 +2618,7 @@ sr_fuzheng = sgs.CreateTriggerSkillV2{
 			return false
 		end
 		for _,p in sgs.qlist(room:getOtherPlayers(player)) do
-			if p:getKingdom() == "wu" then
+			if p:hasLordSkillKingdom("wu", player) then
 				return skill:objectName()
 			end
 		end
@@ -4477,7 +4477,7 @@ sr_jianxiong = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.Damaged},
 	can_trigger = function(skill, event, room, player, data)
-		if not (player and player:getKingdom() == "wei") then return false end
+		if not (player and player:hasLordSkillKingdom("wei")) then return false end
 		local damage = data:toDamage()
 		local card = damage.card
 		if not card then return false end

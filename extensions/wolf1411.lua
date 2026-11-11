@@ -80,7 +80,7 @@ renzha = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseStart },
 	can_trigger = function(self, event, room, player, data)
 		if not player or player:getPhase() ~= sgs.Player_Start
-			or player:getKingdom() ~= "shu" then
+			or not player:hasLordSkillKingdom("shu") then
 			return false
 		end
 		local skill_names, owner_names = {}, {}
@@ -451,7 +451,7 @@ feijiang = sgs.CreateDistanceSkillV2 {
 		local others = from:getSiblings()
 		for _, other in sgs.qlist(others) do
 			if other:isAlive() then
-				if other:getKingdom() == "qun" then
+				if other:hasLordSkillKingdom("qun", from) then
 					distance = distance - 1
 				end
 			end

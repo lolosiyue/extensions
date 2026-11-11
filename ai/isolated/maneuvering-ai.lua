@@ -36,10 +36,10 @@ ai_skill_invoke.fan=function(self, options, request)
         local fire=self:getFanConversionProbe(known(use.card,"fan use card"))
         local damage=query(self,"ajustDamage",self.player,target,1,fire)
         if query(self,"isFriend",target) then
-            if damage==0 or query(target,"isChained") and query(self,"isGoodChainTarget",target,fire) then return (true) or false end
+            if damage==0 or query(target,"isChained") and query(self, "isGoodChainTarget", target, nil, nil, nil, fire) then return (true) or false end
         else
             if query(target,"isChained") then
-                if query(self,"isGoodChainTarget",target,fire) then return (true) or false end
+                if query(self, "isGoodChainTarget", target, nil, nil, nil, fire) then return (true) or false end
             elseif damage>=query(self,"ajustDamage",self.player,target,1,use.card) then return (true) or false end
         end
     end
@@ -59,8 +59,8 @@ sgs.ai_armor_value.vine=function(player,self)
         if #query(self,"getFriends",player,true)>0 and query(player,"hasSkill","jujian")
             or query(player,"hasSkill","diyyicong") then return 3 end
     end
-    if query(player,"isChained") and not(self:isGoodChainTarget(player,query(self,"getEvaluationCard","fire_slash"))
-        and self:isGoodChainTarget(player,query(self,"getEvaluationCard","thunder_slash"))) then return -2 end
+    if query(player,"isChained") and not(self:isGoodChainTarget(player, nil, nil, nil, (query(self,"getEvaluationCard","fire_slash")))
+        and self:isGoodChainTarget(player, nil, nil, nil, (query(self,"getEvaluationCard","thunder_slash")))) then return -2 end
     for _,enemy in ipairs(query(self,"getEnemies",player)) do
         if query(enemy,"canSlash",player) and query(enemy,"hasWeapon","Fan")
             or self:useKnowledgeEstimate(self:estimateKnownCards(enemy,"FireSlash,FireAttack,Fan",player,true),"vine.known_fire_cards")>0
@@ -114,11 +114,11 @@ sgs.ai_skill_cardask["@fire-attack"]=function(self,data,pattern,target)
             if not query(self.player,"isJilei",card) then
                 if index>#cards/2 and isCard("Peach",card,self.player) then
                     if query(target,"isChained") then
-                        if self:isGoodChainTarget(target,fire_effect_card(self)) then return query(card,"getId") end
+                        if self:isGoodChainTarget(target, nil, nil, nil, (fire_effect_card(self))) then return query(card,"getId") end
                     elseif not query(self,"isWeak",nil,false)
                         or query(self,"ajustDamage",self.player,target,1,fire_effect_card(self))>1 then return query(card,"getId") end
                 elseif query(target,"isChained") then
-                    if self:isGoodChainTarget(target,fire_effect_card(self)) then return query(card,"getId") end
+                    if self:isGoodChainTarget(target, nil, nil, nil, (fire_effect_card(self))) then return query(card,"getId") end
                 else return query(card,"getId") end
             end
         end

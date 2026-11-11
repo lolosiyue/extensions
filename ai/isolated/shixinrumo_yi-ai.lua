@@ -967,7 +967,7 @@ ai_card_use["#chenfusuiCard"] = function(self, card, use, request)
 		if i>#aps/2 and package_known(p,"isMale") and package_known(self,"isEnemy",p) then
 			for _,s in sgs.qlist(package_known(p,"getVisibleSkillList"))do do
 				if package_known(s,"isAttachedLordSkill") then goto package_continue_5 end
-				local pt = package_known(self,"round50SkillDescription",s,p)
+				local pt = package_known(self,"getActorSkillDescription",s,p)
 				if package_known(pt,"contains","技，") then goto package_continue_5 end
 				package_call(use.to,"append",p)
 				use.card = card
@@ -979,7 +979,7 @@ ai_card_use["#chenfusuiCard"] = function(self, card, use, request)
 		if i<#aps/2 and package_known(p,"isMale") and package_known(self,"isFriend",p) then
 			for _,s in sgs.qlist(package_known(p,"getVisibleSkillList"))do do
 				if package_known(s,"isAttachedLordSkill") then goto package_continue_6 end
-				local pt = package_known(self,"round50SkillDescription",s,p)
+				local pt = package_known(self,"getActorSkillDescription",s,p)
 				if package_known(pt,"contains","技，") then goto package_continue_6 end
 				package_call(use.to,"append",p)
 				use.card = card

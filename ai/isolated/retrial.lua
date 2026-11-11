@@ -66,7 +66,7 @@ local function filtered_judge_values(self, player, card, estimate_basis)
         local value=card_view(row.card)
         return value:getSuit(),value:getNumber(),value:isBlack(),value:isRed()
     end
-    local context=self.request and self.request.context or self.world and self.world.decision_context
+    local context=self:getDecisionContext(self.request)
     local judge=context and context.judge
     local who=judge and (type(judge.who)=="string" and judge.who or type(judge.who)=="table" and judge.who.object_name)
     if who==name and judge.filtered_complete==true then
@@ -115,7 +115,7 @@ end
 -- Resolve the same lawful filter evidence without reading unused face fields.
 -- Filter context values are captured before relationship callbacks, as the
 -- source CardFilter result is produced before selecting a predicate branch.
-local function r33_good_judge_card(self, player, card, estimate_basis)
+local function filtered_judge_card(self, player, card, estimate_basis)
     if type(card) == "number" then
         local result = self:CardFilter(card, player)
         if AIUnsupported.is(result) then error(result, 0) end
@@ -174,7 +174,7 @@ function SmartAIView:goodJudge(player, reason, card)
         return value
     end
     if good_judge_has_skills(self, player, "qianxi|olqianxi") and not relation("isFriend") then return false end
-    card = r33_good_judge_card(self, player, card)
+    card = filtered_judge_card(self, player, card)
     local function read(method)
         local getter = card and card[method]
         if type(getter) ~= "function" then ai_unsupported("filtered judgment getter is absent", "goodJudge." .. method) end
@@ -202,14 +202,25 @@ end
 function SmartAIView:CardFilter(card, owner, place)
     owner=player_view(self,owner)
     if not owner then ai_unsupported("CardFilter owner is unknown","CardFilter") end
-    local rows = nil -- Filtered faces are projected on the cards themselves.
+    local context=self:getDecisionContext(self.request)
+    local judge=context and context.judge
+    local judged=judge and player_view(self,judge.who)
+    local rows=judge and judge.filtered_complete==true and judged
+        and judged:objectName()==owner:objectName()
+        and (place==nil or place==sgs.Player_PlaceJudge)and judge.filtered_cards
+    local function projected(id)
+        local row=lookup(rows,id)
+        if row==nil then return nil end
+        if type(row)~='table'or row.judgment_source_id~=id
+            or row.judgment_target~=owner:objectName()then
+            ai_unsupported('filtered judgment face belongs to another inquiry','CardFilter')
+        end
+        return card_view(row)
+    end
     if type(card)=="number" then
         local id=card
-        local projected=lookup(rows,id)
-        if type(projected)=="table" and projected.complete==true and type(projected.card)=="table" then
-            if type(projected.donor_error_repair)=="string" then note_estimate(self,"donor_error_repair:"..projected.donor_error_repair) end
-            return card_view(projected.card),true
-        end
+        local value=projected(id)
+        if value then return value,true end
         -- Search only already disclosed primitive DTOs. Numeric IDs are not
         -- permission to query the Engine, including another player's piles.
         local seen, budget = {}, 4096
@@ -236,11 +247,10 @@ function SmartAIView:CardFilter(card, owner, place)
             or find(self._event_input and self._event_input.details, 0)
     else card=card_view(card) end
     if not card then ai_unsupported("CardFilter card identity is not authorized","CardFilter") end
-    local row=lookup(rows,card:getEffectiveId())
-    if type(row)=="table" and row.complete==true and type(row.card)=="table" then
-        if type(row.donor_error_repair)=="string" then note_estimate(self,"donor_error_repair:"..row.donor_error_repair) end
-        return card_view(row.card),true
-    end
+    -- Only this question's candidate/recipient/PlaceJudge tuple authorizes the
+    -- native face. It grants no material or response authority to the clone.
+    local value=projected(card:getEffectiveId())
+    if value then return value,true end
     local public=public_filter(self,owner,card,place or sgs.Player_PlaceJudge)
     if public then return public,true end
     local view=rawget(owner,"_view")
@@ -315,7 +325,7 @@ function SmartAIView:needRetrial(judge)
             and known_number(self:objectiveLevel(lord), "lightning.objective") <= 3 then
             if known_boolean(lord:hasArmorEffect("SilverLion"), "lightning.lord_armor")
                 and known_number(lord:getHp(), "lightning.lord_hp") >= 2
-                and self:isGoodChainTarget(lord, "T") then return false end
+                and self:isGoodChainTarget(lord, nil, "T") then return false end
             if judge.good then return false end
             return known_boolean(self:damageIsEffective(lord, "T"), "lightning.damage")
         end
@@ -323,10 +333,10 @@ function SmartAIView:needRetrial(judge)
             and known_boolean(judge.who:hasArmorEffect("SilverLion"), "lightning.armor") then return false end
         if known_boolean(self:isFriend(judge.who), "friend") then
             if known_boolean(judge.who:isChained(), "lightning.chained")
-                and self:isGoodChainTarget(judge.who, "T", nil, 3) then return false end
+                and self:isGoodChainTarget(judge.who, nil, "T", 3) then return false end
         else
             if known_boolean(judge.who:isChained(), "lightning.chained")
-                and not self:isGoodChainTarget(judge.who, "T", nil, 3) then return judge.good end
+                and not self:isGoodChainTarget(judge.who, nil, "T", 3) then return judge.good end
         end
     elseif reason == "indulgence" then
         local hand = scalar(judge.who, "getHandcardNum")
@@ -713,7 +723,7 @@ local function peach_protected(self, judge)
     return not weak
 end
 
-local function r33_retrial_query(object,method,...)
+local function retrial_query(object,method,...)
     local provider=object and object[method]
     if type(provider)~="function" then ai_unsupported("retrial dependency is unavailable",method) end
     local value=provider(object,...)
@@ -739,7 +749,7 @@ local function beige_candidate(self, judge, card, self_card, filtered)
     if not source then return nil end
     -- The source repeatedly reads the filtered/original suits only in reached
     -- clauses; do not prefetch them before toTurnOver or the overflow gate.
-    local q = r33_retrial_query
+    local q = retrial_query
     if q(self,"isFriend",source) then
         if not q(self,"toTurnOver",source,0)
             and q(judge.card,"getSuit")~=0 and q(filtered,"getSuit")==0 then
@@ -839,10 +849,10 @@ function SmartAIView:getRetrialCardId(cards, judge, self_card, exchange)
                 if has_lightning then
                     for index=#normal,1,-1 do
                         if not reserved[index] then
-                            local filtered=r33_good_judge_card(self,holder,normal[index],"retrial.lightning_reserve_foreign_filter")
-                            if r33_retrial_query(filtered,"getSuit")==sgs.Card_Spade
-                                and r33_retrial_query(filtered,"getNumber")>=2
-                                and r33_retrial_query(filtered,"getNumber")<=9 then
+                            local filtered=filtered_judge_card(self,holder,normal[index],"retrial.lightning_reserve_foreign_filter")
+                            if retrial_query(filtered,"getSuit")==sgs.Card_Spade
+                                and retrial_query(filtered,"getNumber")>=2
+                                and retrial_query(filtered,"getNumber")<=9 then
                                 reserved[index]=true;break
                             end
                         end
@@ -876,7 +886,7 @@ function SmartAIView:getRetrialCardId(cards, judge, self_card, exchange)
         for index, card in ipairs(pool) do
             if not excluded[index] then
                 if type(self.doDisCard) ~= "function" then ai_unsupported("Retrial candidate/selection input is unknown", "getRetrialCardId") end
-                local discard = r33_retrial_query(self,"doDisCard",self.player,card:getEffectiveId())
+                local discard = retrial_query(self,"doDisCard",self.player,card:getEffectiveId())
                 if discard then return card:getEffectiveId() end
             end
         end

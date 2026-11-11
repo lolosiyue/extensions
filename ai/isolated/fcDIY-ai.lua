@@ -46,11 +46,11 @@ resolve_preview=function(c)
     local st=preview_specs[c];if not st then return c end
     if st.cached then return st.cached end
     local r
-    local r41_sources={f_luanshe='f_luanshe',sp_taoyuanyi='sp_taoyuanyi',
+    local view_as_sources={f_luanshe='f_luanshe',sp_taoyuanyi='sp_taoyuanyi',
         sp_qianlixing='sp_qianlixing',sp_hengsaoqianjun='sp_hengsaoqianjun',
         sp_lvezhen='sp_lvezhen',fcj_qinguo='fcj_qinguo',fcj_leixi='fcj_leixi',
         mouduanliangv='mouduanliangg',kjmoushifeng='kjmoushifeng'}
-    local source=r41_sources[st.skill]
+    local source=view_as_sources[st.skill]
     if source then
         r=source_query(st.ai, 'evaluateOwnerViewAsCard', {source_key='fcDIY.'..source,name=st.name,
             skill=st.skill,suit=st.suit,number=st.number,subcards=copy(st.costs)})

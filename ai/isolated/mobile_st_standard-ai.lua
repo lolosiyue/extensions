@@ -156,7 +156,7 @@ end
 ai_fill_skill["mobileqiangxi"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileQiangxiCard=.")
+	return parse_policy(self,"@MobileQiangxiCard=.",request)
 end
 
 ai_card_use.MobileQiangxiCard = function(self, card, use, request)
@@ -586,7 +586,7 @@ end
 ai_fill_skill["mobiletiaoxin"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileTiaoxinCard=.")
+	return parse_policy(self,"@MobileTiaoxinCard=.",request)
 end
 
 ai_card_use.MobileTiaoxinCard = function(self, card, use, request)
@@ -646,7 +646,7 @@ ai_fill_skill["mobilezhijian"] = function(self, options, request)
 	end
 	if #equips==0 then return end
 
-	return parse_policy(self,"@MobileZhijianCard=.")
+	return parse_policy(self,"@MobileZhijianCard=.",request)
 end
 
 ai_card_use.MobileZhijianCard = function(self, card, use, request)
@@ -746,7 +746,7 @@ end
 ai_fill_skill["mobileganlu"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileGanluCard=.")
+	return parse_policy(self,"@MobileGanluCard=.",request)
 end
 
 ai_card_use.MobileGanluCard = function(self, card, use, request)
@@ -888,7 +888,7 @@ ai_skill_invoke.mobilefuli = true
 ai_fill_skill["mobileanxu"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileAnxuCard=.")
+	return parse_policy(self,"@MobileAnxuCard=.",request)
 end
 
 ai_card_use.MobileAnxuCard = function(self, card, use, request)
@@ -1076,7 +1076,7 @@ ai_skill_invoke.mobilejiushi = true
 ai_fill_skill["mobilegongqi"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileGongqiCard=.")
+	return parse_policy(self,"@MobileGongqiCard=.",request)
 end
 
 ai_card_use.MobileGongqiCard = function(self, card, use, request)
@@ -1131,7 +1131,7 @@ ai_skill_invoke.mobilelihuo = function(self, options, request)
 		for _,player in sgs.qlist(use.to)do
 			if self:isEnemy(player) and self:isGoodTarget(player,self.enemies,slash)
 			then
-				if player:isChained() then return (self:isGoodChainTarget(player,"F")) or false end
+				if player:isChained() then return (self:isGoodChainTarget(player, nil, "F")) or false end
 				if player:hasArmorEffect("Vine") then return (true) or false end
 			end
 		end
@@ -1146,7 +1146,7 @@ end
 ai_fill_skill["mobilezongxuan"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileZongxuanCard=.")
+	return parse_policy(self,"@MobileZongxuanCard=.",request)
 end
 
 ai_card_use.MobileZongxuanCard = function(self, card, use, request)
@@ -1191,7 +1191,7 @@ ai_fill_skill["mobilejunxing"] = function(self, options, request)
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards,nil,"j")
   	if #cards>0 then
-		return parse_policy(self,"@MobileJunxingCard="..cards[1]:getKnownEffectiveId())
+		return parse_policy(self,"@MobileJunxingCard="..cards[1]:getKnownEffectiveId(),request)
 	end
 end
 
@@ -1240,7 +1240,7 @@ ai_fill_skill["mobilemieji"] = function(self, options, request)
 		if c:isBlack()
 		and c:isKindOf("TrickCard")
 		then
-			return parse_policy(self,"@MobileMiejiCard="..c:getKnownEffectiveId())
+			return parse_policy(self,"@MobileMiejiCard="..c:getKnownEffectiveId(),request)
 		end
 	end
 end
@@ -1291,7 +1291,7 @@ end
 ai_fill_skill["mobilexianzhen"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileXianzhenCard=.")
+	return parse_policy(self,"@MobileXianzhenCard=.",request)
 end
 
 ai_card_use.MobileXianzhenCard = function(self, card, use, request)
@@ -1371,7 +1371,7 @@ ai_fill_skill["mobileqiaoshui"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
 	if self:needBear() then return end
-	return parse_policy(self,"@MobileQiaoshuiCard=.")
+	return parse_policy(self,"@MobileQiaoshuiCard=.",request)
 end
 
 ai_card_use.MobileQiaoshuiCard = function(self, card, use, request)
@@ -1728,7 +1728,7 @@ ai_fill_skill["mobiledingpin"] = function(self, options, request)
   	for _,c in sgs.list(cards)do
 		if self.player:getStrategyMark("dingpin_"..c:getType().."-Clear")>0
 		or #cards<3 then continue end
-		return parse_policy(self,"@MobileDingpinCard="..c:getKnownEffectiveId())
+		return parse_policy(self,"@MobileDingpinCard="..c:getKnownEffectiveId(),request)
 	end
 end
 
@@ -1802,7 +1802,7 @@ ai_fill_skill["mobileshenxing"] = function(self, options, request)
 		end
 	end
 	local ids = #toids>0 and table.concat(toids,"+") or "."
-	if #toids>=2 then return parse_policy(self,"@MobileShenxingCard="..ids) end
+	if #toids>=2 then return parse_policy(self,"@MobileShenxingCard="..ids,request) end
 end
 
 ai_card_use["MobileShenxingCard"] = function(self, card, use, request)
@@ -1876,7 +1876,7 @@ ai_fill_skill["mobilejianying"] = function(self, options, request)
 				then continue end
 				write(self,"jy_to",dummy.to)
 				self:setPriorityValue("MobileJianyingCard",sgs.ai_use_priority[c:getClassName()],"mobile_st_standard")
-                return parse_policy(self,"@MobileJianyingCard="..cards[1]:getKnownEffectiveId()..":"..name)
+                return parse_policy(self,"@MobileJianyingCard="..cards[1]:getKnownEffectiveId()..":"..name,request)
 			end
 		end
 	end
@@ -1912,7 +1912,7 @@ end
 ai_fill_skill["mobileyanzhu"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileYanzhuCard=.")
+	return parse_policy(self,"@MobileYanzhuCard=.",request)
 end
 
 ai_card_use["MobileYanzhuCard"] = function(self, card, use, request)
@@ -2050,7 +2050,7 @@ end
 ai_fill_skill["mobilefurong"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileFurongCard=.")
+	return parse_policy(self,"@MobileFurongCard=.",request)
 end
 
 ai_card_use["MobileFurongCard"] = function(self, card, use, request)
@@ -2075,7 +2075,7 @@ sgs.ai_use_priority.MobileFurongCard = 5.8
 ai_fill_skill["mobileyaoming"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@MobileYaomingCard=.")
+	return parse_policy(self,"@MobileYaomingCard=.",request)
 end
 
 ai_card_use["MobileYaomingCard"] = function(self, card, use, request)

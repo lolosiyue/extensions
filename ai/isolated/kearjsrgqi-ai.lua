@@ -719,7 +719,7 @@ ai_skill_invoke.keqimingshi = function(self, options, request)
 	local dmg = package_known(data,"toDamage")
 	if dmg.to and not package_known(self,"isFriend",dmg.to) then return (false) or false end
 	if package_known(self.player,"isChained") and dmg.nature~=sgs.DamageStruct_Normal
-	and not package_known(self,"isGoodChainTarget",self.player,dmg.card or dmg.nature,dmg.from,dmg.damage)
+	and not package_known(self, "isGoodChainTarget", self.player, dmg.from, not dmg.card and dmg.nature or nil, dmg.damage, dmg.card)
 	then
 	elseif package_known(self.player,"getHp")>=2 and dmg.damage<2
 	and (package_known(self.player,"hasSkills",sgs.recover_skill)

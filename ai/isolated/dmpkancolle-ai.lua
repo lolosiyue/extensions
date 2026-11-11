@@ -289,7 +289,7 @@ ai_skill_invoke.se_huibi_jink = function(self, options, request)
 	if isUse then
 		if use.card and use.card:hasFlag("NosJiefanUsed") then return (false) or false  end
 		if not use.from or nullfilter(self,data,nil,use.from)
-		or use.card:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, use.card, use.from)
+		or use.card:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, use.from, nil, nil, use.card)
 		or self:needToLoseHp(self.player, use.from, use.card) and self:ajustDamage(use.from, self.player, 1, use.card)==1 then return (false) or false end
 	end
 	if self:needToLoseHp(self.player, nil, nil, true) then return (false) or false  end

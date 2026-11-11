@@ -759,9 +759,9 @@ sgs.ai_skill_cardask._tyhuoshaolianying0 = function(self,data,pattern,prompt)
 	if self:ajustDamage(self.player, effect.to, 1, effect.card, "F")==0
 	then return "." end
     if self:isFriend(effect.to) then
-		return effect.to:isChained() and self:isGoodChainTarget(effect.to, "F")
+		return effect.to:isChained() and self:isGoodChainTarget(effect.to, nil, "F")
 	elseif effect.to:isChained() then
-		return self:isGoodChainTarget(effect.to, "F")
+		return self:isGoodChainTarget(effect.to, nil, "F")
 	else
 		return true
 	end

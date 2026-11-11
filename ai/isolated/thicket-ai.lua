@@ -1224,7 +1224,7 @@ do
         local call, state = context.query, context.extra[1]
         local defense = context.value
         if not state.diagram then
-            if call(to, "hasSkill", "dimeng") then defense = defense - 2.5 end
+            if call(to,"hasSkill","dimeng") then defense = defense - 2.5 end
         end
         return defense
     end

@@ -26,7 +26,7 @@ ai_card_use["#TH_guanglongzhitanxiCARD"] = function(self, card, use, request)
 	local targets = AIList.new({})
 	for _, enemy in ipairs(list(self.enemies,"enemies")) do
 		if self:damageIsEffective(enemy, sgs.DamageStruct_Thunder, self.player) and not self:needToLoseHp(enemy, self.player)
-			and (not enemy:isChained() or self:isGoodChainTarget(enemy, sgs.DamageStruct_Thunder, self.player)) then
+			and (not enemy:isChained() or self:isGoodChainTarget(enemy, self.player, sgs.DamageStruct_Thunder)) then
 			targets:append(enemy)
 			if targets:length() >= 5 then break end
 		end
@@ -34,7 +34,7 @@ ai_card_use["#TH_guanglongzhitanxiCARD"] = function(self, card, use, request)
 	if targets:length() < 5 then
 		for _, friend in ipairs(list(self.friends_noself,"friends_noself")) do
 			if self:damageIsEffective(friend, sgs.DamageStruct_Thunder, self.player) and self:needToLoseHp(friend, self.player)
-				and (not friend:isChained() or self:isGoodChainTarget(friend, sgs.DamageStruct_Thunder, self.player)) then
+				and (not friend:isChained() or self:isGoodChainTarget(friend, self.player, sgs.DamageStruct_Thunder)) then
 				targets:append(friend)
 				if targets:length() >= 5 then break end
 			end

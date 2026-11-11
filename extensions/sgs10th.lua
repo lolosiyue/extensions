@@ -13826,7 +13826,7 @@ ny_10th_aoshi_give = sgs.CreateViewAsSkillV2{
 		local reason = request:getReason()
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-					if player:getKingdom() == "qun" then
+					if player:hasLordSkillKingdom("qun") then
 						for _, p in sgs.qlist(player:getAliveSiblings()) do
 							if p:hasLordSkill("ny_10th_aoshi") then
 								return not player:hasUsed("#ny_10th_aoshi_give")
@@ -16544,7 +16544,7 @@ ny_10th_jujianVS = sgs.CreateViewAsSkillV2{
 ny_10th_jujianCard = sgs.CreateSkillCard {
 	name = "ny_10th_jujian",
 	filter = function(self, targets, to_select, player)
-		return #targets < 1 and to_select:getKingdom() == "wei" and to_select:objectName() ~= player:objectName()
+		return #targets < 1 and to_select:hasLordSkillKingdom("wei", player) and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()

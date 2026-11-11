@@ -2,7 +2,7 @@
 local known = AIValue.requireKnown
 
 local dummy = AIUsePlan.dummy
-local function r45_shisheng(self,name,costs,preview)
+local function evaluate_shisheng_card(self,name,costs,preview)
  return self:evaluateOwnerViewAsCard({source_key=preview and "mountainrumour.shisheng_preview" or "mountainrumour.shisheng",
   name=name,skill=preview and "" or "shisheng",suit=preview and sgs.Card_NoSuit or sgs.Card_SuitToBeDecided,
   number=preview and -1 or 0,subcards=costs})
@@ -1279,7 +1279,7 @@ for i=1,10 do
         local patterns = {"slash","fire_slash","thunder_slash","jink","peach","analeptic","nullification","snatch","dismantlement","collateral","ex_nihilo","duel","fire_attack","amazing_grace","savage_assault","archery_attack","god_salvation","iron_chain"}
         local choices = {}
         for _, name in ipairs(patterns) do
-            local poi = r45_shisheng(self,name,{},true)
+            local poi = evaluate_shisheng_card(self,name,{},true)
             if poi:isAvailable(self.player) then
                 table.insert(choices, name)
             end
@@ -1440,7 +1440,7 @@ ai_skill_use["@@shisheng"] = function(self, prompt, request)
                     end
                 end
                 if #use_cards == cost then
-                    use_card=r45_shisheng(self,pattern,use_cards,false)
+                    use_card=evaluate_shisheng_card(self,pattern,use_cards,false)
                     local dummyuse = self:evaluateCard(use_card, dummy())
                     local targets = {}
                     if not dummyuse.to:isEmpty() then
@@ -1470,7 +1470,7 @@ for i=1,10 do
         local items = choices:split("+")
         for _, card_name in ipairs(items) do
             if card_name ~= "esc" then
-                local use_card = r45_shisheng(self,card_name,{},true)
+                local use_card = evaluate_shisheng_card(self,card_name,{},true)
                 table.insert(shisheng_vs_card, use_card)
             end
         end
@@ -1499,7 +1499,7 @@ ai_skill_choice["shisheng_card"] = function(self, options, request)
     local items = choices:split("+")
     for _, card_name in ipairs(items) do
         if card_name ~= "esc" then
-            local use_card = r45_shisheng(self,card_name,{},true)
+            local use_card = evaluate_shisheng_card(self,card_name,{},true)
             table.insert(shisheng_vs_card, use_card)
         end
     end

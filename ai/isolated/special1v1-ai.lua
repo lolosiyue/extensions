@@ -53,7 +53,7 @@ local function observed_hand(self,p)
  return known(p:getKnownCards(),'observer disclosed hand')
 end
 local function data_fact(self,key)
- local ctx=self:getDecisionContext();return known(known(ctx.round25_choice,'Round25 scoped context')[key],key)
+ local ctx=self:getDecisionContext();return known(known(ctx.round25_choice,'Scoped choice context')[key],key)
 end
 local function source_damage(self)
  local row=data_fact(self,'current_damage');if row==false then return{}end
@@ -87,7 +87,7 @@ function SmartAIView:useCardDrowning(card,use)
 		then
 			if enemy:isChained()
 			then
-				if self:isGoodChainTarget(enemy,card)
+				if self:isGoodChainTarget(enemy, nil, nil, nil, card)
 				then else continue end
 			end
 			if enemy:hasEquip() then table.insert(equip_enemy,enemy)
@@ -124,7 +124,7 @@ function SmartAIView:useCardDrowning(card,use)
 		end
 		if friend:isChained()
 		then
-			if self:isGoodChainTarget(friend,card)
+			if self:isGoodChainTarget(friend, nil, nil, nil, card)
 			and self:damageIsEffective(friend,card,self.player)
 			then else continue end
 		elseif n<1 then continue end
@@ -161,7 +161,7 @@ ai_skill_choice.drowning = function(self, options, request)
 	if self:isWeak() and not self:needDeath() then return ai_choice_result(("throw"), options) end
 	local value = 0
 	if self.player:isChained()
-	and self:isGoodChainTarget(self.player,effect.card,effect.from)
+	and self:isGoodChainTarget(self.player, effect.from, nil, nil, effect.card)
 	then
 		if self:isFriend(effect.from) then value = 99
 		else value = -7 end

@@ -1094,7 +1094,7 @@ qhstandardhujia = sgs.CreateTriggerSkillV2 {
                     local Card = room:askForCard(dest, "jink", newprompt, playerdata, sgs.Card_MethodNone, player) -- 询问使用或打出卡牌
                     if Card then
                         room:provide(Card)                                                                         -- 提供了一张闪
-                        if dest:getKingdom() == "wei" then                                                         -- 如果是魏势力
+                        if dest:hasLordSkillKingdom("wei", player) then                                                         -- 如果是魏势力
                             local msg = sgs.LogMessage()                                                           -- 创建消息
                             msg.type =
                             "#qhstandardhujiawei"                                                                  -- 消息结构类型(发送的消息是什么)
@@ -2340,7 +2340,7 @@ qhstandardjijiangCARD = sgs.CreateSkillCard {           -- 激将 技能卡
                 reason.m_playerId = dest:objectName()
                 reason.m_skillName = "qhstandardjijiang"
                 room:moveCardTo(Card, source, sgs.Player_PlaceHand, reason, false)                          -- 移动到手牌
-                if dest:getKingdom() == "shu" then                                                          -- 如果是蜀势力
+                if dest:hasLordSkillKingdom("shu", source) then                                                          -- 如果是蜀势力
                     local msg = sgs.LogMessage()                                                            -- 创建消息
                     msg.type =
                     "#qhstandardjijiangshu"                                                                 -- 消息结构类型(发送的消息是什么)
@@ -2387,7 +2387,7 @@ qhstandardjijiang = sgs.CreateTriggerSkillV2 {
                     local Card = room:askForCard(dest, "slash", newprompt, playerdata, sgs.Card_MethodNone, player) -- 询问使用或打出卡牌
                     if Card then
                         room:provide(Card)                                                                          -- 提供了一张杀
-                        if dest:getKingdom() == "shu" then                                                          -- 如果是蜀势力
+                        if dest:hasLordSkillKingdom("shu", player) then                                                          -- 如果是蜀势力
                             local msg = sgs.LogMessage()                                                            -- 创建消息
                             msg.type =
                             "#qhstandardjijiangshu"                                                                 -- 消息结构类型(发送的消息是什么)
@@ -4074,7 +4074,7 @@ qhstandardjiuyuan = sgs.CreateTriggerSkillV2 {
                 recover.recover = number + 1                               -- 恢复量+1
                 data:setValue(recover)                                     -- 保存恢复量
                 room:broadcastSkillInvoke("jiuyuan")                       -- 播放配音
-                if from:getKingdom() == "wu" then                          -- 如果是吴势力
+                if from:hasLordSkillKingdom("wu", player) then                          -- 如果是吴势力
                     local msg = sgs.LogMessage()                           -- 创建消息
                     msg.type = "#qhstandardjiuyuanwu"                      -- 消息结构类型(发送的消息是什么)
                     msg.from = from
@@ -6547,7 +6547,7 @@ qhwindhuangtianVSCARD = sgs.CreateSkillCard { -- 黄天 技能卡
         if target:hasLordSkill("qhwindhuangtian") then
             room:broadcastSkillInvoke("huangtian")
             room:obtainCard(target, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "qhwindhuangtian", ""), true)
-            if source:getKingdom() == "qun" then
+            if source:hasLordSkillKingdom("qun", target) then
                 room:drawCards(source, 1, self:objectName()) -- 摸牌
             end
         end
@@ -7128,7 +7128,7 @@ qhfirexueyi = sgs.CreateMaxCardsSkillV2 { -- 手牌上限技
         if target:hasLordSkill(skill:objectName()) then
             local players = target:getAliveSiblings()
             for _, player in sgs.qlist(players) do
-                if player:getKingdom() == "qun" then
+                if player:hasLordSkillKingdom("qun", target) then
                     n = n + 2
                 else
                     n = n + 1

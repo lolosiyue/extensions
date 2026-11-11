@@ -851,7 +851,7 @@ do
  ai_card_use.LimuCard=function(self, card, use, request)use.card=card end
  sgs.ai_use_priority.LimuCard=2.5
  sgs.ai_use_value.LimuCard=2.5
- -- ai_use_revises.limu retains the complete R41 body. Only its constructor
+ -- ai_use_revises.limu retains the complete body. Only its constructor
  -- adapter dispatches current Activate versus original Faqi AG context.
  sgs.ai_skill_carduse.limu=function(self,card,use)
   if not (card:isKindOf('Weapon'))then return false end

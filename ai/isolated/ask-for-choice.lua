@@ -59,7 +59,7 @@ local function legacy_player(self, value)
 end
 
 -- Fixed Original heg-common1483/2459; mode facts are native admission evidence.
-local function r35_original(self)
+local function original_choice_enabled(self)
     local facts=self.world and AIHegemony.facts(self.world)
     if type(facts)~='table' or facts.enabled==false then return false end
     if facts.enabled~=true or type(facts.original_overrides_loaded)~='boolean' then
@@ -125,8 +125,9 @@ local function legacy_call(self, kind, callback, options, request)
         result = callback(self, data, pattern, self.target,
             self.target2, parts[4], parts[5])
     elseif kind == "askForNullification" then
+        local null_num = AIValue.callKnown(self, "getCardsNum", "Nullification")
         result = callback(self, context.card, legacy_player(self, context.from),
-            legacy_player(self, context.to), context.positive)
+            legacy_player(self, context.to), context.positive, null_num)
     elseif kind == "askForCardShow" then result = callback(self, targets[1])
     elseif kind == "askForSinglePeach" then result = callback(self, targets[1])
     elseif kind == "askForPindian" then
@@ -359,7 +360,7 @@ end
 ai_register_handler("skill_invoke", function(self, request)
     local options = type(request.options) == "table" and request.options or nil
     local reason = options and options.reason
-    local original = r35_original(self)
+    local original = original_choice_enabled(self)
     local callback
     if type(reason) == "string" then callback = invoke_handlers[reason] end
     -- Exact native reasons have priority; skill-event suffixes use the same
@@ -429,7 +430,7 @@ end
 ai_register_handler("choice", function(self, request)
     local options = type(request.options) == "table" and request.options or nil
     local reason = options and options.reason
-    local original = r35_original(self)
+    local original = original_choice_enabled(self)
     if (reason == "jilve" or reason == "heg_tianxiang") and type(self.getStrategyMemory) == "function" then
         local override, present = self:getStrategyMemory("choice_override:" .. reason)
         if present and type(override) == "string" then
@@ -491,7 +492,18 @@ local function make_registry(kind, default_name, name)
             end
             if type(options)~='table'then return ai_unsupported('Original ask options missing',kind)end
             if kind=='suit'then
-                ai_unsupported('Original Suit result conversion is not projected',kind)
+                local selected=self:askForSuit(reason)
+                if AIUnsupported.is(selected)then error(selected,0)end
+                local names={[sgs.Card_Spade]='spade',[sgs.Card_Club]='club',
+                    [sgs.Card_Heart]='heart',[sgs.Card_Diamond]='diamond'}
+                local name=type(selected)=='number'and names[selected]
+                -- The policy's native enum crosses only as an offered suit name.
+                if name and AIValue.isList(options.choices)then
+                    for _,choice in ipairs(options.choices)do
+                        if choice==name then return finish_registry(self,kind,name)end
+                    end
+                end
+                return ai_unsupported('Original suit result is outside the native domain',kind)
             end
             if not AIValue.isList(options.players)then
                 return ai_unsupported('Original ask target domain unknown',kind)
@@ -522,7 +534,7 @@ local function make_registry(kind, default_name, name)
             return finish_registry(self,kind,{kind='answer',cards={id},targets={selected:objectName()}})
         end
 
-        if r35_original(self) and kind=='card_chosen'then
+        if original_choice_enabled(self) and kind=='card_chosen'then
             if type(options)~='table'then ai_unsupported('Original ask options missing',kind)end
             local context=decision_context(self,options,request)
             local who=legacy_player(self,context.who or context.target)
@@ -534,8 +546,30 @@ local function make_registry(kind, default_name, name)
             if type(answer)=='table'and answer.kind=='answer'and answer.random_card_choice then
                 return finish_registry(self,kind,answer)
             end
-            if type(answer)~='number'then ai_unsupported('Original card choice nonnumeric result',kind)end
-            ai_unsupported('Original numeric card choice conversion is not projected',kind)
+            if answer == -1 then
+                -- Only the source's explicit no-preference sentinel reaches
+                -- this choice. Unknown/malformed answers still fail below.
+                if options.optional == true then return finish_registry(self,kind,{kind='pass'}) end
+                local domains=context.random_card_choices
+                local domain=type(domains)=='table'and domains[context.flags]
+                if options.optional~=false or type(domain)~='table'or domain.complete~=true
+                    or domain.original_full_domain~=false or type(domain.token)~='string'or domain.token==''
+                    or type(domain.count)~='number'or domain.count<1 or domain.count%1~=0 then
+                    ai_unsupported('Original no-preference choice has no complete legal domain',kind)
+                end
+                return finish_registry(self,kind,{kind='answer',random_card_choice={token=domain.token,index=1}})
+            end
+            if type(answer)~='number'or answer~=answer or answer<0 or answer>2147483647 or answer%1~=0 then
+                ai_unsupported('Original card choice has no physical card ID',kind)
+            end
+            -- A visible ID is authorized even if other, hidden hand identities
+            -- make the whole domain incomplete. Opaque random choices stay above.
+            if AIValue.isList(options.card_ids)then
+                for _,id in ipairs(options.card_ids)do
+                    if id==answer then return finish_registry(self,kind,{kind='answer',cards={answer}})end
+                end
+            end
+            return ai_unsupported('Original card choice selected an unoffered card',kind)
         end
 
         -- SmartAI exits an empty AG domain before invoking any reason hook.
@@ -862,7 +896,7 @@ end
 ai_skill_choice_default = ai_skill_choice_default or function(self, options)
     local choices = offered(options, "choices")
     if not choices then return nil end
-    if r35_original(self)then
+    if original_choice_enabled(self)then
         local allowed={};for _,choice in ipairs(choices)do allowed[#allowed+1]=choice end
         for index,choice in ipairs(allowed)do
             if choice=='heg_benghuai'then table.remove(allowed,index);break end
@@ -1424,8 +1458,22 @@ ai_skill_cardchosen_default = ai_skill_cardchosen_default or function(self, opti
             return unsupported("hidden-hand random choice ticket is missing or incomplete","card_chosen")
         end
         if ticket.count==0 then return {kind="pass"} end
-        return {kind="answer",random_card_choice={token=ticket.token,index=math.random(1,ticket.count),
-            avoid_wounded_enemy_silver_lion=avoid}}
+        local index=math.random(1,ticket.count)
+        local armor=avoid and target:getArmor()
+        if armor and armor:isKindOf("SilverLion") then
+            -- Only disclosed armor positions enter policy; hidden identities stay native.
+            local positions=ticket.visible_card_indices
+            if type(positions)~="table" then return unsupported("visible choice positions are missing","card_chosen") end
+            local armor_index=positions[tostring(armor:getEffectiveId())]
+            if armor_index~=nil and (not finite_number(armor_index) or armor_index<1
+                or armor_index>ticket.count or armor_index%1~=0) then
+                return unsupported("visible armor choice position is invalid","card_chosen")
+            end
+            if index==armor_index then
+                if index<ticket.count then index=index+1 elseif index>1 then index=index-1 end
+            end
+        end
+        return {kind="answer",random_card_choice={token=ticket.token,index=index}}
     end
     return select_cardchosen(self,target,context.flags,context.method or context.handling_method,ids,
         function(id)return self:getChoiceCard(id,options)end,random_hidden,duel_2013)
@@ -2004,8 +2052,11 @@ original_response_entry=function(self,options,request,question)
             return response_card_default(self,options,request)
         end
         if type(value)=="string"then
-            if value:sub(1,1)=="$"then return unsupported("Original DummyCard wire needs aggregate payment authority",question)end
-            local id=value:match("^(%d+)$")
+            -- Native askForCard unwraps a one-material DummyCard to its physical
+            -- card before payment. Keep the current offered-ID gate below;
+            -- multiple materials are not an authorization to aggregate costs.
+            local id=value:match("^%$(%d+)$") or value:match("^(%d+)$")
+            if not id and value:sub(1,1)=="$"then return unsupported("Original DummyCard wire needs aggregate payment authority",question)end
             if not id then return unsupported("Original response wire lacks current issued authority",question)end
             value=tonumber(id)
         end
@@ -2030,13 +2081,13 @@ original_response_entry=function(self,options,request,question)
 end
 
 -- Preserve ordinary nil returns; coverage signals are never strategy answers.
-local round32_null_query = AIValue.bindQuery {
+local nullification_query = AIValue.bindQuery {
     read = inquiry_call, known = inquiry_known, known_nil = AIValue.isKnownNil,
 }
 
 response_nullfilter = function(self, options, request, primitive_target, primitive_data)
     local hp = inquiry_known(self.player:getHp(), "own HP")
-    if hp > 2 and round32_null_query(self,"needBear") then return {kind="pass"} end
+    if hp > 2 and nullification_query(self,"needBear") then return {kind="pass"} end
     local effect
     if not primitive_data then effect=immediate_response_effect(self, options, request)end
     local card = effect and effect.card
@@ -2047,16 +2098,16 @@ response_nullfilter = function(self, options, request, primitive_target, primiti
         local name = inquiry_known(policy.nosjiefan_target, "NosJiefan target")
         local target = name ~= "" and self.room:findPlayerByObjectName(name, true) or nil
         -- Source isFriend(nil) is false; do not read the rescuer until true.
-        if target and round32_null_query(self,"isFriend",target) then
+        if target and nullification_query(self,"isFriend",target) then
             local rescuer = self.room:findPlayerBySkillName("nosjiefan")
             if rescuer == nil and getmetatable(self.room) == RoomView then
                 -- This facade getter shares nil for absent/unknown. Certify
                 -- absence only from the complete ordered public skill domain.
-                for _, player in ipairs(round32_null_query(self.room,"getAlivePlayers")) do
-                    if round32_null_query(player,"hasSkill","nosjiefan") then rescuer = player; break end
+                for _, player in ipairs(nullification_query(self.room,"getAlivePlayers")) do
+                    if nullification_query(player,"hasSkill","nosjiefan") then rescuer = player; break end
                 end
             end
-            if not rescuer or not round32_null_query(self,"isEnemy",rescuer) then return {kind="pass"} end
+            if not rescuer or not nullification_query(self,"isEnemy",rescuer) then return {kind="pass"} end
         end
     end
     local target=primitive_target
@@ -2068,12 +2119,12 @@ response_nullfilter = function(self, options, request, primitive_target, primiti
         end
     end
     if target then
-        if round32_null_query(self.player,"getRole") == "lord" and round32_null_query(target,"hasSkill","guagu")
-            or round32_null_query(self,"ajustDamage",target,nil,1,card) == 0
-            or round32_null_query(self,"needDeath")
+        if nullification_query(self.player,"getRole") == "lord" and nullification_query(target,"hasSkill","guagu")
+            or nullification_query(self,"ajustDamage",target,nil,1,card) == 0
+            or nullification_query(self,"needDeath")
             or inquiry_known(inquiry_call(self, "getRoleEstimate", target), "target role estimate") == "rebel"
-                and self.role == "rebel" and round32_null_query(self.player,"hasFlag","AI_doNotSave")
-            or round32_null_query(self,"needToLoseHp",self.player,target,card) then return {kind="pass"} end
+                and self.role == "rebel" and nullification_query(self.player,"hasFlag","AI_doNotSave")
+            or nullification_query(self,"needToLoseHp",self.player,target,card) then return {kind="pass"} end
     end
 end
 
@@ -2195,7 +2246,7 @@ local function common_slash_jink(self, options, request, target, primitive_data,
         return result == "." or type(result) == "table" and result.kind == "pass"
     end
 	if not target or decline_filter()
-	or slash:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player,slash,target)
+	or slash:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, target, nil, nil, slash)
 	or self:isFriend(target) and slash:hasFlag("nosjiefan-slash") then return "." end
 	local n = self:ajustDamage(target,nil,1,slash)
 	if n==1 and self:needToLoseHp(self.player,target,slash)
@@ -2381,7 +2432,7 @@ end
 
 -- Keep the positional cardask ABI separate from the options/request registry.
 ai_choice_legacy_registries.ai_skill_cardask["collateral-slash"] = function(self,data,pattern,victim,wielder,prompt)
-    if r35_original(self) then
+    if original_choice_enabled(self) then
         return unsupported("Original Collateral cardask provider is not this ordinary body","collateral-slash")
     end
     local result=common_collateral_slash(self,victim,wielder)
@@ -2568,7 +2619,7 @@ pindian_selection = function(self, options)
     return cards, high, low
 end
 
-local function r35_pindian(self,options)
+local function original_pindian_choice(self,options)
     if not options or options.candidates_complete~=true then
         return unsupported('pindian candidate completeness is unknown','Original askForPindian')
     end
@@ -2640,7 +2691,7 @@ local function r35_pindian(self,options)
 end
 
 respond_defaults.askForPindian = function(self, options)
-    if r35_original(self)then return r35_pindian(self,options)end
+    if original_choice_enabled(self)then return original_pindian_choice(self,options)end
     if not options or options.candidates_complete ~= true then
         return unsupported("pindian candidate completeness is unknown", "askForPindian")
     end

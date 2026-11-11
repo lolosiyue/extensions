@@ -230,7 +230,7 @@ end
 ai_fill_skill["tenyearzhiheng"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearZhihengCard=.")
+	return parse_policy(self,"@TenyearZhihengCard=.",request)
 end
 
 ai_card_use.TenyearZhihengCard=function(self, card, use, request)
@@ -302,7 +302,7 @@ end
 ai_fill_skill["tenyearjieyin"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearJieyinCard=.")
+	return parse_policy(self,"@TenyearJieyinCard=.",request)
 end
 
 ai_card_use.TenyearJieyinCard = function(self, card, use, request)
@@ -332,7 +332,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 		for _,p in ipairs(draw_friends)do
 			local id = getTenyearJieyinId(self,p,equips,cards)
 			if id>0 then
-				use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+				use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 				use.to:append(p)
 				return
 			end
@@ -346,7 +346,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 		for _,p in ipairs(not_friends)do
 			local id = getTenyearJieyinId(self,p,equips,cards)
 			if id>0 then
-				use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+				use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 				use.to:append(p)
 				return
 			end
@@ -361,7 +361,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 		for _,p in ipairs(enemies)do
 			local id = getTenyearJieyinId(self,p,equips,cards)
 			if id>0 then
-				use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+				use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 				use.to:append(p)
 				return
 			end
@@ -376,7 +376,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 		for _,p in ipairs(enemies)do
 			local id = getTenyearJieyinId(self,p,equips,cards)
 			if id>0 then
-				use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+				use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 				use.to:append(p)
 				return
 			end
@@ -393,7 +393,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 		for _,p in ipairs(weak_friends)do
 			local id = getTenyearJieyinId(self,p,equips,cards)
 			if id<0 then continue end
-			use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+			use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 			use.to:append(p)
 			return
 		end
@@ -409,7 +409,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 		for _,p in ipairs(recover_friends)do
 			local id = getTenyearJieyinId(self,p,equips,cards)
 			if id<0 then continue end
-			use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+			use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 			use.to:append(p)
 			return
 		end
@@ -424,7 +424,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 	for _,p in ipairs(draw_friends)do
 		local id = getTenyearJieyinId(self,p,equips,cards)
 		if id>0 then
-			use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+			use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 			use.to:append(p)
 			return
 		end
@@ -439,7 +439,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 		for _,p in ipairs(not_friends)do
 			local id = getTenyearJieyinId(self,p,equips,cards)
 			if id>0 then
-				use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+				use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 				use.to:append(p)
 				return
 			end
@@ -454,7 +454,7 @@ ai_card_use.TenyearJieyinCard = function(self, card, use, request)
 		for _,p in ipairs(enemies)do
 			local id = getTenyearJieyinId(self,p,equips,cards)
 			if id>0 then
-				use.card = parse_policy(self,"@TenyearJieyinCard="..id)
+				use.card = parse_policy(self,"@TenyearJieyinCard="..id,request)
 				use.to:append(p)
 				return
 			end
@@ -696,7 +696,7 @@ ai_fill_skill["tenyearwusheng"] = function(self, options, request)
 		local suit = red_card:getSuitString()
 		local number = red_card:getNumberString()
 		local card_id = red_card:getKnownEffectiveId()
-		return parse_policy(self,("slash:tenyearwusheng[%s:%s]=%d"):format(suit,number,card_id))
+		return parse_policy(self,("slash:tenyearwusheng[%s:%s]=%d"):format(suit,number,card_id),request)
 	end
 end
 
@@ -727,7 +727,7 @@ ai_fill_skill["tenyearyijue"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
 	if self.player:canDiscard(self.player,"he") then
-		return parse_policy(self,"@TenyearYijueCard=.")
+		return parse_policy(self,"@TenyearYijueCard=.",request)
 	end
 end
 
@@ -745,7 +745,7 @@ ai_card_use.TenyearYijueCard = function(self, card, use, request)
 	self.friends_noself = self:sort(self.friends_noself,"hp")
 	for _,p in ipairs(self.friends_noself)do
 		if self:isWeak(p) and p:getLostHp()>0 and hasRedHandcard(self,p) then
-			use.card = parse_policy(self,"@TenyearYijueCard="..id)
+			use.card = parse_policy(self,"@TenyearYijueCard="..id,request)
 			use.to:append(p)
 			return
 		end
@@ -754,7 +754,7 @@ ai_card_use.TenyearYijueCard = function(self, card, use, request)
 	self.enemies = self:sort(self.enemies,"handcard")
 	for _,p in ipairs(self.enemies)do
 		if self.player:canSlash(p,nil) and not p:isKongcheng() then
-			use.card = parse_policy(self,"@TenyearYijueCard="..id)
+			use.card = parse_policy(self,"@TenyearYijueCard="..id,request)
 			use.to:append(p)
 			return
 		end
@@ -764,7 +764,7 @@ ai_card_use.TenyearYijueCard = function(self, card, use, request)
 	and (self:needToThrowArmor() or (self:isWeak() and self.player:getLostHp()>0)) then
 		for _,p in ipairs(self.friends_noself)do
 			if p:getLostHp()>0 and hasRedHandcard(self,p) then
-				use.card = parse_policy(self,"@TenyearYijueCard="..id)
+				use.card = parse_policy(self,"@TenyearYijueCard="..id,request)
 				use.to:append(p)
 				return
 			end
@@ -772,7 +772,7 @@ ai_card_use.TenyearYijueCard = function(self, card, use, request)
 
 		for _,p in ipairs(self.enemies)do
 			if not p:isKongcheng() then
-				use.card = parse_policy(self,"@TenyearYijueCard="..id)
+				use.card = parse_policy(self,"@TenyearYijueCard="..id,request)
 				use.to:append(p)
 				return
 			end
@@ -1212,7 +1212,7 @@ ai_fill_skill["tenyearqingnang"] = function(self, options, request)
 		return v1<v2
 	end
 	table.sort(cards,compare_func)
-	return parse_policy(self,("@TenyearQingnangCard=%d"):format(cards[1]:getId()))
+	return parse_policy(self,("@TenyearQingnangCard=%d"):format(cards[1]:getId()),request)
 end
 
 ai_card_use.TenyearQingnangCard = function(self, card, use, request)
@@ -1321,7 +1321,7 @@ ai_fill_skill["tenyearqimou"] = function(self, options, request)
 	if #self.enemies<=0 then return end
 	write(self,"qm_lose",math.min(self:getCardsNum("Slash")-1,self.player:getHp()+self:getCardsNum("Analeptic,Peach")-1))
 	if read(self,"qm_lose")<2 then return end
-	return parse_policy(self,"@TenyearQimouCard=.")
+	return parse_policy(self,"@TenyearQimouCard=.",request)
 end
 
 ai_card_use.TenyearQimouCard = function(self, card, use, request)
@@ -1597,7 +1597,7 @@ end
 ai_fill_skill["tenyearsanyao"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearSanyaoCard=.")
+	return parse_policy(self,"@TenyearSanyaoCard=.",request)
 end
 
 ai_card_use.TenyearSanyaoCard = function(self, card, use, request)
@@ -1661,7 +1661,7 @@ ai_card_use.TenyearSanyaoCard = function(self, card, use, request)
 	for i = 1,max_num do
 		table.insert(to_discards,discards[i])
 	end
-	use.card = parse_policy(self,"@TenyearSanyaoCard="..table.concat(to_discards,"+"))
+	use.card = parse_policy(self,"@TenyearSanyaoCard="..table.concat(to_discards,"+"),request)
 	for i = 1,max_num do
 		use.to:append(targets[i])
 	end
@@ -1849,7 +1849,7 @@ ai_fill_skill["secondtenyearlihuo"] = function(self, options, request)
 	local suit = slash_card:getSuitString()
 	local number = slash_card:getNumberString()
 	local card_id = slash_card:getKnownEffectiveId()
-	return parse_policy(self,("fire_slash:secondtenyearlihuo[%s:%s]=%d"):format(suit,number,card_id))
+	return parse_policy(self,("fire_slash:secondtenyearlihuo[%s:%s]=%d"):format(suit,number,card_id),request)
 end
 
 --二版醇醪
@@ -1898,7 +1898,7 @@ ai_fill_skill.tenyearwurong = function(self, options, request)
     local inclusive = options and options.inclusive
 
     if self.player:isKongcheng() then return end
-    return parse_policy(self,"@TenyearWurongCard=.")
+    return parse_policy(self,"@TenyearWurongCard=.",request)
 end
 
 ai_card_use.TenyearWurongCard = function(self, card, use, request)
@@ -2094,7 +2094,7 @@ ai_card_use.TenyearWurongCard = function(self, card, use, request)
         local use_cards = need_slash and my_slashes or my_cards
         if #use_cards>0 then
             use_cards = self:sortByUseValue(use_cards,true)
-            use.card = parse_policy(self,"@TenyearWurongCard="..use_cards[1]:getKnownEffectiveId())
+            use.card = parse_policy(self,"@TenyearWurongCard="..use_cards[1]:getKnownEffectiveId(),request)
             use.to:append(target)
         end
     end
@@ -2412,7 +2412,7 @@ end
 ai_fill_skill["tenyearkuangfu"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearKuangfuCard=.")
+	return parse_policy(self,"@TenyearKuangfuCard=.",request)
 end
 
 ai_card_use.TenyearKuangfuCard = function(self, card, use, request)
@@ -2473,7 +2473,7 @@ ai_fill_skill["tenyearduanliang"] = function(self, options, request)
 	if card then
 		local str = card:getLegacyStringKey()
 		str = string.gsub(str,"duanliang","tenyearduanliang")
-		return parse_policy(self,str)
+		return parse_policy(self,str,request)
 	end
 end
 
@@ -2495,7 +2495,7 @@ end
 ai_fill_skill["tenyearyanzhu"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearYanzhuCard=.")
+	return parse_policy(self,"@TenyearYanzhuCard=.",request)
 end
 
 ai_card_use.TenyearYanzhuCard = function(self, card, use, request)
@@ -2709,7 +2709,7 @@ ai_fill_skill["tenyearqiaoshui"] = function(self, options, request)
   	for _,c in sgs.list(cards)do
 		if c:getNumber()>9
 		then
-			return parse_policy(self,"@TenyearQiaoshuiCard=.")
+			return parse_policy(self,"@TenyearQiaoshuiCard=.",request)
 		end
 	end
 end
@@ -2841,7 +2841,7 @@ ai_fill_skill["tenyearduwu"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
 	if #self.enemies==0 then return end
-	return parse_policy(self,"@TenyearDuwuCard=.")
+	return parse_policy(self,"@TenyearDuwuCard=.",request)
 end
 
 ai_card_use.TenyearDuwuCard = function(self, card, use, request)
@@ -2858,7 +2858,7 @@ ai_card_use.TenyearDuwuCard = function(self, card, use, request)
 	if #enemies==0 then return end
 	table.sort(enemies,cmp)
 	if enemies[1]:getHp()<=0 then
-		use.card = parse_policy(self,"@TenyearDuwuCard=.")
+		use.card = parse_policy(self,"@TenyearDuwuCard=.",request)
 		use.to:append(enemies[1])
 		return
 	end
@@ -2922,7 +2922,7 @@ ai_card_use.TenyearDuwuCard = function(self, card, use, request)
 		if enemy:getHp()<=0
 		and self:damageIsEffective(enemy,card)
 		then
-			use.card = parse_policy(self,"@TenyearDuwuCard=.")
+			use.card = parse_policy(self,"@TenyearDuwuCard=.",request)
 			use.to:append(enemy)
 			return
 		elseif enemy:getHp()>1
@@ -2935,7 +2935,7 @@ ai_card_use.TenyearDuwuCard = function(self, card, use, request)
 					table.insert(hp_ids,id)
 					if #hp_ids==enemy:getHp() then break end
 				end
-				use.card = parse_policy(self,"@TenyearDuwuCard="..table.concat(hp_ids,"+"))
+				use.card = parse_policy(self,"@TenyearDuwuCard="..table.concat(hp_ids,"+"),request)
 				use.to:append(enemy)
 				return
 			end
@@ -2944,7 +2944,7 @@ ai_card_use.TenyearDuwuCard = function(self, card, use, request)
 			and self:damageIsEffective(enemy,card)
 			and self.player:distanceTo(enemy, getRangefix(1))<=self.player:getAttackRange()
 			then
-				use.card = parse_policy(self,"@TenyearDuwuCard="..card_ids[1])
+				use.card = parse_policy(self,"@TenyearDuwuCard="..card_ids[1],request)
 				use.to:append(enemy)
 				return
 			end
@@ -2980,7 +2980,7 @@ end
 ai_fill_skill["tenyearxianzhen"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearXianzhenCard=.")
+	return parse_policy(self,"@TenyearXianzhenCard=.",request)
 end
 
 ai_card_use.TenyearXianzhenCard = function(self, card, use, request)
@@ -3061,7 +3061,7 @@ sgs.ai_use_priority.TenyearXianzhenCard = sgs.ai_use_priority.XianzhenCard
 ai_fill_skill.secondtenyearxianzhen = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@SecondTenyearXianzhenCard=.")
+	return parse_policy(self,"@SecondTenyearXianzhenCard=.",request)
 end
 
 ai_card_use.SecondTenyearXianzhenCard = function(self, card, use, request)
@@ -3228,13 +3228,13 @@ sgs.ai_cardneed.tenyearxuanfeng = sgs.ai_cardneed.xuanfeng
 ai_fill_skill["tenyearyongjin"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearyongjinCard=.")
+	return parse_policy(self,"@TenyearyongjinCard=.",request)
 end
 
 ai_card_use.TenyearyongjinCard = function(self, card, use, request)
 	local from,card,to = self:moveField(nil,"e")
 	if from and card and to then
-		use.card = parse_policy(self,"@TenyearyongjinCard=.")
+		use.card = parse_policy(self,"@TenyearyongjinCard=.",request)
 	end
 end
 
@@ -3495,7 +3495,7 @@ ai_fill_skill["tenyearhuaiyi"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
 	if self.player:isKongcheng() then return nil end
-	return parse_policy(self,"@TenyearHuaiyiCard=.")
+	return parse_policy(self,"@TenyearHuaiyiCard=.",request)
 end
 
 ai_card_use.TenyearHuaiyiCard = function(self, card, use, request)
@@ -3587,11 +3587,11 @@ ai_fill_skill["tenyeargongqi"] = function(self, options, request)
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
 	if self:needToThrowArmor() then
-		return parse_policy(self,"@TenyearGongqiCard="..self.player:getArmor():getEffectiveId())
+		return parse_policy(self,"@TenyearGongqiCard="..self.player:getArmor():getEffectiveId(),request)
 	end
 
 	for _,c in ipairs(cards)do
-		if c:isKindOf("Weapon") then return parse_policy(self,"@TenyearGongqiCard="..c:getKnownEffectiveId()) end
+		if c:isKindOf("Weapon") then return parse_policy(self,"@TenyearGongqiCard="..c:getKnownEffectiveId(),request) end
 	end
 
 	local handcards = self.player:getHandcards()
@@ -3610,13 +3610,13 @@ ai_fill_skill["tenyeargongqi"] = function(self, options, request)
 		if c:isKindOf("DefensiveHorse") then has_def = true end
 		if c:isKindOf("OffensiveHorse") then has_off = true end
 	end
-	if has_off and self.player:getOffensiveHorse() then return parse_policy(self,"@TenyearGongqiCard="..self.player:getOffensiveHorse():getEffectiveId()) end
-	if has_def and self.player:getDefensiveHorse() then return parse_policy(self,"@TenyearGongqiCard="..self.player:getDefensiveHorse():getEffectiveId()) end
+	if has_off and self.player:getOffensiveHorse() then return parse_policy(self,"@TenyearGongqiCard="..self.player:getOffensiveHorse():getEffectiveId(),request) end
+	if has_def and self.player:getDefensiveHorse() then return parse_policy(self,"@TenyearGongqiCard="..self.player:getDefensiveHorse():getEffectiveId(),request) end
 	if has_weapon and self.player:getWeapon() and self:evaluateWeapon(self.player:getWeapon())<=self:evaluateWeapon(weapon) then
-		return parse_policy(self,"@TenyearGongqiCard="..self.player:getWeapon():getEffectiveId())
+		return parse_policy(self,"@TenyearGongqiCard="..self.player:getWeapon():getEffectiveId(),request)
 	end
 	if has_armor and self.player:getArmor() and self:evaluateArmor(self.player:getArmor())<=self:evaluateArmor(armor) then
-		return parse_policy(self,"@TenyearGongqiCard="..self.player:getArmor():getEffectiveId())
+		return parse_policy(self,"@TenyearGongqiCard="..self.player:getArmor():getEffectiveId(),request)
 	end
 
 	if self:getOverflow()>0 and self:getCardsNum("Slash")>=1 then
@@ -3635,7 +3635,7 @@ ai_fill_skill["tenyeargongqi"] = function(self, options, request)
 				or (isCard("Slash",c,self.player) and self:getCardsNum("Slash")==1) then
 			elseif not c:isKindOf("EquipCard") and #self.enemies>0 and self.player:inMyAttackRange(self.enemies[1]) then
 			else
-				return parse_policy(self,"@TenyearGongqiCard="..c:getKnownEffectiveId())
+				return parse_policy(self,"@TenyearGongqiCard="..c:getKnownEffectiveId(),request)
 			end
 		end
 	end
@@ -3662,9 +3662,8 @@ sgs.ai_use_priority.TenyearGongqiCard = sgs.ai_use_priority.GongqiCard
 --解烦
 
 ai_fill_skill["tenyearjiefan"] = function(self, options, request)
-    local inclusive = options and options.inclusive
-
-	return parse_policy(self,"@TenyearJiefanCard=.")
+    local source=known(self:findOfferedSkillAction("tenyearjiefan",request),"Tenyear Jiefan native source")
+    return self:newCard("TenyearJiefanCard",{skill="tenyearjiefan",instance=source.identity.activation_instance})
 end
 
 ai_card_use.TenyearJiefanCard = function(self, card, use, request)
@@ -3840,7 +3839,7 @@ ai_fill_skill["tenyearxianzhou"] = function(self, options, request)
 
 	if self.player:getEquips():length()>#self.enemies/2
 	then
-		return parse_policy(self,"@TenyearXianzhouCard=.")
+		return parse_policy(self,"@TenyearXianzhouCard=.",request)
 	end
 end
 
@@ -3922,7 +3921,7 @@ ai_fill_skill["tenyearshenxing"] = function(self, options, request)
 		then table.insert(toids,c:getKnownEffectiveId()) end
 	end
 	local ids = #toids>0 and table.concat(toids,"+") or "."
-	if #toids>=n then return parse_policy(self,"@TenyearShenxingCard="..ids) end
+	if #toids>=n then return parse_policy(self,"@TenyearShenxingCard="..ids,request) end
 end
 
 ai_card_use["TenyearShenxingCard"] = function(self, card, use, request)
@@ -4047,7 +4046,7 @@ ai_fill_skill["tenyearyjyanyu"] = function(self, options, request)
 		if c:isKindOf("Slash")
 		then
 			if table.contains(self:getPriorTurnUseCards(),c) then continue end
-			return parse_policy(self,"@TenyearYjYanyuCard="..c:getKnownEffectiveId())
+			return parse_policy(self,"@TenyearYjYanyuCard="..c:getKnownEffectiveId(),request)
 		end
 	end
 end
@@ -4108,7 +4107,7 @@ ai_fill_skill["tenyearjiaozhao"] = function(self, options, request)
 		if self.player:hasUsed("TenyearJiaozhaoCard") and level<2
 		or level>1 and self.player:usedTimes("TenyearJiaozhaoCard")>1
 		then break end
-		return parse_policy(self,"@TenyearJiaozhaoCard="..c:getKnownEffectiveId())
+		return parse_policy(self,"@TenyearJiaozhaoCard="..c:getKnownEffectiveId(),request)
 	end
 end
 
@@ -4213,7 +4212,7 @@ end
 ai_fill_skill["tenyearganlu"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearGanluCard=.")
+	return parse_policy(self,"@TenyearGanluCard=.",request)
 end
 
 ai_card_use["TenyearGanluCard"] = function(self, card, use, request)
@@ -4288,7 +4287,7 @@ end
 ai_fill_skill["tenyearjianyan"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearJianyanCard=.")
+	return parse_policy(self,"@TenyearJianyanCard=.",request)
 end
 
 ai_card_use["TenyearJianyanCard"] = function(self, card, use, request)
@@ -4355,7 +4354,7 @@ end
 ai_fill_skill["tenyearanxu"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
-	return parse_policy(self,"@TenyearAnxuCard=.")
+	return parse_policy(self,"@TenyearAnxuCard=.",request)
 end
 
 ai_card_use["TenyearAnxuCard"] = function(self, card, use, request)
@@ -4500,7 +4499,7 @@ ai_fill_skill["tenyearqinwang"] = function(self, options, request)
     local inclusive = options and options.inclusive
 
 	if self.room:getLieges("shu",self.player):length()>0 then
-		return parse_policy(self,"@TenyearQinwangCard=.")
+		return parse_policy(self,"@TenyearQinwangCard=.",request)
 	end
 end
 
@@ -4554,7 +4553,7 @@ ai_fill_skill["tenyearxiansi"] = function(self, options, request)
 			if fs.card and fs.to then
 				write(self,"tenyearxiansi_to",fs.to)
 				self:setPriorityValue("TenyearXiansiCard",sgs.ai_use_priority.Slash+0.5,"tenyear_st_standard")
-				return parse_policy(self,"@TenyearXiansiCard="..ids:at(0))
+				return parse_policy(self,"@TenyearXiansiCard="..ids:at(0),request)
 			end
 		end
 	end
@@ -4585,7 +4584,7 @@ ai_fill_skill["tenyearxiansi_slash"] = function(self, options, request)
 			then
 				write(self,"tenyearxiansi_to",d.to)
 				self:setPriorityValue("TenyearXiansiSlashCard",sgs.ai_use_priority.Slash+0.3,"tenyear_st_standard")
-				return parse_policy(self,"@TenyearXiansiSlashCard="..ids:at(0).."+"..ids:at(1))
+				return parse_policy(self,"@TenyearXiansiSlashCard="..ids:at(0).."+"..ids:at(1),request)
 			end
 			if self:isFriend(owner)
 			and can_to(self,fs,self.player,owner)
@@ -4594,7 +4593,7 @@ ai_fill_skill["tenyearxiansi_slash"] = function(self, options, request)
 				write(self,"tenyearxiansi_to",AIList.new({}))
 				write(self,"tenyearxiansi_to",{owner})
 				self:setPriorityValue("TenyearXiansiSlashCard",sgs.ai_use_priority.Slash+0.3,"tenyear_st_standard")
-				return parse_policy(self,"@TenyearXiansiSlashCard="..ids:at(0).."+"..ids:at(1))
+				return parse_policy(self,"@TenyearXiansiSlashCard="..ids:at(0).."+"..ids:at(1),request)
 			end
 		end
 	end
@@ -4678,7 +4677,7 @@ ai_fill_skill["tenyearmingce"] = function(self, options, request)
 	cards = self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do
 		if c:isKindOf("Slash") or c:isKindOf("EquipCard") then
-			return parse_policy(self,"@TenyearMingceCard="..c:getKnownEffectiveId())
+			return parse_policy(self,"@TenyearMingceCard="..c:getKnownEffectiveId(),request)
 		end
 	end
 end
@@ -4797,7 +4796,7 @@ ai_fill_skill["tenyearfencheng"] = function(self, options, request)
 		if self:isWeak(ep) then can = can+1 end
 	end
 	if can<#self.enemies/2 then return end
-	return parse_policy(self,"@TenyearFenchengCard=.")
+	return parse_policy(self,"@TenyearFenchengCard=.",request)
 end
 
 ai_card_use["TenyearFenchengCard"] = function(self, card, use, request)
@@ -4851,7 +4850,7 @@ ai_fill_skill["tenyearmieji"] = function(self, options, request)
 	cards = self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do
 		if c:isKindOf("Weapon") or c:isKindOf("TrickCard") and c:isBlack()
-		then return parse_policy(self,"@TenyearMiejiCard="..c:getKnownEffectiveId()) end
+		then return parse_policy(self,"@TenyearMiejiCard="..c:getKnownEffectiveId(),request) end
 	end
 end
 

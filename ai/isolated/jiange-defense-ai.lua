@@ -105,7 +105,7 @@ sgs.ai_skill_playerchosen.jgtianyun = function(self,targets)
 	end
 	if not target then
 		for _,enemy in ipairs(self.enemies)do
-			if self:isGoodChainTarget(enemy,"F")
+			if self:isGoodChainTarget(enemy, nil, "F")
 			then target = enemy break end
 		end
 	end
@@ -142,7 +142,7 @@ sgs.ai_skill_playerchosen.jgleili = function(self,targets)
 	self.enemies = self:sort(self.enemies,"hp")
 	local target
 	for _,enemy in ipairs(self.enemies)do
-		if self:isGoodChainTarget(enemy,"T")
+		if self:isGoodChainTarget(enemy, nil, "T")
 		then
 			target = enemy
 			break

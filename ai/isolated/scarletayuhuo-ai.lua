@@ -3145,7 +3145,7 @@ ai_skill_invoke.s2_boxing = function(self, options, request)
 	local damage = data:toDamage()
 	if self:isWeak() or damage.damage >= 2 then
 		return (damage.nature == sgs.DamageStruct_Normal or
-		(damage.nature ~= sgs.DamageStruct_Normal and not self:isGoodChainTarget(self.player, damage.card, damage.from, damage.damage))) or false
+		(damage.nature ~= sgs.DamageStruct_Normal and not self:isGoodChainTarget(self.player, damage.from, nil, damage.damage, damage.card))) or false
 	end
 	return false
 
@@ -4234,7 +4234,7 @@ ai_skill_invoke.s2_zhonghun = function(self, options, request)
 	local use = data:toCardUse()
 	if use.card and __scarletayuhuo_value_call(use.card,"hasFlag","NosJiefanUsed") then return (false) or false  end
 	if not use.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,use.from)
-	or __scarletayuhuo_value_call(use.card,"isKindOf","NatureSlash") and  self.player:isChained() and self:isGoodChainTarget( self.player,use.card,use.from)
+	or __scarletayuhuo_value_call(use.card,"isKindOf","NatureSlash") and  self.player:isChained() and self:isGoodChainTarget(self.player, use.from, nil, nil, use.card)
 	or self:needToLoseHp( self.player,use.from,use.card) and self:ajustDamage(use.from, self.player,1,use.card)==1 then return (false) or false end
 	if self:needToLoseHp(self.player, use.from, use.card, true) then return (false) or false end
 	if self:getCardsNum("Jink") == 0 then return (true) or false end

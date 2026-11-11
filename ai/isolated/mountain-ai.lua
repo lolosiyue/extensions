@@ -3,8 +3,8 @@ local known = AIValue.requireKnown
 local function skill(self,player,names)
     if type(names)=="table" then names=names:objectName() end
     local value=player:hasSkills(names)
-    local row=type(player)=="table" and rawget(player,"_view")
-    if value==true or value~=nil and (not row or row.skills_complete==true) then return value end
+    -- hasSkills already resolves its three-valued owner/public contract.
+    if value~=nil then return value end
     if player:objectName()==self.player:objectName() then ai_unsupported("owner skill roster is incomplete","mountain.skills") end
     return self:useKnowledgeEstimate({status="estimate",value=false,basis="mountain.undisclosed_skill_uses_visible_roster",target=player:objectName()},"mountain.skills")
 end

@@ -126,7 +126,6 @@ prior_extra_hooks["ai_fill_skill.heg_tenyear_boyan"]=ai_fill_skill["heg_tenyear_
 prior_extra_hooks["ai_fill_skill.heg_tenyear_fenglue"]=ai_fill_skill["heg_tenyear_fenglue"]
 prior_extra_hooks["ai_fill_skill.heg_tenyear_mingfa"]=ai_fill_skill["heg_tenyear_mingfa"]
 prior_extra_hooks["ai_fill_skill.heg_tenyear_weimeng"]=ai_fill_skill["heg_tenyear_weimeng"]
-prior_extra_hooks["ai_fill_skill.heg_transfer"]=ai_fill_skill["heg_transfer"]
 prior_extra_hooks["ai_fill_skill.heg_weidi"]=ai_fill_skill["heg_weidi"]
 prior_extra_hooks["ai_fill_skill.heg_xianqu"]=ai_fill_skill["heg_xianqu"]
 prior_extra_hooks["ai_fill_skill.heg_xiejian"]=ai_fill_skill["heg_xiejian"]
@@ -393,7 +392,6 @@ prior_extra_hooks["ai_card_use.#heg_tenyear_boyan"]=ai_card_use["#heg_tenyear_bo
 prior_extra_hooks["ai_card_use.#heg_tenyear_fenglue"]=ai_card_use["#heg_tenyear_fenglue"]
 prior_extra_hooks["ai_card_use.#heg_tenyear_mingfa"]=ai_card_use["#heg_tenyear_mingfa"]
 prior_extra_hooks["ai_card_use.#heg_tenyear_weimeng"]=ai_card_use["#heg_tenyear_weimeng"]
-prior_extra_hooks["ai_card_use.#heg_transfer"]=ai_card_use["#heg_transfer"]
 prior_extra_hooks["ai_card_use.#heg_weidi"]=ai_card_use["#heg_weidi"]
 prior_extra_hooks["ai_card_use.#heg_xianqu"]=ai_card_use["#heg_xianqu"]
 prior_extra_hooks["ai_card_use.#heg_xiejian"]=ai_card_use["#heg_xiejian"]
@@ -6778,7 +6776,7 @@ local function CardIsHezong(card_or_id)
 	if id < 0 then return false end
 	local engine_card = source_printed(id)
 	local current_card = disclosed(id)
-	return (engine_card and source_query(engine_card,"isTransferable"))
+	return (engine_card and source_query(engine_card,"getPrintedTransferable"))
 		or (current_card and source_query(current_card,"hasFlag","heg_transfer_card")) or false
 end
 
@@ -7356,7 +7354,7 @@ function SmartAIView:useCardheg_burning_camps(card, use)
 		damage.nature = sgs.DamageStruct_Fire
 		damage.damage = 1
 		if source_query(self,"damageStruct",damage) then
-			if source_query(player,"isChained") and source_query(self,"isGoodChainTarget",player,"F",self.player,1) then
+			if source_query(player,"isChained") and source_query(self, "isGoodChainTarget", player, self.player, "F", 1) then
 				shouldUse = true
 			elseif source_query(self,"canDamage",player,self.player,card) then
 				shouldUse = true
@@ -7718,74 +7716,15 @@ sgs.ai_nullification.heg_alliance_feast = function(self, card, from, to, positiv
 end
 
 
-ai_fill_skill.heg_transfer = function(self,options,request)
-    local inclusive=(options or {}).inclusive
-
-	source_call(self,"setPriorityValue",false,"heg_transfer",0.8,"extra.heg_transfer")
-	self.yjzy_to = nil
-	local use_cards = {}
-	local cards = self.player:getCards("h")
-	cards = source_query(self, 'sortByKeepValueInPlace', cards)
-  	for _,c in sgs.list(cards)do
-		if CardIsHezong(c) then
-			local card,player = source_call(self,"getCardNeedPlayer",false,{c},false)
-			if card and player and source_query(self,"canDraw",player,self.player) and source_query(player,"getKingdom") ~= self.player:getKnownKingdom() then
-				self.yjzy_to = player
-				table.insert(use_cards, source_query(c,"getEffectiveId"))
-			end
-			if #use_cards >= 3 then break end
-		end
-	end
-  	for _,c in sgs.list(cards)do
-		if CardIsHezong(c) then
-			if not table.contains(use_cards, source_query(c,"getEffectiveId")) then
-				for _, friend in ipairs(self.friends_noself) do
-					if source_query(self,"canDraw",friend,self.player) and source_query(friend,"getKingdom") ~= self.player:getKnownKingdom() then
-						self.yjzy_to = friend
-						table.insert(use_cards, source_query(c,"getEffectiveId"))
-						break
-					end
-				end
-			end
-			if #use_cards >= 3 then break end
-		end
-	end
-	if #use_cards == 0 then return nil end
-	return parse_source("#heg_transfer:"..table.concat(use_cards, "+")..":")
-end
-
-ai_card_use["#heg_transfer"] = function(self,card,use,request)
-	if self.yjzy_to then
-		use.card = card
-		source_call(use.to,"append",false,self.yjzy_to)
-		return
-	end
-	for _, friend in ipairs(self.friends_noself) do
-		if source_query(self,"canDraw",friend,self.player) and source_query(friend,"getKingdom") ~= self.player:getKnownKingdom() then
-			use.card = card
-			source_call(use.to,"append",false,friend)
-			return
-		end
-	end
-end
-
-sgs.ai_use_value.heg_transfer = 5.4
-sgs.ai_use_priority.heg_transfer = 0.5
-sgs.dynamic_value.benefit.heg_transfer = true
-sgs.ai_card_intention.heg_transfer = -40
-
-
-
-
-
+-- Native transfer policy is owned by the always-loaded hegemony module.
 
 -- Only effective source ai_skills providers become fills. Dormant aliases are
 -- kept as audit rows, not activated as an invented replacement.
-local effective_fill={["bf_nos_tiaodu"]=true,["bf_qice"]=true,["bf_xiongsuan"]=true,["bf_yongjin"]=true,["gd_zezhu"]=true,["guandu_shicai"]=true,["guandu_yuanlue"]=true,["heg_chengliu"]=true,["heg_duanliang"]=true,["heg_duanxie"]=true,["heg_duwu"]=true,["heg_fengying"]=true,["heg_guikuang"]=true,["heg_guishu"]=true,["heg_huaiyi"]=true,["heg_jianglue"]=true,["heg_jiaping_Attach"]=true,["heg_jinfa"]=true,["heg_jinghe"]=true,["heg_kurou"]=true,["heg_longdan"]=true,["heg_lord_hongfa_Attach"]=true,["heg_lord_huibian"]=true,["heg_lord_jiahe_Attach"]=true,["heg_lord_lianzi"]=true,["heg_lord_shouyue_wusheng"]=true,["heg_lord_wendao"]=true,["heg_mobile_duoshi"]=true,["heg_mobile_paiyi"]=true,["heg_nos_guishu"]=true,["heg_nos_huaiyi"]=true,["heg_ov_hongyuan"]=true,["heg_paiyi"]=true,["heg_pojing"]=true,["heg_qiangxi"]=true,["heg_qingyin"]=true,["heg_quanjin"]=true,["heg_ruilve_attach"]=true,["heg_sanchen"]=true,["heg_shunfu"]=true,["heg_six_swords"]=true,["heg_tenyear_boyan"]=true,["heg_tenyear_fenglue"]=true,["heg_tenyear_mingfa"]=true,["heg_tenyear_weimeng"]=true,["heg_transfer"]=true,["heg_weidi"]=true,["heg_xianqu"]=true,["heg_xiejian"]=true,["heg_xuanhuoAttach"]=true,["heg_yinsha"]=true,["heg_yinyangyu"]=true,["heg_zaoyun"]=true,["heg_zhiheng"]=true,["heg_zhuangrong"]=true,["twyj_huzhu"]=true,["twyj_qijia"]=true,["twyj_rangyi"]=true,["twyj_zhuchen"]=true}
+local effective_fill={["bf_nos_tiaodu"]=true,["bf_qice"]=true,["bf_xiongsuan"]=true,["bf_yongjin"]=true,["gd_zezhu"]=true,["guandu_shicai"]=true,["guandu_yuanlue"]=true,["heg_chengliu"]=true,["heg_duanliang"]=true,["heg_duanxie"]=true,["heg_duwu"]=true,["heg_fengying"]=true,["heg_guikuang"]=true,["heg_guishu"]=true,["heg_huaiyi"]=true,["heg_jianglue"]=true,["heg_jiaping_Attach"]=true,["heg_jinfa"]=true,["heg_jinghe"]=true,["heg_kurou"]=true,["heg_longdan"]=true,["heg_lord_hongfa_Attach"]=true,["heg_lord_huibian"]=true,["heg_lord_jiahe_Attach"]=true,["heg_lord_lianzi"]=true,["heg_lord_shouyue_wusheng"]=true,["heg_lord_wendao"]=true,["heg_mobile_duoshi"]=true,["heg_mobile_paiyi"]=true,["heg_nos_guishu"]=true,["heg_nos_huaiyi"]=true,["heg_ov_hongyuan"]=true,["heg_paiyi"]=true,["heg_pojing"]=true,["heg_qiangxi"]=true,["heg_qingyin"]=true,["heg_quanjin"]=true,["heg_ruilve_attach"]=true,["heg_sanchen"]=true,["heg_shunfu"]=true,["heg_six_swords"]=true,["heg_tenyear_boyan"]=true,["heg_tenyear_fenglue"]=true,["heg_tenyear_mingfa"]=true,["heg_tenyear_weimeng"]=true,["heg_weidi"]=true,["heg_xianqu"]=true,["heg_xiejian"]=true,["heg_xuanhuoAttach"]=true,["heg_yinsha"]=true,["heg_yinyangyu"]=true,["heg_zaoyun"]=true,["heg_zhiheng"]=true,["heg_zhuangrong"]=true,["twyj_huzhu"]=true,["twyj_qijia"]=true,["twyj_rangyi"]=true,["twyj_zhuchen"]=true}
 for _,skill in ipairs(package_skills)do
  if effective_fill[skill.name]then ai_fill_skill[skill.name]=skill.getTurnUseCard end
 end
-local state_fields={yinghun_po='player',yinghun_pochoice='scalar',yjzy_to='player',heg_gongxiu='scalar',heg_nos_daming='scalar',heg_triblade_Skill_target='player'}
+local state_fields={yinghun_po='player',yinghun_pochoice='scalar',heg_gongxiu='scalar',heg_nos_daming='scalar',heg_triblade_Skill_target='player'}
 local function restore_state(ai)
  local state=ai:getStrategyMemory('extra.policy_state');if type(state)~='table'then return end
  for key,kind in pairs(state_fields)do local v=state[key];if kind=='player'and v~=nil then v=ai.room:findPlayerByObjectName(v,true)end;ai[key]=v end
@@ -7937,7 +7876,6 @@ local entries={{registry="ai_ajustdamage_from",path={"PeaceSpell"},self_index=1,
 {registry="ai_fill_skill",path={"heg_tenyear_fenglue"},self_index=1,original_override=false},
 {registry="ai_fill_skill",path={"heg_tenyear_mingfa"},self_index=1,original_override=false},
 {registry="ai_fill_skill",path={"heg_tenyear_weimeng"},self_index=1,original_override=false},
-{registry="ai_fill_skill",path={"heg_transfer"},self_index=1,original_override=false},
 {registry="ai_fill_skill",path={"heg_weidi"},self_index=1,original_override=false},
 {registry="ai_fill_skill",path={"heg_xianqu"},self_index=1,original_override=false},
 {registry="ai_fill_skill",path={"heg_xiejian"},self_index=1,original_override=false},
@@ -8204,7 +8142,6 @@ local entries={{registry="ai_ajustdamage_from",path={"PeaceSpell"},self_index=1,
 {registry="ai_card_use",path={"#heg_tenyear_fenglue"},self_index=1,original_override=false},
 {registry="ai_card_use",path={"#heg_tenyear_mingfa"},self_index=1,original_override=false},
 {registry="ai_card_use",path={"#heg_tenyear_weimeng"},self_index=1,original_override=false},
-{registry="ai_card_use",path={"#heg_transfer"},self_index=1,original_override=false},
 {registry="ai_card_use",path={"#heg_weidi"},self_index=1,original_override=false},
 {registry="ai_card_use",path={"#heg_xianqu"},self_index=1,original_override=false},
 {registry="ai_card_use",path={"#heg_xiejian"},self_index=1,original_override=false},

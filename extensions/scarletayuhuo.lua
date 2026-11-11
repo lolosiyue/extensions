@@ -12874,7 +12874,7 @@ s2_yitong = sgs.CreateTriggerSkillV2{
 		local room = player:getRoom()
 		local x = 0 
 		for _, p in sgs.qlist(room:getAllPlayers()) do
-			if p:getKingdom() == "jin" then
+			if p:hasLordSkillKingdom("jin", player) then
 				x = x + 1 
 			end
 		end

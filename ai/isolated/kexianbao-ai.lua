@@ -644,7 +644,7 @@ ai_skill_invoke.kexianmabi = function(self, options, request)
 	then
 		if self:needToLoseHp(target, self.player, damage.card) then
 			return (false) or false
-		elseif target:isChained() and self:isGoodChainTarget(target, damage.card) then
+		elseif target:isChained() and self:isGoodChainTarget(target, nil, nil, nil, damage.card) then
 			return (false) or false
 		elseif self:isWeak(target) or damage.damage > 1 then
 			return (true) or false
@@ -693,7 +693,7 @@ ai_skill_invoke.kejiexianmabi = function(self, options, request)
 	then
 		if self:needToLoseHp(target, self.player, damage.card) then
 			return (false) or false
-		elseif target:isChained() and self:isGoodChainTarget(target, damage.card) then
+		elseif target:isChained() and self:isGoodChainTarget(target, nil, nil, nil, damage.card) then
 			return (false) or false
 		elseif self:isWeak(target) or damage.damage > 1 then
 			return (true) or false
@@ -727,13 +727,13 @@ sgs.ai_skill_playerchosen.kejiexianxiuzhen = function(self, targets)
 		if not self:damageIsEffective(enemy, sgs.DamageStruct_Thunder, self.player) then return 99 end
 		if self:cantbeHurt(enemy, self.player, 1)
 			or self:objectiveLevel(enemy) < 3
-			or (enemy:isChained() and not self:isGoodChainTarget(enemy, sgs.DamageStruct_Thunder, self.player, 1))
+			or (enemy:isChained() and not self:isGoodChainTarget(enemy, self.player, sgs.DamageStruct_Thunder, 1))
 		then
 			return 100
 		end
 		if enemy:hasSkills(sgs.exclusive_skill) then value = value + 10 end
 		if enemy:hasSkills(sgs.masochism_skill) then value = value + 5 end
-		if enemy:isChained() and self:isGoodChainTarget(enemy, sgs.DamageStruct_Thunder, self.player, 1) and #(self:getChainedEnemies(self.player)) > 1 then
+		if enemy:isChained() and self:isGoodChainTarget(enemy, self.player, sgs.DamageStruct_Thunder, 1) and #(self:getChainedEnemies(self.player)) > 1 then
 			value =
 				value - 25
 		end
@@ -860,7 +860,7 @@ sgs.ai_skill_cardchosen.kejiexianliwei=function(self,who,flags)
         if type(row)~="table" or row.source_first~=true or row.count~=count or type(row.token)~="string" or row.token=="" then
             ai_unsupported("original first hand ordinal is not authorized","kejiexianliwei.first_hand")
         end
-        return {kind="answer",random_card_choice={token=row.token,index=1,avoid_wounded_enemy_silver_lion=false}}
+        return {kind="answer",random_card_choice={token=row.token,index=1}}
     end
     if #hand<3 or known(hand[1]:hasFlag("visible"),"kejiexianliwei.first_visible") then table.insert(cards,hand[1]) end
     for i=1,#cards do return cards[i] end

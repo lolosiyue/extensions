@@ -61,7 +61,7 @@ local function observed_hand(self,p)
  return known(p:getKnownCards(),'observer disclosed hand')
 end
 local function data_fact(self,key)
- local ctx=self:getDecisionContext();return known(known(ctx.round25_choice,'Round25 scoped context')[key],key)
+ local ctx=self:getDecisionContext();return known(known(ctx.round25_choice,'Scoped choice context')[key],key)
 end
 local function source_damage(self)
  local row=data_fact(self,'current_damage');if row==false then return{}end

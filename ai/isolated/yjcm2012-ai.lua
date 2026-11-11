@@ -164,7 +164,7 @@ function ai_skill_invoke.zhenlie(self, options, request)
 			end
 			if jn<1 or jink_num<1 or jn<jink_num
 			or (self.player:getStrategyFlag("dahe")) and not hasHeart then
-				if (use.card:isKindOf("NatureSlash")) and (self.player:isChained()) and not self:isGoodChainTarget(self.player,use.card,use.from) then return (true) or false end
+				if (use.card:isKindOf("NatureSlash")) and (self.player:isChained()) and not self:isGoodChainTarget(self.player, use.from, nil, nil, use.card) then return (true) or false end
 				if has_skill(self,use.from,"nosqianxi") and (use.from:distanceTo(self.player))==1 then return (true) or false end
 				if self:isFriend(use.from) and (self.player:getKnownRole())=="loyalist" and not has_skill(self,use.from,"jueqing") and (use.from:isLord()) and (self.player:getHp())<2 then return (true) or false end
 				if (not (self:hasSkills(sgs.masochism_skill) or (has_skill(self,self.player,"tianxiang") and getKnownCard(self.player,self.player,"heart")>0)) or has_skill(self,use.from,"jueqing"))
@@ -205,7 +205,7 @@ function ai_skill_invoke.zhenlie(self, options, request)
                 if ((self.player:hasArmorEffect("Vine")) or (self.player:getStrategyMark("&kuangfeng"))>0) and (use.from:getHandcardNum())>3
 				and not(has_skill(self,use.from,"hongyan") and getKnownCard(self.player,self.player,"spade")>0)
 				then return (self:doDisCard(use.from,"he")) or false
-				elseif (self.player:isChained()) and not self:isGoodChainTarget(self.player,nil,use.from)
+				elseif (self.player:isChained()) and not self:isGoodChainTarget(self.player, use.from)
 				then return (self:doDisCard(use.from,"he")) or false end
 			elseif ((use.card:isKindOf("Snatch")) or (use.card:isKindOf("Dismantlement")))
 			and self:getCardsNum("Peach")==(self.player:getHandcardNum()) and not (self.player:isKongcheng())
@@ -730,7 +730,7 @@ ai_skill_invoke.lihuo = function(self, options, request)
 	local use = data:toCardUse()
 	for _,player in sgs.qlist(use.to)do
 		if self:isEnemy(player) and self:isGoodTarget(player,self.enemies,(self:getEvaluationCard("fire_slash"))) then
-			if (player:isChained()) then return (self:isGoodChainTarget(player,"F")) or false end
+			if (player:isChained()) then return (self:isGoodChainTarget(player, nil, "F")) or false end
 			if (player:hasArmorEffect("Vine")) then return (true) or false end
 		end
 	end

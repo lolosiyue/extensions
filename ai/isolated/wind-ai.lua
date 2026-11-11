@@ -392,7 +392,7 @@ local function tianxiang_select(self,damage,method)
     end
     for _,friend in ipairs(known(self.friends_noself,"tianxiang.friends")) do
         if friend:getLostHp()+amount>1 and friend:isAlive() then
-            if friend:isChained() and nature~=sgs.DamageStruct_Normal and not self:isGoodChainTarget(friend, damage.card or nature, damage.from, amount) then
+            if friend:isChained() and nature~=sgs.DamageStruct_Normal and not self:isGoodChainTarget(friend, damage.from, not damage.card and nature or nil, amount, damage.card) then
             elseif friend:getHp()>=2 and amount<2 and (skill(self,friend,"yiji|buqu|nosbuqu|shuangxiong|zaiqi|yinghun|jianxiong|fangzhu")
                 or self:needToLoseHp(friend) or friend:getHandcardNum()<3 and (skill(self,friend,"nosrende") or skill(self,friend,"rende") and not friend:getStrategyHasUsed("RendeCard"))) then return id,friend
             elseif blocked(friend) and friend:getLostHp()>1 then return id,friend

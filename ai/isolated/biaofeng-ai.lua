@@ -2570,7 +2570,7 @@ ai_card_use["#PlusZhiheng_Card"] = function(self, card, use, request)
 		for _, card in ipairs(cards) do
 			if card:isKindOf("Slash") then
 				local will_use = false
-				if use_slash_num <= card:getTargetModResidue() then
+				if use_slash_num <= card:getTargetModResidue(self.player) then
 					local dummy_use = self:aiUseCard(card)
 					if dummy_use.card then
 						will_use = true

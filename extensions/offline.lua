@@ -820,7 +820,7 @@ ofgu_hunzi = sgs.CreateTriggerSkillV2 {
     end,
 }
 ofgu_zhiba = gu_trigger("ofgu_zhiba$", {sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
-    if not owner:hasLordSkill("ofgu_zhiba") or p == owner or p:getKingdom() ~= "wu" or p:getPhase() ~= sgs.Player_Start or p:isKongcheng() then return end
+    if not owner:hasLordSkill("ofgu_zhiba") or p == owner or not p:hasLordSkillKingdom("wu", owner) or p:getPhase() ~= sgs.Player_Start or p:isKongcheng() then return end
     local candidates = sgs.SPlayerList()
     for _, q in sgs.qlist(room:getOtherPlayers(p)) do if not q:isKongcheng() then candidates:append(q) end end
     if candidates:isEmpty() then return end
@@ -1464,7 +1464,7 @@ ofgu_huangtian = gu_trigger("ofgu_huangtian$", {sgs.TurnStart, sgs.RoundStart, s
         end
     else
         local d = data:toDamage()
-        if d.from and d.from ~= owner and d.from:getKingdom() == "qun" and owner:getMark("ofgu_huangtian_used") < 2 then
+        if d.from and d.from ~= owner and d.from:hasLordSkillKingdom("qun", owner) and owner:getMark("ofgu_huangtian_used") < 2 then
             room:addPlayerMark(owner, "ofgu_huangtian_used"); gu_daobing(room, owner, 1)
         end
     end
@@ -2151,7 +2151,7 @@ end))
 ofgu_songwei = gu_trigger("ofgu_songwei$", {sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
     if p ~= owner or p:getPhase() ~= sgs.Player_Play or not owner:hasLordSkill("ofgu_songwei") then return end
     local n = 0
-    for _, q in sgs.qlist(room:getAllPlayers()) do if q ~= owner and q:getKingdom() == "wei" then n = n + 1 end end
+    for _, q in sgs.qlist(room:getAllPlayers()) do if q ~= owner and q:hasLordSkillKingdom("wei", owner) then n = n + 1 end end
     gu_song(room, owner, 2 * n)
 end, true)
 of_gu_moucaopi:addSkill(ofgu_xingshang); of_gu_moucaopi:addSkill(ofgu_moufangzhu); of_gu_moucaopi:addSkill(ofgu_songwei)
@@ -8022,7 +8022,7 @@ extension_hl:insertRelatedSkills("hljx_rende", "#hljx_rende_clear")
 local function c204_jijiang_supply(source, name)
     local room = source:getRoom()
     for _, q in sgs.qlist(room:getOtherPlayers(source)) do
-        if q:getKingdom() == "shu" then
+        if q:hasLordSkillKingdom("shu", source) then
             local c = room:askForCard(q, "slash", "@" .. name .. ":" .. source:objectName(), sgs.QVariant(source), sgs.Card_MethodResponse, source, false, name, true)
             if c then
                 room:setCardFlag(c, name .. "_" .. source:objectName() .. "_" .. q:objectName())
@@ -8055,7 +8055,7 @@ local function c204_jijiang(name, extended)
             local p = request:getInitiator()
             if not p:hasLordSkill(name) then return false end
             local found = false
-            for _, q in sgs.qlist(p:getAliveSiblings()) do if q:getKingdom() == "shu" then found = true end end
+            for _, q in sgs.qlist(p:getAliveSiblings()) do if q:hasLordSkillKingdom("shu", p) then found = true end end
             if not found then return false end
             if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then return sgs.Slash_IsAvailable(p) end
             return request:getPattern() == "slash"
@@ -8095,7 +8095,7 @@ end
 hlxg_jijiang_liubei = c204_jijiang("hlxg_jijiang_liubei", false)
 hljx_jijiang_liubei = c204_jijiang("hljx_jijiang_liubei", true)
 hljx_jijiang_liubei_bonus = gu_record("#hljx_jijiang_liubei_bonus", {sgs.CardUsed, sgs.CardResponded}, function(self, event, room, p, data)
-    if not p or p:getKingdom() ~= "shu" then return end
+    if not p or not p:hasLordSkillKingdom("shu") then return end
     local c = event == sgs.CardUsed and data:toCardUse().card or data:toCardResponse().m_card
     if not c or not c:isKindOf("Slash") then return end
     for _, owner in sgs.qlist(room:getAlivePlayers()) do
@@ -8391,14 +8391,14 @@ hlxg_jijiang_liubei3 = sgs.CreateTriggerSkillV2 {
         local candidates = sgs.SPlayerList()
         for _, to in sgs.qlist(room:getOtherPlayers(p)) do
             for _, q in sgs.qlist(room:getOtherPlayers(p)) do
-                if q ~= to and q:getKingdom() == "shu" and q:inMyAttackRange(to) then candidates:append(to); break end
+                if q ~= to and q:hasLordSkillKingdom("shu", p) and q:inMyAttackRange(to) then candidates:append(to); break end
             end
         end
         if candidates:isEmpty() then return false end
         local to = room:askForPlayerChosen(p, candidates, self:objectName(), "@hlxg_jijiang_liubei3-target", false, true)
         local attackers = sgs.SPlayerList()
         for _, q in sgs.qlist(room:getOtherPlayers(p)) do
-            if q ~= to and q:getKingdom() == "shu" and q:inMyAttackRange(to) then attackers:append(q) end
+            if q ~= to and q:hasLordSkillKingdom("shu", p) and q:inMyAttackRange(to) then attackers:append(q) end
         end
         local q = room:askForPlayerChosen(p, attackers, self:objectName(), "@hlxg_jijiang_liubei3-attacker:" .. to:objectName(), false, true)
         if room:askForChoice(q, self:objectName(), "slash+skip", sgs.QVariant(to)) == "slash" then
@@ -8695,7 +8695,7 @@ end)
 local function c206_jijiang_supply(source)
     local room = source:getRoom()
     for _, q in sgs.qlist(room:getOtherPlayers(source)) do
-        if q:getKingdom() == "shu" then
+        if q:hasLordSkillKingdom("shu", source) then
             local supplied = room:askForCard(q, "slash", "@hlxg_jijiang_liuchan-slash:" .. source:objectName(), sgs.QVariant(source), sgs.Card_MethodResponse, source, false, "hlxg_jijiang_liuchan", true)
             if supplied then
                 local c = sgs.Sanguosha:cloneCard(supplied:objectName(), supplied:getSuit(), supplied:getNumber())
@@ -8737,7 +8737,7 @@ hlxg_jijiang_liuchan_vs = sgs.CreateViewAsSkillV2 {
         local p = request:getInitiator()
         if not p:hasLordSkill("hlxg_jijiang_liuchan") then return false end
         local found = false
-        for _, q in sgs.qlist(p:getAliveSiblings()) do if q:getKingdom() == "shu" then found = true end end
+        for _, q in sgs.qlist(p:getAliveSiblings()) do if q:hasLordSkillKingdom("shu", p) then found = true end end
         if not found then return false end
         if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then return sgs.Slash_IsAvailable(p) end
         return request:getPattern() == "slash"
@@ -8878,7 +8878,7 @@ local function hl07_borrow(source)
     -- Provision asks cannot recursively borrow another player's Slash.
     room:setPlayerFlag(source, "hljx_jijiang_liuchan_asking")
     for _, liege in sgs.qlist(room:getOtherPlayers(source)) do
-        if liege:getKingdom() == "shu" then
+        if liege:hasLordSkillKingdom("shu", source) then
             local card = room:askForCard(liege, "slash", "@hljx_jijiang_liuchan-slash:" .. source:objectName(), sgs.QVariant(source:objectName()), sgs.Card_MethodResponse, source, false, "hljx_jijiang_liuchan", true)
             if card then
                 local slash = sgs.Sanguosha:cloneCard(card:objectName(), card:getSuit(), card:getNumber())
@@ -8917,7 +8917,7 @@ hljx_jijiang_liuchan = sgs.CreateViewAsSkillV2 {
             if other:hasFlag("hljx_jijiang_liuchan_asking") then return false end
         end
         local available = false
-        for _, other in sgs.qlist(p:getAliveSiblings()) do if other:getKingdom() == "shu" then available = true end end
+        for _, other in sgs.qlist(p:getAliveSiblings()) do if other:hasLordSkillKingdom("shu", p) then available = true end end
         if not available then return false end
         if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then return sgs.Slash_IsAvailable(p) end
         return request:getPattern() == "slash"
@@ -9019,7 +9019,7 @@ hljx_xiangle_record = gu_record("#hljx_xiangle_record", {sgs.CardUsed, sgs.CardR
                 end
             end
         end
-        if event == sgs.CardFinished or event == sgs.PostCardResponded or actor:getKingdom() ~= "shu" then return end
+        if event == sgs.CardFinished or event == sgs.PostCardResponded or not actor:hasLordSkillKingdom("shu") then return end
         for _, lord in sgs.qlist(room:getAlivePlayers()) do
             if lord ~= actor and lord:hasLordSkill("hljx_jijiang_liuchan") and lord:getPhase() == sgs.Player_NotActive and lord:getMark("hljx_jijiang_liuchan-Clear") == 0 then
                 if gu_invoke(actor, "hljx_jijiang_liuchan", sgs.QVariant(lord:objectName())) then
@@ -9078,7 +9078,7 @@ hlxg_qinwangCard = sgs.CreateSkillCard {
     on_use = function(self, room, source)
         for _, p in sgs.qlist(room:getOtherPlayers(source)) do
             if not source:isAlive() then break end
-            if p:isAlive() and p:getKingdom() == "shu" then
+            if p:isAlive() and p:hasLordSkillKingdom("shu", source) then
                 local c = room:askForCard(p, "BasicCard", "@hlxg_qinwang-give:" .. source:objectName(), sgs.QVariant(source), sgs.Card_MethodNone, source, false, "hlxg_qinwang")
                 if c then
                     -- Per recipient/per physical card marks survive the card leaving the hand.
@@ -9173,7 +9173,7 @@ hlxg_shiyuan = gu_trigger("hlxg_shiyuan", {sgs.TargetConfirmed}, function(self, 
     if p ~= owner or not use.from or use.from == owner or not use.to:contains(owner) then return end
     local n = use.from:getHp() > owner:getHp() and 3 or (use.from:getHp() == owner:getHp() and 2 or 1)
     local current = room:getCurrent()
-    local limit = owner:hasLordSkill("hlxg_yuwei") and current and current ~= owner and current:getKingdom() == "qun" and 2 or 1
+    local limit = owner:hasLordSkill("hlxg_yuwei") and current and current ~= owner and current:hasLordSkillKingdom("qun", owner) and 2 or 1
     local mark = "hlxg_shiyuan_" .. n .. "-Clear"
     if owner:getMark(mark) < limit and gu_invoke(owner, self:objectName(), data) then
         room:addPlayerMark(owner, mark); owner:drawCards(n, self:objectName())
@@ -13418,7 +13418,7 @@ hlxg_kuizhu_record = gu_record("#hlxg_kuizhu_record", {sgs.EventPhaseStart, sgs.
 end)
 hlxg_lijun = gu_trigger("hlxg_lijun" .. "$", {sgs.CardFinished}, function(self, event, room, p, data, owner)
     local use = data:toCardUse(); local from = use.from
-    if not owner:hasLordSkill("hlxg_lijun") or not from or from == owner or from:getKingdom() ~= "wu"
+    if not owner:hasLordSkill("hlxg_lijun") or not from or from == owner or not from:hasLordSkillKingdom("wu", owner)
         or from:getPhase() ~= sgs.Player_Play or not use.card or not use.card:isKindOf("Slash")
         or owner:getMark("hlxg_lijun_phase") > 0 then return end
     room:setPlayerMark(owner, "hlxg_lijun_phase", 1)
@@ -14053,9 +14053,9 @@ local function hl02_jiuyuan(name, enhanced)
     return gu_trigger(name .. "$", {sgs.PreHpRecover}, function(self, event, room, p, data, lord)
         if not p or not lord:hasLordSkill(name) then return end
         local r = data:toRecover()
-        if p == lord and r.card and r.card:isKindOf("Peach") and r.who and r.who ~= lord and r.who:getKingdom() == "wu" then
+        if p == lord and r.card and r.card:isKindOf("Peach") and r.who and r.who ~= lord and r.who:hasLordSkillKingdom("wu", lord) then
             r.recover = r.recover + 1; data:setValue(r)
-        elseif p ~= lord and p:getKingdom() == "wu" and ((enhanced and p:getPhase() ~= sgs.Player_NotActive) or (not enhanced and r.card and r.card:isKindOf("Peach") and r.who == p)) then
+        elseif p ~= lord and p:hasLordSkillKingdom("wu", lord) and ((enhanced and p:getPhase() ~= sgs.Player_NotActive) or (not enhanced and r.card and r.card:isKindOf("Peach") and r.who == p)) then
             if gu_invoke(p, name, sgs.QVariant(lord)) then
                 hl02_recover(room, lord, p, name); p:drawCards(1, name); return true
             end
@@ -14158,7 +14158,7 @@ hlxg_canshi_sunhao = gu_trigger("hlxg_canshi_sunhao", {sgs.DrawNCards, sgs.CardU
         if draw.reason ~= "draw_phase" or not gu_invoke(owner, "hlxg_canshi_sunhao", data) then return end
         local x = 0
         for _, q in sgs.qlist(room:getAlivePlayers()) do
-            if q:isWounded() or (owner:hasLordSkill("hlxg_guiming") and q:getKingdom() == "wu") then x = x + 1 end
+            if q:isWounded() or (owner:hasLordSkill("hlxg_guiming") and q:hasLordSkillKingdom("wu", owner)) then x = x + 1 end
         end
         draw.num = draw.num + x; data:setValue(draw)
         room:setPlayerMark(owner, "hlxg_canshi_sunhao-Clear", 1)
@@ -14175,7 +14175,7 @@ hlxg_sunce = sgs.General(extension_hl, "hlxg_sunce" .. "$", "wu", 4)
 hlxg_zhibaCard = sgs.CreateSkillCard {
     name = "hlxg_zhibaCard", will_throw = false,
     filter = function(self, targets, to, from)
-        return gu_one(self, targets, to, from) and to:hasLordSkill("hlxg_zhiba") and from:getKingdom() == "wu"
+        return gu_one(self, targets, to, from) and to:hasLordSkill("hlxg_zhiba") and from:hasLordSkillKingdom("wu", to)
     end,
     feasible = gu_one_feasible,
     on_use = function(self, room, source, targets) room:obtainCard(targets[1], self, "hlxg_zhiba", false) end,
@@ -14184,7 +14184,7 @@ hlxg_zhiba_give = sgs.CreateViewAsSkillV2 {
     name = "#hlxg_zhiba_give", limit_scope = sgs.Skill_Limit_Phase, phase_name = "Play", max_usage_limit = 1,
     can_activate = function(self, request)
         local p = request:getInitiator()
-        if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY or p:getKingdom() ~= "wu" then return false end
+        if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY or not p:hasLordSkillKingdom("wu") then return false end
         local room = sgs.Sanguosha:currentRoom()
         if not room then return false end
         for _, q in sgs.qlist(room:getOtherPlayers(p)) do if q:hasLordSkill("hlxg_zhiba") then return true end end
@@ -14274,7 +14274,7 @@ hlxg_sunluban = sgs.General(extension_hl, "hlxg_sunluban", "wu", 3, false)
 hljx_zhibaCard = sgs.CreateSkillCard {
     name = "hljx_zhibaCard", will_throw = false,
     filter = function(self, targets, to, from)
-        return #targets == 0 and to ~= from and from:getKingdom() == "wu"
+        return #targets == 0 and to ~= from and from:hasLordSkillKingdom("wu", to)
             and to:getMark("hljx_zhiba_recipient") > 0 and to:hasLordSkill("hljx_zhiba")
     end,
     feasible = gu_one_feasible,
@@ -14284,7 +14284,7 @@ hljx_zhiba = sgs.CreateViewAsSkillV2 {
     name = "hljx_zhiba$", limit_scope = sgs.Skill_Limit_Phase, phase_name = "Play", max_usage_limit = 1,
     can_activate = function(self, request)
         local p = request:getInitiator()
-        if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY or p:getKingdom() ~= "wu" then return false end
+        if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY or not p:hasLordSkillKingdom("wu") then return false end
         for _, q in sgs.qlist(p:getAliveSiblings()) do
             if q:getMark("hljx_zhiba_recipient") > 0 and q:hasLordSkill("hljx_zhiba") then return true end
         end
@@ -16389,7 +16389,7 @@ hlxg_huangtian_give = gu_active("hlxg_huangtian_give", 1, 1, 1,
     gu_one_feasible, function(self, room, source, targets) room:obtainCard(targets[1], self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), targets[1]:objectName(), "hlxg_huangtian", ""), false) end,
     function(request, card) return card:isKindOf("Jink") or card:isKindOf("Lightning") end,
     function(p)
-        if p:getKingdom() ~= "qun" then return false end
+        if not p:hasLordSkillKingdom("qun") then return false end
         for _, q in sgs.qlist(p:getAliveSiblings()) do if q:hasLordSkill("hlxg_huangtian") then return true end end
         return false
     end)
@@ -16400,7 +16400,7 @@ hlxg_huangtian = gu_trigger("hlxg_huangtian$", {sgs.GameStart, sgs.TurnStart, sg
         for _, q in sgs.qlist(room:getAlivePlayers()) do if not q:hasSkill("hlxg_huangtian_give") then room:attachSkillToPlayer(q, "hlxg_huangtian_give") end end
         return
     end
-    if not p or p == owner or p:getKingdom() ~= "qun" or owner:getMark("hlxg_huangtian-Clear") > 0 then return end
+    if not p or p == owner or not p:hasLordSkillKingdom("qun", owner) or owner:getMark("hlxg_huangtian-Clear") > 0 then return end
     local card = event == sgs.CardFinished and data:toCardUse().card or data:toCardResponse().m_card
     if not card or not card:isKindOf("Jink") then return end
     -- Both response methods finish in PostCardResponded, without CardFinished.
@@ -16482,7 +16482,7 @@ hljx_huangtian_give = gu_active("hljx_huangtian_give", 1, 1, 1,
         return p:handCards():contains(card:getEffectiveId()) and (card:isKindOf("Jink") or card:isKindOf("Lightning") or card:getSuit() == sgs.Card_Spade)
     end,
     function(p)
-        if p:getKingdom() ~= "qun" then return false end
+        if not p:hasLordSkillKingdom("qun") then return false end
         local room = sgs.Sanguosha:currentRoom()
         if not room then return false end
         for _, q in sgs.qlist(room:getOtherPlayers(p)) do if q:hasLordSkill("hljx_huangtian") then return true end end
@@ -16497,7 +16497,7 @@ hljx_huangtian = gu_trigger("hljx_huangtian$", {sgs.GameStart, sgs.EventAcquireS
         end
         return
     end
-    if not p or p == owner or p:getKingdom() ~= "qun" or owner:getMark("hljx_huangtian-Clear") > 0 then return end
+    if not p or p == owner or not p:hasLordSkillKingdom("qun", owner) or owner:getMark("hljx_huangtian-Clear") > 0 then return end
     local card = event == sgs.CardResponded and data:toCardResponse().m_card or data:toCardUse().card
     if card and card:isKindOf("Jink") then
         room:addPlayerMark(owner, "hljx_huangtian-Clear")
@@ -17682,7 +17682,7 @@ hlxg_xingshuai = gu_trigger("hlxg_xingshuai$", {sgs.Dying}, function(self, event
     room:removePlayerMark(owner, "@hlxg_xingshuai")
     local names = {}
     for _, other in sgs.qlist(room:getOtherPlayers(owner)) do
-        if other:getKingdom() == "wei" and room:askForChoice(other, "hlxg_xingshuai", "yes+no", sgs.QVariant(owner)) == "yes" then
+        if other:hasLordSkillKingdom("wei", owner) and room:askForChoice(other, "hlxg_xingshuai", "yes+no", sgs.QVariant(owner)) == "yes" then
             table.insert(names, other:objectName())
             local recover = sgs.RecoverStruct(); recover.who = other; recover.recover = 1
             room:recover(owner, recover)
@@ -18102,14 +18102,14 @@ hlxg_hujia = sgs.CreateTriggerSkillV2 {
     can_trigger = function(self, event, room, p, data)
         if not p or not p:hasLordSkill(self:objectName()) or p:getMark("hlxg_hujia_lun") > 0 then return false end
         for _, q in sgs.qlist(room:getOtherPlayers(p)) do
-            if q:getKingdom() == "wei" then return self:objectName(), p end
+            if q:hasLordSkillKingdom("wei", p) then return self:objectName(), p end
         end
         return false
     end,
     on_cost = function(self, event, room, p, ctx)
         local targets = sgs.SPlayerList()
         for _, q in sgs.qlist(room:getOtherPlayers(p)) do
-            if q:getKingdom() == "wei" then targets:append(q) end
+            if q:hasLordSkillKingdom("wei", p) then targets:append(q) end
         end
         local target = room:askForPlayerChosen(p, targets, self:objectName(), "@hlxg_hujia", true, true)
         if not target then return false end
@@ -22641,7 +22641,7 @@ hlxg_benghuai_dongzhuo = gu_trigger("hlxg_benghuai_dongzhuo", {sgs.EventPhaseSta
 end, true)
 hlxg_baonve = gu_trigger("hlxg_baonve" .. "$", {sgs.Damage}, function(self, event, room, p, data, owner)
     local damage = data:toDamage(); local from = damage.from
-    if not owner:hasLordSkill("hlxg_baonve") or not from or from == owner or not from:isAlive() or from:getKingdom() ~= "qun" then return end
+    if not owner:hasLordSkill("hlxg_baonve") or not from or from == owner or not from:isAlive() or not from:hasLordSkillKingdom("qun", owner) then return end
     if not gu_invoke(from, "hlxg_baonve", sgs.QVariant(owner)) then return end
     local judge = sgs.JudgeStruct(); judge.who = from; judge.reason = "hlxg_baonve"; judge.pattern = ".|spade"; judge.good = true
     room:judge(judge)
@@ -22737,7 +22737,7 @@ end, true)
 -- '$' is stripped by Skill's constructor, preserving the assigned objectName.
 hljx_baonve = gu_trigger("hljx_baonve$", {sgs.Damage}, function(self, event, room, p, data, owner)
     local d = data:toDamage()
-    if not owner:hasLordSkill("hljx_baonve") or not d.from or d.from == owner or d.from:getKingdom() ~= "qun"
+    if not owner:hasLordSkill("hljx_baonve") or not d.from or d.from == owner or not d.from:hasLordSkillKingdom("qun", owner)
         or not gu_invoke(owner, "hljx_baonve", data) then return end
     local judge = sgs.JudgeStruct(); judge.who = owner; judge.reason = "hljx_baonve"
     judge.pattern = ".|spade"; judge.good = true
@@ -23739,7 +23739,7 @@ hlxg_zhonggu = sgs.CreateTriggerSkillV2 {
     can_trigger = function(self, event, room, p, data)
         if p and p:hasLordSkill(self:objectName()) then
             local n = 0
-            for _, q in sgs.qlist(room:getAlivePlayers()) do if q:getKingdom() == "qun" then n = n + 1 end end
+            for _, q in sgs.qlist(room:getAlivePlayers()) do if q:hasLordSkillKingdom("qun", p) then n = n + 1 end end
             if room:getTag("TurnLengthCount"):toInt() >= n then return self:objectName(), p end
         end
         return false
@@ -23850,7 +23850,7 @@ do
 -- c213_02: each variant keeps its own state and lord skill.
 local function c213_qun(room)
     local n = 0
-    for _, p in sgs.qlist(room:getAlivePlayers()) do if p:getKingdom() == "qun" then n = n + 1 end end
+    for _, p in sgs.qlist(room:getAlivePlayers()) do if p:hasLordSkillKingdom("qun") then n = n + 1 end end
     return n
 end
 local function c213_key(c, mode)
@@ -23998,7 +23998,7 @@ hlxg_xueyi_yuanshao2 = gu_trigger("hlxg_xueyi_yuanshao2" .. "$", {sgs.TargetSpec
     local use = data:toCardUse()
     if use.from ~= owner or not use.card then return end
     for _, to in sgs.qlist(use.to) do
-        if to:getKingdom() == "qun" and owner:getMark("hlxg_xueyi_yuanshao2-Clear") < 2 then
+        if to:hasLordSkillKingdom("qun", owner) and owner:getMark("hlxg_xueyi_yuanshao2-Clear") < 2 then
             room:addPlayerMark(owner, "hlxg_xueyi_yuanshao2-Clear"); owner:drawCards(1, "hlxg_xueyi_yuanshao2")
         end
     end
@@ -24162,7 +24162,7 @@ hlxg_aoshi_give = sgs.CreateViewAsSkillV2 {
     limit_scope = sgs.Skill_Limit_Phase, phase_name = "Play", max_usage_limit = 1,
     can_activate = function(self, request)
         local p = request:getInitiator()
-        if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY or p:getKingdom() ~= "qun" then return false end
+        if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY or not p:hasLordSkillKingdom("qun") then return false end
         for _, lord in sgs.qlist(p:getAliveSiblings()) do if lord:hasLordSkill("hlxg_aoshi") and lord:getMark("hlxg_aoshi_attached") == 0 then return true end end
         return false
     end,

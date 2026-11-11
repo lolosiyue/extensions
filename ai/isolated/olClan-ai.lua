@@ -1206,7 +1206,7 @@ ai_skill_use["@@kezulilunuse"]=function(self, prompt, request)
     return remembered_ag_answer(self,"kezulilunUse","kezulilunuse",request)
 end
 
--- Round21 remaining fill subtree, fixed source 722/1380/1680. The ordinary
+-- remaining fill subtree, fixed source 722/1380/1680. The ordinary
 -- hypotheses and SkillCard seeds carry no payment ticket until final selection.
 local function remaining_preview(self,skill,name,costs)
     return self:evaluateOwnerViewAsCard({source_key=skill,skill=skill,name=name,
@@ -1341,7 +1341,7 @@ ai_skill_use["@@zukudu"]=function(self, prompt, request)
     end
 end
 
--- Round21 A9 owner-material selection, fixed source 1002–1999.
+-- A9 owner-material selection, fixed source 1002–1999.
 -- All helpers above are existing package locals. Final action binding occurs
 -- after the source has committed to its one ordered material/target proposal.
 local function a_color(card)
@@ -1482,7 +1482,7 @@ sgs.ai_use_value.zumingdianCard=3.4
 sgs.ai_use_priority.zumingdianCard=2.8
 
 
--- Round22 B/C/F: exact fixed olClan source branches. Root merges this scope.
+-- B/C/F: exact fixed olClan source branches. Root merges this scope.
 do
 local known = AIValue.requireKnown
 
@@ -1829,7 +1829,7 @@ end
 end
 
 
--- Round22 olClan E: fixed b6025 source-scoped observations, eight callbacks.
+-- olClan E: fixed b6025 source-scoped observations, eight callbacks.
 do
 local known = AIValue.requireKnown
 
