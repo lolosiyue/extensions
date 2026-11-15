@@ -644,11 +644,13 @@ sgs.ai_getBestHp_skill.sfofl_hengzheng = function(owner)
 end
 
 sgs.ai_skill_playerschosen.sijyuoffline_huyi = function(self, targets, max, min)
-	local enemy = sgs.SPlayerList()
+	-- The isolated VM has no SWIG sgs.SPlayerList; players_chosen takes a plain
+	-- player table (ask-for-choice.lua normalizes it with ipairs).
+	local enemy = {}
 	for _, p in sgs.qlist(targets) do
 		if package_known(self,"isEnemy",p) and not package_known(p,"isChained") then
-			package_call(enemy,"append",p)
-			if package_known(enemy,"length") > min then break end
+			enemy[#enemy + 1] = p
+			if #enemy > min then break end
 		end
 	end
 	return enemy
