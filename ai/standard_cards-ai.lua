@@ -1,3 +1,16 @@
+-- This recursion guard belongs to AI evaluation, not the public Room board.
+-- Player names are unique in this Room's Lua VM, including across AI wrappers.
+-- Room flags would broadcast and invalidate all revision-scoped AI snapshots.
+local good_target_guard = {}
+local function guarded_need_to_lose_hp(ai, target, card)
+	local name = ai.player:objectName()
+	good_target_guard[name] = true
+	local ok, result = pcall(ai.needToLoseHp, ai, target, ai.player, card)
+	good_target_guard[name] = nil
+	if not ok then error(result, 0) end
+	return result
+end
+
 function SmartAI:canAttack(enemy,attacker,nature)
 	attacker = attacker or self.player
 	nature = nature or sgs.DamageStruct_Normal
@@ -54,10 +67,8 @@ function SmartAI:isGoodTarget(to,targets,card)
 		if self.player:getHp()<2 and math.random()<0.7
 		and to:hasSkill("nosganglie") then return end
 		if to:aliveCount()>2 and to:hasSkill("guixin") then return end
-		if self.player:hasFlag("stack_overflow_goodtarget") then return true end
-		self.room:setPlayerFlag(self.player, "stack_overflow_goodtarget")
-		if math.random()<0.6 and self:needToLoseHp(to,self.player,card) then self.room:setPlayerFlag(self.player, "-stack_overflow_goodtarget") return end
-		self.room:setPlayerFlag(self.player, "-stack_overflow_goodtarget")
+		if good_target_guard[self.player:objectName()] then return true end
+		if math.random()<0.6 and guarded_need_to_lose_hp(self,to,card) then return end
 	end
 	if (to:getLostHp()<2 or apn+to:getHp()>damageNum and #self:getFriends(to)>1)
 	and to:hasSkill("fangzhu") then return end
@@ -108,11 +119,9 @@ function SmartAI:isGoodTarget(to,targets,card)
 	if to:hasSkill("LuaBimie") or to:hasSkill("fatebimie") then return true end
 	if self.player:hasSkill("sp_guoguanzhanjiang") and to:getMark("&LeVeL") > 0 then return true end
 	
-	if self.player:hasFlag("stack_overflow_goodtarget") then return true end
-	self.room:setPlayerFlag(self.player, "stack_overflow_goodtarget")
-	if self:needToLoseHp(to,self.player,card) and apn+to:getHp()>damageNum
-	and math.random()<0.66 then self.room:setPlayerFlag(self.player, "-stack_overflow_goodtarget") return end
-	self.room:setPlayerFlag(self.player, "-stack_overflow_goodtarget")
+	if good_target_guard[self.player:objectName()] then return true end
+	if guarded_need_to_lose_hp(self,to,card) and apn+to:getHp()>damageNum
+	and math.random()<0.66 then return end
 	return true
 end
 
