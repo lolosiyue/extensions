@@ -146,23 +146,36 @@ function sgs.ai_weapon_value.EXCard_WLJ(self, enemy, player)
 	if #self:getFriends(player) > 0 then return 2.8 end
 end
 
+local function wljTargets(self)
+	local targets, seen = {}, {}
+	for _, friend in ipairs(self.friends) do
+		local name = friend:objectName()
+		if friend:isAlive() and not seen[name] then
+			targets[#targets + 1] = friend
+			seen[name] = true
+		end
+	end
+	local marked = 0
+	for _, player in sgs.qlist(self.room:getAlivePlayers()) do
+		if player:getMark("@EXCard_WLJ") > 0 then marked = marked + 1 end
+	end
+	-- Each AI use must increase coverage, even when the two planners disagree.
+	if #targets > marked then return targets end
+end
+
 local EXCard_WLJ_Skill = {
 	name = "EXCard_WLJ",
-	getTurnUseCard = function(self, inclusive)
-		for _, player in sgs.qlist(self.room:getAlivePlayers()) do
-			if self:isFriend(player) then
-				if player:getMark("@EXCard_WLJ") == 0 then return sgs.Card_Parse("#EXCard_WLJ_SkillCARD:.:") end
-			else
-				if player:getMark("@EXCard_WLJ") > 0 then return sgs.Card_Parse("#EXCard_WLJ_SkillCARD:.:") end
-			end
-		end
+	getTurnUseCard = function(self)
+		if wljTargets(self) then return sgs.Card_Parse("#EXCard_WLJ_SkillCARD:.:") end
 	end
 }
 table.insert(sgs.ai_skills, EXCard_WLJ_Skill)
 sgs.ai_skill_use_func["#EXCard_WLJ_SkillCARD"] = function(card, use, self)
-	for _, friend in ipairs(self.friends) do
-		use.card = card
-		if use.to then use.to:append(friend) end
+	local targets = wljTargets(self)
+	if not targets then return end
+	use.card = card
+	if use.to then
+		for _, friend in ipairs(targets) do use.to:append(friend) end
 	end
 end
 sgs.ai_use_priority.EXCard_WLJ_SkillCARD = 10
