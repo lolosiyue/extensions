@@ -384,7 +384,18 @@ function ai_decide(request)
     if type(SmartAIView.resetPlanning) == "function" then
         SmartAIView.resetPlanning(request)
     end
-    local self_view = SmartAIView.new(request)
+    -- Building the facade can encounter an unknown policy prerequisite too;
+    -- preserve the same typed-unsupported contract as the handler below.
+    local constructed, self_view = pcall(SmartAIView.new, request)
+    if not constructed then
+        if AIUnsupported.is(self_view) then
+            record_outcome(request.kind, "unsupported")
+            ai_coverage.notCovered(request.kind, self_view.reason, self_view.key, self_view.traceback)
+            return nil
+        end
+        record_outcome(request.kind, "error")
+        error(self_view, 0)
+    end
     if not self_view then
         record_outcome(request.kind, "invalid_snapshot")
         return nil

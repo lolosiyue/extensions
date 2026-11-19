@@ -424,12 +424,20 @@ function SmartAIView:adjustUsePriority(card,v)
 	if suits_value=="wooden_ox" or suits_value:startsWith("&") then v = v+0.2 end
 	if core_query(card,"targetFixed") then
 		if core_query(card,"getTypeId")<2 then
-			suits_value = core_query(card,"getTargetResidue",self.player);
+			suits_value = value_call(card,"getTargetResidue",self.player)
+			suits_value = value_known(suits_value, suits_value == nil and
+				("getTargetResidue for " .. tostring(card:objectName()) .. " skill=" .. tostring(card:getSkillName())
+				.. " id=" .. tostring(card:getEffectiveId()) .. " evaluation=" .. tostring(card._view.evaluation_only)
+				.. " -> " .. self.player:objectName()) or "getTargetResidue")
 			if suits_value~=0 then v = v-math.min(suits_value*0.1,1) end
 		end
 	elseif core_query(card,"isDamageCard") then
 		for _,p in ipairs(self.enemies)do
-			suits_value = core_query(card,"getTargetResidue",p);
+			suits_value = value_call(card,"getTargetResidue",p)
+			suits_value = value_known(suits_value, suits_value == nil and
+				("getTargetResidue for " .. tostring(card:objectName()) .. " skill=" .. tostring(card:getSkillName())
+				.. " id=" .. tostring(card:getEffectiveId()) .. " evaluation=" .. tostring(card._view.evaluation_only)
+				.. " -> " .. p:objectName()) or "getTargetResidue")
 			if suits_value~=0 then v = v-math.min(suits_value*0.1,1) end
 		end
 	end

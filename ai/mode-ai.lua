@@ -265,6 +265,11 @@ local function alive_in_order(world)
     return result
 end
 
+local public_counts_unknown = "public_role_counts_unknown"
+local function unknown_standard_counts(world)
+    return standard_modes[world.mode_id] == "identity" and world.role_counts == nil
+end
+
 local function role_counts(world)
     local scenario=mode_facts(world).legacy_relation_kind=="scenario"
     if scenario then
@@ -277,6 +282,7 @@ local function role_counts(world)
         if complete then return public,false end
     end
     local counts = world.role_counts
+    assert(counts ~= nil, public_counts_unknown)
     assert(type(counts) == "table", "standard role policy requires public role counts")
     for _, name in ipairs({"loyalist", "rebel", "renegade"}) do
         assert(finite(counts[name]) and counts[name] >= 0, "unknown public role count: "..name)
@@ -1517,6 +1523,14 @@ function sgs.evaluateModeAI(world, options, state_override)
         result.error = "MODE_AI_UNMANAGED"
         return result
     end
+    -- A changed roster can invalidate the public composition. Do not reuse a
+    -- cached quota-derived relation/process, or publish a guessed neutral value.
+    if unknown_standard_counts(world) then
+        result.error = public_counts_unknown
+        result.standard_identity = true
+        result.predictable, result.game_process, result.process_label = nil, nil, nil
+        return result
+    end
     local state = state_override or mind(world.mode_id, world.self.object_name)
     if standard_modes[world.mode_id] == "identity" then
         state = clone_value(state)
@@ -1678,6 +1692,7 @@ local prepared_objectives=setmetatable({}, {__mode="k"})
 local function standard_query_state(world)
     synchronize_flag_mind(world)
     assert(standard_modes[world.mode_id]=="identity","objective query requires standard identity mode")
+    assert(not unknown_standard_counts(world), public_counts_unknown)
     local state=clone_value(mind(world.mode_id,world.self.object_name))
     if not state.inferred_roles then standard_evaluate_roles(world,state) end
     if not state.cached_process then
@@ -2299,6 +2314,18 @@ function sgs.prepareModeAIIntentions(world, deltas, effects)
             dummy_nojink[key]=true
         end
         previous = effects[index].after_delta
+    end
+    -- Refuse the whole quota-dependent transaction before consuming marks or
+    -- RNG. Independent flag/mark effects still work, and the native observer's
+    -- public event log is retained independently of this inferred-role mind.
+    if unknown_standard_counts(world) then
+        if count > 0 then return public_counts_unknown end
+        for _, effect in ipairs(effects) do
+            if effect.kind == "role_refresh" or effect.kind == "intention"
+                or effect.kind == "role_copy" or effect.kind == "peach_renegade" then
+                return public_counts_unknown
+            end
+        end
     end
     local mode, viewer = world.mode_id, world.self.object_name
     local policy = policies[mode]

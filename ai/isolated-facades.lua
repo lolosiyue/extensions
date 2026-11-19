@@ -3689,6 +3689,9 @@ end
 -- 是兩回事，查詢分開，缺一不會拿另一個頂替。
 function SmartAIView:isModeManaged()
     local policy = self.world.mode_policy
+    if type(policy) == "table" and policy.error == "public_role_counts_unknown" then
+        ai_unsupported("standard role policy requires public role counts", "mode_policy.role_counts")
+    end
     return type(policy) == "table" and policy.managed == true and policy.error == nil
 end
 
@@ -5356,103 +5359,46 @@ SmartAIView.isQiuxinSourceQueryPlan=SmartAIView.isAuditedExtra99SourceQueryPlan
 -- Exact public printing of an owner-observed view-as material. This returns
 -- knowledge for planning; callers bind a new native receipt after selection.
 function SmartAIView:evaluateOwnerViewAsCard(spec)
-    -- The owner's view-as product: the printed catalog face with this skill's
-    -- printing, like Card::Parse of its legacy string. The authority rebuilds
-    -- and checks the real product when the selected card is submitted.
+    -- Every isolated mode evaluates the exact viewer-owned hypothesis through
+    -- the shared native projector. Catalog-only faces omit material-dependent
+    -- rules; evaluation still grants no authority to submit the product.
     if type(spec) ~= "table" or type(spec.name) ~= "string" or type(spec.skill) ~= "string"
         or type(spec.suit) ~= "number" or type(spec.number) ~= "number" or not AIValue.isList(spec.subcards) then
         ai_unsupported("owner view-as face is incomplete", "evaluateOwnerViewAsCard")
     end
     local face, candidate, native
-    local hegemony = AIHegemony.facts(self.world)
-    if hegemony and hegemony.enabled == true then
-        if type(ai_evaluate_card) ~= "function" then
-            ai_unsupported("native card evaluation is unavailable", "evaluateOwnerViewAsCard")
-        end
-        local query = copy_value(spec)
-        query.viewer, query.decision_id, query.state_revision = self.request.viewer, self.request.decision_id, self.request.state_revision
-        native = ai_evaluate_card(query)
-        if type(native) ~= "table" or native.known ~= true then
-            ai_unsupported(type(native) == "table" and native.error or "invalid native card evaluation", "evaluateOwnerViewAsCard")
-        end
-        if native.viewer ~= self.request.viewer or native.decision_id ~= self.request.decision_id
-            or native.state_revision ~= self.request.state_revision or native.evaluation_only ~= true
-            or native.context_kind ~= "activate" or native.handling_method ~= sgs.Card_MethodUse
-            or type(native.spec) ~= "table" or type(native.spec.instance_id) ~= "number"
-            or native.spec.instance_id % 1 ~= 0
-            or (spec.skill == "" and (native.spec.instance_id ~= 0 or #spec.subcards ~= 0)
-                or spec.skill ~= "" and native.spec.instance_id < 0)
-            or type(native.card) ~= "table" or native.card.evaluation_only ~= true
-            or native.card.evaluation_owner ~= self.player:objectName() or native.card.conversion_id ~= nil
-            or type(native.candidate) ~= "table" or native.candidate.candidate_id ~= -1
-            or type(native.card_rules) ~= "table" then
-            ai_unsupported("native card evaluation identity is incomplete", "evaluateOwnerViewAsCard")
-        end
-        -- The host resolves an unambiguous skill instance, or instance zero
-        -- backed by native equipment source preparation. Neither is a ticket.
-        -- Unset printing is resolved from materials, not overwritten with guesses.
-        query.instance_id = query.instance_id or native.spec.instance_id
-        if not evaluation_same(query, native.spec) or native.card.name ~= spec.name
-            or native.card.skill_name ~= spec.skill or not evaluation_same(native.card.subcards, spec.subcards) then
-            ai_unsupported("native card evaluation does not match its specification", "evaluateOwnerViewAsCard")
-        end
-        face, candidate = copy_value(native.card), copy_value(native.candidate)
-        face.evaluation_rules = copy_value(native.card_rules)
-    else
-        local base = self:getEvaluationCard(spec.name)
-        if not base then ai_unsupported("owner view-as product is outside the card catalog", spec.name) end
-        local materials = {}
-        for index, id in ipairs(spec.subcards) do
-            materials[index] = self:getKnownCardById(id)
-            if not materials[index] then ai_unsupported("owner view-as material is not visible", "evaluateOwnerViewAsCard") end
-        end
-        -- Card::getSuit/getNumber: an unset printing derives from the material.
-        local suit, number = spec.suit, spec.number
-        if suit < 0 or suit > 5 then
-            suit = sgs.Card_NoSuit
-            if #materials == 1 then
-                suit = materials[1]:getSuit()
-            elseif #materials > 1 then
-                local color = materials[1]:getColor()
-                for index = 2, #materials do
-                    if materials[index]:getColor() ~= color then color = nil break end
-                end
-                if color == 0 then suit = sgs.Card_NoSuitRed elseif color == 1 then suit = sgs.Card_NoSuitBlack end
-            end
-        end
-        if number <= 0 then number = #materials == 1 and materials[1]:getNumber() or 0 end
-        if type(suit) ~= "number" or type(number) ~= "number" then
-            ai_unsupported("owner view-as material printing is unknown", "evaluateOwnerViewAsCard")
-        end
-        local suits = {[0] = "spade", "club", "heart", "diamond", "no_suit_black", "no_suit_red"}
-        local number_string = number == 10 and "10" or number > 13 and "JOKER"
-            or string.sub("0A23456789-JQK", number + 1, number + 1)
-        local wire = spec.name .. ":" .. spec.skill .. "[" .. (suits[suit] or "no_suit") .. ":" .. number_string
-            .. "]=" .. (#spec.subcards > 0 and table.concat(spec.subcards, "+") or ".")
-        face = copy_value(base._view)
-        face.suit, face.number = suit, number
-        face.red = suit == sgs.Card_Heart or suit == sgs.Card_Diamond or suit == sgs.Card_NoSuitRed
-        face.black = suit == sgs.Card_Spade or suit == sgs.Card_Club or suit == sgs.Card_NoSuitBlack
-        face.skill_name, face.skill_names = spec.skill, {spec.skill}
-        face.subcards = copy_value(spec.subcards)
-        if spec.can_recast ~= nil then face.can_recast = spec.can_recast end
-        face.evaluation_owner = self.player:objectName()
-        -- A basic product follows its printed prototype's rules (every Slash the Slash's).
-        local prototypes = type(self.player._view.prototype_rules) == "table" and self.player._view.prototype_rules or {}
-        local rules = prototypes[face.class_name]
-        for _, kind in ipairs(face.kind_of or {}) do if kind == "Slash" then rules = prototypes.Slash end end
-        face.available = type(rules) ~= "table" or (rules.available == true and rules.use_limited ~= true)
-        -- Without materials the product is the printed card the question may have
-        -- evaluated: its rules and complete targets. Otherwise targets are unknown.
-        local printed = #spec.subcards == 0 and printed_card_evaluation(self, spec.name) or nil
-        face.evaluation_rules = printed and copy_value(printed.card_rules) or nil
-        if printed then face.available = printed.card_rules.available end
-        face.legacy_string_key, face.legacy_sort_key = wire, wire
-        candidate = printed and copy_value(printed.candidate) or {card_id = -1,
-            available = face.available, limited = false, complete_coverage = false,
-            target_filter_empty = type(rules) == "table" and copy_value(rules.target_filter_empty) or nil,
-            extra_target_count = type(rules) == "table" and rules.extra_target or nil}
+    if type(ai_evaluate_card) ~= "function" then
+        ai_unsupported("native card evaluation is unavailable", "evaluateOwnerViewAsCard")
     end
+    local query = copy_value(spec)
+    query.viewer, query.decision_id, query.state_revision = self.request.viewer, self.request.decision_id, self.request.state_revision
+    native = ai_evaluate_card(query)
+    if type(native) ~= "table" or native.known ~= true then
+        ai_unsupported(type(native) == "table" and native.error or "invalid native card evaluation", "evaluateOwnerViewAsCard")
+    end
+    if native.viewer ~= self.request.viewer or native.decision_id ~= self.request.decision_id
+        or native.state_revision ~= self.request.state_revision or native.evaluation_only ~= true
+        or native.context_kind ~= "activate" or native.handling_method ~= sgs.Card_MethodUse
+        or type(native.spec) ~= "table" or type(native.spec.instance_id) ~= "number"
+        or native.spec.instance_id % 1 ~= 0
+        or (spec.skill == "" and (native.spec.instance_id ~= 0 or #spec.subcards ~= 0)
+            or spec.skill ~= "" and native.spec.instance_id < 0)
+        or type(native.card) ~= "table" or native.card.evaluation_only ~= true
+        or native.card.evaluation_owner ~= self.player:objectName() or native.card.conversion_id ~= nil
+        or type(native.candidate) ~= "table" or native.candidate.candidate_id ~= -1
+        or type(native.card_rules) ~= "table" then
+        ai_unsupported("native card evaluation identity is incomplete", "evaluateOwnerViewAsCard")
+    end
+    -- The host resolves an unambiguous skill instance, or instance zero
+    -- backed by native equipment source preparation. Neither is a ticket.
+    -- Unset printing is resolved from materials, not overwritten with guesses.
+    query.instance_id = query.instance_id or native.spec.instance_id
+    if not evaluation_same(query, native.spec) or native.card.name ~= spec.name
+        or native.card.skill_name ~= spec.skill or not evaluation_same(native.card.subcards, spec.subcards) then
+        ai_unsupported("native card evaluation does not match its specification", "evaluateOwnerViewAsCard")
+    end
+    face, candidate = copy_value(native.card), copy_value(native.candidate)
+    face.evaluation_rules = copy_value(native.card_rules)
     face.legacy_identity_token = fresh_policy_identity(policy_identity_scope(self))
     local card = CardView.new(face)
     card._evaluation_candidate = candidate

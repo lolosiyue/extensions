@@ -1306,8 +1306,10 @@ local function select_cardchosen(self,target,flags,method,ids,card_lookup,random
         return ordered[1] and ordered[1]:getEffectiveId(), #display_ids
     end
     local function random_card(zones)
-        local cards = target:getCards(zones)
-        if cards == nil then
+        -- Foreign hand identities are not an enumerable owner-card domain.
+        -- Select through the existing opaque domain before required getCards
+        -- can raise an unknown-hand signal, including mixed hand/public zones.
+        if target ~= self.player and zones:find("h", 1, true) then
             local avoid = false
             if relation == "enemy" then
                 local wounded = target:isWounded()
@@ -1319,6 +1321,7 @@ local function select_cardchosen(self,target,flags,method,ids,card_lookup,random
             end
             return random_hidden(zones,avoid)
         end
+        local cards = target:getCards(zones)
         if target == self.player then cards = self:sortByKeepValue(cards) end
         if cards == nil then return unsupported("random-choice keep order is unknown", "card_chosen") end
         local candidates = {}
@@ -1454,6 +1457,7 @@ ai_skill_cardchosen_default = ai_skill_cardchosen_default or function(self, opti
     local function random_hidden(zones,avoid)
         local ticket = type(random_choices)=="table" and random_choices[zones]
         if type(ticket)~="table" or type(ticket.token)~="string" or ticket.token==""
+            or ticket.complete~=true or ticket.original_full_domain~=false
             or not finite_number(ticket.count) or ticket.count<0 or ticket.count%1~=0 then
             return unsupported("hidden-hand random choice ticket is missing or incomplete","card_chosen")
         end

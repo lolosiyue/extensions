@@ -392,28 +392,31 @@ function SmartAI:initialize(player)
 	-- 50p soak: humanized random branches add variance without helping headless.
 	if sgs.getMode=="50p" then sgs.ai_humanized = false end
 		self.room:writeToConsole(version..",Powered by ".._VERSION)
-		local modeAI = sgs.modeAIEnabled(self.room, self.player)
-		-- Special-mode drafts initialize AI before the alive roster is built.
-		-- Identity bookkeeping must cover every seated player; combat still uses alive players.
-		for i,ap in sgs.qlist(self.room:getPlayers())do
-			sgs.ai_role[ap:objectName()] = "neutral"
-			sgs.roleValue[ap:objectName()] = {lord=0,loyalist=0,rebel=0,renegade=0}
-			sgs.roleValue[ap:objectName()][ap:getRole()] = 0
+	end
+	local modeAI = sgs.modeAIEnabled(self.room, self.player)
+	-- Include seated players before special-mode drafts and after mid-game joins.
+	-- Only fill missing entries; existing seats keep their learned values.
+	for i,ap in sgs.qlist(self.room:getPlayers())do
+		local name = ap:objectName()
+		if sgs.roleValue[name] == nil then
+			sgs.ai_role[name] = "neutral"
+			sgs.roleValue[name] = {lord=0,loyalist=0,rebel=0,renegade=0}
+			sgs.roleValue[name][ap:getRole()] = 0
 			if modeAI then
 				-- The legacy shared table may contain public identities, never another viewer's secrets.
-				if self.room:isRoleRevealed(ap) then sgs.ai_role[ap:objectName()] = ap:getRole() end
+				if self.room:isRoleRevealed(ap) then sgs.ai_role[name] = ap:getRole() end
 			elseif ap:getRole()=="lord" then
-				sgs.roleValue[ap:objectName()]["lord"] = 99999
-				sgs.roleValue[ap:objectName()]["loyalist"] = 65535
-				sgs.ai_role[ap:objectName()] = "loyalist"
+				sgs.roleValue[name]["lord"] = 99999
+				sgs.roleValue[name]["loyalist"] = 65535
+				sgs.ai_role[name] = "loyalist"
 			elseif isRolePredictable() then
 				if ap:getRole()=="renegade" then sgs.explicit_renegade = true end
-				sgs.roleValue[ap:objectName()][ap:getRole()] = 65535
-				sgs.ai_role[ap:objectName()] = ap:getRole()
+				sgs.roleValue[name][ap:getRole()] = 65535
+				sgs.ai_role[name] = ap:getRole()
 			end
-			sgs.defense[ap:objectName()] = i
-			sgs.ai_NeedPeach[ap:objectName()] = 0
 		end
+		if sgs.defense[name] == nil then sgs.defense[name] = i end
+		if sgs.ai_NeedPeach[name] == nil then sgs.ai_NeedPeach[name] = 0 end
 	end
 	self.toUse = {}
 	self.keepdata = {}
