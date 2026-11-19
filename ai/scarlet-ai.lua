@@ -1185,7 +1185,17 @@ end
 
 sgs.ai_cardsview.s4_ganglu = function(self, class_name, player, request)
     if not (request and request:isValid()) then return end
-    if class_name and self:getCardsNum(class_name) > 0 then return end
+    -- getCardsNum -> getCards -> cardsView 會再列舉 cardsview 回到這裡（同一 self、同一牌類），
+    -- 無限重入直到 Lua 堆疊溢出。計數期間不提供剛膂轉化，計數即排除自身。
+    -- 旗標只包住這一次計數，返回或出錯前一律清除，不跨決策留存。
+    if self.s4_ganglu_counting then return end
+    if class_name then
+        self.s4_ganglu_counting = true
+        local ok, num = pcall(self.getCardsNum, self, class_name)
+        self.s4_ganglu_counting = nil
+        if not ok then error(num, 0) end
+        if num > 0 then return end
+    end
 
 	local toname = patterns(class_name)
 	local card = sgs.Sanguosha:cloneCard(toname, sgs.Card_SuitToBeDecided, -1)

@@ -947,14 +947,13 @@ end
 
 ai_skill_invoke.zengou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	local use = data:toCardUse()
+	local use = data and data:toCardUse()
+	if not use then ai_unsupported("zengou CardUsed use is not projected","zengou") end
 	if use.from and self:isEnemy(use.from) then
 		return (not self:isWeak() or nested(self,"ai_skill_cardask","@zengou-discard",self,data)~=".") or false
 	end
-	local use = data:toCardResponse()
-	if use.m_who and self:isFriend(use.m_who) then
-		return (not self:isWeak() or nested(self,"ai_skill_cardask","@zengou-discard",self,data)~=".") or false
-	end
+	-- Native Zengou triggers on CardUsed only, so this data is always a CardUse. The old
+	-- CardResponse branch could never match, and decision data has no toCardResponse.
 	return false
 
 end

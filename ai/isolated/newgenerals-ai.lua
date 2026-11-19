@@ -6777,15 +6777,15 @@ ai_fill_skill.olxiaofan = function(self, options, request)
         end
     end
     if n<4 or self.player:getHandcardNum()<2 and source_query(self, "getPriorTurnUseCount")<2 then
-        if self.player:usedTimes("#olxiaofan0Card")<1 then
+        if self.player:usedTimes("olxiaofan")<1 then
             return parse_action(self,"#olxiaofan0Card:.:")
         end
-        local pattern = property_value(self,self.player,"olxiaofanPattern")
-        if pattern~="" or source_query(self, "getPriorTurnUseCount")>1 then
+        local pattern = tostring(property_value(self,self.player,"olxiaofanPattern"))
+        if pattern~="" then
             for _,id in sgs.list(pattern:split("+"))do
                 local c = known_card(self,id)
-                local d = use_card(self,c)
-                if d.card then
+                local d = c and use_card(self,c)
+                if d and d.card then
                     if source_query(c, "canRecast") and d.to:isEmpty() then continue end
                     return parse_action(self,"#olxiaofan0Card:.:")
                 end
@@ -6802,10 +6802,12 @@ sgs.ai_use_value.olxiaofan0Card = 4.5
 sgs.ai_use_priority.olxiaofan0Card = 9.7
 
 ai_skill_use["@@olxiaofan1"] = function(self, prompt, request)
-    local pattern = property_value(self,self.player,"olxiaofanPattern")
+    local pattern = tostring(property_value(self,self.player,"olxiaofanPattern"))
+    if pattern=="" then return end
     local cs = {}
     for _,id in sgs.list(pattern:split("+"))do
-        table.insert(cs,known_card(self,id))
+        local c = known_card(self,id)
+        if c then table.insert(cs,c) end
     end
     self:sortByDynamicUsePriority(cs)
     for _,c in sgs.list(cs)do
@@ -6838,10 +6840,12 @@ end
 
 ai_skill_use["@@olxiaofan2"] = function(self, prompt, request)
     local cs = {}
-    for _,id in sgs.list(scope_list(self,"olxiaofanForAI"))do
-        table.insert(cs,known_card(self,id))
+    for _,id in sgs.list(self.player:getTagValue("olxiaofanForAI") or {})do
+        local c = known_card(self,id)
+        if c then table.insert(cs,c) end
     end
-    local pattern = scope(self,"olxiaofanPattern")
+    local pattern = tostring(property_value(self,self.player,"olxiaofanPattern"))
+    if pattern=="" then return end
     for _,c in sgs.list(cs)do
         for _,pn in sgs.list(pattern:split("+"))do
             if source_query(c, "sameNameWith", pn) and not source_query(self.player, "isLocked", c) then

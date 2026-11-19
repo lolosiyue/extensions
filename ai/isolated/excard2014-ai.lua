@@ -148,24 +148,37 @@ function sgs.ai_weapon_value.EXCard_WLJ(self, enemy, player)
 	if #self:getFriends(player) > 0 then return 2.8 end
 end
 
-ai_fill_skill.EXCard_WLJ=function(self, options, request)
-    local inclusive = options and options.inclusive
-
-		for _, player in sgs.qlist(self.room:getAlivePlayers()) do
-			if self:isFriend(player) then
-				if player:getStrategyMark("@EXCard_WLJ") == 0 then return self:legacySkillSeed("EXCard_WLJ", "#EXCard_WLJ_SkillCARD", request) end
-			else
-				if player:getStrategyMark("@EXCard_WLJ") > 0 then return self:legacySkillSeed("EXCard_WLJ", "#EXCard_WLJ_SkillCARD", request) end
-			end
+local function wljTargets(self)
+	local targets, seen = {}, {}
+	for _, friend in ipairs(self.friends) do
+		local name = friend:objectName()
+		if friend:isAlive() and not seen[name] then
+			targets[#targets + 1] = friend
+			seen[name] = true
 		end
+	end
+	local marked = 0
+	for _, player in sgs.qlist(self.room:getAlivePlayers()) do
+		local mark = player:getStrategyMark("@EXCard_WLJ")
+		if type(mark) ~= "number" then return end
+		if mark > 0 then marked = marked + 1 end
+	end
+	-- Each AI use must increase coverage, even when the two planners disagree.
+	if #targets > marked then return targets end
+end
+
+ai_fill_skill.EXCard_WLJ = function(self, options, request)
+	if wljTargets(self) then return self:legacySkillSeed("EXCard_WLJ", "#EXCard_WLJ_SkillCARD", request) end
 end
 ai_card_use["#EXCard_WLJ_SkillCARD"] = function(self, card, use, request)
-	for _, friend in ipairs(self.friends) do
-		if not use.card then
-            local bound=self:bindSkillCard("EXCard_WLJ", {}, request, nil, "#EXCard_WLJ_SkillCARD")
-            use.card=self:inheritLegacyCardIdentity(bound, card)
-        end
-		if use.to then use.to:append(friend) end
+	local targets = wljTargets(self)
+	if not targets then return end
+	if not use.card then
+		local bound = self:bindSkillCard("EXCard_WLJ", {}, request, nil, "#EXCard_WLJ_SkillCARD")
+		use.card = self:inheritLegacyCardIdentity(bound, card)
+	end
+	if use.to then
+		for _, friend in ipairs(targets) do use.to:append(friend) end
 	end
 end
 sgs.ai_use_priority.EXCard_WLJ_SkillCARD = 10

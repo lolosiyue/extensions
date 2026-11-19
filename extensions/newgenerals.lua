@@ -6663,6 +6663,7 @@ keol_duanjiong:addSkill(keolsaogu)
 ol_pengyang = sgs.General(ol_ccxh, "ol_pengyang", "shu", 3)
 olxiaofan0Card = sgs.CreateSkillCard {
 	name = "olxiaofan0Card",
+	skill_name = "olxiaofan",
 	target_fixed = true,
 	about_to_use = function(self, room, use)
 		if self:getUserString() ~= "@@olxiaofan2" then
@@ -6684,8 +6685,12 @@ olxiaofan0Card = sgs.CreateSkillCard {
 			room:setPlayerProperty(use.from, "olxiaofanPattern", ToData(table.concat(cans, "+")))
 			room:notifyMoveToPile(use.from, ids, "olxiaofan", sgs.Player_DrawPile, true)
 			room:returnToEndDrawPile(ids)
-			room:askForUseCard(use.from, "@@olxiaofan1", "olxiaofan0:", -1, sgs.Card_MethodUse, true, nil, nil, "olxiaofanUse")
+			local used = room:askForUseCard(use.from, "@@olxiaofan1", "olxiaofan0:", -1, sgs.Card_MethodUse, true, nil, nil, "olxiaofanUse")
 			room:notifyMoveToPile(use.from, ids, "olxiaofan", sgs.Player_DrawPile, false)
+			if not used then
+				-- A declined preview must not keep offering the same stale candidates.
+				room:setPlayerProperty(use.from, "olxiaofanPattern", ToData(""))
+			end
 		end
 	end,
 }
@@ -6813,13 +6818,13 @@ can_select_card = function(self, request, to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@olxiaofan1" then
 			pattern = request:getInitiator():property("olxiaofanPattern"):toString():split("+")
-			return table.contains(pattern, to_select:toString()) and request:getInitiator():getPileName(to_select:getId()) == "#olxiaofan"
+			return table.contains(pattern, tostring(to_select:getId())) and request:getInitiator():getTag("olxiaofanForAI"):toIntList():contains(to_select:getId())
 		end
 		if pattern == "@@olxiaofan2" then
 			pattern = request:getInitiator():property("olxiaofanPattern"):toString()
 			for _, pn in sgs.list(pattern:split("+")) do
 				if to_select:sameNameWith(pn) then
-					return request:getInitiator():getPileName(to_select:getId()) == "#olxiaofan" and not request:getInitiator():isLocked(to_select)
+					return request:getInitiator():getTag("olxiaofanForAI"):toIntList():contains(to_select:getId()) and not request:getInitiator():isLocked(to_select)
 				end
 			end
 		end

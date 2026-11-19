@@ -483,6 +483,9 @@ sgs.ai_skill_cardask["PoAskPo"] = function(self,data,pattern,target)
 end
 sgs.ai_skill_cardask["@PoAsk"] = function(self,data,pattern,target)
 	local use = data:toCardUse()
+	-- @PoAsk is also asked from Kai-Jink (CardAsked) and CardResponded, whose data
+	-- is not a CardUse. Without a projected use, let the legacy AI answer.
+	if not use then ai_unsupported("@PoAsk source CardUse is not projected","@PoAsk") end
 	if use.from and self:isEnemy(use.from) then
 		for _,c in sgs.list(self:getCard("Weikai", true))do
 			return c

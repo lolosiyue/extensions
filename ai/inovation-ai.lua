@@ -1460,6 +1460,9 @@ function SmartAI:willSkipPlayPhase(player, NotContains_Null)
 		if (max_card and player_max_card and max_card:getNumber() > player_max_card:getNumber()) or (max_card and max_card:getNumber() >= 12) then return true end
 	end
 
+	-- Without Indulgence, the remaining trick-removal estimates cannot skip Play.
+	if not player:containsTrick("Indulgence") then return false end
+
 	local friend_null = 0
 	local friend_snatch_dismantlement = 0
 	local cp = self.room:getCurrent()
@@ -1487,6 +1490,8 @@ end
 
 function SmartAI:willSkipDrawPhase(player, NotContains_Null)
 	local player = player or self.player
+	-- Avoid a room-wide Nullification estimate when there is no draw-skip trick.
+	if not player:containsTrick("supply_shortage") then return false end
 	local friend_null = 0
 	local friend_snatch_dismantlement = 0
 	local cp = self.room:getCurrent()

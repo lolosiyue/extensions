@@ -5975,11 +5975,11 @@ sgs.ai_fill_skill.olxiaofan = function(self)
 		end
 	end
 	if n<4 or self.player:getHandcardNum()<2 and #self.toUse<2 then
-		if self.player:usedTimes("#olxiaofan0Card")<1 then
+		if self.player:usedTimes("olxiaofan")<1 then
 			return sgs.Card_Parse("#olxiaofan0Card:.:")
 		end
 		local pattern = self.player:property("olxiaofanPattern"):toString()
-		if pattern~="" or #self.toUse>1 then
+		if pattern~="" then
 			for _,id in sgs.list(pattern:split("+"))do
 				local c = sgs.Sanguosha:getCard(id)
 				local d = self:aiUseCard(c)

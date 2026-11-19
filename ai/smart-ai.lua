@@ -4435,8 +4435,8 @@ function SmartAI:getCardNeedPlayer(cards,include_self,tos)
 	for _,friend in sgs.list(friends)do
 		if getKnownCard(friend,self.player,"Crossbow")>0 then
 			for _,p in sgs.list(self.enemies)do
-				if self:isGoodTarget(p,self.enemies,dummyCard())
-				and friend:distanceTo(p)<=1 then
+				if friend:distanceTo(p)<=1
+				and self:isGoodTarget(p,self.enemies,dummyCard()) then
 					for _,hcard in sgs.list(cards)do
 						if isCard("Slash",hcard,friend)
 						then return hcard,friend end
@@ -4449,18 +4449,27 @@ function SmartAI:getCardNeedPlayer(cards,include_self,tos)
 		return a:objectName()~=b:objectName() and a:getRoom():getFront(a,b)==a
 	end
 	table.sort(friends,cmpByAction)
+	-- This section can only return a weapon or offensive horse from cardtogive.
+	-- Without one, the friend/enemy damage and range scans cannot select a card.
+	local has_range_gift = false
+	for _,hcard in sgs.list(cardtogive)do
+		if hcard:isKindOf("Weapon") or hcard:isKindOf("OffensiveHorse") then
+			has_range_gift = true
+			break
+		end
+	end
 	for _,friend in sgs.list(friends)do
-		if friend:faceUp() then
+		if has_range_gift and friend:faceUp() then
 			local can_slash = false
 			for _,p in sgs.list(self.enemies)do
-				if self:isGoodTarget(p,self.enemies,dummyCard()) and friend:distanceTo(p)<=friend:getAttackRange()
+				if friend:distanceTo(p)<=friend:getAttackRange() and self:isGoodTarget(p,self.enemies,dummyCard())
 				then can_slash = true break end
 			end
 			if not can_slash then
 				local flag = string.format("weapon_done_%s_%s",self.player:objectName(),friend:objectName())
 				for _,p in sgs.list(self.enemies)do
-					if self:isGoodTarget(p,self.enemies,dummyCard())
-					and friend:distanceTo(p)>friend:getAttackRange() then
+					if friend:distanceTo(p)>friend:getAttackRange()
+					and self:isGoodTarget(p,self.enemies,dummyCard()) then
 						for _,hcard in sgs.list(cardtogive)do
 							if hcard:isKindOf("Weapon") and friend:distanceTo(p)<=friend:getAttackRange()+(sgs.weapon_range[hcard:getClassName()] or 0)
 							and not friend:getWeapon() and not friend:hasFlag(flag) then
