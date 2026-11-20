@@ -689,7 +689,7 @@ function sgs.ai_slash_prohibit.nosleiji(self,from,to,card)
 				break
 			end
 		end
-		if not other_rebel and ((from:getHp()>=4 and (getCardsNum("Peach",from,self.player)>0 or from:hasSkills("nosganglie|vsnosganglie"))) or from:hasSkill("hongyan"))
+		if not other_rebel and ((from:getHp()>=4 and (getCardsNum("Peach",from,self.player)>0 or from:hasSkillFamily("ganglie"))) or from:hasSkill("hongyan"))
 		then return false end
 		end
 
@@ -1275,7 +1275,7 @@ end
 
 
 sgs.ai_need_damaged.nosfankui = function (self,attacker,player)
-	if not player:hasSkills("nosguicai+nosfankui") then return false end
+	if not (player:hasSkillFamily("guicai") and player:hasSkillFamily("fankui")) then return false end
 	if not attacker then return end
 	local need_retrial = function(target)
 		local alive_num = self.room:alivePlayerCount()
@@ -2484,7 +2484,7 @@ end
 
 sgs.ai_need_damaged.ganglie = function(self,attacker,player)
 	if not attacker then return end
-	if not attacker:hasSkill("ganglie") and self:needToLoseHp(attacker,player)
+	if not attacker:hasSkillFamily("ganglie") and self:needToLoseHp(attacker,player)
 	then return self:isFriend(attacker,player) end
 	if self:isEnemy(attacker) and attacker:getHp()+attacker:getHandcardNum()<=3
 	and not(attacker:hasSkills(sgs.need_kongcheng.."|buqu") and attacker:getHandcardNum()>1)
@@ -4041,7 +4041,7 @@ sgs.ai_skill_use["@@fenwei"] = function(self,prompt)
 	local targetslist = self.player:property("fenwei_targets"):toString():split("+")
 	local value = 0
 	for _,player in ipairs(players)do
-		if not (player:hasSkill("danlao") or (player:hasSkills("jianxiong|nosjianxiong") and not self:isWeak(player)))
+		if not (player:hasSkill("danlao") or (player:hasSkillFamily("jianxiong") and not self:isWeak(player)))
 		and table.contains(targetslist,player:objectName()) then
 			local val = getFenweiValue(self,player,card,from)
 			if val>0 then

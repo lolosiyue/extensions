@@ -6465,7 +6465,7 @@ ai_skill_use["@@s3_fans_jibian1"] = function(self, prompt, request)
 	local targetslist = property(self,"s3_fans_jibian_target"):split("+")
 	local value = 0
 	for _, player in ipairs(players) do
-		if not (__scarletayuhuo_value_call(player,"hasSkill","danlao") or (player:hasSkills("jianxiong|nosjianxiong") and not self:isWeak(player)))
+		if not (__scarletayuhuo_value_call(player,"hasSkill","danlao") or (player:hasSkillFamily("jianxiong") and not self:isWeak(player)))
 			and table.contains(targetslist, player:objectName()) and #target_table < __scarletayuhuo_value_call(self.player,"getHp") then
 			local val = getjibianValue(self, player, card, from)
 			if val > 0 then
@@ -7756,7 +7756,7 @@ sgs.ai_slash_prohibit.gzj_leishen = function(self, from, to, card)
 				break
 			end
 		end
-		if not other_rebel and ((__scarletayuhuo_value_call(from,"getHp") >= 4 and (getCardsNum("Peach", from, self.player) > 0 or from:hasSkills("nosganglie|vsnosganglie"))) or __scarletayuhuo_value_call(from,"hasSkill","hongyan")) then
+		if not other_rebel and ((__scarletayuhuo_value_call(from,"getHp") >= 4 and (getCardsNum("Peach", from, self.player) > 0 or from:hasSkillFamily("ganglie"))) or __scarletayuhuo_value_call(from,"hasSkill","hongyan")) then
 			return false
 		end
 	end

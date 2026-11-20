@@ -353,7 +353,7 @@ function sgs.ai_slash_prohibit.luafan(self, from, to, card)
 				break
 			end
 		end
-		if not other_rebel and ((from:getHp() >= 4 and (getCardsNum("Peach", from, self.player) > 0 or from:hasSkills("nosganglie|vsnosganglie"))) or from:hasSkill("hongyan")) then
+		if not other_rebel and ((from:getHp() >= 4 and (getCardsNum("Peach", from, self.player) > 0 or from:hasSkillFamily("ganglie"))) or from:hasSkill("hongyan")) then
 			return false
 		end
 	end

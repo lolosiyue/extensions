@@ -534,7 +534,7 @@ function SmartAI:useCardFireAttack(fire_attack,use)
 		or self:cantbeHurt(enemy,self.player) then return end
 		return self:objectiveLevel(enemy)>2
 		and self:isGoodTarget(enemy,self.enemies,fire_attack)
-		and (hasJueqingEffect(self.player,enemy) or not(enemy:hasSkill("jianxiong") and not self:isWeak(enemy)
+		and (hasJueqingEffect(self.player,enemy) or not(enemy:hasSkillFamily("jianxiong") and not self:isWeak(enemy)
 		or enemy:isChained() and not self:isGoodChainTarget(enemy,fire_attack)
 		or self:needToLoseHp(enemy,self.player,fire_attack)))
 	end

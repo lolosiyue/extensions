@@ -1608,7 +1608,7 @@ sgs.ai_skill_cardask.aoe = function(self,data,pattern,target,name)
 	or self.player:getMark("@fenyong")>0 and not target:hasSkill("jueqing")
 	or self:needToLoseHp(self.player,target,aoe)
 	then return "." end
-	if not target:hasSkill("jueqing") and self.player:hasSkill("jianxiong")
+	if not target:hasSkill("jueqing") and self.player:hasSkillFamily("jianxiong")
 	and not self:isWeak() and not self:needKongcheng(self.player,true)
 	and not self:willSkipPlayPhase() then
 		if self:getAoeValue(aoe)>-10 then return "." end
@@ -1787,7 +1787,7 @@ function SmartAI:useCardDuel(duel,use)
 			then return end
 		end
 		n2 = n2+enemy:getHp()
-		if not self:isWeak(enemy) and enemy:hasSkill("jianxiong")
+		if not self:isWeak(enemy) and enemy:hasSkillFamily("jianxiong")
 		and not hasJueqingEffect(self.player,enemy) then n2 = n2+10 end
 		if self:needToLoseHp(enemy,nil,duel) then n2 = n2+15 end
 		if enemy:hasSkills(sgs.masochism_skill) then n2 = n2+5 end
@@ -1807,7 +1807,7 @@ function SmartAI:useCardDuel(duel,use)
 			if enemy:hasSkill("wushuang") then n2 = n2*2 end
 			enemySlash = enemySlash+n2
 			if n1>=enemySlash or self:needToLoseHp(self.player,nil,duel,true) or n2<1 
-			or self.player:hasSkill("jianxiong") or self.player:property("shuangxiong_colors_turn"):toString() ~= "" then else continue end
+			or self.player:hasSkillFamily("jianxiong") or self.player:property("shuangxiong_colors_turn"):toString() ~= "" then else continue end
 			if self.player:getPhase()<=sgs.Player_Play and math.random()<0.5
 			then self.player:setFlags("duelTo_"..enemy:objectName()) end
 			use.card = duel

@@ -410,7 +410,7 @@ sgs.ai_skill_playerchosen.y_baiyi = function(self)
         if indulgence or shortage then return friend end
         if friend:containsTrick("lightning") then
             for _, enemy in ipairs(self.enemies) do
-                if enemy:hasSkill("guicai") or enemy:hasSkill("guidao") or enemy:hasSkill("guanxing") then
+                if enemy:hasSkillFamily("guicai") or enemy:hasSkill("guidao") or enemy:hasSkill("guanxing") then
                     return friend
                 end
             end
@@ -611,7 +611,7 @@ ai_skill_invoke.y_dushi = function(self, options, request)
         end
         if friend:containsTrick("lightning") then
             for _, other in ipairs(self.friends) do
-                if other:hasSkill("guicai") or other:hasSkill("guidao") or other:hasSkill("guanxing") then
+                if other:hasSkillFamily("guicai") or other:hasSkill("guidao") or other:hasSkill("guanxing") then
                     return false
                 end
             end
@@ -643,7 +643,7 @@ sgs.ai_skill_playerchosen.y_dushi = function(self, targets)
             if target:containsTrick("lightning") then
                 local allowed = true
                 for _, other in ipairs(self.friends) do
-                    if other:hasSkill("guicai") or other:hasSkill("guidao") or other:hasSkill("guanxing") then
+                    if other:hasSkillFamily("guicai") or other:hasSkill("guidao") or other:hasSkill("guanxing") then
                         allowed = false
                     end
                 end

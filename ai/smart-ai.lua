@@ -251,7 +251,7 @@ do
 	
 	sgs.need_kongcheng = "lianying|noslianying|kongcheng|sijian|hengzheng"
 	
-	sgs.masochism_skill = "guixin|yiji|fankui|jieming|xuehen|neoganglie|ganglie|vsganglie|enyuan|"..
+	sgs.masochism_skill = "guixin|yiji|fankui|nosfankui|jieming|xuehen|neoganglie|ganglie|nosganglie|vsganglie|enyuan|"..
 						"fangzhu|nosenyuan|langgu|quanji|zhiyu|renjie|tanlan|tongxin|huashen|duodao|chengxiang|benyu"
 	
 	sgs.wizard_skill = "nosguicai|guicai|guidao|olguidao|jilve|tiandu|luoying|noszhenlie|huanshi|jinshenpin"
@@ -6294,7 +6294,7 @@ function SmartAI:getAoeValueTo(card,to,from)
 		if to:getHp()>1 then
 			if to:hasSkill("quanji") then value = value+10 end
 			if to:hasSkill("langgu") and self:isEnemy(to) then value = value-15 end
-			if to:hasSkill("jianxiong") then
+			if to:hasSkillFamily("jianxiong") then
 				value = value+(card:isVirtualCard() and card:subcardsLength()*10 or 10)
 			end
 			if to:hasSkills("fenyong+xuehen") and to:getMark("@fenyong")<1

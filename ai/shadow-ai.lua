@@ -399,7 +399,7 @@ sgs.ai_skill_playerchosen.y_baiyi = function(self, targets)
 		end
 		if friend:containsTrick("lightning") then
 			for _, enemy in ipairs(self.enemies) do
-				if enemy:hasSkill("guicai") or enemy:hasSkill("guidao") or enemy:hasSkill("guanxing") then
+				if enemy:hasSkillFamily("guicai") or enemy:hasSkill("guidao") or enemy:hasSkill("guanxing") then
 					return friend
 				end
 			end
@@ -671,7 +671,7 @@ sgs.ai_skill_invoke.y_dushi = function(self, data)
 					return true
 				elseif fr:containsTrick("lightning") then
 					for _, fr in ipairs(self.friends) do
-						if fr:hasSkill("guicai") or fr:hasSkill("guidao") or fr:hasSkill("guanxing") then
+						if fr:hasSkillFamily("guicai") or fr:hasSkill("guidao") or fr:hasSkill("guanxing") then
 							return false
 						end
 					end
@@ -698,7 +698,7 @@ sgs.ai_skill_playerchosen.y_dushi = function(self, targets)
 			elseif t:containsTrick("lightning") then
 				local target = true
 				for _, fr in ipairs(self.friends) do
-					if fr:hasSkill("guicai") or fr:hasSkill("guidao") or fr:hasSkill("guanxing") then
+					if fr:hasSkillFamily("guicai") or fr:hasSkill("guidao") or fr:hasSkill("guanxing") then
 						target = false
 					end
 				end

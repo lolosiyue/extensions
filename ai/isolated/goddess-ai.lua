@@ -600,7 +600,7 @@ function SmartAIView:useCardmanbing(manbing,use)
 	local bcv = {}
 	for _,p in ipairs(self.enemies)do
 		local v1 = getCardsNum("Slash",p,self.player)+p:getHp()
-		if not self:isWeak(p) and p:hasSkill("jianxiong") and not jueqing(self,self.player,p) then v1 = v1+10 end
+		if not self:isWeak(p) and p:hasSkillFamily("jianxiong") and not jueqing(self,self.player,p) then v1 = v1+10 end
 		if self:needToLoseHp(p, nil, manbing) then v1 = v1+15 end
 		if self:hasSkills(sgs.masochism_skill, p) then v1 = v1+5 end
 		if not self:isWeak(p) and p:hasSkill("jiang") then v1 = v1+5 end
@@ -619,7 +619,7 @@ function SmartAIView:useCardmanbing(manbing,use)
 		then
 			local n2 = getCardsNum("Slash",enemy,self.player)
 			if self:needToLoseHp(self.player, nil, manbing, true) or n2<1
-			or self:hasSkill("jianxiong") or owner_property(self,"shuangxiong_colors_turn") ~= ""
+			or self:hasSkillFamily("jianxiong") or owner_property(self,"shuangxiong_colors_turn") ~= ""
 			then else continue end
 			enemySlash = enemySlash+n2
 			if self.player:getPhase()<=sgs.Player_Play and math.random()<0.5
@@ -731,7 +731,7 @@ function SmartAIView:useCardshuigong(shuigong,use)
 		if self:cantbeHurt(enemy, self.player) then return end
 		return self:objectiveLevel(enemy)>2
 		and self:isGoodTarget(enemy, self.enemies, shuigong)
-		and (jueqing(self,self.player,enemy) or not(enemy:hasSkill("jianxiong") and not self:isWeak(enemy)
+		and (jueqing(self,self.player,enemy) or not(enemy:hasSkillFamily("jianxiong") and not self:isWeak(enemy)
 		or self:needToLoseHp(enemy, self.player, shuigong)))
 	end
 	local enemies,targets = {},{}

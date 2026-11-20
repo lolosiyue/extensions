@@ -3,7 +3,7 @@ local sgs = assert(rawget(_G, "sgs"), "strategy-hooks.lua must load first")
 
 sgs.lose_equip_skill = sgs.lose_equip_skill or "kofxiaoji|xiaoji|xuanfeng|nosxuanfeng|tenyearxuanfeng|mobilexuanfeng"
 sgs.need_kongcheng = sgs.need_kongcheng or "lianying|noslianying|kongcheng|sijian|hengzheng"
-sgs.masochism_skill = sgs.masochism_skill or "guixin|yiji|fankui|jieming|xuehen|neoganglie|ganglie|vsganglie|enyuan|fangzhu|nosenyuan|langgu|quanji|zhiyu|renjie|tanlan|tongxin|huashen|duodao|chengxiang|benyu"
+sgs.masochism_skill = sgs.masochism_skill or "guixin|yiji|fankui|nosfankui|jieming|xuehen|neoganglie|ganglie|nosganglie|vsganglie|enyuan|fangzhu|nosenyuan|langgu|quanji|zhiyu|renjie|tanlan|tongxin|huashen|duodao|chengxiang|benyu"
 sgs.wizard_skill = sgs.wizard_skill or "nosguicai|guicai|guidao|olguidao|jilve|tiandu|luoying|noszhenlie|huanshi|jinshenpin"
 sgs.wizard_harm_skill = sgs.wizard_harm_skill or "nosguicai|guicai|guidao|olguidao|jilve|jinshenpin|midao|zhenyi"
 sgs.priority_skill = sgs.priority_skill or "dimeng|haoshi|qingnang|nosjizhi|jizhi|guzheng|qixi|jieyin|guose|duanliang|jujian|fanjian|neofanjian|lijian|noslijian|manjuan|tuxi|qiaobian|yongsi|zhiheng|luoshen|nosrende|rende|mingce|wansha|gongxin|jilve|anxu|qice|yinling|heg_qingcheng|houyuan|zhaoxin|shuangren|zhaxiang|xiansi|junxing|bifa|yanyu|shenxian|jgtianyun"

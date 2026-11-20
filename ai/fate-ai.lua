@@ -2091,7 +2091,7 @@ sgs.ai_skill_playerchosen["@fatepomo"] = function(self, targets)
 	for _, enemy in ipairs(self.enemies) do
 		if self.player:distanceTo(enemy) <= self.player:getAttackRange() and
 		(enemy:hasSkill("fatewangzhe") or enemy:hasSkill("fatemoli") or enemy:hasSkill("fateheijian") or enemy:hasSkill("fateyanfan_vs") or enemy:hasSkill("fatehuyou") or enemy:hasSkill("fatejiejie") or enemy:hasSkill("fateqienuo") 
-		or enemy:hasSkill("yiji") or enemy:hasSkill("jianxiong") or enemy:hasSkill("fankui") or enemy:hasSkill("qingguo") or enemy:hasSkill("ganglie")
+		or enemy:hasSkill("yiji") or enemy:hasSkillFamily("jianxiong") or enemy:hasSkillFamily("fankui") or enemy:hasSkill("qingguo") or enemy:hasSkillFamily("ganglie")
 		or enemy:hasSkill("yizhong") or enemy:hasSkill("kongcheng") or enemy:hasSkill("longdan") or enemy:hasSkill("bazhen") or enemy:hasSkill("kanpo")
 		or enemy:hasSkill("wuyan") or enemy:hasSkill("liuli") or enemy:hasSkill("tianxiang") or enemy:hasSkill("leiji") or enemy:hasSkill("guhuo")
 		or enemy:hasSkill("fangzhu") or enemy:hasSkill("weimu") or enemy:hasSkill("tuntian") or enemy:hasSkill("xiangle") 
@@ -2108,7 +2108,7 @@ sgs.ai_skill_playerchosen["@fatepomo"] = function(self, targets)
 	--fate�����ǣ�ʥ��
 	--�����棺���ƣ����ţ�����������
 	for _, enemy in ipairs(self.enemies) do
-		if enemy:hasSkill("fatejiezhi") or enemy:hasSkill("fateshengqi") or enemy:hasSkill("kanpo") or enemy:hasSkill("guicai") or enemy:hasSkill("guidao") 
+		if enemy:hasSkill("fatejiezhi") or enemy:hasSkill("fateshengqi") or enemy:hasSkill("kanpo") or enemy:hasSkillFamily("guicai") or enemy:hasSkill("guidao") 
 		or enemy:hasSkill("jijiu") 
 		then
 			return enemy
@@ -2131,7 +2131,7 @@ sgs.ai_skill_playerchosen["@fatepomo"] = function(self, targets)
 	--fate����ڣ���������ڼ�
 	--�����棺���󣬼��ۣ����ף��Ļ������
 	for _, enemy in ipairs(self.enemies) do
-		if enemy:hasSkill("fatejianzhong") or enemy:hasSkill("fatehuwei") or enemy:hasSkill("fateheijian") or enemy:hasSkill("juxiang") or enemy:hasSkill("jianxiong") 
+		if enemy:hasSkill("fatejianzhong") or enemy:hasSkill("fatehuwei") or enemy:hasSkill("fateheijian") or enemy:hasSkill("juxiang") or enemy:hasSkillFamily("jianxiong") 
 		or enemy:hasSkill("huoshou") or enemy:hasSkill("weimu") or enemy:hasSkill("tuntian") 
 		then
 			return enemy
@@ -2152,7 +2152,7 @@ sgs.ai_skill_playerchosen["@fatepomo"] = function(self, targets)
 	
 	for _, enemy in ipairs(self.enemies) do
 		if enemy:hasSkill("fatewangzhe") or enemy:hasSkill("fatemoli") or enemy:hasSkill("fateheijian") or enemy:hasSkill("fateyanfan") or enemy:hasSkill("fatehuyou") or enemy:hasSkill("fatejiejie")
-		or enemy:hasSkill("yiji") or enemy:hasSkill("jianxiong") or enemy:hasSkill("fankui") or enemy:hasSkill("qingguo") or enemy:hasSkill("ganglie")
+		or enemy:hasSkill("yiji") or enemy:hasSkillFamily("jianxiong") or enemy:hasSkillFamily("fankui") or enemy:hasSkill("qingguo") or enemy:hasSkillFamily("ganglie")
 		or enemy:hasSkill("yizhong") or enemy:hasSkill("kongcheng") or enemy:hasSkill("longdan") or enemy:hasSkill("bazhen") or enemy:hasSkill("kanpo")
 		or enemy:hasSkill("wuyan") or enemy:hasSkill("liuli") or enemy:hasSkill("tianxiang") or enemy:hasSkill("leiji") or enemy:hasSkill("guhuo")
 		or enemy:hasSkill("fangzhu") or enemy:hasSkill("weimu") or enemy:hasSkill("tuntian") or enemy:hasSkill("xiangle") 

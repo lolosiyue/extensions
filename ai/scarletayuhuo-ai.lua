@@ -6175,7 +6175,7 @@ sgs.ai_skill_use["@@s3_fans_jibian1"] = function(self, prompt)
 	local targetslist = self.player:property("s3_fans_jibian_target"):toString():split("+")
 	local value = 0
 	for _, player in ipairs(players) do
-		if not (player:hasSkill("danlao") or (player:hasSkills("jianxiong|nosjianxiong") and not self:isWeak(player)))
+		if not (player:hasSkill("danlao") or (player:hasSkillFamily("jianxiong") and not self:isWeak(player)))
 			and table.contains(targetslist, player:objectName()) and #target_table < self.player:getHp() then
 			local val = getjibianValue(self, player, card, from)
 			if val > 0 then
@@ -7554,7 +7554,7 @@ sgs.ai_slash_prohibit.gzj_leishen = function(self, from, to, card)
 				break
 			end
 		end
-		if not other_rebel and ((from:getHp() >= 4 and (getCardsNum("Peach", from, self.player) > 0 or from:hasSkills("nosganglie|vsnosganglie"))) or from:hasSkill("hongyan")) then
+		if not other_rebel and ((from:getHp() >= 4 and (getCardsNum("Peach", from, self.player) > 0 or from:hasSkillFamily("ganglie"))) or from:hasSkill("hongyan")) then
 			return false
 		end
 	end

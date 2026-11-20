@@ -616,12 +616,12 @@ sgs.ai_skill_cardchosen.sgkgodshendao = function(self, who, flags)
 			    cards = sgs.QList2Table(package_known(who,"getCards","e"))
 			end
 			if package_known(who,"hasSkills","guidao|guicai|sr_guicai|hongyan|wuyan|nosguicai|huanshi") then
-			    if package_known(who,"getCards","e") > 0 then
+			    if package_known(who,"getCards","e"):length() > 0 then
 				    for _, icard in sgs.qlist(package_known(who,"getCards","e")) do
 					    table.insert(cards, icard)
 					end
 				end
-				if package_known(who,"getCards","j") > 0 then
+				if package_known(who,"getCards","j"):length() > 0 then
 				    for _, c in sgs.qlist(package_known(who,"getCards","j")) do
 					    if package_known(c,"isKindOf","Lightning") then table.insert(cards, c) end
 					end
@@ -5082,7 +5082,7 @@ ai_card_use["#nos_sgkgodtongtianCard"] = function(self, card, use, request)
 	local spade, club, heart, diamond
 	for _, card in ipairs(cards) do
 	    if package_known(card,"getSuit") == sgs.Card_Spade then
-		    if (not package_known(self.player,"hasSkills","fankui|nosfankui")) and (not spade) then
+		    if (not package_known(self.player,"hasSkillFamily","fankui")) and (not spade) then
 			    spade = true
 				table.insert(need_cards, package_known(card,"getId"))
 			end

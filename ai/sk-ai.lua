@@ -1279,8 +1279,8 @@ sgs.ai_skill_playerchosen.sk_hubu = function(self, targets)
 		if a:isKongcheng() then v1 = v1 - 20 end
 		if b:isKongcheng() then v2 = v2 - 20 end
 
-		if not self:isWeak(a) and a:hasSkill("jianxiong") and not self.player:hasSkill("jueqing") then v1 = v1 + 10 end
-		if not self:isWeak(b) and b:hasSkill("jianxiong") and not self.player:hasSkill("jueqing") then v2 = v2 + 10 end
+		if not self:isWeak(a) and a:hasSkillFamily("jianxiong") and not self.player:hasSkill("jueqing") then v1 = v1 + 10 end
+		if not self:isWeak(b) and b:hasSkillFamily("jianxiong") and not self.player:hasSkill("jueqing") then v2 = v2 + 10 end
 
 		if self:needToLoseHp(a) then v1 = v1 + 5 end
 		if self:needToLoseHp(b) then v2 = v2 + 5 end

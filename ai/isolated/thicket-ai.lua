@@ -978,7 +978,7 @@ ai_card_use.ShenfenCard = function(self, card, use, request)
 					value_d = value_d*0.9
 				end
 			end
-			if player:hasSkill("fankui") then value_d = value_d*0.8 end
+			if player:hasSkillFamily("fankui") then value_d = value_d*0.8 end
 			if player:hasSkill("guixin") then
 				if not player:faceUp() then
 					value_d = value_d*0.4

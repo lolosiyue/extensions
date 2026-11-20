@@ -704,11 +704,8 @@ sgs.ai_skill_use_func["#TH_huaidiaoCARD"] = function(card, use, self)
 		if self:needToLoseHp(a,self.player,duel) then v1 = v1 + 20 end
 		if self:needToLoseHp(b,self.player,duel) then v2 = v2 + 20 end
 
-		if not self:isWeak(a) and a:hasSkill("jianxiong") and not self.player:hasSkill("jueqing") then v1 = v1 + 10 end
-		if not self:isWeak(b) and b:hasSkill("jianxiong") and not self.player:hasSkill("jueqing") then v2 = v2 + 10 end
-
-		if not self:isWeak(a) and a:hasSkill("nosjianxiong") and not self.player:hasSkill("jueqing") then v1 = v1 + 10 end
-		if not self:isWeak(b) and b:hasSkill("nosjianxiong") and not self.player:hasSkill("jueqing") then v2 = v2 + 10 end
+		if not self:isWeak(a) and a:hasSkillFamily("jianxiong") and not self.player:hasSkill("jueqing") then v1 = v1 + 10 end
+		if not self:isWeak(b) and b:hasSkillFamily("jianxiong") and not self.player:hasSkill("jueqing") then v2 = v2 + 10 end
 
 		if self:needToLoseHp(a) then v1 = v1 + 5 end
 		if self:needToLoseHp(b) then v2 = v2 + 5 end
@@ -4022,7 +4019,7 @@ sgs.ai_skill_use_func["#TH_huaimiepaohouCARD"] = function(card, use, self)------
 	local lord = self.room:getLord()
 	if self:isEnemy(lord) then
 		for _,acard in ipairs(cards) do
-			if not lord:hasSkills("jianxiong|nosjianxiong") or (not acard:isKindOf("Peach") and not acard:isKindOf("Jink") and not acard:isKindOf("Analeptic")) then
+			if not lord:hasSkillFamily("jianxiong") or (not acard:isKindOf("Peach") and not acard:isKindOf("Jink") and not acard:isKindOf("Analeptic")) then
 				local slash = acard:isKindOf("NatureSlash") and sgs.Sanguosha:cloneCard(acard:objectName(), acard:getSuit(), acard:getNumber()) or sgs.Sanguosha:cloneCard("slash")
 				if self:slashIsEffective(slash,lord) and not self:damageprohibit(lord,"G", 2) then
 					use.card = sgs.Card_Parse("#TH_huaimiepaohouCARD:"..acard:getEffectiveId()..":")
@@ -4037,7 +4034,7 @@ sgs.ai_skill_use_func["#TH_huaimiepaohouCARD"] = function(card, use, self)------
 	for _, enemy in ipairs(self.enemies) do
 		if enemy:getMark("@TH_terriblesouvenir") > 0 then
 			for _,acard in ipairs(cards) do
-				if not enemy:hasSkills("jianxiong|nosjianxiong") or (not acard:isKindOf("Peach") and not acard:isKindOf("Jink") and not acard:isKindOf("Analeptic")) then
+				if not enemy:hasSkillFamily("jianxiong") or (not acard:isKindOf("Peach") and not acard:isKindOf("Jink") and not acard:isKindOf("Analeptic")) then
 					local slash
 					if acard:isKindOf("NatureSlash") then
 						slash = sgs.Sanguosha:cloneCard(acard:objectName(), acard:getSuit(), acard:getNumber())
@@ -4056,7 +4053,7 @@ sgs.ai_skill_use_func["#TH_huaimiepaohouCARD"] = function(card, use, self)------
 		self:sort(self.enemies,"defense")
 		for _, enemy in ipairs(self.enemies) do
 			for _,acard in ipairs(cards) do
-				if not enemy:hasSkills("jianxiong|nosjianxiong") or (not acard:isKindOf("Peach") and not acard:isKindOf("Jink") and not acard:isKindOf("Analeptic")) then
+				if not enemy:hasSkillFamily("jianxiong") or (not acard:isKindOf("Peach") and not acard:isKindOf("Jink") and not acard:isKindOf("Analeptic")) then
 					local slash
 					if acard:isKindOf("NatureSlash") then
 						slash = sgs.Sanguosha:cloneCard(acard:objectName(), acard:getSuit(), acard:getNumber())

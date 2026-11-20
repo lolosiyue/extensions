@@ -428,12 +428,12 @@ sgs.ai_skill_cardchosen.sgkgodshendao = function(self, who, flags)
 			    cards = sgs.QList2Table(who:getCards("e"))
 			end
 			if who:hasSkills("guidao|guicai|sr_guicai|hongyan|wuyan|nosguicai|huanshi") then  --如果有能改判的技能或者是不怕闪电的敌人挂了闪电，那么条件允许的情况下，拿闪电改判
-			    if who:getCards("e") > 0 then
+			    if who:getCards("e"):length() > 0 then
 				    for _, icard in sgs.qlist(who:getCards("e")) do
 					    table.insert(cards, icard)
 					end
 				end
-				if who:getCards("j") > 0 then
+				if who:getCards("j"):length() > 0 then
 				    for _, c in sgs.qlist(who:getCards("j")) do
 					    if c:isKindOf("Lightning") then table.insert(cards, c) end
 					end
@@ -3049,7 +3049,7 @@ sgs.ai_skill_use_func["#sgkgodshenfenCard"] = function(card, use, self)
 					value_d = value_d * 0.9
 				end
 			end
-			if player:hasSkill("fankui") then value_d = value_d * 0.8 end
+			if player:hasSkillFamily("fankui") then value_d = value_d * 0.8 end
 			if player:hasSkill("guixin") then
 				if not player:faceUp() then
 					value_d = value_d * 0.4
@@ -4764,7 +4764,7 @@ sgs.ai_skill_use_func["#nos_sgkgodtongtianCard"] = function(card, use, self)
 	local spade, club, heart, diamond
 	for _, card in ipairs(cards) do
 	    if card:getSuit() == sgs.Card_Spade then
-		    if (not self.player:hasSkills("fankui|nosfankui")) and (not spade) then
+		    if (not self.player:hasSkillFamily("fankui")) and (not spade) then
 			    spade = true
 				table.insert(need_cards, card:getId())
 			end
