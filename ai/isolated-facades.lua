@@ -1348,6 +1348,25 @@ function PlayerView:hasSkills(skill_names)
     return false
 end
 
+-- Native projects each skill's own families (Skill::familyList). Same answer as
+-- hasSkill over every member: a valid member is true; undisclosed skills leave nil.
+function PlayerView:hasSkillFamily(family, include_lose)
+    if type(family) ~= "string" or family == "" then return false end
+    local index = rawget(self, "_skill_index")
+    if type(index) ~= "table" then return nil end
+    for _, skills in pairs(index.by_name) do
+        for _, skill in ipairs(skills) do
+            if type(skill.families) == "table" and (include_lose == true or not skill.invalid) then
+                for _, name in ipairs(skill.families) do
+                    if name == family then return true end
+                end
+            end
+        end
+    end
+    if foreign_skill_absence_unknown(self) then return nil end
+    return false
+end
+
 function CardView:getRange()
     return self._view.weapon_range
 end
@@ -9081,7 +9100,7 @@ local required_raw_methods = {
         canPindian=true, aliveCount=true, isMale=true, isFemale=true,
         isSameKingdom=true, isControlledBy=true, isYourFriend=true,
         isPublicHegemonyFriend=true, hasEquip=true,
-        hasSkill=true, hasSkills=true, hasLordSkill=true,
+        hasSkill=true, hasSkills=true, hasSkillFamily=true, hasLordSkill=true,
         hasShownSkill=true, hasShownOneGeneral=true,
         isAdjacentTo=true, isCardLimited=true, isProhibited=true,
         hasEquipArea=true, hasJudgeArea=true, hasTreasure=true, getChangeSkillState=true,
