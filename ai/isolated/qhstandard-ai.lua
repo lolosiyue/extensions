@@ -175,7 +175,7 @@ sgs.ai_nullification.qhstandard_indulgence = sgs.ai_nullification.indulgence
 --标准版-强化 曹操-奸雄
 ai_skill_invoke.qhstandardjianxiong = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                                --始终发动
+	return true                                                --始终发动
 end
 sgs.ai_target_revises.qhstandardjianxiong = sgs.ai_target_revises.jianxiong
 
@@ -208,11 +208,11 @@ ai_skill_invoke.qhstandardhujia = function(self, options, request)        --是�
 	local cards = self.player:getHandcards()                      --获取手牌
 	local current = self.room:getCurrent()
 	if self:isFriend(current) and self:getOverflow(current) > 2 then --若当前回合是友方回合且多余牌大于2
-		return (true) or false                                               --发动
+		return true                                               --发动
 	end
 	for _, card in sgs.qlist(cards) do                            --对手牌进行扫描
 		if card:isKindOf("Jink") then                             --若有闪
-			return (false) or false                                          --不发动
+			return false                                          --不发动
 		end
 	end
 	return (#self.friends_noself > 0) or false --有友方则发动
@@ -241,18 +241,18 @@ ai_skill_invoke.qhstandardfankui = function(self, options, request) --是否发�
 	local damage = data:toDamage()                          --获取伤害来源
 	local from = damage.from
 	local target = damage.to
-	if from:isNude() then return (true) or false end --没牌则发动
+	if from:isNude() then return true end --没牌则发动
 	if self:isFriend(from) then
-		if self:getOverflow(from) > 2 then return (true) or false end
-		if self:doDisCard(from, "he", true) then return (true) or false end
+		if self:getOverflow(from) > 2 then return true end
+		if self:doDisCard(from, "he", true) then return true end
 		return ((self:hasSkills(sgs.lose_equip_skill, from) and not target:getEquips():isEmpty())
 			or (self:needToThrowArmor(from) and from:getArmor()) or self:doDisCard(from, "he", true)) or false
 	end
 	if self:isEnemy(from) then
-		if not self:doDisCard(from, "he", true) then return (false) or false end
-		return (true) or false
+		if not self:doDisCard(from, "he", true) then return false end
+		return true
 	end
-	return (true) or false
+	return true
 end
 
 
@@ -272,7 +272,7 @@ ai_skill_invoke.qhstandardguicai = function(self, options, request) --是否发�
 	for _, friend in ipairs(friends) do                     --对所有友方角色进行扫描
 		local DelayedTrickCard = friend:getJudgingArea()    --获取判定区卡牌
 		if DelayedTrickCard:length() > 0 then               --判定区有牌
-			return (true) or false                                     --发动
+			return true                                     --发动
 		end
 	end
 	return false
@@ -366,7 +366,7 @@ ai_skill_invoke.qhstandardganglie = function(self, options, request) --是否发
 	local data = request and self:getDecisionData(request) or nil
 	local from = data:toPlayer()                             --获取伤害来源
 	if from == nil or not self:isFriend(from) then           --没有伤害来源或伤害来源不是友方
-		return (true) or false                                          --发动
+		return true                                          --发动
 	end
 	return false
 
@@ -436,7 +436,7 @@ sgs.append_skill_list("drawpeach_skill","qhstandardtuxi")
 --标准版-强化 许褚-裸衣
 ai_skill_invoke.qhstandardluoyi = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                            --发动
+	return true                                            --发动
 end
 
 ai_skill_choice.qhstandardluoyi = function(self, options, request)
@@ -499,16 +499,16 @@ ai_skill_invoke.qhstandardtiandu = function(self, options, request) --是否发�
 	local target = use.to:at(0)                             --目标
 	local HandcardNum = target:getHandcardNum()             --手牌数
 	if HandcardNum < 3 then
-		return (true) or false                                         --发动
+		return true                                         --发动
 	end
 	if use.card:isKindOf("DelayedTrickCard") then           --延时性锦囊
-		return (true) or false                                         --发动
+		return true                                         --发动
 	end
 	local cards = sgs.QList2Table(full_hand(self,target))     --获取手牌
 	cards = self:sortByKeepValue(cards)
 	for _, card in ipairs(cards) do                         --对卡牌进行扫描
 		if not card:isKindOf("Peach") and self:getKeepValue(card) < self:getKeepValue(use.card) then
-			return (true) or false                                     --发动
+			return true                                     --发动
 		end
 	end
 	return false
@@ -527,7 +527,7 @@ end
 --遗计
 ai_skill_invoke.qhstandardyiji = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                           --发动
+	return true                                           --发动
 end
 sgs.ai_can_damagehp.qhstandardyiji = function (self,attacker,player)
 	if not player:hasSkill("yiji") then return end
@@ -549,7 +549,7 @@ sgs.ai_can_damagehp.qhstandardyiji = sgs.ai_can_damagehp.yiji
 --标准版-强化 甄姬-洛神
 ai_skill_invoke.qhstandardluoshen = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                              --发动
+	return true                                              --发动
 end
 
 --倾国
@@ -686,15 +686,15 @@ end
 ai_skill_invoke.qhwindjushou = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
 	if self.player:hasSkill("qhwindjiewei") then
-		return (true) or false                                     --发动
+		return true                                     --发动
 	end
-	return (false) or false
+	return false
 end
 
 --解围
 ai_skill_invoke.qhwindjiewei = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                         --发动
+	return true                                         --发动
 end
 
 ai_skill_use["@qhwindjiewei-AI"] = function(self, prompt, request) --被动用卡的使用函数
@@ -955,12 +955,12 @@ ai_skill_invoke.qhstandardjijiang = function(self, options, request) --是否发
 	local cards = self.player:getHandcards()                 --获取手牌
 	for _, card in sgs.qlist(cards) do                       --对手牌进行扫描
 		if card:isKindOf("Slash") then                       --若有杀
-			return (nil) or false                                       --不发动
+			return false                                       --不发动
 		end
 	end
 	local friend_num = #self.friends_noself --获取友方数量
 	if friend_num > 0 then               --有友方
-		return (true) or false                      --发动
+		return true                      --发动
 	end
 	return false
 
@@ -1135,7 +1135,7 @@ end
 --标准版-强化 诸葛亮-观星
 ai_skill_invoke.qhstandardguanxing = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                               --发动
+	return true                                               --发动
 end
 
 ai_fill_skill["qhstandardguanxing"] = function(self, options, request)
@@ -1230,7 +1230,7 @@ end
 --龙勇
 ai_skill_invoke.qhstandardlongyong = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                               --发动
+	return true                                               --发动
 end
 
 --标准版-强化 马超-铁骑
@@ -1238,10 +1238,10 @@ ai_skill_invoke.qhstandardtieqi = function(self, options, request) --是否发�
 	local data = request and self:getDecisionData(request) or nil
 	if self.player:getStrategyFlag("use_from") then
 		local target = data:toPlayer()
-		if not self:isFriend(target) then return (true) or false end
-		return (false) or false
+		if not self:isFriend(target) then return true end
+		return false
 	end
-	return (true) or false
+	return true
 end
 sgs.ai_cardneed.qhstandardtieqi = sgs.ai_cardneed.slash
 sgs.append_skill_list("hit_skill","qhstandardtieqi")
@@ -1250,7 +1250,7 @@ sgs.ai_choicemade_filter.skillInvoke.qhstandardtieqi = sgs.ai_choicemade_filter.
 --标准版-强化 黄月英-集智
 ai_skill_invoke.qhstandardjizhi = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                            --发动
+	return true                                            --发动
 end
 sgs.ai_card_priority.qhstandardjizhi = function(self,card,v)
 	if self.useValue
@@ -1266,7 +1266,7 @@ end
 
 ai_skill_invoke.qhstandardjizhi2 = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false --发动
+	return true --发动
 end
 
 --风包-强化 黄忠-烈弓
@@ -1274,14 +1274,14 @@ ai_skill_invoke.qhwindliegong = function(self, options, request) --是否发动�
 	local data = request and self:getDecisionData(request) or nil
 	if self.player:getStrategyFlag("qhwindliegong_TargetSpecified") then
 		if self:isEnemy(data:toPlayer()) then
-			return (true) or false --发动
+			return true --发动
 		end
 	else
 		local damage = data:toDamage()
 		if self.player:getHp() > damage.to:getHp() then
-			return (true) or false --发动
+			return true --发动
 		elseif self:isEnemy(damage.to) then
-			return (true) or false --发动
+			return true --发动
 		end
 	end
 	return false
@@ -1401,7 +1401,7 @@ end
 --涅槃
 ai_skill_invoke.qhfireniepan = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                         --发动
+	return true                                         --发动
 end
 
 ai_skill_invoke.qhfireniepan_endPlay = function(self, options, request) --是否发动技能
@@ -1409,9 +1409,9 @@ ai_skill_invoke.qhfireniepan_endPlay = function(self, options, request) --是否
 	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
 	if self:isFriend(current) then
-		return (false) or false
+		return false
 	else
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -1453,13 +1453,13 @@ end
 
 ai_skill_invoke.qhfirekanpo = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                        --发动
+	return true                                        --发动
 end
 
 --八阵
 ai_skill_invoke.qhfirebazhen = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                         --发动
+	return true                                         --发动
 end
 
 --火包-强化 神诸葛亮-狂风
@@ -1525,7 +1525,7 @@ sgs.ai_card_intention.qhfiredawuCARD = -70
 --禳星
 ai_skill_invoke.qhfirerangxing = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                           --发动
+	return true                                           --发动
 end
 
 --标准版-强化 孙权-制衡
@@ -1772,7 +1772,7 @@ end
 --标准版-强化 吕蒙-克己
 ai_skill_invoke.qhstandardkeji = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                           --发动
+	return true                                           --发动
 end
 sgs.ai_use_revises.qhstandardkeji = function(self,card,use)
 	if card:isKindOf("Slash") and not self:hasCrossbowEffect()
@@ -1822,7 +1822,7 @@ end
 --标准版-强化 周瑜-英姿
 ai_skill_invoke.qhstandardyingzi = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                             --发动
+	return true                                             --发动
 end
 
 --反间
@@ -1943,7 +1943,7 @@ sgs.qhstandardguose_suit_value = { --花色保留值
 
 ai_skill_invoke.qhstandardguose = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                            --发动
+	return true                                            --发动
 end
 
 --流离
@@ -2064,7 +2064,7 @@ end
 --标准版-强化 陆逊-连营
 ai_skill_invoke.qhstandardlianying = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                               --发动
+	return true                                               --发动
 end
 
 sgs.ai_skill_discard.qhstandardlianying = function(self) --弃牌选择
@@ -2150,7 +2150,7 @@ sgs.append_skill_list("recover_hp_skill","qhstandardjieyin")
 --枭姬
 ai_skill_invoke.qhstandardxiaoji = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                             --发动
+	return true                                             --发动
 end
 sgs.ai_use_revises.qhstandardxiaoji = function(self,card,use)
 	if card:isKindOf("EquipCard") and self:evaluateArmor(card)>-5
@@ -2249,7 +2249,7 @@ end
 --风包-强化 周泰-奋激
 ai_skill_invoke.qhwindfenji = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                        --发动
+	return true                                        --发动
 end
 
 sgs.ai_skill_playerchosen.qhwindfenji = function(self, targets) --选择目标
@@ -2271,7 +2271,7 @@ sgs.ai_choicemade_filter.cardChosen.qhwindfenji = sgs.ai_choicemade_filter.cardC
 --风包-强化 神吕蒙-涉猎
 ai_skill_invoke.qhwindshelie = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                         --发动
+	return true                                         --发动
 end
 
 --攻心
@@ -2394,7 +2394,7 @@ end
 --酣战
 ai_skill_invoke.qhfirehanzhan = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                          --发动
+	return true                                          --发动
 end
 
 --神周瑜-业炎
@@ -2418,7 +2418,7 @@ end
 --琴音
 ai_skill_invoke.qhfireqinyin = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                         --发动
+	return true                                         --发动
 end
 
 ai_skill_choice.qhfireqinyin = function(self, options, request)
@@ -2448,7 +2448,7 @@ end
 --薪火
 ai_skill_invoke.qhfirexinhuo = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                         --发动
+	return true                                         --发动
 end
 
 sgs.ai_cardshow.qhfirexinhuo = function(self, requestor)
@@ -2910,7 +2910,7 @@ table.insert(sgs.ai_choicemade_filter.cardUsed,qhstandardLijian_filter)
 --闭月
 ai_skill_invoke.qhstandardBiyue = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                            --发动
+	return true                                            --发动
 end
 sgs.ai_cardneed.qhstandardyaowu = sgs.ai_cardneed.slash
 
@@ -3008,7 +3008,7 @@ sgs.ai_use_priority["qhwindGuibingCARD"] = 6 --使用优先值
 
 ai_skill_invoke.qhwindGuibing = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                          --发动
+	return true                                          --发动
 end
 
 --黄天
@@ -3227,7 +3227,7 @@ end
 
 ai_skill_invoke.qhfireluanji = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                         --发动
+	return true                                         --发动
 end
 sgs.ai_card_priority.qhfireluanji = function(self,card,v)
 	if card:isKindOf("ArcheryAttack")
@@ -3242,7 +3242,7 @@ end
 --火包-强化 颜良文丑-双雄
 ai_skill_invoke.qhfireshuangxiong = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                              --发动
+	return true                                              --发动
 end
 
 sgs.ai_view_as.qhfireshuangxiong = function(card, player, card_place) --重写视为技
@@ -3334,7 +3334,7 @@ ai_skill_invoke.qhfiremengjin = function(self, options, request) --是否发动�
 		end
 		if player:getCards("he"):length() <= 1 then
 			if use.card:isKindOf("FireAttack") or use.card:isKindOf("Snatch") or use.card:isKindOf("Dismantlement") then
-				return (false) or false
+				return false
 			end
 		end
 		return (self:doDisCard(player, "he")) or false --发动
@@ -3639,7 +3639,7 @@ ai_skill_invoke.mythmeibu = function(self, options, request) --是否发动技�
 	local data = request and self:getDecisionData(request) or nil
 	local player = data:toPlayer()
 	if self:isEnemy(player) then
-		return (true) or false --发动
+		return true --发动
 	end
 	return false
 
@@ -3654,7 +3654,7 @@ end
 --穆穆
 ai_skill_invoke.mythmumu = function(self, options, request) --是否发动技能
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false                                     --发动
+	return true                                     --发动
 end
 
 ai_skill_choice.mythmumu = function(self, options, request)
@@ -3686,7 +3686,7 @@ sgs.ai_choicemade_filter.cardChosen.mythmumu = sgs.ai_choicemade_filter.cardChos
 --薛灵芸-霞泪
 ai_skill_invoke.mythxialei = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.mythxialei_suit_value = {
@@ -3698,7 +3698,7 @@ sgs.mythxialei_suit_value = {
 --暗织
 ai_skill_invoke.mythanzhi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.mythanzhi = function(self, players) --选择目标

@@ -12,9 +12,9 @@ ai_skill_invoke.Rcekuiwei = function(self, options, request)
     local next_alive = query(current, "getNextAlive")
     if query(next_alive, "objectName") == query(self.player, "objectName")
         and query(self.player, "faceUp") then
-        return (false) or false
+        return false
     end
-    return (true) or false
+    return true
 end
 
 sgs.ai_view_as.Rceyanzheng = function(card, player, card_place)

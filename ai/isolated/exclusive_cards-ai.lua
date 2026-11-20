@@ -27,7 +27,7 @@ sgs.weapon_range.Shuibojian=2
 sgs.weapon_range.Hunduwanbi=1
 sgs.weapon_range.Piliche=9
 sgs.weapon_range.SecondPiliche=9
-ai_skill_invoke._hongduanqiang=function(self, options, request)return (true) or false end
+ai_skill_invoke._hongduanqiang=function(self, options, request)return true end
 
 ai_skill_use["@@_liecuidao"]=function(self, prompt, request)
     local name=prompt:split(":")[2]
@@ -61,7 +61,7 @@ end
 ai_skill_invoke._hunduwanbi=function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target=self.room:findPlayerByObjectName(query(data,"toString"):split(":")[2])
-    if target then return (not query(self,"isFriend",target)) or false end
+    if target then return not query(self,"isFriend",target) end
     return false
 
 end
@@ -69,18 +69,18 @@ for _,name in ipairs({"_tianleiren","_piliche","_secondpiliche"}) do
     ai_skill_invoke[name]=function(self, options, request)
         local data = request and self:getDecisionData(request) or nil
         local target=data:toPlayer()
-        if target then return (not query(self,"isFriend",target)) or false end
+        if target then return not query(self,"isFriend",target) end
         return false
 
     end
 end
-ai_skill_invoke._feilunzhanyu=function(self, options, request)local data = request and self:getDecisionData(request) or nil; return (not query(self,"isFriend",data:toPlayer())) or false end
+ai_skill_invoke._feilunzhanyu=function(self, options, request)local data = request and self:getDecisionData(request) or nil; return not query(self,"isFriend",data:toPlayer()) end
 ai_skill_invoke._tiejixuanyu=function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target=data:toPlayer()
     return (query(self,"isEnemy",target) and (query(target,"getHandcardNum")>1 or query(target,"hasEquip"))) or false
 end
-ai_skill_invoke._sichengliangyu=function(self, options, request)return (true) or false end
+ai_skill_invoke._sichengliangyu=function(self, options, request)return true end
 sgs.ai_skill_discard._qiongshu=function(self,x,n)
     local hand=query(self,"sortByKeepValue",query(self.player,"getCards","he"))
     if type(sgs.getPlayerSkillList)~="function" then ai_unsupported("public player skill list unavailable","_qiongshu") end
@@ -96,7 +96,7 @@ sgs.ai_skill_discard._qiongshu=function(self,x,n)
     end
     return #selected>=n and selected or {}
 end
-ai_skill_invoke._qiongshu=function(self, options, request)return (true) or false end
+ai_skill_invoke._qiongshu=function(self, options, request)return true end
 ai_skill_choice._xishu=function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
 

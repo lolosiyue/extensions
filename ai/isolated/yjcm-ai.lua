@@ -73,7 +73,7 @@ sgs.ai_cardsview.jiushi=function(self,class_name,player)
 end
 function ai_skill_invoke.jiushi(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not self.player:faceUp()) or false
+	return not self.player:faceUp()
 end
 
 ai_skill_invoke.luoying = function(self, options, request)
@@ -85,9 +85,9 @@ ai_skill_invoke.luoying = function(self, options, request)
 				break
 			end
 		end
-		if not another or not self:isFriend(another) then return (false) or false end
+		if not another or not self:isFriend(another) then return false end
 	end
-	return (not self:needKongcheng(self.player,true)) or false
+	return not self:needKongcheng(self.player,true)
 end
 
 sgs.ai_skill_askforag.luoying = function(self,card_ids)
@@ -104,9 +104,9 @@ ai_skill_invoke.olluoying = function(self, options, request)
 	local move = data:toMoveOneTime()
 	local cards={};for _,id in ipairs(known(move.card_ids,"olluoying.move_cards"))do cards[#cards+1]=material(self,id)end
 	if #self:poisonCards(cards)>move.card_ids:length()/2 then
-		return (false) or false
+		return false
 	end
-	return (not self:needKongcheng(self.player,true)) or false
+	return not self:needKongcheng(self.player,true)
 end
 
 
@@ -166,12 +166,12 @@ ai_skill_invoke.enyuan = function(self, options, request)
 	local damage = data:toDamage()
 	if damage.from and damage.from:isAlive() then
 		if self:isFriend(damage.from) then
-			if self:getOverflow(damage.from)>2 then return (true) or false end
-			if self:needToLoseHp(damage.from,self.player,damage.card,true) and not self:hasSkills(sgs.masochism_skill,damage.from) then return (true) or false end
-			if not self:hasLoseHandcardEffective(damage.from) and not damage.from:isKongcheng() then return (true) or false end
-			return (false) or false
+			if self:getOverflow(damage.from)>2 then return true end
+			if self:needToLoseHp(damage.from,self.player,damage.card,true) and not self:hasSkills(sgs.masochism_skill,damage.from) then return true end
+			if not self:hasLoseHandcardEffective(damage.from) and not damage.from:isKongcheng() then return true end
+			return false
 		else
-			return (true) or false
+			return true
 		end
 	end
 	return false
@@ -403,16 +403,16 @@ ai_skill_invoke.xuanfeng = function(self, options, request)
 	for _,enemy in ipairs(self.enemies)do
 		if (self:doDisCard(enemy,"he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() and
 		not (skill(self,enemy,"guzheng") and self.room:getCurrent():getPhase()==sgs.Player_Discard) then
-			return (true) or false
+			return true
 		end
 	end
 	for _,friend in ipairs(self.friends_noself)do
 		if(self:hasSkills(sgs.lose_equip_skill,friend) and not friend:getEquips():isEmpty())
 		or (self:needToThrowArmor(friend) and friend:getArmor()) or self:doDisCard(friend,"he") then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.xuanfeng = function(self,targets)
@@ -450,7 +450,7 @@ ai_skill_invoke.pojun = function(self, options, request)
 	if self:isFriend(damage.to) then
 		return (good) or false
 	elseif self:isEnemy(damage.to) then
-		return (not good) or false
+		return not good
 	end
 	return false
 
@@ -477,7 +477,7 @@ end
 ai_skill_invoke.shangshi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if self.player:getLostHp()==1 then return (ai_skill_invoke.noslianying(self, options, request)) or false end
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.quanji = function(self, options, request)
@@ -486,11 +486,11 @@ ai_skill_invoke.quanji = function(self, options, request)
 	local juece_effect = (current and current:isAlive() and current:getPhase()~=sgs.Player_NotActive and self:isEnemy(current) and skill(self,current,"juece"))
 	local manjuan_effect = self:hasManjuanEffect(self.player)
 	if self.player:isKongcheng() then
-		if manjuan_effect or juece_effect then return (false) or false end
+		if manjuan_effect or juece_effect then return false end
 	elseif self.player:getHandcardNum()==1 then
-		if manjuan_effect and juece_effect then return (false) or false end
+		if manjuan_effect and juece_effect then return false end
 	end
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_discard.quanji = function(self)
@@ -1023,7 +1023,7 @@ end
 ai_skill_invoke.buyi=function(self, options, request)
  local data = request and self:getDecisionData(request) or nil
  local dying=known(data:toDying(),"buyi.dying");local who=known(dying.who,"buyi.who")
- if who:isKongcheng()then return (false) or false end
+ if who:isKongcheng()then return false end
  local friend=not self:isEnemy(who)
  if not known(self.world.enable_hegemony,"buyi.hegemony") and self.role=="renegade" then
   if self.room:getMode()=="couple" then

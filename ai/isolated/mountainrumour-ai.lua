@@ -804,7 +804,7 @@ end
 
 ai_skill_invoke.luadunjia = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self.player:getStrategyMark("luadunjia") > 0 then return (true) or false end
+    if self.player:getStrategyMark("luadunjia") > 0 then return true end
     return (ai_skill_invoke.jushou(self, options, request)) or false
 end
 
@@ -824,7 +824,7 @@ ai_skill_invoke.luatuogu = function(self, options, request)
     local damage = data:toDamage().damage
     if self.player:getHp() - damage <= 0 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then
         aiPlayerChat(self, "tuogu")
-        return (true) or false
+        return true
     end
     return false
 
@@ -886,10 +886,10 @@ ai_skill_invoke.luabawang = function(self, options, request)
     if target and self:isEnemy(self.player, target) then
         if not self:needToLoseHp(target, self.player, nil) then
             aiPlayerChat(self, "bawang")
-            return (true) or false
+            return true
         end
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_discard.luabawang = function(self, discard_num, min_num, optional, include_equip)
@@ -1138,7 +1138,7 @@ end
 ai_skill_invoke.luahuanying = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     aiPlayerChat(self, "huanying")
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_askforag.luahuanying = function(self, card_ids)
@@ -1183,29 +1183,29 @@ ai_skill_invoke.luacaokong = function(self, options, request)
         local players = self.room:getOtherPlayers(self.player)
         players = sgs.QList2Table(players)
         local to_selects = tuxi_targets(self, players, 3)
-        if to_selects == {} then return (false) or false end
+        if to_selects == {} then return false end
         local current_targets = scope_use(self,"caokong_targets")
         for _,p in ipairs(to_selects) do
             if not current_targets or not current_targets.to
                 or not current_targets.to:contains(p) then
-                return (true) or false
+                return true
             end
         end
-        return (false) or false
+        return false
     else
         local card = scope_card(self,"caokong_card")
         if not card:isKindOf("AOE") and not card:isKindOf("GlobalEffect") then
-            return (true) or false
+            return true
         else
             if card:isKindOf("AOE") and self:getAoeValue(card) then
-                return (true) or false
+                return true
             end
         end
         local use = self:evaluateCard(caokong_evaluation(self,card), dummy())
         if use.card then
-            return (true) or false
+            return true
         end
-        return (false) or false
+        return false
     end
     return false
 
@@ -1265,9 +1265,9 @@ ai_skill_invoke.luamengzhu = function(self, options, request)
     f_data.damage=damage -- Source does not pass f_data to guixin.
     if ai_skill_invoke.guixin(self, options, request) then
         aiPlayerChat(self, "mengzhu")
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 for i=1,10 do

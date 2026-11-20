@@ -217,17 +217,17 @@ ai_skill_invoke.zhulou = function(self, options, request)
 		end
 	end
 
-	if weaponnum>0 then return (true) or false end
+	if weaponnum>0 then return true end
 
 	if self.player:getHandcardNum()<3 and self.player:getHp()>2 then
-		return (true) or false
+		return true
 	end
 
 	if self.player:getHp()<3 and self.player:getWeapon() then
-		return (true) or false
+		return true
 	end
 
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["@zhulou-discard"] =  function(self,data)
@@ -249,9 +249,9 @@ sgs.zhulou_keep_value = sgs.qiangxi_keep_value
 
 function ai_skill_invoke.neojushou(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if not self.player:faceUp() then return (true) or false end
+	if not self.player:faceUp() then return true end
 	for _,friend in ipairs(self.friends)do
-		if self:hasSkills("fangzhu|jilve",friend) then return (true) or false end
+		if self:hasSkills("fangzhu|jilve",friend) then return true end
 	end
 	return (self:isWeak()) or false
 end
@@ -266,13 +266,13 @@ ai_skill_invoke.neoganglie = function(self, options, request)
 	local who = damage.from
 	if self:isFriend(who) and self:needToLoseHp(who,self.player,damage.card,true) then
 		set_ganglie_flag(self,who,true)
-		return (true) or false
+		return true
 	end
 	if self:needToLoseHp(who,self.player) and self:isEnemy(who) and who:getHandcardNum()<2 then
-		return (false) or false
+		return false
 	end
 
-	return (not self:isFriend(who)) or false
+	return not self:isFriend(who)
 end
 
 sgs.ai_choicemade_filter.skillInvoke.neoganglie = function(self,player,promptlist)

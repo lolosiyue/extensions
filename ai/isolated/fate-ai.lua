@@ -93,7 +93,7 @@ local function donor_undefined_target()error('fixed fatewangzhe donor reads unde
 
 ai_skill_invoke.fateyezhan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_audited_aliases.register{id="ai_skill_playerchosen.fateyezhan",registry="ai_skill_playerchosen",path={"fateyezhan"},canonical_registry="ai_skill_playerchosen",canonical_path={"damage"},self_index=1,defer_canonical=true}
@@ -150,7 +150,7 @@ end
 
 ai_skill_invoke.fatewangzhe = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_askforag.fatewangzhe = function(self, card_ids)
@@ -489,7 +489,7 @@ sgs.double_slash_skill = sgs.double_slash_skill .. "|fatetiangong_vs"
 
 ai_skill_invoke.fatejianzhong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 sgs.ai_target_revises.fatejianzhong = function(to, card)
 	if  card:isKindOf("ArcheryAttack")
@@ -724,7 +724,7 @@ end
 
 ai_skill_invoke.fateshilian = function(self, options, request)
  	local data = request and self:getDecisionData(request) or nil
- 	return (true) or false
+ 	return true
 end
 
 sgs.ai_hasBuquEffect_skill.fateshilian = function(player)
@@ -736,9 +736,9 @@ ai_skill_invoke.fatemoli = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local baba = self.room:findPlayerBySkillName("fatejiezhi")
     if baba and self:isEnemy(baba) then
-        return (false) or false
+        return false
     else
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -938,7 +938,7 @@ sgs.double_slash_skill = sgs.double_slash_skill .. "|fatexunjie"
 
 ai_skill_invoke.fateshenghai = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_ajustdamage_to.fateshenghai = function(self, from, to, card, nature)
@@ -985,20 +985,20 @@ ai_skill_invoke["fateheijianDamage"] = function(self, options, request)
 	
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if self:isFriend(damage.to) then return (false) or false end
-	if damage.to:getHp()<3 then return (true) or false end
-	if self.player:getHp() == 1 then return (false) or false end
+	if self:isFriend(damage.to) then return false end
+	if damage.to:getHp()<3 then return true end
+	if self.player:getHp() == 1 then return false end
 
 	if ((self.player:getPile("fateheijiancards")):length() < 2)  and (self:getCardsNum("Jink") == 0) then
-		return (false) or false
+		return false
 	end
-	return (true) or false	
+	return true	
 end
 
 ai_skill_invoke["fateheijianDefense"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if self:getCardsNum("Peach") < 2 then
-		return (true) or false
+		return true
 	end
 	return false
 		
@@ -1010,7 +1010,7 @@ end
 
 ai_skill_invoke["fateheijianJianpai"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false		
+	return true		
 end
 
 sgs.Kirei_suit_value = 
@@ -1027,14 +1027,14 @@ ai_skill_invoke["fatefanji"] = function(self, options, request)
 	local pattern = nil
 	local target = nil
 	if self:getCardsNum("Slash") == 0 then
-		return (false) or false
+		return false
 	end
 	local cur = self.room:getCurrent()
 	
 
 	
-	if self:isFriend(cur) then return (false) or false end
-	return (true) or false
+	if self:isFriend(cur) then return false end
+	return true
 end
 
 local fatefanshi_skill={}
@@ -1114,24 +1114,24 @@ ai_skill_invoke["fateqingxing"] = function(self, options, request)
 	    		i=i+1
 	    end
 	end
-	if i==0 then return (false) or false end
+	if i==0 then return false end
 	local player = self.room:getCurrent()
-	if not self:isFriend(player) then return (false) or false end
+	if not self:isFriend(player) then return false end
 	local judges = player:getJudgingArea()
 	if player:hasSkill("fateqingxing") then
 		if player:isWounded() and player:getMark("@fatebimie")==0 then
-			return (true) or false
+			return true
 		end
 		if not judges:isEmpty() then
-			if self:hasWizard(self.enemies) then return (true) or false end
+			if self:hasWizard(self.enemies) then return true end
 			for _,cd in sgs.qlist(judges) do
-				if not cd:isKindOf("Lightning") then return (true) or false end
+				if not cd:isKindOf("Lightning") then return true end
 			end
 		else 
-			return (false) or false 
+			return false 
 		end
 	end
-	if (player:getHp() < 2 and player:isWounded()) and player:getMark("@fatebimie")==0 then return (true) or false end
+	if (player:getHp() < 2 and player:isWounded()) and player:getMark("@fatebimie")==0 then return true end
 	local cards = self.player:getCards("he")
     cards=AIList.new(cards)
     local card
@@ -1142,8 +1142,8 @@ ai_skill_invoke["fateqingxing"] = function(self, options, request)
 			i=i+1
 		end
     end
-	if (player:getHp() < 3 and player:isWounded() and (self:getCardsNum("Jink")+ i> 1)) then return (true) or false end
-	return (false) or false
+	if (player:getHp() < 3 and player:isWounded() and (self:getCardsNum("Jink")+ i> 1)) then return true end
+	return false
 end
 
 sgs.ai_skill_cardask["@fateqingxing1"] = function(self, data, pattern, target)
@@ -1322,8 +1322,8 @@ sgs.dynamic_value.benefit.fatechuyi_card = true
 ai_skill_invoke["fatexinengloseHP"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local next_player = self.player:getNextAlive()
-	if not self:isFriend(next_player) then return (true) or false end
-	return (false) or false
+	if not self:isFriend(next_player) then return true end
+	return false
 end
 
 
@@ -1608,7 +1608,7 @@ sgs.double_slash_skill = sgs.double_slash_skill .. "|fatechuanxin_trs"
 ai_audited_aliases.register{id="ai_cardneed.fateguangbo",registry="ai_cardneed",path={"fateguangbo"},canonical_registry="ai_cardneed",canonical_path={"slash"},self_index=3,defer_canonical=true}
 ai_skill_invoke.fateguangbo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.fateguangbo=function(self, options, request)
@@ -1743,7 +1743,7 @@ ai_skill_invoke["fatehuyoubad"] = function(self, options, request)
 
 
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen["#fatehuyoubad_target"] = function(self, targets) 
@@ -1770,10 +1770,10 @@ ai_skill_invoke["fatehuyougood"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _, friend in ipairs(self.friends_noself) do  
         if friend:getLostHp() > 0 and self.player:getLostHp()==0 then
-            return (true) or false
+            return true
         end
     end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen["#fatehuyougood_target"] = function(self, targets)
@@ -1939,15 +1939,15 @@ sgs.Irisviel_suit_value =
 ai_skill_invoke.fatejiejie = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
-	if effect.card and effect.card:hasFlag("NosJiefanUsed") then return (false) or false  end
+	if effect.card and effect.card:hasFlag("NosJiefanUsed") then return false  end
 
 	if not effect.from or self:standardNullFilter(data, pattern, effect.from)
 		or effect.card:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, effect.from, nil, nil, effect.card)
-		or self:needToLoseHp(self.player, effect.from, effect.card) and self:ajustDamage(effect.from, self.player, 1, effect.card)==1 then return (false) or false end
-	if self:needToLoseHp(self.player, effect.from, effect.card, true, true) then return (false) or false end
-	if self:getCardsNum("Jink") == 0 then return (true) or false end
+		or self:needToLoseHp(self.player, effect.from, effect.card) and self:ajustDamage(effect.from, self.player, 1, effect.card)==1 then return false end
+	if self:needToLoseHp(self.player, effect.from, effect.card, true, true) then return false end
+	if self:getCardsNum("Jink") == 0 then return true end
 	
-	return (true) or false
+	return true
 end
 
 local fatemoshu_skill={}
@@ -2060,9 +2060,9 @@ end
 ai_skill_invoke.fatehuwei = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if #self.friends_noself > 0 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -2092,7 +2092,7 @@ end
 
 ai_skill_invoke.fatepomo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen["@fatepomo"] = function(self, targets)
@@ -2202,13 +2202,13 @@ ai_audited_aliases.register{id="ai_cardneed.fatebimie",registry="ai_cardneed",pa
 ai_skill_invoke.fatetuci = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	if self.player:getHandcardNum()<1 then return (nil) or false end
+	if self.player:getHandcardNum()<1 then return false end
     for _, target in sgs.qlist(use.to) do
-		if self:isFriend(target) then return (false) or false end
-		if self:cantDamageMore(self.player, target) then return (false) or false end
-    	return (true) or false
+		if self:isFriend(target) then return false end
+		if self:cantDamageMore(self.player, target) then return false end
+    	return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_ajustdamage_from.fatetuci = function(self,from,to,card,nature)
@@ -2283,17 +2283,17 @@ ai_skill_invoke.fateqiangtui = function(self, options, request)
 	local players = room:getOtherPlayers(self.player)
 	for _, target in sgs.qlist(players) do
 		if self:isEnemy(target) and not target:isKongcheng() and (target:getSeat()==(self.player:getNextAlive()):getSeat() or self.player:getSeat()==(target:getNextAlive()):getSeat()) then
-			return (true) or false
+			return true
 		end
 	end
 	for _, target in sgs.qlist(players) do
 		if self.player:isWounded() and not target:isKongcheng() and target:isFemale()
 		and (target:getSeat()==(self.player:getNextAlive()):getSeat() or self.player:getSeat()==(target:getNextAlive()):getSeat())
 		then
-			return (true) or false
+			return true
 		end
 	end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_playerchosen.fateqiangtui = function(self, targets) 
@@ -2376,13 +2376,13 @@ sgs.ai_card_intention["fatechongshu_card"] = 100
 
 ai_skill_invoke.fatechongshu = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_invoke.fatejiushu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getMark("@fatejiushu_mark")==0 then return (false) or false end
-	if self.player:getKnownRole()=="renegade"  then return (false) or false end
+	if self.player:getMark("@fatejiushu_mark")==0 then return false end
+	if self.player:getKnownRole()=="renegade"  then return false end
     return ((#self.friends_noself > 0)) or false
 end
 

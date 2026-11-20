@@ -137,9 +137,9 @@ end
 ai_skill_invoke.jxhoulu = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return (false) or false end
-    if target:getHp() == 1 then return (false) or false end
-    if target:containsTrick("indulgence") then return (false) or false end
+    if not self:isFriend(target) then return false end
+    if target:getHp() == 1 then return false end
+    if target:containsTrick("indulgence") then return false end
     if target:objectName() == self.player:objectName() then
         return (self.player:getHp() > 1 or self:getCardsNum("Peach") > 1 or self:getCardsNum("Analeptic") > 1) or false
     end
@@ -159,7 +159,7 @@ ai_skill_invoke.jxjuxiang = function(self, options, request)
             break
         end
     end
-    if not target then return (false) or false end
+    if not target then return false end
     return (self:isEnemy(target)) or false
 end
 
@@ -753,7 +753,7 @@ sgs.ai_damage_reason_suppress_intention["bnbaonve"] = true
 ai_skill_invoke.bnhengzheng = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self.player:getHp() == 1 then
-        if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") <= 0 then return (false) or false end
+        if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") <= 0 then return false end
         local ends = true
         for _,card in sgs.qlist(self.player:getHandcards()) do
             if card:getSuit() == sgs.Card_Spade then ends = false break end
@@ -761,7 +761,7 @@ ai_skill_invoke.bnhengzheng = function(self, options, request)
         for _,card in sgs.qlist(self.player:getEquips()) do
             if card:getSuit() == sgs.Card_Spade then ends = false break end
         end
-        if ends then return (false) or false end
+        if ends then return false end
     end
     local friend,enemy = 0, 0
     for _,p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
@@ -1224,8 +1224,8 @@ sgs.ai_use_priority.ny_zhanjue_diy = 2.9
 ai_skill_invoke.ny_second_dingcuo = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local n = self.player:getStrategyMark("&ny_second_dingcuo-Clear")
-    if (n + 1) < self.player:getMaxHp() then return (true) or false end
-    if self.player:getHandcardNum() <= self.player:getMaxHp() then return (true) or false end
+    if (n + 1) < self.player:getMaxHp() then return true end
+    if self.player:getHandcardNum() <= self.player:getMaxHp() then return true end
     local first
     local second
     local count = 0
@@ -1238,8 +1238,8 @@ ai_skill_invoke.ny_second_dingcuo = function(self, options, request)
         count = count + 1
         if count >= 2 then break end
     end
-    if first and second and first:sameColorWith(second) then return (true) or false end
-    return (false) or false 
+    if first and second and first:sameColorWith(second) then return true end
+    return false 
 end
 
 
@@ -1252,9 +1252,9 @@ ai_skill_invoke.ny_second_juanxia = function(self, options, request)
             break
         end
     end
-    if not target then return (true) or false end
-    if self:isEnemy(target) then return (true) or false end
-    return (false) or false
+    if not target then return true end
+    if self:isEnemy(target) then return true end
+    return false
 end
 
 ai_skill_choice["ny_second_juanxia"] = function(self, options, request)
@@ -1313,16 +1313,16 @@ ai_skill_invoke.nyarz_xunxun = true
 
 ai_skill_invoke.nyarz_wangxi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self.player:getPhase() ~= sgs.Player_NotActive then return (true) or false end
+    if self.player:getPhase() ~= sgs.Player_NotActive then return true end
     local target
     for _,p in sgs.qlist(self.room:getAlivePlayers()) do
         if p:hasFlag("nyarz_wangxi_target") then
             target = p
         end
     end
-    if not target then return (true) or false end
-    if target and self:isFriend(target) then return (true) or false end
-    if self.player:getLostHp() > 1 then return (true) or false end
+    if not target then return true end
+    if target and self:isFriend(target) then return true end
+    if self.player:getLostHp() > 1 then return true end
     return false
 
 end
@@ -1419,39 +1419,39 @@ ai_skill_invoke.nyarz_liuzhuan = function(self, options, request)
             break
         end
     end
-    if not target then return (false) or false end
+    if not target then return false end
     if target then
         if self:isEnemy(target) then
-            if target:getPhase() == sgs.Player_NotActive then return (false) or false end
-            if target:getPhase() == sgs.Player_Start then return (true) or false end
+            if target:getPhase() == sgs.Player_NotActive then return false end
+            if target:getPhase() == sgs.Player_Start then return true end
             if target:getPhase() == sgs.Player_Play then
                 local names = {"snatch","ex_nihilo","iron_chain","amazing_grace"}
                 for _,card in sgs.qlist(fullhand(target)) do
-                    if table.contains(names, card:objectName()) then return (true) or false end
+                    if table.contains(names, card:objectName()) then return true end
                 end
                 for _,skill in sgs.qlist(target:getVisibleSkillList()) do
                     if not skill:isAttachedLordSkill() then
                         local translation = skill_description(self,skill:objectName())
                         if string.find(translation, "摸") then
-                            return (true) or false
+                            return true
                         end
                     end
                 end
             end
         end
         if self:isFriend(target) then
-            if target:getPhase() == sgs.Player_NotActive then return (true) or false end
-            if target:getPhase() == sgs.Player_Start then return (false) or false end
+            if target:getPhase() == sgs.Player_NotActive then return true end
+            if target:getPhase() == sgs.Player_Start then return false end
             if target:getPhase() == sgs.Player_Play then
                 local names = {"snatch","ex_nihilo","iron_chain","amazing_grace"}
                 for _,card in sgs.qlist(fullhand(target)) do
-                    if table.contains(names, card:objectName()) then return (false) or false end
+                    if table.contains(names, card:objectName()) then return false end
                 end
             end
-            return (true) or false
+            return true
         end
     end
-    return (false) or false 
+    return false 
 end
 
 
@@ -1466,27 +1466,27 @@ ai_skill_invoke.nyarz_zhubi = function(self, options, request)
     end
     if target and self:isEnemy(target) then
         if target:getJudgingArea():isEmpty() then
-            return (false) or false
+            return false
         else
             local cards = sgs.QList2Table(target:getJudgingArea())
             if cards[#cards]:objectName() == "supply_shortage" then
-                return (true) or false
+                return true
             end
-            return (false) or false 
+            return false 
         end
     end
     if target and self:isFriend(target) then
         if target:getJudgingArea():isEmpty() then
-            return (true) or false
+            return true
         else
             local cards = sgs.QList2Table(target:getJudgingArea())
             if cards[#cards]:objectName() == "supply_shortage" then
-                return (false) or false
+                return false
             end
-            return (true) or false
+            return true
         end
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_discard.nyarz_zhubi = function(self,max,min)
@@ -1540,14 +1540,14 @@ sgs.hit_skill = sgs.hit_skill .. "|nyarz_pojun"
 ai_skill_invoke.nyarz_juece = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = findPlayerByFlag(self.room, "nyarz_juece_target")
-    if not target then return (false) or false end
-    if self:isFriend(target) and self:needToLoseHp(target, self.player, nil) and self:damageIsEffective(target) then return (true) or false end
-    if not self:isEnemy(target) then return (false) or false end
-    if not self:cantbeHurt(target) and self:damageIsEffective(target) and self:canDamage(target, self.player, nil) then return (true) or false end
-    if self.player:getPhase() ~= sgs.Player_NotActive then return (true) or false end
-    if self.player:isNude() then return (true) or false end
-    if self.player:getHandcardNum() <= 1 and (not target:isKongcheng()) and target:getHp() > 2 then return (false) or false end
-    return (true) or false
+    if not target then return false end
+    if self:isFriend(target) and self:needToLoseHp(target, self.player, nil) and self:damageIsEffective(target) then return true end
+    if not self:isEnemy(target) then return false end
+    if not self:cantbeHurt(target) and self:damageIsEffective(target) and self:canDamage(target, self.player, nil) then return true end
+    if self.player:getPhase() ~= sgs.Player_NotActive then return true end
+    if self.player:isNude() then return true end
+    if self.player:getHandcardNum() <= 1 and (not target:isKongcheng()) and target:getHp() > 2 then return false end
+    return true
 end
 
 ai_skill_choice["nyarz_juece"] = function(self, options, request)
@@ -1738,7 +1738,7 @@ sgs.lose_equip_skill = sgs.lose_equip_skill.."|nyarz_xuanfeng"
 
 ai_skill_invoke.nyarz_jiqiao = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self.player:getLostHp() < 2 or self.player:getHp() > 3 then return (true) or false end
+    if self.player:getLostHp() < 2 or self.player:getHp() > 3 then return true end
     local colors = {}
     for _,cc in sgs.qlist(self.player:getHandcards()) do
         local color = cc:getColorString()
@@ -1756,7 +1756,7 @@ ai_skill_invoke.nyarz_jiqiao = function(self, options, request)
         i = i - 1
         if i <= 0 then break end
     end
-    if #colors <= 1 then return (true) or false end
+    if #colors <= 1 then return true end
 
     local red = 0
     local black = 0
@@ -1778,7 +1778,7 @@ ai_skill_invoke.nyarz_jiqiao = function(self, options, request)
     if (red == 0) or (black == 0) or (other == 0) then
         return ((red == 1) or (black == 1) or (other == 1)) or false
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_discard.nyarz_jiqiao = function(self,max,min)
@@ -1833,12 +1833,12 @@ end
 
 ai_skill_invoke.nyarz_rende = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self.player:getPhase() ~= sgs.Player_Finish then return (true) or false end
-    if self.player:getStrategyMark("nyarz_rende_draw-Clear") >= 3 then return (true) or false end
-    if self.player:getStrategyMark("&nyarz_rende") <= 0 then return (false) or false end
-    if self.player:getHandcardNum() <= 1 then return (true) or false end
-    if self.player:getStrategyMark("&nyarz_rende") <= 1 then return (false) or false end
-    return (true) or false
+    if self.player:getPhase() ~= sgs.Player_Finish then return true end
+    if self.player:getStrategyMark("nyarz_rende_draw-Clear") >= 3 then return true end
+    if self.player:getStrategyMark("&nyarz_rende") <= 0 then return false end
+    if self.player:getHandcardNum() <= 1 then return true end
+    if self.player:getStrategyMark("&nyarz_rende") <= 1 then return false end
+    return true
 end
 
 ai_fill_skill.nyarz_rende=function(self, options, request)
@@ -1924,10 +1924,10 @@ end
 
 ai_skill_invoke.nyarz_zhangwu = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self.player:getStrategyMark("&nyarz_rende") >= 2 then return (false) or false end
-    if #self.friends_noself == 0 then return (true) or false end
-    if self:isWeak() then return (true) or false end
-    return (false) or false
+    if self.player:getStrategyMark("&nyarz_rende") >= 2 then return false end
+    if #self.friends_noself == 0 then return true end
+    if self:isWeak() then return true end
+    return false
 end
 
 
@@ -3069,7 +3069,7 @@ end
 ai_skill_invoke.nyarz_jieying = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = self.room:getCurrent()
-    if target and self:isEnemy(target) then return (true) or false end
+    if target and self:isEnemy(target) then return true end
     return false
 
 end
@@ -3337,15 +3337,15 @@ ai_skill_invoke.nyarz_yijve = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local dying = tagvalue(self,"nyarz_yijve","Dying")
     local target = dying.who
-    if self:isFriend(target) and target:getStrategyMark("&nyarz_yijve+#"..self.player:objectName()) == 0 then return (true) or false end
-    if self:isEnemy(target) and target:getStrategyMark("&nyarz_yijve+#"..self.player:objectName()) > 0 then return (true) or false end
+    if self:isFriend(target) and target:getStrategyMark("&nyarz_yijve+#"..self.player:objectName()) == 0 then return true end
+    if self:isEnemy(target) and target:getStrategyMark("&nyarz_yijve+#"..self.player:objectName()) > 0 then return true end
     if self:isEnemy(target) and target:getStrategyMark("&nyarz_yijve+#"..self.player:objectName()) == 0 then
         for _,card in sgs.qlist(fullhand(target)) do
-            if card:isKindOf("Peach") or card:isKindOf("Analeptic") then return (true) or false end
+            if card:isKindOf("Peach") or card:isKindOf("Analeptic") then return true end
         end
-        return (false) or false
+        return false
     end
-    return (false) or false
+    return false
 end
 
 
@@ -3511,8 +3511,8 @@ sgs.ai_playerchosen_intention.nyarz_diaodu_give = -80
 ai_skill_invoke.nyarz_diaodu = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = tagplayer(self,nil,"nyarz_diaodu")
-    if target and self:isFriend(target) then return (true) or false end
-    return (false) or false
+    if target and self:isFriend(target) then return true end
+    return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.nyarz_diaodu = function(self,player,promptlist)
@@ -3992,11 +3992,11 @@ sgs.ai_playerchosen_intention.nyarz_shangyu = -80
 ai_skill_invoke.nyarz_caixia = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local card = tagvalue(self,"nyarz_caixia","Card")
-    if (not card) then return (false) or false end
-    if self.player:getHp() <= 1 then return (nil) or false end
+    if (not card) then return false end
+    if self.player:getHp() <= 1 then return false end
     if card:isKindOf("Peach") or card:isKindOf("Analeptic")
-    or card:isKindOf("Nullification") or card:isKindOf("Jink") then return (false) or false end
-    return (true) or false
+    or card:isKindOf("Nullification") or card:isKindOf("Jink") then return false end
+    return true
 end
 
 

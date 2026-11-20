@@ -39,8 +39,8 @@ local function visible_card(self,id) return known(self:getChoiceCard(id) or self
 --魏武
 ai_skill_invoke.sy_weiwu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if (self:needKongcheng(self.player,true)) then return (false) or false end
-	return (true) or false
+	if (self:needKongcheng(self.player,true)) then return false end
+	return true
 end
 
 sgs.ai_can_damagehp.sy_weiwu = function(self,from,card,to)
@@ -61,9 +61,9 @@ ai_skill_invoke.sy_longbian = function(self, options, request)
 	end
 	local z = (self.player:getMaxHp())  --体力上限
 	if nil_to_int(owner_tag(self,"mcc_defaultslash_num")) == 0 then x = x + 1 else x = x + owner_tag(self,"mcc_defaultslash_num") end
-	if math.min(x, y, z) <= 2 then return (true) or false end
-	if x == y and y == z then return (true) or false end
-	if math.max(x, y, z) ~= math.min(x, y, z) then return (true) or false end
+	if math.min(x, y, z) <= 2 then return true end
+	if x == y and y == z then return true end
+	if math.max(x, y, z) ~= math.min(x, y, z) then return true end
 	return false
 
 end
@@ -107,15 +107,15 @@ ai_skill_invoke.sy_mowu = function(self, options, request)
 		for _, pe in sgs.qlist(use.to) do
 			if (self:isEnemy(pe)) then table.insert(enemies, pe) end
 		end
-		if #enemies > 0 and (use.to:length()) - #enemies <= 1 then return (true) or false end
+		if #enemies > 0 and (use.to:length()) - #enemies <= 1 then return true end
 	end
 	if not (use.card:isDamageCard()) and use.from and (use.from:objectName()) ~= (self.player:objectName()) then
-		if (self:isFriend(use.from)) then return (true) or false end
-		if (self:isEnemy(use.from)) and not (use.to:contains(use.from)) then return (true) or false end
+		if (self:isFriend(use.from)) then return true end
+		if (self:isEnemy(use.from)) and not (use.to:contains(use.from)) then return true end
 	end
-	if (use.card:isKindOf("Peach")) and (self.player:isWounded()) then return (true) or false end
-	if (use.card:isKindOf("Analeptic")) then return (true) or false end
-	return (false) or false
+	if (use.card:isKindOf("Peach")) and (self.player:isWounded()) then return true end
+	if (use.card:isKindOf("Analeptic")) then return true end
+	return false
 end
 
 
@@ -376,13 +376,13 @@ ai_skill_invoke.sy_diaoling = function(self, options, request)
 	local to = diaoling_target(self)
 	local x = diaoling_count(self)
 	if (self:isEnemy(to)) then
-		if (to:getHp()) - x <= 2 then return (true) or false end
+		if (to:getHp()) - x <= 2 then return true end
 		if x <= 1 then
-			if (to:getHp()) > 1 and (self:hasZhaxiangEffect(to)) then return (false) or false end
+			if (to:getHp()) > 1 and (self:hasZhaxiangEffect(to)) then return false end
 		end
-		return (true) or false
+		return true
 	elseif (self:isFriend(to)) then
-		if (self:hasZhaxiangEffect(to)) and (to:getHp()) > 2 and x <= 2 then return (true) or false end
+		if (self:hasZhaxiangEffect(to)) and (to:getHp()) > 2 and x <= 2 then return true end
 	end
 	return false
 
@@ -571,7 +571,7 @@ end
 ai_skill_invoke.mo_jiantian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data and data:toCardUse()
-	if not (use and use.to) then return (false) or false end
+	if not (use and use.to) then return false end
 	local enemies, others = 0, 0
 	for _, t in sgs.qlist(use.to) do
 		if (self:isEnemy(t)) then enemies = enemies + 1 else others = others + 1 end
@@ -648,12 +648,12 @@ ai_skill_invoke.mo_huachong = function(self, options, request)
 	local s = data and data:toString() or ""
 	if s == "draw" then
 		for _, e in ipairs(self.enemies) do
-			if not (e:isAllNude()) then return (true) or false end
+			if not (e:isAllNude()) then return true end
 		end
-		return (false) or false
+		return false
 	end
 	local n = tonumber(s) or 1
-	if (self.player:getHp()) - n <= 0 or (self:isWeak(self.player)) then return (true) or false end
+	if (self.player:getHp()) - n <= 0 or (self:isWeak(self.player)) then return true end
 	return (#self.enemies > #self.friends_noself) or false
 end
 

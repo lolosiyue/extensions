@@ -48,7 +48,7 @@ ai_skill_invoke.aocai = function(self, native_options, native_request)
         end
         return (known(ai_skill_invoke_default(self, self.request and self.request.options), "aocai.invoke.default")) or false
     end
-    if variant == "ol_qifu" then return (true) or false end
+    if variant == "ol_qifu" then return true end
     local context = (self:getDecisionContext())
     local invocation = context.aocai_invoke
     if type(invocation) ~= "table" or invocation.known ~= true
@@ -150,11 +150,11 @@ ai_skill_invoke.danlao = function(self, options, request)
     local current = (self.room:getCurrent())
     local card = known(effect.card, "danlao.use.card")
     if (card:isKindOf("GodSalvation")) and (self.player:isWounded())
-        or (card:isKindOf("ExNihilo")) then return (false) or false
+        or (card:isKindOf("ExNihilo")) then return false
     elseif (card:isKindOf("AmazingGrace"))
         and ((self.player:getSeat()) - (current:getSeat())) % (self.room:alivePlayerCount())
-            < (self.room:alivePlayerCount()) / 2 then return (false) or false end
-    return (true) or false
+            < (self.room:alivePlayerCount()) / 2 then return false end
+    return true
 end
 
 -- sp-ai.lua:146/153. The observed damage source belongs to this AI's cache;
@@ -165,7 +165,7 @@ ai_skill_invoke.jilei = function(self, options, request)
     if AIUnsupported.is(damage) then error(damage, 0) end
     if damage == nil then
         local context = (self:getDecisionContext())
-        if context.damage_present == false then return (false) or false end
+        if context.damage_present == false then return false end
         ai_unsupported("Jilei inquiry damage presence is not projected", "jilei.damage")
     end
     local source = known(damage.from, "jilei.damage.from")
@@ -231,9 +231,9 @@ ai_skill_invoke.fulu = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local use = (data:toCardUse())
     for _, player in ipairs(known(use.to, "fulu.targets")) do
-        if (self:isEnemy(player)) and (self:isGoodTarget(player,self.enemies,known(use.card, "fulu.card"))) then return (true) or false end
+        if (self:isEnemy(player)) and (self:isGoodTarget(player,self.enemies,known(use.card, "fulu.card"))) then return true end
     end
-    return (false) or false
+    return false
 end
 ai_fill_skill.fulu = function(self, options, request)
     local inclusive = options and options.inclusive
@@ -254,8 +254,8 @@ ai_skill_invoke.zhuji = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = (data:toDamage())
     if (self:isFriend(known(damage.from, "zhuji.from")))
-        and not (self:isFriend(known(damage.to, "zhuji.to"))) then return (true) or false end
-    return (false) or false
+        and not (self:isFriend(known(damage.to, "zhuji.to"))) then return true end
+    return false
 end
 
 -- SP Xueji connected policy group; append after the shared SP local q/call.
@@ -726,7 +726,7 @@ end
 -- including friend/enemy predicate and canDraw short-circuit order.
 ai_skill_invoke.xuhe=function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if (self.player:getMaxHp())<=3 then return (false) or false end
+    if (self.player:getMaxHp())<=3 then return false end
     local num=0
     self.xuhe_choice=nil
     local can_dis=false
@@ -746,7 +746,7 @@ ai_skill_invoke.xuhe=function(self, options, request)
     end
     if num<=0 and can_dis then
         scalar_choices.write(self,'xuhe',{known=true,present=true,value='discard'})
-        return (true) or false
+        return true
     end
     num=0
     for _,p in ipairs((self.room:getAlivePlayers()))do
@@ -757,9 +757,9 @@ ai_skill_invoke.xuhe=function(self, options, request)
     end
     if num>=0 then
         scalar_choices.write(self,'xuhe',{known=true,present=true,value='draw'})
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 -- Fixed sp-ai.lua9683–9733; only finite constructors differ from native userdata.

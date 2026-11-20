@@ -78,13 +78,13 @@ end
 ai_skill_invoke.lieren=function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage=data:toDamage()
-    if not self:isEnemy(known(damage.to,"Lieren damage target")) then return (false) or false end
+    if not self:isEnemy(known(damage.to,"Lieren damage target")) then return false end
     if self.player:getHandcardNum()==1 then
-        if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then return (true) or false end
+        if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then return true end
         local card=known(self.player:getHandcards()[1],"Lieren only hand card")
         if card:isKindOf("Jink") or card:isKindOf("Peach") then return false end
     end
-    if self:doDisCard(damage.to, "he", true, 2) then return (true) or false end
+    if self:doDisCard(damage.to, "he", true, 2) then return true end
     return false
 
 end
@@ -402,7 +402,7 @@ ai_skill_invoke.haoshi = function(self, options, request)
 		end
 	end
 	if self.player:getHandcardNum()+extra<=1 then
-		return (true) or false
+		return true
 	end
 
 	local beggar = getBeggar(self)
@@ -792,10 +792,10 @@ ai_skill_invoke.guixin = function(self, options, request)
 		end
 	end
 	local manjuan_eff = hasManjuanEffect(self.player)
-	if lihun_eff and not manjuan_eff then return (false) or false end
-	if not self.player:faceUp() then return (true) or false
+	if lihun_eff and not manjuan_eff then return false end
+	if not self.player:faceUp() then return true
 	else
-		if manjuan_eff then return (false) or false end
+		if manjuan_eff then return false end
 		local value = 0
 		for _,player in ipairs(self.room:getOtherPlayers(self.player))do
 			value = value+getGuixinValue(self,player)
@@ -832,10 +832,10 @@ ai_skill_invoke.newguixin = function(self, options, request)
 		end
 	end
 	local manjuan_eff = hasManjuanEffect(self.player)
-	if lihun_eff and not manjuan_eff then return (false) or false end
-	if not self.player:faceUp() then return (true) or false
+	if lihun_eff and not manjuan_eff then return false end
+	if not self.player:faceUp() then return true
 	else
-		if manjuan_eff then return (false) or false end
+		if manjuan_eff then return false end
 		local value = 0
 		for _,player in ipairs(self.room:getOtherPlayers(self.player))do
 			value = value+getGuixinValue(self,player)

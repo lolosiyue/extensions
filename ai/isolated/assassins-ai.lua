@@ -28,7 +28,7 @@ ai_skill_invoke.moukui = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	self:setStrategyMemory("moukui_target",target:objectName())
-	if self:isFriend(target) then return (self:needToThrowArmor(target)) or false else return (true) or false end
+	if self:isFriend(target) then return (self:needToThrowArmor(target)) or false else return true end
 	return false
 
 end
@@ -47,10 +47,10 @@ end
 ai_skill_invoke.tianming = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	self:setStrategyMemory("tianming_discard",nil)
-	if hasManjuanEffect(self.player) then return (false) or false end
-	if self.player:isNude() then return (true) or false end
-	if not self:canHit() and self.player:getCardCount(true)<3 then return (false) or false end
-	if self:canHit() then return (true) or false end
+	if hasManjuanEffect(self.player) then return false end
+	if self.player:isNude() then return true end
+	if not self:canHit() and self.player:getCardCount(true)<3 then return false end
+	if self:canHit() then return true end
 	local unpreferedCards = {}
 	local cards = self:addHandPile()
 
@@ -105,7 +105,7 @@ ai_skill_invoke.tianming = function(self, options, request)
 
 	if #use_cards>=2 or #use_cards==#cards then
 		self:setStrategyMemory("tianming_discard",use_cards)
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -286,7 +286,7 @@ ai_skill_invoke.fenxin = function(self, options, request)
 	local target = data:toPlayer()
 	local target_role = known(self:getRoleEstimate(target),"Fenxin role estimate")
 	local self_role = self.player:getKnownRole()
-	if target_role=="renegade" or target_role=="neutral" then return (false) or false end
+	if target_role=="renegade" or target_role=="neutral" then return false end
 	local process = self:getGameProcess()
 	return (target_role=="rebel" and self.player:getKnownRole()~="rebel" and process:match("rebel")
 	or target_role=="loyalist" and self.player:getKnownRole()~="loyalist" and process:match("loyal")) or false
@@ -455,7 +455,7 @@ ai_skill_invoke.duanzhi = function(self, options, request)
 	if use.from and self:isEnemy(use.from) and use.card:getSubtype()=="attack_card" and self.player:getHp()==1 and not self:getCard("Peach")
 		and not self:getCard("Analeptic") and not isLord(self.player) and self:getAllPeachNum()==0 then
 		self:setStrategyPlayerFlag(self.player,"AI_doNotSave",true)
-		return (true) or false
+		return true
 	end
 	return (use.from and self:isEnemy(use.from) and self:doDisCard(use.from, "he", nil, 2) and self.player:getHp()>2) or false
 end
@@ -507,14 +507,14 @@ end
 
 ai_skill_invoke.cv_caocao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if math.random(0,6)==0 then return (true) or false end
-	return (false) or false
+	if math.random(0,6)==0 then return true end
+	return false
 end
 
 ai_skill_invoke.cv_lingju = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if math.random(0,2)==0 then return (true) or false end
-	return (false) or false
+	if math.random(0,2)==0 then return true end
+	return false
 end
 
 -- Package-owned survival, damage-target and Slash-defense stages.

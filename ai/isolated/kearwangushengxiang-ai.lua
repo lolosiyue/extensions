@@ -146,7 +146,7 @@ ai_skill_invoke.kenewgirlcongrong = function(self, options, request)
 	local room = self.player:getRoom()
 	for _,p in sgs.qlist(room:getAllPlayers()) do
 		if p:getStrategyFlag("ifwantkenewgirlcongrong") and self:isFriend(p) then
-	        return (true) or false
+	        return true
 		end
 	end
 	return false
@@ -240,7 +240,7 @@ ai_skill_invoke.kenewgirlzhenyi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:findPlayerByObjectName(data:toString():split(":")[2])
 	if target and self:isFriend(target) then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -428,9 +428,9 @@ ai_skill_invoke.kenewgirlshibingdiscardask      = function(self, options, reques
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:doDisCard(target, "he") then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.cardChosen.kenewgirlshibing = sgs.ai_choicemade_filter.cardChosen.snatch
 

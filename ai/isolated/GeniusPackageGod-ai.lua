@@ -213,10 +213,10 @@ ai_skill_invoke["@f_xiongyanDraw"] = function(self, options, request)
 	self.enemies = sgs.reverse(self.enemies)
 	for _, enemy in ipairs(self.enemies) do
 		if enemy:hasFlag("f_sdzForE") and self:objectiveLevel(enemy) > 0 then
-		    return (false) or false
+		    return false
 		end
 	end
-	return (true) or false
+	return true
 end
 ai_skill_choice.f_qiandu = function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
@@ -347,12 +347,12 @@ ai_skill_invoke.f_leji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = (data:toCardUse().to):first()
 	if self:isFriend(target) and not (target:getPhase() ~= sgs.Player_NotActive and  (target:hasSkill("Dlimu") or target:hasSkill("limu"))) then
-		return (true) or false
+		return true
 	end
 	if self:isEnemy(target) and (target:getPhase() ~= sgs.Player_NotActive and (target:hasSkill("Dlimu") or target:hasSkill("limu"))) then
-		return (true) or false
+		return true
 	end
-    return (false) or false
+    return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.f_leji = function(self, player, promptlist)
@@ -449,7 +449,7 @@ sgs.ai_playerchosen_intention.f_dansha = 80
 ai_skill_invoke.f_qizhen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	return (not self:isFriend(use.from)) or false
+	return not self:isFriend(use.from)
 end
 
   
@@ -529,16 +529,16 @@ ai_skill_invoke.f_yonghun = function(self, options, request)
 				local dummy_use = self:aiUseCard(slash, dummy())
 				if dummy_use.card and dummy_use.to then
 					if not dummy_use.to:isEmpty() then
-						return (true) or false
+						return true
 					end
 				end
 			end
 		end
 	end
 	if card:isKindOf("Jink") then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.f_yonghun = function(self,targets)
@@ -582,7 +582,7 @@ ai_skill_invoke.f_jianyuanadd = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local str = data:toString()
 	if string.startsWith(str, "JianYuanLu")  then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -592,10 +592,10 @@ ai_skill_invoke.f_jianyuan = function(self, options, request)
 	if self.player:getHandcardNum() > self.player:getMark("&f_jianyuanX") + 4 + 2 then
 		local JianYuanLu = owner_string(self.player:getPropertyValue("SkillDescriptionRecord_f_jianyuan"),"SkillDescriptionRecord_f_jianyuan"):split("+")
 		if math.random() < 0.3 and #JianYuanLu > 0 then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 sgs.ai_can_damagehp.f_jianyuan = function(self,from,card,to)
 	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from, to, 1, card)-1>0
@@ -691,14 +691,14 @@ end
   
 ai_skill_invoke.f_miaodao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getPile("f_syjDao"):length() >= 4 or self.player:getHandcardNum() <= 2 then return (false) or false end
-	return (true) or false
+	if self.player:getPile("f_syjDao"):length() >= 4 or self.player:getHandcardNum() <= 2 then return false end
+	return true
 end
 ai_skill_invoke.f_yifa = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if peiqi(self)
 	then
-		return (true) or false
+		return true
 	end
 	local current = self.room:getCurrent()
 	if current then
@@ -707,7 +707,7 @@ ai_skill_invoke.f_yifa = function(self, options, request)
 	if current and self:isEnemy(current) then
 		return (self:doDisCard(current, "hej", true)) or false
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -1418,9 +1418,9 @@ ai_skill_invoke.tc_liefeng_spwd = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	for _, p in sgs.qlist(use.to) do
-		if self:isFriend(p) then return (false) or false end
+		if self:isFriend(p) then return false end
 	end
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.tc_liefeng_spwd = function(self, targets)
@@ -1738,17 +1738,17 @@ ai_skill_invoke.tc_wumou = function(self, options, native_request)
 	local data = native_request and self:getDecisionData(native_request) or nil
 	local use = data:toCardUse()
 	for _,to in sgs.list(use.to)do
-		if self:isFriend(to) then return (false) or false end
+		if self:isFriend(to) then return false end
 	end
 	if self.player:getMark("&wrath") < 6 then
 		local dummy_use = dummy()
 		local card = parse(self,request,"@ShenfenCard=.")
 		self:useSkillCard(card, dummy_use)
 		if dummy_use.card then 
-		 	return (false) or false 
+		 	return false 
 		end
 	end
-	return (true) or false
+	return true
 end
 ai_skill_invoke.tc_wumou_damage = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
@@ -1756,10 +1756,10 @@ ai_skill_invoke.tc_wumou_damage = function(self, options, request)
 	local target = damage.to
 	if not target then return false end
 	if self:isFriend(target) then
-		if self:needToLoseHp(target, self.player) then return (false) or false end
-		return (false) or false
+		if self:needToLoseHp(target, self.player) then return false end
+		return false
 	else
-		if self:isWeak(target) then return (false) or false end
+		if self:isWeak(target) then return false end
 		return (self:needToLoseHp(target, self.player)) or false
 	end
 	return false

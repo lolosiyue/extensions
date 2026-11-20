@@ -81,7 +81,7 @@ sgs.ai_card_intention.kerenxinCard = sgs.ai_card_intention.Peach
 
 ai_skill_invoke.kemiji = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 -- Exact donor assignment captures the currently loaded callback; loader order is significant.
 ai_skill_invoke.kezhenlie = ai_skill_invoke.zhenlie
@@ -91,16 +91,16 @@ ai_skill_invoke["kezhenliexiangying"] = function(self, options, request)
     local use = data:toCardUse()
     for _, p in sgs.qlist(use.to) do
         if self:isFriend(p) then
-            return (false) or false
+            return false
         end
         if not self:doDisCard(p, "he") then
-            return (false) or false
+            return false
         end
     end
     if self.player:getHp() + self:getAllPeachNum() >= 2 and self:isWeak() then
-        return (false) or false
+        return false
     end
-    return (true) or false
+    return true
 end
 sgs.need_maxhp_skill = sgs.need_maxhp_skill .. "|kemiji"
 
@@ -143,11 +143,11 @@ sgs.ai_playerchosen_intention.keyijideath = -50
 ai_skill_invoke.kenvzhuang                  = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self.player:getPhase() == sgs.Player_Start and self.player:isMale() then
-        return (true) or false
+        return true
     elseif self.player:getPhase() == sgs.Player_NotActive and self.player:isFemale() then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_playerchosen.kenvzhuang            = function(self, targets)
@@ -163,8 +163,8 @@ end
 ai_skill_invoke.kezhangchunhuaxiangying     = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return (true) or false end
-    return (false) or false
+    if not self:isFriend(target) then return true end
+    return false
 end
 
 sgs.ai_skill_discard["kezhangchunhuaxiangying"] = function(self, discard_num, min_num, optional, include_equip)
@@ -207,16 +207,16 @@ ai_skill_invoke.kejiang                     = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
     if use.card:isRed() or use.card:isKindOf("Duel") then
-        return (true) or false
+        return true
     end
     if self.player:getPhase() == sgs.Player_Play then
         local cards = self.player:getHandcards()
         for _, c in sgs.qlist(cards) do
             local dummy_use = self:aiUseCard(c)
-            if dummy_use.card and c:isRed() and c:isDamageCard() then return (false) or false end
+            if dummy_use.card and c:isRed() and c:isDamageCard() then return false end
         end
     end
-    if not self:isWeak() then return (true) or false end
-    if self:isWeak(self.player) and math.random(1, 2) == 1 then return (true) or false end
-    return (false) or false
+    if not self:isWeak() then return true end
+    if self:isWeak(self.player) and math.random(1, 2) == 1 then return true end
+    return false
 end

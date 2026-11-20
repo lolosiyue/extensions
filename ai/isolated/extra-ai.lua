@@ -826,7 +826,7 @@ ai_skill_invoke.guandu_fuyuan = function(self,options,request)
             return (source_query(self,"canDraw",current,self.player) and source_query(self,"isFriend",current)) or false 
         end
     end
-    return (true) or false 
+    return true 
 end
 sgs.ai_choicemade_filter.skillInvoke.guandu_fuyuan = function(self, player, promptlist)
     local current = self.room:getCurrent()
@@ -1279,9 +1279,9 @@ ai_skill_invoke.heg_yinyangyu = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if self:getOverflow() > 1 then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 
@@ -1452,7 +1452,7 @@ ai_skill_invoke.heg_jushou = function(self,options,request)
 
 	local draw = getKingdoms(self.player)
 	if draw <= 2 then
-		return (true) or false 
+		return true 
 	end
 	return (ai_skill_invoke.tenyearjushou(self, options, request)) or false 
 end
@@ -1853,12 +1853,12 @@ function ai_skill_invoke.heg_hengjiang(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if source_query(self,"isEnemy",target) then
-		return (true) or false 
+		return true 
 	else
-		if source_helper("hasManjuanEffect",self.player) then return (false) or false  end
-		if source_query(target,"getPhase")>sgs.Player_Discard then return (true) or false  end
-		if source_query(target,"hasSkill","yongsi") then return (false) or false  end
-		if source_query(target,"hasSkill","keji") and not source_query(target,"hasFlag","KejiSlashInPlayPhase") then return (true) or false  end
+		if source_helper("hasManjuanEffect",self.player) then return false  end
+		if source_query(target,"getPhase")>sgs.Player_Discard then return true  end
+		if source_query(target,"hasSkill","yongsi") then return false  end
+		if source_query(target,"hasSkill","keji") and not source_query(target,"hasFlag","KejiSlashInPlayPhase") then return true  end
 		return (source_query(target,"getHandcardNum")<=source_query(target,"getMaxCards")-2) or false 
 	end
     return false
@@ -2168,7 +2168,7 @@ ai_skill_invoke.heg_qiao = function(self,options,request)
 	if source_query(self,"isEnemy",target) then
 		return (source_query(self,"doDisCard",target,"he")) or false 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_qiao = function(self,player,promptlist)
@@ -2263,9 +2263,9 @@ ai_skill_invoke.heg_duannian = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if self.player:getHandcardNum() > self.player:getMaxHp() and self.player:getMaxCards() > self.player:getMaxHp() then
-		return (false) or false 
+		return false 
 	end
-	return (true) or false 
+	return true 
 end
 
 sgs.ai_skill_playerchosen.heg_lianyou = function(self, targets)
@@ -2289,9 +2289,9 @@ ai_skill_invoke.heg_gongxiu = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if sgs.ai_skill_playerschosen.heg_gongxiu(self, self.room:getAlivePlayers(), self.player:getMaxHp()):length() > 0 then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_playerschosen.heg_gongxiu = function(self, targets, max, min)
@@ -2382,7 +2382,7 @@ ai_skill_invoke.heg_ol_liegong = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local target = source_query(data,"toPlayer")
-	return (not source_query(self,"isFriend",target)) or false 
+	return not source_query(self,"isFriend",target) 
 end
 sgs.hit_skill = sgs.hit_skill .. "|heg_ol_liegong"
 
@@ -2395,21 +2395,21 @@ ai_skill_invoke["ChangeGeneral"] = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	self:updatePlayers()
-	if self.player:hasSkill("bf_nos_diancai") then return (true) or false  end
+	if self.player:hasSkill("bf_nos_diancai") then return true  end
 	if self.player:hasSkill("bf_qice") then
 		if #self.enemies > #self.friends then
-			return (true) or false 
+			return true 
 		end
 	end
 	for _,p in sgs.qlist(self.room:findPlayersBySkillName("bf_zhiman")) do
 		if p then
-			return (false) or false 
+			return false 
 
 
 
 		end
 	end
-	return (true) or false 
+	return true 
 end
 
 local bf_qice_skill = {}
@@ -2586,9 +2586,9 @@ ai_skill_invoke.bf_yuejian = function(self,options,request)
 
 	local target = self.room:getCurrent()
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 sgs.ai_choicemade_filter.skillInvoke.bf_yuejian = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -2674,9 +2674,9 @@ ai_skill_invoke.bf_tiaodu = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 sgs.ai_choicemade_filter.skillInvoke.bf_tiaodu = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -2786,9 +2786,9 @@ ai_skill_invoke.bf_sec_tiaodu = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 sgs.ai_choicemade_filter.skillInvoke.bf_sec_tiaodu = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -2804,9 +2804,9 @@ ai_skill_invoke.bf_third_tiaodu = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 sgs.ai_choicemade_filter.skillInvoke.bf_third_tiaodu = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -3264,12 +3264,12 @@ ai_skill_invoke["twyj_liancai"] = function(self,options,request)
 			only_one_silver = true
 		end
 	end
-	if has_equip_enemy == 1 and only_one_silver then return (false) or false  end
+	if has_equip_enemy == 1 and only_one_silver then return false  end
 	
 	if self.player:getHp() - self.player:getHandcardNum() > 0 and has_enemy_equips then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_askforag["twyj_liancai"] = function(self, card_ids)
@@ -3663,13 +3663,13 @@ ai_skill_invoke.heg_zhuwei = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if source_query(data,"toCard") then
-		return (true) or false 
+		return true 
 	end
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 sgs.ai_choicemade_filter.skillInvoke.heg_zhuwei = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -3683,9 +3683,9 @@ ai_skill_invoke.heg_buyi = function(self,options,request)
 
 	local target = source_query(data,"toDying").who
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_fill_skill.heg_weidi = function(self,options,request)
@@ -3767,7 +3767,7 @@ ai_skill_invoke.heg_liangfan = function(self,options,request)
 	if target then
 		return (source_query(self,"doDisCard",target,"he",true)) or false 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_ajustdamage_from.heg_congjian = function(self, from, to, card, nature)
@@ -3786,9 +3786,9 @@ ai_skill_invoke.heg_qiuan = function(self,options,request)
 
 	local damage = source_query(data,"toDamage")
 	if source_query(self,"needToLoseHp",damage.to,damage.from,damage.card) then
-		return (false) or false 
+		return false 
 	end
-	return (true) or false 
+	return true 
 end
 
 ai_skill_invoke.heg_liangfan = function(self,options,request)
@@ -3796,9 +3796,9 @@ ai_skill_invoke.heg_liangfan = function(self,options,request)
 
 	local target = source_query(data,"toDamage").to
 	if target and source_query(self,"doDisCard",target,"he",true) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_playerchosen.heg_wenji = function(self,targets)
@@ -3834,9 +3834,9 @@ ai_skill_invoke.heg_wenji = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_cardask["@heg_fengshih"] = function(self, data, pattern, target, target2)
@@ -3901,17 +3901,17 @@ ai_skill_invoke.heg_nos_lixia = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) and source_query(self,"doDisCard",target,"e") then
-		return (true) or false 
+		return true 
 	end
 	if target and source_query(self,"isEnemy",target) and source_query(self,"doDisCard",target,"e") then
 		if self:getAllPeachNum() + self.player:getHp() - 1 > 0 and (source_helper("hasZhaxiangEffect",self.player) or math.random() < 0.5) and not self:isWeak() then
-			return (true) or false 
+			return true 
 		end
 		if source_query(self,"needToThrowCard",self.player,"h",true,false,false) then
-			return (true) or false 
+			return true 
 		end
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_nos_lixia = function(self,options,request)
@@ -4010,26 +4010,26 @@ ai_skill_invoke.heg_qiance = function(self,options,request)
 	if not source_query(targets,"isEmpty") then
 		for _, p in sgs.qlist(targets) do
 			if source_query(self,"isFriend",p) then
-				return (false) or false 
+				return false 
 			end
 		end
 		if use.card and source_query(use.card,"isDamageCard") then
 			for _, p in sgs.qlist(targets) do
 				if source_query(self,"isEnemy",p) and source_query(self,"canDamage",p,use.from,use.card) then
-					return (true) or false 
+					return true 
 				end
 			end
 		else
 			if math.random() < 0.5 then
 				for _, p in sgs.qlist(targets) do
 					if source_query(self,"isEnemy",p) then
-						return (true) or false 
+						return true 
 					end
 				end
 			end
 		end
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_invoke.heg_jujian = function(self,options,request)
@@ -4037,9 +4037,9 @@ ai_skill_invoke.heg_jujian = function(self,options,request)
 
 	local target = source_query(data,"toDying").who
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 sgs.ai_choicemade_filter.skillInvoke.heg_jujian = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -4178,9 +4178,9 @@ ai_skill_invoke.heg_chenglue = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_playerchosen.heg_chenglue = function(self, targets)
@@ -4281,7 +4281,7 @@ ai_skill_invoke.heg_jinxian = function(self,options,request)
 			source_call(targets,"append",false,p)
 		end
 	end
-	if source_query(targets,"isEmpty") then return (false) or false  end
+	if source_query(targets,"isEmpty") then return false  end
 	local good = 0
 	for _, p in sgs.qlist(targets) do
 		if source_query(self,"isEnemy",p) and source_query(self,"doDisCard",p,"he",false,2) then
@@ -4291,9 +4291,9 @@ ai_skill_invoke.heg_jinxian = function(self,options,request)
 		end
 	end
 	if good > 0 then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_playerchosen.heg_tongling = function(self, targets)
@@ -4451,7 +4451,7 @@ ai_skill_invoke.heg_juejue = function(self,options,request)
 	if self.player:getHp() + self:getAllPeachNum() - 1 > 0 then
 		return ((math.random() < 0.5 or source_helper("hasZhaxiangEffect",self.player)) and not self:isWeak() and self:getOverflow() > 0) or false 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_discard.heg_juejue = function(self, discard_num, min_num, optional, include_equip)
@@ -4489,9 +4489,9 @@ ai_skill_invoke.heg_tongdu = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"canDraw",target,self.player) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_tongdu = function(self,player,promptlist)
@@ -4720,7 +4720,7 @@ ai_skill_invoke.heg_xiongnve = function(self,options,request)
 									local general = source_general(gn)
 									if general and string.find(source_query(general,"getKingdoms"), source_query(p,"getKingdom")) then
 										source_flag(self,self.player,"heg_xiongnve:"..gn)
-										return (true) or false 
+										return true 
 									end
 								end
 							end
@@ -4733,7 +4733,7 @@ ai_skill_invoke.heg_xiongnve = function(self,options,request)
 	if event == "end" then
 		return (self:isWeak()) or false 
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_fill_skill.heg_huaiyi = function(self,options,request)
@@ -5004,12 +5004,12 @@ ai_skill_invoke.heg_beiluan = function(self,options,request)
 
 	local target = source_query(data,"toDamage").from
 	if target and source_query(self,"isEnemy",target) and not source_query(self,"hasCrossbowEffect",target) then
-		return (true) or false 
+		return true 
 	end
 	if target and source_query(self,"isFriend",target) and source_query(self,"hasCrossbowEffect",target) and source_query(target,"getPhase") == sgs.Player_Play and source_query(self,"willUse",target,clone_source(),false,false,true) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_fill_skill.heg_pojing = function(self,options,request)
@@ -5078,9 +5078,9 @@ ai_skill_invoke.heg_pojing = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"canDamage",target,self.player,nil) and source_query(self,"damageIsEffective",target,sgs.DamageStruct_Normal,self.player) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_invoke.heg_gongzhi = function(self,options,request)
@@ -5118,13 +5118,13 @@ ai_skill_invoke.heg_shejus = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) and source_query(self,"isWeak",target) and (source_query(target,"getHandcardNum") < 3 or getKnownCard(target,self.player,"Peach")<1) then
-		return (true) or false 
+		return true 
 	end
 	if target and source_query(self,"isEnemy",target) and (source_query(target,"getHandcardNum") >= 3 or getKnownCard(target,self.player,"Peach")>0) then
-		return (true) or false 
+		return true 
 	end
 	
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_cardask["@heg_zhulan"] = function(self, data, pattern, target, target2)
@@ -5155,9 +5155,9 @@ ai_skill_invoke.heg_luanchang = function(self,options,request)
 	source_call(card,"deleteLater",false)
 	local dummy_use = source_call(self,"aiUseCard",false,card,dummy())
 	if dummy_use.card then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_ajustdamage_from.heg_zhuosheng = function(self, from, to, card, nature)
@@ -5250,10 +5250,10 @@ ai_skill_invoke.heg_shiren = function(self,options,request)
 
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isFriend",damage.to) and source_query(self,"canDraw",damage.to) then
-		return (true) or false 
+		return true 
 	end
 	if damage.to and source_query(self,"isEnemy",damage.to) then
-		return (false) or false 
+		return false 
 	end
 	return (math.random() < 0.5) or false 
 end
@@ -5332,7 +5332,7 @@ ai_skill_invoke.heg_jianzhi = function(self,options,request)
 	if damage.to and source_query(damage.to,"getRole") == "rebel" and source_query(self,"getAllPeachNum",damage.to) + source_query(damage.to,"getHp") + source_query(damage.to,"getHujia") <= damage.damage then
 		return (self.player:getHandcardNum() < 9) or false 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_playerchosen.heg_zhefu  = function(self, targets)
@@ -5439,15 +5439,15 @@ ai_skill_invoke.heg_duanqiu = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	self:getTurnUse()
-	if #self.toUse > 2 then return (false) or false  end
+	if #self.toUse > 2 then return false  end
 	local duel = clone_source("duel", sgs.Card_NoSuit, 0)
 	source_call(duel,"setSkillName",false,"heg_duanqiu")
 	source_call(duel,"deleteLater",false)
 	local dummy_use = source_call(self,"aiUseCard",false,duel,dummy())
 	if dummy_use.card then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_duanqiu_ChooseKingdom = function(self,options,request)
@@ -5473,9 +5473,9 @@ ai_skill_invoke.heg_huaiyuan = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_huaiyuan = function(self,player,promptlist)
@@ -5752,7 +5752,7 @@ ai_skill_invoke.heg_true_pozhen = function(self,options,request)
 
 	local target = self.room:getCurrent()
 	if not target or not source_query(target,"isAlive") or not source_query(self,"isEnemy",target) then
-		return (false) or false  
+		return false  
 	end
 	
 	
@@ -5816,18 +5816,18 @@ ai_skill_invoke.heg_true_jiancai_change = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 ai_skill_invoke.heg_true_jiancai = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isFriend",damage.to) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_true_jiancai = function(self,player,promptlist)
@@ -5847,7 +5847,7 @@ ai_skill_invoke.DragonPhoenix = function(self,options,request)
 	if target then
 		return (source_query(self,"doDisCard",target,"he")) or false 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_view_as.heg_lord_shouyue_wusheng = function(card,player,card_place)
@@ -6263,9 +6263,9 @@ ai_skill_invoke.heg_mobile_bushi = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and not source_query(self,"isEnemy",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_mobile_bushi = function(self,player,promptlist)
@@ -6294,9 +6294,9 @@ ai_skill_invoke.heg_mobile_jiancai = function(self,options,request)
 
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isFriend",damage.to) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_mobile_jiancai = function(self,player,promptlist)
@@ -6400,13 +6400,13 @@ ai_skill_invoke.heg_mobile_zhuwei = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if source_query(data,"toCard") then
-		return (true) or false 
+		return true 
 	end
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_mobile_zhuwei = function(self,player,promptlist)
@@ -6437,16 +6437,16 @@ ai_skill_invoke.heg_mobile_tanfeng = function(self,options,request)
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isEnemy",target) then
 		if source_query(self,"needToLoseHp",self.player,target,nil) and source_query(self,"damageIsEffective",self.player,sgs.DamageStruct_Fire,target) then
-			return (true) or false 
+			return true 
 		end
 	end
 	if target and source_query(self,"isFriend",target) then
 		if source_query(target,"getJudgingArea"):length() > 0 then
 			return (source_query(self,"needToLoseHp",self.player,target,nil) or not source_query(self,"damageIsEffective",self.player,sgs.DamageStruct_Fire,target) or not self:isWeak()) or false 
 		end
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 
@@ -6539,7 +6539,7 @@ ai_skill_invoke.heg_mobile_suishi = function(self,options,request)
 	else
 		return (tianfeng and source_query(self,"isEnemy",tianfeng)) or false 
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_mobile_suishi = function(self,options,request)
@@ -6564,7 +6564,7 @@ ai_skill_invoke.heg_mobile_kuangfu = function(self,options,request)
 	if target then
 		return (source_query(self,"doDisCard",target,"he",true)) or false 
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_mobile_kuangfu = function(self,options,request)
@@ -6581,7 +6581,7 @@ ai_skill_invoke.heg_ov_zhenxi = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isEnemy",target) then
-		return (true) or false 
+		return true 
 	end
 	return (source_query(self,"doDisCard",target,"he")) or false 
 end
@@ -6686,13 +6686,13 @@ ai_skill_invoke.heg_ov_zhuidu = function(self,options,request)
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isEnemy",damage.to) then
 		if source_query(self,"doDisCard",damage.to,"e") then
-			return (true) or false 
+			return true 
 		end
 		if not source_query(self,"cantDamageMore",self.player,damage.to) and source_query(self,"canDamage",damage.to,self.player,damage.card) then
-			return (true) or false 
+			return true 
 		end
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_cardask["@heg_ov_zhuidu-beishui"] = function(self, data, pattern, target, target2)
@@ -6731,10 +6731,10 @@ ai_skill_invoke.heg_ov_shigong_gain = function(self,options,request)
 	for _,sk in sgs.list(self.player:getVisibleSkillList())do do
 		if source_query(sk,"isAttachedLordSkill") then goto package_continue_11 end
 		if not string.find(sgs.bad_skills,choice) then
-			return (true) or false 
+			return true 
 		end
 	end ::package_continue_11:: end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_ov_shigong = function(self,options,request)
@@ -6807,9 +6807,9 @@ ai_skill_invoke.heg_tenyear_dechao = function(self,options,request)
 
 	local use = source_query(data,"toCardUse")
 	if use.from and source_query(self,"doDisCard",use.from,"he") then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 extra_alias{ id="ai_choicemade_filter.cardChosen.heg_tenyear_dechao",registry="ai_choicemade_filter",path={"cardChosen","heg_tenyear_dechao"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","snatch"},self_index=1,defer_canonical=true}
@@ -6897,9 +6897,9 @@ ai_skill_invoke.heg_tenyear_weimeng = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_fill_skill.heg_tenyear_boyan = function(self,options,request)
@@ -6951,9 +6951,9 @@ ai_skill_invoke.heg_tenyear_boyan = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 
@@ -6963,13 +6963,13 @@ ai_skill_invoke.heg_tenyear_shejian = function(self,options,request)
 	local use = source_query(data,"toCardUse")
 	if use.from and source_query(self,"isEnemy",use.from) then
 		if source_query(self,"doDisCard",use.from,"he") then
-			return (true) or false 
+			return true 
 		end
 		if source_query(self,"canDamage",use.from,self.player,nil) then
-			return (true) or false 
+			return true 
 		end
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_tenyear_shejian = function(self,options,request)
@@ -7044,9 +7044,9 @@ ai_skill_invoke.heg_tenyear_fenglue = function(self,options,request)
 
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 
@@ -7057,10 +7057,10 @@ ai_skill_invoke.heg_tenyear_anyong = function(self,options,request)
 	local damage = source_query(data,"toDamage")
 	if damage.to and source_query(self,"isEnemy",damage.to) then
 		if not source_query(self,"cantDamageMore",damage.from,damage.to) and source_query(self,"damageStruct",damage) then
-			return (true) or false 
+			return true 
 		end
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_tenyear_anyong = function(self,options,request)
@@ -7086,13 +7086,13 @@ ai_skill_invoke.heg_tenyear_zhuwei  = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if source_query(data,"toCard") then
-		return (true) or false 
+		return true 
 	end
 	local target = source_query(data,"toPlayer")
 	if target and source_query(self,"isFriend",target) then
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_tenyear_zhuwei = function(self,player,promptlist)

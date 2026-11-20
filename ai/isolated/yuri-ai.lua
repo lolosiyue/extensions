@@ -233,10 +233,10 @@ end
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|LuaZhenlie"
 function ai_skill_invoke.LuaZhenlie(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if ai_skill_invoke.zhenlie(self, options, request) then return (true) or false end
+	if ai_skill_invoke.zhenlie(self, options, request) then return true end
 	local target = data:toCardUse().from
-	if target and self:doDisCard(target, "he") then return (true) or false end
-	return (false) or false
+	if target and self:doDisCard(target, "he") then return true end
+	return false
 end
 
 sgs.ai_ajustdamage_to.LuaZhenlie   = function(self, from, to, card, nature)
@@ -529,10 +529,10 @@ ai_skill_invoke.semeruki = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
 	if self:isFriend(effect.to) and (effect.to:getArmor() and (effect.to:getArmor():isKindOf("GaleShell") or (__yuri_value_call(effect.to,"isWounded") and effect.to:getArmor():isKindOf("SilverLion")))) then
-		return (true) or false
+		return true
 	end
-	if self:isEnemy(effect.to) then return (true) or false end
-	return (false) or false
+	if self:isEnemy(effect.to) then return true end
+	return false
 end
 
 sgs.ai_skill_cardchosen["semeruki"] = function(self, who, flags)
@@ -599,11 +599,11 @@ ai_skill_invoke.reedship = function(self, options, request)
 		slash:deleteLater()
 		for _,enemy in ipairs(self.enemies) do
 			if not self:slashProhibit(slash, enemy) then
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_use["@@reedship"] = function(self, prompt, request)
@@ -1067,7 +1067,7 @@ sgs.ai_use_value["sexualadvantage"] = sgs.ai_use_value.Slash + 1
 ai_skill_invoke.tomowodaji = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
-	if not self:damageStruct(damage) then return (false) or false end
+	if not self:damageStruct(damage) then return false end
 	local block_worth = 0
 	if damage.damage > 0 and damage.to and self:isFriend(damage.to) and damage.to:objectName() ~= self.player:objectName() then
 		if __yuri_value_call(damage.to,"getHp") <= damage.damage and (__yuri_value_call(damage.to,"isLord") or self:getCardsNum("Peach") > 0 or __yuri_value_call(self.player,"getHp") > 1) then
@@ -1082,7 +1082,7 @@ ai_skill_invoke.tomowodaji = function(self, options, request)
 	end
 	if damage.to:objectName() == self.player:objectName() then
 		if self:ajustDamage(damage.from,damage.to,damage.damage,damage.card,damage.nature)>1 then
-			return (true) or false
+			return true
 		end
 		local slashcount = self:getCardsNum("Slash")
 		if slashcount > 0 then
@@ -1091,7 +1091,7 @@ ai_skill_invoke.tomowodaji = function(self, options, request)
 			if damage.from and damage.from:objectName() ~= self.player:objectName() then
 				local dummy_use = self:aiUseCard(slash, dummy_plan(true, 0, self.room:getOtherPlayers(damage.from)))
 				if dummy_use.card and dummy_use.to:length() > 0 and dummy_use.to:contains(damage.from) then
-					return (true) or false
+					return true
 				end
 			end
 		end
@@ -1116,9 +1116,9 @@ end
 ai_skill_invoke.japenknifejile = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if self:cantDamageMore(damage.from, damage.to) then return (false) or false end
+	if self:cantDamageMore(damage.from, damage.to) then return false end
 	if self:isWeak(self.player) then
-		return (false) or false
+		return false
 	else
 		return (self:isEnemy(damage.to)) or false
 	end
@@ -1192,7 +1192,7 @@ ai_skill_invoke.skeleton = function(self, options, request)
 		for _, card in ipairs(cards) do
 			if __yuri_value_call(card,"getNumber") >= count then
 				if (self:isWeak(self.player) and __yuri_value_call(effect.card,"isKindOf","Slash") and __yuri_value_call(card,"isKindOf","Jink")) or ((self:isWeak(self.player) or needpeach) and self:getCardsNum("Peach") < 2 and __yuri_value_call(card,"isKindOf","Peach")) then
-					return (false) or false
+					return false
 				else
 					if __yuri_value_call(effect.from,"hasSkill","zhixi") then
 						local ecards = known(effect.from:getKnownCards(),"known source hand")
@@ -1208,18 +1208,18 @@ ai_skill_invoke.skeleton = function(self, options, request)
 						end
 						if (hasspade and __yuri_value_call(effect.from,"faceUp")) or ((not hasspade) and not __yuri_value_call(effect.from,"faceUp")) then
 							if self:isWeak(self.player) then
-								return (true) or false
+								return true
 							else
-								return (false) or false
+								return false
 							end
 						else
-							return (true) or false
+							return true
 						end
 					else
 						if __yuri_value_call(effect.from,"faceUp") then
-							return (true) or false
+							return true
 						else
-							return (false) or false
+							return false
 						end
 					end
 				end
@@ -1233,7 +1233,7 @@ ai_skill_invoke.skeleton = function(self, options, request)
 		cards = sgs.QList2Table(cards)
 		for _, card in ipairs(cards) do
 			if __yuri_value_call(card,"getNumber") >= count then
-				return (true) or false
+				return true
 			end
 		end
 	end
@@ -1249,7 +1249,7 @@ ai_skill_invoke.skeleton = function(self, options, request)
 			end
 			if caninvoke then break end
 		end
-		if not caninvoke then return (false) or false end
+		if not caninvoke then return false end
 		local fcards = known(effect.from:getKnownCards(),"known source hand")
 		local hasspade = false
 		for _, card in sgs.qlist(fcards) do -- 查找已知手牌的黑桃牌
@@ -1262,12 +1262,12 @@ ai_skill_invoke.skeleton = function(self, options, request)
 			end
 		end
 		if (hasspade and __yuri_value_call(effect.from,"faceUp")) or ((not hasspade) and not __yuri_value_call(effect.from,"faceUp")) then
-			return (true) or false
+			return true
 		else
-			return (false) or false
+			return false
 		end
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke["skeleton"] = function(self, player, promptlist)
 	local effect = room_tag(self,"skeleton","CardUse")
@@ -1316,7 +1316,7 @@ ai_skill_invoke.strangeguy = function(self, options, request)
 			feedback = feedback - 15
 		end
 		if self:hasWizard(self.enemies) and not maji then
-			return (true) or false
+			return true
 		end
 	end
 	local weaponcount = 0
@@ -1358,7 +1358,7 @@ ai_skill_invoke.strangeguy = function(self, options, request)
 				feedback = feedback - 1
 			end
 			if __yuri_value_call(self.player,"isWounded") and self.player:getArmor() and self.player:getArmor():getClassName() == "SilverLion" then
-				return (false) or false
+				return false
 			end
 		end
 	end
@@ -1513,7 +1513,7 @@ end
 
 ai_skill_invoke.zerodifference = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 ai_skill_use["@@heapridge"] = function(self, prompt, request)
 		local cards = self.player:getHandcards()
@@ -1598,15 +1598,15 @@ ai_skill_invoke.loyalm = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
 	if damage.from:isNude() then
-		return (true) or false
+		return true
 	end
 	if self:isFriend(damage.from) and damage.from:objectName() ~= self.player:objectName() and (damage.from:getArmor() and (damage.from:getArmor():isKindOf("GaleShell") or (__yuri_value_call(damage.from,"isWounded") and damage.from:getArmor():isKindOf("SilverLion")))) then
-		return (true) or false
+		return true
 	end
 	if self:isEnemy(damage.from) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_skill_cardchosen["loyalm"] = function(self, who, flags)
 	if self:isFriend(who) then
@@ -1688,7 +1688,7 @@ end
 ai_skill_invoke.wannawin = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not target or self:isFriend(target) or (self:isEnemy(target) and __yuri_value_call(target,"getHandcardNum") == 1 and target:getEquips():length() == 0 and target:getCards("j"):length() > 0) then self:writeCurrentSourceSlot("wannawin",nil) return (false) or false end
+	if not target or self:isFriend(target) or (self:isEnemy(target) and __yuri_value_call(target,"getHandcardNum") == 1 and target:getEquips():length() == 0 and target:getCards("j"):length() > 0) then self:writeCurrentSourceSlot("wannawin",nil) return false end
 	local invoke = self:doDisCard(target, "h")
 	return (invoke) or false
 end
@@ -1817,9 +1817,9 @@ ai_skill_invoke.hotfight = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = data:toPlayer()
 	if __yuri_value_call(self.player,"getMark","@hotfightmark") > 0 and ((self:isEnemy(current) and not (__yuri_value_call(self.player,"getMark","@hotfightmark") <= 2 and self:isWeak(self.player))) or self.player:objectName() == current:objectName()) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke["hotfight"] = function(self, player, promptlist)
 	local current = self.room:getCurrent()
@@ -1987,9 +1987,9 @@ end
 ai_skill_invoke.yuejian = function(self, options, request)
 	local current = self.room:getCurrent()
 	if current and self.player:isAlive() then
-		if self:isFriend(current) and not self:needBear(current) then return (true) or false end
+		if self:isFriend(current) and not self:needBear(current) then return true end
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke["yuejian"] = function(self, player, promptlist)	--yun
 	local current = self.room:getCurrent()
@@ -2056,13 +2056,13 @@ ai_skill_invoke.bffeedingpoisoning = function(self, options, request) -- 不知�
 		end
 		if count < 0 then count = -1 end
 		if count >= 0 then invoke = true end
-		if self:isFriend(damage.to) and (__yuri_value_call(self.player,"isWounded") or self:needToLoseHp(damage.to) or damage.to:hasSkills("yiji|quhu|huituo")) then return (false) or false end
-		if self:isFriend(damage.to) and not __yuri_value_call(self.player,"isWounded") then return (true) or false end
+		if self:isFriend(damage.to) and (__yuri_value_call(self.player,"isWounded") or self:needToLoseHp(damage.to) or damage.to:hasSkills("yiji|quhu|huituo")) then return false end
+		if self:isFriend(damage.to) and not __yuri_value_call(self.player,"isWounded") then return true end
 		if viewer_role(self,damage.to) == "rebel" then
-			if self:isEnemy(damage.to) and invoke then return (false) or false else return (true) or false end
+			if self:isEnemy(damage.to) and invoke then return false else return true end
 		end
-		if self:isEnemy(damage.to) and (__yuri_value_call(self.player,"isWounded") or self:needToLoseHp(damage.to) or damage.to:hasSkills("yiji|quhu|huituo")) then return (true) or false end
-	return (true) or false
+		if self:isEnemy(damage.to) and (__yuri_value_call(self.player,"isWounded") or self:needToLoseHp(damage.to) or damage.to:hasSkills("yiji|quhu|huituo")) then return true end
+	return true
 end
 
 sgs.ai_choicemade_filter.skillInvoke["bffeedingpoisoning"] = function(self, player, promptlist)
@@ -2127,7 +2127,7 @@ ai_skill_invoke.introvert = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if self:isFriend(use.from) and (__yuri_value_call(use.card,"isKindOf","Dismantlement") or __yuri_value_call(use.card,"isKindOf","Snatch")) then
-		return (false) or false
+		return false
 	end
 	if self:isEnemy(use.from) and not __yuri_value_call(use.card,"isKindOf","Slash") then
 		local gotslash = false
@@ -2147,24 +2147,24 @@ ai_skill_invoke.introvert = function(self, options, request)
 			end
 		end
 		local ssc = __yuri_value_call(use.from,"getHandcardNum")/3
-		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","Duel") and (self:getCardsNum("Slash") <= sn or self:getCardsNum("Slash") < ssc) then return (true) or false end
-		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","SavageAssault") and self:getCardsNum("Slash") == 0 then return (true) or false end
-		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","ArcheryAttack") and self:getCardsNum("Jink") == 0 then return (true) or false end
+		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","Duel") and (self:getCardsNum("Slash") <= sn or self:getCardsNum("Slash") < ssc) then return true end
+		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","SavageAssault") and self:getCardsNum("Slash") == 0 then return true end
+		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","ArcheryAttack") and self:getCardsNum("Jink") == 0 then return true end
 		if gotslash and gotanaleptic and use.from:canSlash(self.player) and (self:getCardsNum("Jink") < 1 or (use.from:getWeapon() and use.from:getWeapon():getClassName() == "Axe" and (__yuri_value_call(use.from,"getHandcardNum")+use.from:getEquips():length()) > 3)) then
-			return (false) or false
+			return false
 		else
 			if (__yuri_value_call(use.card,"isKindOf","Dismantlement") or __yuri_value_call(use.card,"isKindOf","Snatch")) and (self.player:getArmor() and self.player:getArmor():getClassName() ~= "GaleShell") or self.player:getDefensiveHorse() or self.player:getOffensiveHorse() or self.player:getWeapon() or (__yuri_value_call(self.player,"getHandcardNum") == 1 and self:isWeak()) then
-				return (true) or false
+				return true
 			end
-			if __yuri_value_call(use.card,"isKindOf","Duel") and (self:getCardsNum("Slash") <= sn or self:getCardsNum("Slash") < ssc) then return (true) or false end
-			if __yuri_value_call(use.card,"isKindOf","SavageAssault") and self:getCardsNum("Slash") == 0 then return (true) or false end
-			if __yuri_value_call(use.card,"isKindOf","ArcheryAttack") and self:getCardsNum("Jink") == 0 then return (true) or false end
+			if __yuri_value_call(use.card,"isKindOf","Duel") and (self:getCardsNum("Slash") <= sn or self:getCardsNum("Slash") < ssc) then return true end
+			if __yuri_value_call(use.card,"isKindOf","SavageAssault") and self:getCardsNum("Slash") == 0 then return true end
+			if __yuri_value_call(use.card,"isKindOf","ArcheryAttack") and self:getCardsNum("Jink") == 0 then return true end
 		end
 	end
 	if __yuri_value_call(use.card,"isKindOf","Slash") or __yuri_value_call(use.card,"isKindOf","DelayedTrick") then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 
 end
 
@@ -2172,9 +2172,9 @@ ai_skill_invoke.yuriganglie = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
 	if self:isEnemy(damage.from) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_skill_cardchosen["yuriganglie"] = function(self, who, flags)
 	local goodchice = {}
@@ -2301,8 +2301,8 @@ end
 ai_skill_invoke.LuaJTieji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not self:isFriend(target) then return (true) or false end
-	return (false) or false
+	if not self:isFriend(target) then return true end
+	return false
 end
 
 sgs.ai_skill_cardask["@luajtieji-discard"] = function(self, data, pattern)
@@ -2735,12 +2735,12 @@ ai_skill_invoke.happinesstoeveryone = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:getCurrent()
 	local count = __yuri_value_call(target,"getHandcardNum") - __yuri_value_call(target,"getMaxHp")
-	if target and self:isFriend(target) and (target:isChained() or not __yuri_value_call(target,"faceUp")) then return (true) or false end
+	if target and self:isFriend(target) and (target:isChained() or not __yuri_value_call(target,"faceUp")) then return true end
 	if target and self:isFriend(target) and ((count < -1 and not self:needKongcheng(target, true)) or self:isWeak(target)) and target then
-		return (true) or false
+		return true
 	end
 
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.happinesstoeveryone = function(self, player, promptlist)
@@ -2760,9 +2760,9 @@ ai_skill_invoke.blooddry = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	for _ ,to in sgs.qlist(use.to) do
-		if self:isEnemy(to) then return (true) or false end
+		if self:isEnemy(to) then return true end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -2801,8 +2801,8 @@ end
 ai_skill_invoke.suckblood = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if not self:isFriend(damage.to) then return (true) or false end
-	return (false) or false
+	if not self:isFriend(damage.to) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke["suckblood"] = function(self, player, promptlist)
 	local damage = room_tag(self,"suckblood","Damage")
@@ -2817,8 +2817,8 @@ sgs.ai_use_priority["suckblood"] = sgs.ai_use_priority.Slash - 0.1
 ai_skill_invoke.yuri_jianchu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not self:isFriend(target) and self:doDisCard(target, "he") then return (true) or false end
-	return (false) or false
+	if not self:isFriend(target) and self:doDisCard(target, "he") then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.yuri_jianchu = function(self, player, promptlist)
 	if promptlist[#promptlist] == "yes" then
@@ -2929,8 +2929,8 @@ end
 ai_skill_invoke.protectdestroy = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if self:isFriend(target) then return (false) or false end
-	return (true) or false
+	if self:isFriend(target) then return false end
+	return true
 end
 sgs.ai_choicemade_filter.skillInvoke.protectdestroy = function(self, player, promptlist)
 	if promptlist[#promptlist] == "yes" then
@@ -3169,7 +3169,7 @@ sgs.ai_card_intention["weareidle"] = sgs.ai_card_intention.Snatch
 
 ai_skill_invoke.solidarity = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_discard.listentonature = function(self, discard_num, min_num, optional, include_equip)
@@ -3208,7 +3208,7 @@ end
 
 ai_skill_invoke.migonoinori = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.imwatching = function(self, options, request)
@@ -3226,9 +3226,9 @@ ai_skill_invoke.imwatching = function(self, options, request)
 		end
 		return (hasblackcard) or false
 	elseif __yuri_value_call(current,"getHp") <= 1 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["@imwatching"] = function(self)
@@ -3319,8 +3319,8 @@ ai_skill_invoke.sizukana = function(self, options, request)
 			firends:append(p)
 		end
 	end
-	if firends:length() > 0 then return (true) or false end
-	return (false) or false
+	if firends:length() > 0 then return true end
+	return false
 end
 
 sgs.ai_skill_playerchosen["sizukana"] = function(self, targets)
@@ -3372,10 +3372,10 @@ ai_skill_invoke.hononochikara = function(self, options, request)
 	local use = data:toCardUse() -- 經測試use.from抓對角色
 	local aoeatk = false
 	local letgo = 0
-	if __yuri_value_call(use.card,"isKindOf","ExNihilo") then return (false) or false end
+	if __yuri_value_call(use.card,"isKindOf","ExNihilo") then return false end
 	if __yuri_value_call(use.card,"isKindOf","AOE") or __yuri_value_call(use.card,"isKindOf","GlobalEffect") then aoeatk = true end
 	for _, p in sgs.qlist(use.to) do
-		if not aoeatk and self:isFriend(p) then return (false) or false end
+		if not aoeatk and self:isFriend(p) then return false end
 		if self:isEnemy(p) and not (__yuri_value_call(p,"hasSkill","shixin") or __yuri_value_call(p,"hasSkill","moekogoro") or self:hasEightDiagramEffect(p)) then
 			letgo = letgo + 1
 			if self:isWeak(p) and getCardsNum("Jink", p, self.player) == 0 then
@@ -3391,9 +3391,9 @@ ai_skill_invoke.hononochikara = function(self, options, request)
 		end
 	end
 	if letgo > 0 then
-		return (true) or false
+		return true
 	else
-		return (false) or false
+		return false
 	end
 	return false
 
@@ -3531,7 +3531,7 @@ sgs.ai_card_intention["kanchi"] = 30
 
 ai_skill_invoke.yuri_guixin = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 ai_skill_choice["yuri_guixin"] = function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
@@ -3700,13 +3700,13 @@ ai_skill_invoke.kanshi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local useto = data:toPlayer()
 	if self:isFriend(useto) then
-		if self:needKongcheng(useto, false) then return (false) or false end
-		return (true) or false
+		if self:needKongcheng(useto, false) then return false end
+		return true
 	else
-		if self:isEnemy(useto) and self:needKongcheng(useto, false) and __yuri_value_call(useto,"getHandcardNum") == 0 then return (true) or false end
-		return (false) or false
+		if self:isEnemy(useto) and self:needKongcheng(useto, false) and __yuri_value_call(useto,"getHandcardNum") == 0 then return true end
+		return false
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.kanshi = function(self, player, promptlist)
@@ -3720,14 +3720,14 @@ ai_skill_invoke.kanshi_dis = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local useto = data:toPlayer()
 	if self:isFriend(useto) then
-		if self:needKongcheng(useto, false) and __yuri_value_call(useto,"getHandcardNum") == 1 then return (true) or false end
-		if useto:getCards("j"):length() > 0 or (useto:getArmor() and (useto:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(useto,"isWounded") and useto:getArmor():getClassName() == "SilverLion"))) then return (true) or false end
-		return (false) or false
+		if self:needKongcheng(useto, false) and __yuri_value_call(useto,"getHandcardNum") == 1 then return true end
+		if useto:getCards("j"):length() > 0 or (useto:getArmor() and (useto:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(useto,"isWounded") and useto:getArmor():getClassName() == "SilverLion"))) then return true end
+		return false
 	else
-		if self:isEnemy(useto) and self:needKongcheng(useto, false) and (__yuri_value_call(useto,"getHandcardNum")+useto:getEquips():length()) == 1 and __yuri_value_call(useto,"getHandcardNum") == 1 then return (false) or false end
-		return (true) or false
+		if self:isEnemy(useto) and self:needKongcheng(useto, false) and (__yuri_value_call(useto,"getHandcardNum")+useto:getEquips():length()) == 1 and __yuri_value_call(useto,"getHandcardNum") == 1 then return false end
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardchosen["kanshi"] = function(self, who, flags)
@@ -4002,8 +4002,8 @@ ai_skill_invoke.songforatsu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
 	local who = dying.who
-	if self:isFriend(who) then return (true) or false end
-	return (false) or false
+	if self:isFriend(who) then return true end
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.songforatsu = function(self, player, promptlist)
@@ -4015,9 +4015,9 @@ end
 
 ai_skill_invoke.lovetoevo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if known(self.world.turn_count,"turn count") <= 1 and self.role ~= "rebel" and sgs.playerRoles.rebel == 0 then return (false) or false end	--yun
-	if self:getCardsNum("Peach") > 0 then return (false) or false end
-	return (true) or false
+	if known(self.world.turn_count,"turn count") <= 1 and self.role ~= "rebel" and sgs.playerRoles.rebel == 0 then return false end	--yun
+	if self:getCardsNum("Peach") > 0 then return false end
+	return true
 end
 
 ai_fill_skill["buuzetsu"] = function(self, options, request)
@@ -4115,7 +4115,7 @@ sgs.ai_card_intention["zurunoonkaeshi"] = -60
 
 ai_skill_invoke.haigu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@@haigu"] = function(self, prompt, request)
@@ -4204,9 +4204,9 @@ ai_skill_invoke.kirisou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = data:toPlayer()
 	if self:isEnemy(current) or (self:isFriend(current) and ((current:getArmor() and (current:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(current,"isWounded") and current:getArmor():getClassName() == "SilverLion"))) or (current:getTreasure() and __yuri_value_call(current,"getHandcardNum") < 4 and current:getTreasure():isKindOf("Tianjitu")))) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardchosen["kirisou"] = function(self, who, flags)
@@ -4320,7 +4320,7 @@ end
 
 ai_skill_invoke.yuri_hagaku = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_fill_skill["new_againstdis"] = function(self, options, request)
@@ -4483,18 +4483,18 @@ ai_skill_invoke.jiyuunokuni = function(self, options, request)
 	if self:isFriend(target) then
 		if self:isWeak(self.player) and not self:isWeak(target) then
 			if self:needKongcheng(self.player) and __yuri_value_call(self.player,"getHandcardNum") == 1 and not (self:isWeak(self.player) and __yuri_value_call(lcard,"isKindOf","Analeptic")) then
-				return (true) or false
+				return true
 			end
 			for _,c in ipairs(cards) do
 				if __yuri_value_call(c,"isKindOf","Peach") or __yuri_value_call(c,"isKindOf","Analeptic") then n=n+1 end
 			end
 			if n == 1 and __yuri_value_call(self.player,"getHandcardNum") < 2 then
-				return (false) or false
+				return false
 			end
 		end
 	else
 		if self:needKongcheng(self.player) and __yuri_value_call(self.player,"getHandcardNum") == 1 and not (__yuri_value_call(lcard,"isKindOf","Peach") or (self:isWeak(self.player) and __yuri_value_call(lcard,"isKindOf","Analeptic"))) then
-			return (true) or false
+			return true
 		end
 		for _,c in ipairs(cards) do
 			if __yuri_value_call(c,"isKindOf","Peach") or (self:isWeak(self.player) and __yuri_value_call(c,"isKindOf","Analeptic")) then n=n+1 end
@@ -4502,10 +4502,10 @@ ai_skill_invoke.jiyuunokuni = function(self, options, request)
 			if (not self:isWeak(self.player)) and (__yuri_value_call(c,"isKindOf","Weapon") or __yuri_value_call(c,"isKindOf","Armor")) then n=n+1 end
 		end
 		if n == __yuri_value_call(self.player,"getHandcardNum") then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.yuryounowaku = function(self, options, request)
@@ -4514,29 +4514,29 @@ ai_skill_invoke.yuryounowaku = function(self, options, request)
 	local cards = self.player:getCards("jhe")
 	cards = sgs.QList2Table(cards)
 	if self:isFriend(target) then
-		if target:getTreasure() and target:getTreasure():getClassName() == "WoodenOx" and target:getPile("wooden_ox"):length() > 0 then return (false) or false end
+		if target:getTreasure() and target:getTreasure():getClassName() == "WoodenOx" and target:getPile("wooden_ox"):length() > 0 then return false end
 		for _,card in sgs.qlist(target:getCards("je")) do
-			if Q_goodToThrow(target, card, true) then return (true) or false end
+			if Q_goodToThrow(target, card, true) then return true end
 		end
-		if (self:isWeak(target) and self:getCardsNum("Peach") > 0 and getCardsNum("Peach", target) < self:getCardsNum("Peach")) or target:isKongcheng() then return (true) or false end
+		if (self:isWeak(target) and self:getCardsNum("Peach") > 0 and getCardsNum("Peach", target) < self:getCardsNum("Peach")) or target:isKongcheng() then return true end
 		if (getCardsNum("Peach", target) > 0 and __yuri_value_call(target,"isWounded")) or target:getCards("e"):length() > 2 or __yuri_value_call(target,"getHandcardNum") > __yuri_value_call(self.player,"getHandcardNum")+1
-		or self.player:isKongcheng() then return (false) or false end
+		or self.player:isKongcheng() then return false end
 		for _,c in ipairs(cards) do
-			if __yuri_value_call(c,"isAvailable",target) then return (true) or false end
+			if __yuri_value_call(c,"isAvailable",target) then return true end
 		end
 	else
-		if (__yuri_value_call(target,"isWounded") and self:getCardsNum("Peach") > 0) or target:isKongcheng() then return (false) or false end
-		if target:getTreasure() and target:getTreasure():getClassName() == "WoodenOx" and target:getPile("wooden_ox"):length() > 1 then return (true) or false end
+		if (__yuri_value_call(target,"isWounded") and self:getCardsNum("Peach") > 0) or target:isKongcheng() then return false end
+		if target:getTreasure() and target:getTreasure():getClassName() == "WoodenOx" and target:getPile("wooden_ox"):length() > 1 then return true end
 		for _,card in sgs.qlist(target:getCards("je")) do
-			if Q_goodToThrow(target, card, true) then return (false) or false end
+			if Q_goodToThrow(target, card, true) then return false end
 		end
 		if (getCardsNum("Peach", target) > 0 and __yuri_value_call(target,"isWounded")) or target:getCards("e"):length() > 1 or __yuri_value_call(target,"getHandcardNum") > __yuri_value_call(self.player,"getHandcardNum")+1
-		or self.player:isKongcheng() then return (true) or false end
+		or self.player:isKongcheng() then return true end
 		for _,c in ipairs(cards) do
-			if __yuri_value_call(c,"isAvailable",target) then return (false) or false end
+			if __yuri_value_call(c,"isAvailable",target) then return false end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_discard.yurimi = function(self, discard_num, optional, include_equip)
@@ -4595,8 +4595,8 @@ end
 ai_skill_invoke.yurimi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if self:isFriend(target) and not (self:needKongcheng(target) and target:isKongcheng()) then return (true) or false end
-	return (false) or false
+	if self:isFriend(target) and not (self:needKongcheng(target) and target:isKongcheng()) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.yurimi = function(self, player, promptlist)
 	if promptlist[#promptlist] == "yes" then
@@ -4725,8 +4725,8 @@ end
 ai_skill_invoke.arkora = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not self:isFriend(target) then return (true) or false end
-	return (false) or false
+	if not self:isFriend(target) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.arkora = function(self, player, promptlist)
 	if promptlist[#promptlist] == "yes" then
@@ -5486,8 +5486,8 @@ end
 ai_skill_invoke.nikuhei_k = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if self:isFriend(target) then return (true) or false end
-	return (false) or false
+	if self:isFriend(target) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.nikuhei_k = function(self, player, promptlist)
 	if promptlist[#promptlist] == "yes" then
@@ -5512,11 +5512,11 @@ ai_skill_invoke.yuriKansen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	local dummy_use = self:aiUseCard(use.card, dummy_plan())
-	if use.from and self:isFriend(use.from) and __yuri_value_call(use.card,"isKindOf","EquipCard") then return (false) or false end
+	if use.from and self:isFriend(use.from) and __yuri_value_call(use.card,"isKindOf","EquipCard") then return false end
 	if dummy_use.card and dummy_use and dummy_use.to then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_can_damagehp.yuriKansen = function(self,from,card,to)
@@ -5582,8 +5582,8 @@ end
 ai_skill_invoke.machiko = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-    if self:damageIsEffective(damage.to,damage.card,damage.from) and not self:needToLoseHp(damage.to, damage.from, damage.card) then return (true) or false end
-	return (false) or false
+    if self:damageIsEffective(damage.to,damage.card,damage.from) and not self:needToLoseHp(damage.to, damage.from, damage.card) then return true end
+	return false
 end
 
 
@@ -5686,10 +5686,10 @@ ai_skill_invoke.magicat = function(self, options, request)
 	local currentplayer = self.room:getCurrent()
 	if self:isEnemy(currentplayer) then
 		if self:doDisCard(currentplayer, "he", true) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.magicat = function(self,player,promptlist)

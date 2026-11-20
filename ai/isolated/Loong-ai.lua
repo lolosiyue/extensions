@@ -85,10 +85,10 @@ ai_skill_invoke["lxtx_taoxi"] = function(self, options, request)
             end
         end
 
-        if dismantlement_count>=to:getHandcardNum()then return (true) or false end
+        if dismantlement_count>=to:getHandcardNum()then return true end
         local handcards = complete_hand(self,to)
         if dismantlement_count>=handcards:length() then
-            return (true) or false
+            return true
         end
 
         local can_use,cant_use = {},{}
@@ -101,11 +101,11 @@ ai_skill_invoke["lxtx_taoxi"] = function(self, options, request)
         end
 
         if #can_use==0 and dismantlement_count==0 then
-            return (false) or false
+            return false
         end
 
         if self:needToLoseHp() then
-            return (true) or false
+            return true
         end
 
         local knowns,unknowns = {},{}
@@ -274,18 +274,18 @@ ai_skill_invoke["lxtx_taoxi"] = function(self, options, request)
             end
 
             if can_use_count>=to_can_use_count+#unknowns then
-                return (true) or false
+                return true
             elseif can_use_count>0 and ( can_use_count+0.01 )/( to_can_use_count+0.01 )>=0.5 then
-                return (true) or false
+                return true
             end
         end
 
         if self:getCardsNum("Peach")>0 then
-            return (true) or false
+            return true
         end
-        if math.random() < 0.6 then return (true) or false end
+        if math.random() < 0.6 then return true end
     end
-    return (false) or false
+    return false
 end
 ai_fill_skill.lxtx_taoxi = function(self, options, request)
     local inclusive = options and options.inclusive
@@ -327,7 +327,7 @@ end
 -- audited alias ai_cardneed.lxtx_jiangchi
 ai_skill_invoke.lxtx_jiangchi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_discard.lxtx_jiangchi = function(self,discard_num,min_num,optional,include_equip)
@@ -450,11 +450,11 @@ ai_skill_invoke.lxtx_fengying = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self.player:getMaxHp() - self.player:getHandcardNum() > 0 then
         if #self.enemies > 0 and known(self.world.turn_count,"turn_count") > 0 then
-            return (true) or false
+            return true
         end
     end
-    if self:isWeak() and self:getAllPeachNum() == 0 and math.random() < 0.6 then return (true) or false end
-    return (false) or false
+    if self:isWeak() and self:getAllPeachNum() == 0 and math.random() < 0.6 then return true end
+    return false
 end
 
 ai_skill_invoke.lxtx_jizhao = function(self, options, request)
@@ -562,8 +562,8 @@ function sgs.ai_slash_weaponfilter.LxtxFeiLongDuoFeng(self, to, player)
 end
 ai_skill_invoke._lxtx_feilongduofeng_re = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return (false) or false end
-	return (true) or false
+	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return false end
+	return true
 end
 ai_skill_invoke._lxtx_feilongduofeng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
@@ -927,30 +927,30 @@ ai_skill_invoke.lxtx_manjuan = function(self, options, request)
     local use = data:toCardUse()
     if use.card:isKindOf("Peach") and self.player:getLostHp()>1 then
         remember(self,"lxtx_manjuan","2") 
-        return (true) or false
+        return true
     elseif use.card:isKindOf("Analeptic") then
         remember(self,"lxtx_manjuan","2") 
-        return (true) or false
+        return true
     elseif use.to:contains(self.player)	then 
         remember(self,"lxtx_manjuan","2") 
-        return (true) or false
+        return true
     elseif use.card:isDamageCard() or use.card:isKindOf("SingleTargetTrick") then
         for _,to in sgs.list(use.to)do
             if self:isFriend(to)
-            then return (false) or false end
+            then return false end
         end
         for _,to in sgs.list(use.to) do
             if self:isEnemy(to) then
                 if self:hasHeavyDamage(use.from, use.card, to) then
                     remember(self,"lxtx_manjuan","1") 
-                    return (true) or false
+                    return true
                 end
             end
         end
         remember(self,"lxtx_manjuan","2") 
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 ai_skill_invoke.lxtx_canshi = function(self, options, request)
@@ -959,10 +959,10 @@ ai_skill_invoke.lxtx_canshi = function(self, options, request)
 	for _,p in sgs.qlist(self.room:getAlivePlayers())do
 		if p:isWounded() or (self.player:hasSkill("lxtx_guiming") and self.player:isLord() and p:getKnownKingdom()=="wu" and self.player:objectName()~=p:objectName()) then n = n+1 end
 	end
-	if n<2 then return (false) or false end
-	if n==3 and (not self:isWeak() or self:willSkipPlayPhase()) then return (true) or false end
-	if n>3 then return (true) or false end
-	return (false) or false
+	if n<2 then return false end
+	if n==3 and (not self:isWeak() or self:willSkipPlayPhase()) then return true end
+	if n>3 then return true end
+	return false
 end
 
 

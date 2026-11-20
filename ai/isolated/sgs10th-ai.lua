@@ -808,10 +808,10 @@ end
 
 ai_skill_invoke.ny_10th_jiaoxia = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if package_known(self.player,"getHandcardNum") > package_known(self.player,"getMaxHp") then return (false) or false end
-    if package_known(self,"getCardsNum","Slash") <= 1 then return (true) or false end
-    if math.random(1,3) == 1 then return (true) or false end
-    return (false) or false
+    if package_known(self.player,"getHandcardNum") > package_known(self.player,"getMaxHp") then return false end
+    if package_known(self,"getCardsNum","Slash") <= 1 then return true end
+    if math.random(1,3) == 1 then return true end
+    return false
 end
 
 ai_skill_use["@@ny_10th_jiaoxia"]=function(self,prompt,request)
@@ -1191,16 +1191,16 @@ end
 ai_skill_invoke.ny_10th_qinghuang = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if package_known(self.player,"isWounded") and (package_known(self.player,"getMaxHp") > 4) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 
 
 ai_skill_invoke.ny_10th_chenyong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 
@@ -1879,7 +1879,7 @@ end
 
 ai_skill_invoke.ny_tenth_fuxue = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_use["@@ny_tenth_fuxue"]=function(self,prompt,request)
@@ -2027,11 +2027,11 @@ ai_skill_invoke.ny_10th_jxxiantu = function(self, options, request)
             break
         end
     end
-    if not target then return (false) or false end
+    if not target then return false end
     if package_known(self,"isFriend",target) and ((package_known(self.player,"getHp") >= 2) or (peach > 0)) then
-        return (true) or false
+        return true
     else
-        return (false) or false
+        return false
     end
     return false
 
@@ -2221,7 +2221,7 @@ end
 
 ai_skill_invoke.ny_10th_jiudun = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_discard.ny_10th_jiudun = function(self, max, min)
@@ -2247,7 +2247,7 @@ end
 
 ai_skill_invoke.ny_10th_zhaowen = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 local function shuffle_zhaowen(t)
@@ -3611,9 +3611,9 @@ end
 
 ai_skill_invoke.ny_tenth_zhifou = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if #self.enemies <= 0 and package_known(self.player,"getStrategyMark","ny_tenth_zhifou_put-Clear") > 0 then return (false) or false end
+    if #self.enemies <= 0 and package_known(self.player,"getStrategyMark","ny_tenth_zhifou_put-Clear") > 0 then return false end
     if (package_known(self.player,"getHandcardNum") > 8)
-    or (package_known(self.player,"getHandcardNum") > (2 * package_known(self.player,"getPile","ny_10th_yi"):length())) then return (false) or false end
+    or (package_known(self.player,"getHandcardNum") > (2 * package_known(self.player,"getPile","ny_10th_yi"):length())) then return false end
     local need = package_known(self.player,"getStrategyMark","ny_tenth_zhifou-Clear") + 1
     local suits = {}
     for _,id in sgs.qlist(package_known(self.player,"getPile","ny_10th_yi")) do
@@ -3626,11 +3626,11 @@ ai_skill_invoke.ny_tenth_zhifou = function(self, options, request)
     end
     local num = #suits
     if need > 0 then num = num - need end
-    if num <= 0 then return (false) or false end
+    if num <= 0 then return false end
     num = num * 2
-    if package_known(self,"isWeak") and (package_known(self.player,"getHandcardNum") < num) then return (true) or false end
-    if (package_known(self.player,"getHandcardNum") +package_known(self.player,"getStrategyMark","ny_tenth_zhifou-Clear") + 1) > num then return (false) or false end
-    return (true) or false
+    if package_known(self,"isWeak") and (package_known(self.player,"getHandcardNum") < num) then return true end
+    if (package_known(self.player,"getHandcardNum") +package_known(self.player,"getStrategyMark","ny_tenth_zhifou-Clear") + 1) > num then return false end
+    return true
 end
 
 ai_skill_choice["ny_tenth_zhifou"] = function(self, options, request)
@@ -3727,12 +3727,12 @@ end
 
 ai_skill_invoke.ny_tenth_jiaoxia_second = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if package_known(self,"isWeak") then return (false) or false end
+    if package_known(self,"isWeak") then return false end
     local n = 8
     if package_known(self.room,"getAlivePlayers"):length() <= 4 then n = 5 end
-    if package_known(self.player,"getHandcardNum") > n then return (false) or false end
-    if package_known(self,"getCardsNum","Slash") >= #self.enemies then return (false) or false end
-    return (true) or false
+    if package_known(self.player,"getHandcardNum") > n then return false end
+    if package_known(self,"getCardsNum","Slash") >= #self.enemies then return false end
+    return true
 end
 
 ai_skill_use["@@ny_tenth_jiaoxia_second"]=function(self,prompt,request)
@@ -4020,11 +4020,11 @@ ai_skill_invoke.ny_10th_zhanjiang = function(self, options, request)
     for _, p in sgs.qlist(package_known(self.room,"getAlivePlayers")) do
         local weapon = package_call(p,"getWeapon")
         if weapon and package_known(weapon,"objectName") == "QinggangSword" then
-            if package_known(self,"isEnemy",p) then return (true) or false end
-            return (false) or false
+            if package_known(self,"isEnemy",p) then return true end
+            return false
         end
     end
-    return (false) or false
+    return false
 end
 
 
@@ -4139,8 +4139,8 @@ end
 ai_skill_invoke.ny_tenth_shiji = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = package_call(data,"toPlayer")
-    if target and package_known(self,"isFriend",target) then return (true) or false end
-    return (false) or false
+    if target and package_known(self,"isFriend",target) then return true end
+    return false
 end
 
 ai_skill_use["@@ny_tenth_shiji"]=function(self,prompt,request)
@@ -4482,8 +4482,8 @@ end
 ai_skill_invoke.ny_10th_yuxin = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = room_tag(self,"ny_10th_yuxin")
-    if (not target) or (not package_known(self,"isFriend",target)) then return (false) or false end
-    if package_known(self,"getCardsNum","Peach") + package_known(target,"getHp") > 0 then return (false) or false end
+    if (not target) or (not package_known(self,"isFriend",target)) then return false end
+    if package_known(self,"getCardsNum","Peach") + package_known(target,"getHp") > 0 then return false end
     return (package_known(self,"isFriend",target)) or false
 end
 
@@ -4491,8 +4491,8 @@ end
 
 ai_skill_invoke.ny_10th_xunbie = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if package_known(self,"getCardsNum","Peach") + package_known(self,"getCardsNum","Analeptic") + package_known(self.player,"getHp") > 0 then return (false) or false end
-    return (true) or false
+    if package_known(self,"getCardsNum","Peach") + package_known(self,"getCardsNum","Analeptic") + package_known(self.player,"getHp") > 0 then return false end
+    return true
 end
 
 

@@ -34,22 +34,22 @@ ai_skill_invoke.feiqianxun = function(self, options, request)
         if victim
             and sgs.ai_skill_cardask["collateral-slash"](self, nil, nil, victim, effect.from) ~= "."
         then
-            return (false) or false
+            return false
         end
     end
     if self.player:getPhase() == sgs.Player_Judge then
         if effect.card:isKindOf("Lightning")
             and self:isWeak()
             and self:getCardsNum("Peach") + self:getCardsNum("Analeptic") > 0 then
-            return (false) or false
+            return false
         end
-        return (true) or false
+        return true
     end
     local current = self.room:getCurrent()
-    if current and self:isFriend(current) and effect.from and self:isFriend(effect.from) then return (true) or false end
-    if effect.card and effect.card:isKindOf("Duel") and sgs.ai_skill_cardask["duel-slash"](self, data, nil, effect.from) ~= "." then return (false) or false end
-    if effect.card and effect.card:isKindOf("AOE") and sgs.ai_skill_cardask.aoe(self, data, nil, effect.from, effect.card:objectName()) ~= "." then return (false) or false end
-    if self.player:getHandcardNum() < self:getLeastHandcardNum(self.player) then return (true) or false end
+    if current and self:isFriend(current) and effect.from and self:isFriend(effect.from) then return true end
+    if effect.card and effect.card:isKindOf("Duel") and sgs.ai_skill_cardask["duel-slash"](self, data, nil, effect.from) ~= "." then return false end
+    if effect.card and effect.card:isKindOf("AOE") and sgs.ai_skill_cardask.aoe(self, data, nil, effect.from, effect.card:objectName()) ~= "." then return false end
+    if self.player:getHandcardNum() < self:getLeastHandcardNum(self.player) then return true end
     local l_lim, u_lim = math.max(2, self:getLeastHandcardNum(self.player)), math.max(5, #self.friends)
     if u_lim <= l_lim then u_lim = l_lim + 1 end
     return (math.random(0, 100) >= (self.player:getHandcardNum() - l_lim) / (u_lim - l_lim + 1) * 100) or false
@@ -130,7 +130,7 @@ end
 
 ai_skill_invoke.feilianying = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_use["@@feilianying"] = function(self, prompt, request)
     if self.player:getStrategyMark("feilianying") == 1 or self.player:getStrategyMark("feilianying") == 0 then
@@ -279,7 +279,7 @@ ai_skill_choice.feizhaohu = function(self, options, request)
 end
 ai_skill_invoke.feiyinghun = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self:isWeak() and self:getAllPeachNum(self.player) <= 0 then return (false) or false end
+    if self:isWeak() and self:getAllPeachNum(self.player) <= 0 then return false end
     local target = self.room:getCurrent()
     local n = self.player:getMaxHp() - self.player:getHp()
     if target then
@@ -307,7 +307,7 @@ ai_skill_invoke.feiyinghun = function(self, options, request)
             end
         end
     end
-    return (false) or false
+    return false
 end
 ai_skill_choice.feiyinghun = function(self, options, request)
     local targets = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
@@ -324,9 +324,9 @@ end
 ai_skill_invoke.feijiangchi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self:getCardsNum("Slash") > 3 or self.player:getHandcardNum() < self.player:getHp() then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 ai_skill_choice.feijiangchi = function(self, options, request)
     local targets = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
@@ -409,7 +409,7 @@ sgs.ai_use_value.feilangduoCard = 5
 sgs.ai_card_intention.feilangduoCard = 90
 ai_skill_invoke.feibenzi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_invoke.feifeijiang = function(self, options, request)
 
@@ -423,22 +423,22 @@ ai_skill_invoke.feifeijiang = function(self, options, request)
     local target = data:toPlayer()
     if target then
         if self:isFriend(target) then
-            return (false) or false
+            return false
         else
-            return (true) or false
+            return true
         end
     end
-    return (false) or false
+    return false
 end
 ai_skill_invoke.feijiedou = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
     for _, p in sgs.qlist(use.to) do
         if self:isFriend(p) then
-            return (true) or false
+            return true
         end
     end
-    return (false) or false
+    return false
 end
 ai_fill_skill.feisheji = function(self, options, request)
     local inclusive = options and options.inclusive
@@ -525,15 +525,15 @@ end
 
 ai_skill_invoke.feixiaohu          = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_invoke.feifenhu           = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local x = self:ImitateResult_DrawNCards(self.player, self.player:getVisibleSkillList(true))
     if x > #self.friends then
-        return (false) or false
+        return false
     end
-    return (true) or false
+    return true
 end
 ai_skill_use["@@feifenhu"]         = function(self, prompt, request)
     local players = self.room:getAllPlayers()
@@ -551,9 +551,9 @@ sgs.ai_card_intention.feifenhuCard     = -20
 ai_skill_invoke.feidaizui          = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self:getCardsNum("Jink") > 0 then
-        return (false) or false
+        return false
     end
-    return (true) or false
+    return true
 end
 sgs.ai_skill_playerchosen.feidaizui    = function(self, targets)
     self:updatePlayers()
@@ -596,9 +596,9 @@ ai_skill_invoke.feidaizuidraw      = function(self, options, request)
         end
     end
     if f >= e then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 sgs.ai_can_damagehp.feidaizui          = function(self, from, card, to)
     local least = 1000
@@ -674,18 +674,18 @@ end
 ai_skill_invoke.feizuijiao = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self.player:isWeak() then
-        return (true) or false
+        return true
     end
     if not self.player:faceUp() then
-        return (true) or false
+        return true
     end
     if math.random() < 0.4 then
-        return (true) or false
+        return true
     end
     if self:getCardsNum("Slash") > 2 then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 sgs.ai_use_priority.feizuijiaoCard = 4.4
 sgs.ai_use_value.feizuijiaoCard = 4.5
@@ -701,9 +701,9 @@ ai_skill_invoke.feihuchen = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local move = data:toMoveOneTime()
     if self:isFriend(move.to) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 ai_fill_skill.feiwusheng = function(self, options, request)
@@ -883,9 +883,9 @@ ai_skill_invoke.feifengpo   = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if not self:isFriend(target) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 ai_audited_aliases.register{id="ai_cardneed.feifengpo",registry="ai_cardneed",path={"feifengpo"},canonical_registry="ai_cardneed",canonical_path={"slash"},self_index=3,defer_canonical=true}
 
@@ -898,7 +898,7 @@ end
 
 ai_skill_invoke.feiniepan   = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_invoke.feilianhuan = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
@@ -910,9 +910,9 @@ ai_skill_invoke.feilianhuan = function(self, options, request)
         to = pindian.to
     end
     if to and self:isEnemy(to) and not self:needToLoseHp(to) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 ai_fill_skill.feilianhuan = function(self, options, request)

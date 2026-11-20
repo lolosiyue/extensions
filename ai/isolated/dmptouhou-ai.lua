@@ -26,9 +26,9 @@ end
 ai_skill_invoke.se_mingqie = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = (data:toCardUse())
-	if (self:isEnemy(use.to:at(0))) and not skills(self,use.to:at(0),sgs.lose_equip_skill) then return (true) or false end
-	if (self:isFriend(use.to:at(0))) and skills(self,use.to:at(0),sgs.lose_equip_skill) then return (true) or false end
-	return (false) or false
+	if (self:isEnemy(use.to:at(0))) and not skills(self,use.to:at(0),sgs.lose_equip_skill) then return true end
+	if (self:isFriend(use.to:at(0))) and skills(self,use.to:at(0),sgs.lose_equip_skill) then return true end
+	return false
 end
 
 sgs.ai_cardneed.se_mingqie = function(to, card, self)

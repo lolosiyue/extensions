@@ -510,12 +510,12 @@ sgs.ai_playerchosen_intention.shushen = -80
 ai_skill_invoke.shenzhi = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if self:getCardsNum("Peach")>0 then return (false) or false  end
-	if self.player:getHandcardNum()>=3 then return (false) or false  end
-	if self.player:getHandcardNum()>=self.player:getHp() and self.player:isWounded() then return (true) or false  end
-	if AIValue.callKnown(self.player,"hasSkill","beifa") and self.player:getHandcardNum()==1 and hegemony_source_query(self,'needKongcheng') then return (true) or false  end
-	if AIValue.callKnown(self.player,"hasSkill","sijian") and self.player:getHandcardNum()==1 then return (true) or false  end
-	return (false) or false 
+	if self:getCardsNum("Peach")>0 then return false  end
+	if self.player:getHandcardNum()>=3 then return false  end
+	if self.player:getHandcardNum()>=self.player:getHp() and self.player:isWounded() then return true  end
+	if AIValue.callKnown(self.player,"hasSkill","beifa") and self.player:getHandcardNum()==1 and hegemony_source_query(self,'needKongcheng') then return true  end
+	if AIValue.callKnown(self.player,"hasSkill","sijian") and self.player:getHandcardNum()==1 then return true  end
+	return false 
 end
 
 function sgs.ai_cardneed.shenzhi(to,card)
@@ -798,7 +798,7 @@ ai_skill_invoke.lirang = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if not hegemonyWillShow(self) then
-		return (false) or false 
+		return false 
 	end
 	return (#self.friends_noself > 0) or false 
 end
@@ -872,8 +872,8 @@ ai_skill_invoke.heg_suishi = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local event = data:toInt()
-	if event == sgs.Death then return (false) or false  end
-	return (true) or false 
+	if event == sgs.Death then return false  end
+	return true 
 end
 
 sgs.ai_skill_playerchosen.sijian = function(self, targets)
@@ -905,7 +905,7 @@ ai_skill_invoke.kuangfu = function(self,options,request)
 	end
 	local benefit = (damage.to:getCards("e"):length()==1 and damage.to:getArmor() and hegemony_source_query(self,'needToThrowArmor',damage.to))
 	if self:isFriend(damage.to) then return (benefit) or false  end
-	return (not benefit) or false 
+	return not benefit 
 end
 
 ai_skill_choice.kuangfu_equip = function(self,options,request)
@@ -1050,16 +1050,16 @@ sgs.ai_use_priority.heg_huoshui = 10
 ai_skill_invoke.cv_caopi = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if math.random(0,2)==0 then return (true) or false  end
-	return (false) or false 
+	if math.random(0,2)==0 then return true  end
+	return false 
 end
 
 ai_skill_invoke.cv_zhugeliang = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if math.random(0,2)>0 then return (false) or false  end
-	if math.random(0,4)==0 then self:setStrategyMemory("cv_zhugeliang","tw_zhugeliang") return (true) or false 
-	else self:setStrategyMemory("cv_zhugeliang","heg_zhugeliang") return (true) or false  end
+	if math.random(0,2)>0 then return false  end
+	if math.random(0,4)==0 then self:setStrategyMemory("cv_zhugeliang","tw_zhugeliang") return true 
+	else self:setStrategyMemory("cv_zhugeliang","heg_zhugeliang") return true  end
     return false
 
 end
@@ -1067,9 +1067,9 @@ end
 ai_skill_invoke.cv_nos_huangyueying = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if math.random(0,2)>0 then return (false) or false  end
-	if math.random(0,4)==0 then self:setStrategyMemory("cv_nos_huangyueying","tw_huangyueying") return (true) or false 
-	else self:setStrategyMemory("cv_nos_huangyueying","heg_huangyueying") return (true) or false  end
+	if math.random(0,2)>0 then return false  end
+	if math.random(0,4)==0 then self:setStrategyMemory("cv_nos_huangyueying","tw_huangyueying") return true 
+	else self:setStrategyMemory("cv_nos_huangyueying","heg_huangyueying") return true  end
     return false
 
 end
@@ -1216,13 +1216,13 @@ ai_skill_invoke.shenzhi=function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
     if not original_enabled(self)then return (ordinary_shenzhi(self,options,request)) or false end
-    if not hegemony_can_recover(self,self.player)then return (false) or false  end
-    if self:getCardsNum("HAllianceFeast")>0 then return (false) or false  end
-    if self:getCardsNum("Peach")>0 and hegemony_source_query(self.player,'getMark',"GlobalBattleRoyalMode")==0 then return (false) or false  end
-    if AIValue.callKnown(self.player,"hasSkill","rende") and #self.friends_noself>0 and(self.player:getHp()>1 or self.player:getHandcardNum()>1)then return (false) or false  end
-    if self.player:getHandcardNum()>=5 then return (false) or false  end
-    if self.player:getHandcardNum()==3 and self.player:getHp()==1 then return (true) or false  end
-    if self.player:getHandcardNum()>=3 and not self:willSkipPlayPhase()then return (false) or false  end
+    if not hegemony_can_recover(self,self.player)then return false  end
+    if self:getCardsNum("HAllianceFeast")>0 then return false  end
+    if self:getCardsNum("Peach")>0 and hegemony_source_query(self.player,'getMark',"GlobalBattleRoyalMode")==0 then return false  end
+    if AIValue.callKnown(self.player,"hasSkill","rende") and #self.friends_noself>0 and(self.player:getHp()>1 or self.player:getHandcardNum()>1)then return false  end
+    if self.player:getHandcardNum()>=5 then return false  end
+    if self.player:getHandcardNum()==3 and self.player:getHp()==1 then return true  end
+    if self.player:getHandcardNum()>=3 and not self:willSkipPlayPhase()then return false  end
     return (self.player:getHandcardNum()>=self.player:getHp() and self.player:isWounded()) or false 
 end
 local ordinary_qingcheng=ai_card_use.heg_qingcheng
@@ -5942,8 +5942,8 @@ ai_skill_invoke.heg_yicheng=function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
     if not original_enabled(self)then return (yicheng_other_provider(previous_yicheng_invoke,"heg_yicheng.invoke",self,options,request)) or false end
-    if not show_defence(self)and not show_attack(self)then return (false) or false  end
-    return (true) or false 
+    if not show_defence(self)and not show_attack(self)then return false  end
+    return true 
 end
 sgs.ai_skill_discard.heg_yicheng=function(self,discard_num,min_num,optional,include_equip)
     if not original_enabled(self)then return yicheng_other_provider(previous_yicheng_discard,"heg_yicheng.discard",self,discard_num,min_num,optional,include_equip)end
@@ -6004,27 +6004,27 @@ ai_skill_invoke.heg_duannian=function(self,options,request)
             or(self:originalHegemonyIsCard("Analeptic",card,self.player)and hegemony_source_query(self,'isWeak'))then has_peach=true end
     end
     if not has_peach then
-        if self.player:getHandcardNum()<self.player:getMaxHp()then return (true) or false  end
-        if self.player:getHandcardNum()==self.player:getMaxHp()and self:getCardsNum("Jink")==0 then return (true) or false  end
-        if self.player:getHandcardNum()>self.player:getMaxHp()and hegemony_source_query(self,'getOverflow')>0 and self:getCardsNum("Jink")==0 then return (true) or false  end
+        if self.player:getHandcardNum()<self.player:getMaxHp()then return true  end
+        if self.player:getHandcardNum()==self.player:getMaxHp()and self:getCardsNum("Jink")==0 then return true  end
+        if self.player:getHandcardNum()>self.player:getMaxHp()and hegemony_source_query(self,'getOverflow')>0 and self:getCardsNum("Jink")==0 then return true  end
     end
-    return (false) or false 
+    return false 
 end
 local previous_dujin=ai_skill_invoke.heg_dujin
 ai_skill_invoke.heg_dujin=function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
     if not original_enabled(self)then return (yicheng_other_provider(previous_dujin,"heg_dujin",self,options,request)) or false end
-    if #known(self.friends_noself,"heg_dujin friends") ==0 then return (true) or false  end
+    if #known(self.friends_noself,"heg_dujin friends") ==0 then return true  end
     if known(heg_facts(self).first_show_reward,"first show reward")then
         local reward=true
         for _,p in ipairs(self.room:getAlivePlayers())do
             if known(heg_player(self,p).shown_one,"shown_one")then reward=false;break end
         end
-        if reward then return (true) or false  end
+        if reward then return true  end
     end
-    if math.ceil(#self.player:getEquips()/2)>0 then return (true) or false  end
-    return (false) or false 
+    if math.ceil(#self.player:getEquips()/2)>0 then return true  end
+    return false 
 end
 
 -- fixed effective Original newsgs159/194–262/552 and
@@ -6094,9 +6094,9 @@ original_policy(ai_skill_invoke,"heg_gongxiu",function(self,options,request)
         for _,p in ipairs(self.room:getOtherPlayers(self.player))do
             if not self:isFriend(p)and not p:isNude()then num=num+1 end
         end
-        if num==0 or(num==1 and hegemony_source_query(self,'isWeak')and not self:willSkipPlayPhase())then return (false) or false  end
+        if num==0 or(num==1 and hegemony_source_query(self,'isWeak')and not self:willSkipPlayPhase())then return false  end
     end
-    return (true) or false 
+    return true 
 end)
 original_policy(ai_skill_choice,"gongxiu_choose",function(self,options,request)
     local choices
@@ -6133,13 +6133,13 @@ original_policy(ai_skill_invoke,"heg_lundao",function(self,options,request)
 
     local target=data and data:toPlayer()
     if target and self:isFriend(target)and target:getHandcardNum()>self.player:getHandcardNum()
-        and not hegemony_source_query(self,'needToThrowArmor',target)then return (false) or false  end
-    return (true) or false 
+        and not hegemony_source_query(self,'needToThrowArmor',target)then return false  end
+    return true 
 end)
 original_policy(ai_skill_invoke,"heg_zhiyu",function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-    if not self:originalHegemonyWillShowForMasochism()then return (false) or false  end
+    if not self:originalHegemonyWillShowForMasochism()then return false  end
     local damage=known(data and data:toDamage(),"heg_zhiyu damage")
     local from=damage.from;local cards=sgs.QList2Table(self.player:getHandcards());local first;local difcolor=false
     for _,card in ipairs(cards)do
@@ -6147,13 +6147,13 @@ original_policy(ai_skill_invoke,"heg_zhiyu",function(self,options,request)
         if(first:isRed()and card:isBlack())or(card:isRed()and first:isBlack())then difcolor=true;break end
     end
     if not difcolor and from then
-        if self:isFriend(from)and not from:isKongcheng()then return (false) or false 
+        if self:isFriend(from)and not from:isKongcheng()then return false 
         elseif not self:isFriend(from)then
-            if self:doNotDiscard(from,"h")and not from:isKongcheng()then return (false) or false  end
-            return (true) or false 
+            if self:doNotDiscard(from,"h")and not from:isKongcheng()then return false  end
+            return true 
         end
     end
-    return (true) or false 
+    return true 
 end)
 
 -- Original formation family, fixed b6025acc. Only lawful facade values enter
@@ -6249,7 +6249,7 @@ original_policy(ai_skill_invoke,'heg_shoucheng',function(self,options,request)
     return (target and self:isFriend(target)and not self:hasManjuanEffect(target)and not hegemony_source_query(self,'needKongcheng',target,true)) or false 
 end)
 original_policy(ai_skill_invoke,'heg_shengxi',function(self,options,request)
-    if not show_defence(self)and(hegemony_source_query(self,'needKongcheng')and self.player:getHp()<3)then return (false) or false  end;return (true) or false 
+    if not show_defence(self)and(hegemony_source_query(self,'needKongcheng')and self.player:getHp()<3)then return false  end;return true 
 end)
 original_policy(ai_fill_skill,'heg_shangyi',function(self,options,request)
     local inclusive=(options or {}).inclusive
@@ -6278,7 +6278,7 @@ original_policy(sgs.ai_choicemade_filter.skillChoice,'heg_shangyi',function(self
 end)
 sgs.ai_use_value.heg_shangyi=4;sgs.ai_use_priority.heg_shangyi=9;sgs.ai_card_intention.heg_shangyi=50
 original_policy(ai_skill_invoke,'heg_qianhuan',function(self,options,request)
-    if not(show_attack(self)or show_defence(self)or self:originalHegemonyWillShowForMasochism())then return (false) or false  end;return (true) or false 
+    if not(show_attack(self)or show_defence(self)or self:originalHegemonyWillShowForMasochism())then return false  end;return true 
 end)
 original_policy(sgs.ai_skill_cardask,'@heg_qianhuan-put',function(self)
     local function can_put(card)
@@ -6329,8 +6329,8 @@ sgs.ai_cardneed.heg_zhendu=function(to,card,self)
     if not original_enabled(self)then if old_zhendu then return old_zhendu(to,card,self)end;ai_unsupported('ordinary provider missing','heg_zhendu')end
     return to:isKongcheng()and not hegemony_source_query(self,'needKongcheng',to)
 end
-original_policy(ai_skill_invoke,'heg_qiluan',function(self,options,request)return (true) or false  end)
-original_policy(ai_skill_invoke,'heg_zhangwu',function(self,options,request)return (true) or false  end)
+original_policy(ai_skill_invoke,'heg_qiluan',function(self,options,request)return true  end)
+original_policy(ai_skill_invoke,'heg_zhangwu',function(self,options,request)return true  end)
 original_policy(ai_skill_invoke,'heg_jizhao',function(self,options,request)
     local f=ai_skill_invoke.heg_niepan;if type(f)=='function'then return (f(self,options,request)) or false elseif type(f)=='boolean'then return (f) or false  end
     ai_unsupported('canonical invoke provider missing','heg_niepan')
@@ -6350,7 +6350,7 @@ original_policy(sgs.ai_slash_weaponfilter,'HDragonPhoenix',function(self,to,play
 end)
 original_policy(ai_skill_invoke,'heg_DragonPhoenix',function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
-return (not self:isFriend(data:toPlayer())) or false end)
+return not self:isFriend(data:toPlayer()) end)
 original_policy(sgs.ai_skill_discard,'heg_DragonPhoenix',function(self,discard_num)
     local cards=sgs.QList2Table(self.player:getCards('he'));if #cards==1 then return{(cards[1]):getKnownEffectiveId()}end
     local function aux(card)
@@ -6440,9 +6440,9 @@ original_policy(ai_skill_use,'@@heg_qianzheng',function(self)
     -- Native request is MethodDiscard and expects the selected dummy costs.
     return {cards={(cards[1]):getKnownEffectiveId(),(cards[2]):getKnownEffectiveId()}}
 end)
-original_policy(ai_skill_invoke,'heg_wuku',function(self,options,request)return (true) or false  end)
+original_policy(ai_skill_invoke,'heg_wuku',function(self,options,request)return true  end)
 original_policy(ai_skill_invoke,'heg_tunchu',function(self,options,request)
-    if not(show_attack(self)or show_defence(self))then return (false) or false  end
+    if not(show_attack(self)or show_defence(self))then return false  end
     local target,goodtarget,slashnum,needburst=0,0,0,0
     for _,slash in ipairs(self:getCards('Slash'))do for _,enemy in ipairs(self.enemies)do if self:slashIsEffective(slash,enemy)then slashnum=slashnum+1;break end end end
     for _,enemy in ipairs(self.enemies)do for _,slash in ipairs(self:getCards('Slash'))do
@@ -6452,13 +6452,13 @@ original_policy(ai_skill_invoke,'heg_tunchu',function(self,options,request)
     if slashnum>1 or(slashnum>0 and goodtarget>0)then needburst=1 end
     self:sortInPlace(self.enemies, 'defenseSlash')
     local can_save=self.player:getMaxCards()-self.player:getHandcardNum()
-    if target==0 or can_save>1 or self.player:isSkipped(sgs.Player_Play)then return (true) or false  end
+    if target==0 or can_save>1 or self.player:isSkipped(sgs.Player_Play)then return true  end
     for _,enemy in ipairs(self.enemies)do
         local def=self:getDefense(enemy);local slash=printed(self,'slash')
         local eff=self:slashIsEffective(slash,enemy)and self:originalHegemonyIsGoodTarget(enemy,self.enemies)
-        if self:slashProhibit(slash,enemy)then elseif eff and def<8 and needburst>0 then return (false) or false  end
+        if self:slashProhibit(slash,enemy)then elseif eff and def<8 and needburst>0 then return false  end
     end
-    return (true) or false 
+    return true 
 end)
 original_policy(sgs.ai_skill_exchange,'tunchu_push',function(self,pattern,max_num)
     local cards=sgs.QList2Table(self.player:getCards('h'));self:sortByUseValue(cards,true)
@@ -6500,9 +6500,9 @@ sgs.wangxi_keep_value={Crossbow=6,SavageAssault=5.2,ArcheryAttack=5.2}
 original_policy(ai_skill_invoke,'heg_hengjiang',function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-    if not self:originalHegemonyWillShowForMasochism()then return (false) or false  end
+    if not self:originalHegemonyWillShowForMasochism()then return false  end
     local target=data:toPlayer();if not target then target=data:toDamage().from end
-    if not target then return false end;return (not self:isFriend(target)) or false 
+    if not target then return false end;return not self:isFriend(target) 
 end)
 original_policy(sgs.ai_choicemade_filter.skillInvoke,'heg_hengjiang',function(self,player,promptlist)
     if promptlist[3]=='yes'then
@@ -6543,7 +6543,7 @@ sgs.ai_cardneed.heg_qianxi=function(to,card,self)
     if not original_enabled(self)then if old_need then return old_need(to,card,self)end;ai_unsupported('ordinary provider missing','heg_qianxi')end
     return card:isKindOf('Slash')or card:isKindOf('Analeptic')or(card:isRed()and self:originalHegemonyKnownCard(to,self.player,'red',false)<2)
 end
-for _,name in ipairs({'heg_guixiu','heg_hunshang','heg_wuxin','heg_hongfa','huangjinsymbol','heg_huangjinsymbol'})do original_policy(ai_skill_invoke,name,function(self,options,request)return (true) or false  end)end
+for _,name in ipairs({'heg_guixiu','heg_hunshang','heg_wuxin','heg_hongfa','huangjinsymbol','heg_huangjinsymbol'})do original_policy(ai_skill_invoke,name,function(self,options,request)return true  end)end
 original_policy(ai_fill_skill,'heg_cunsi',function(self,options,request)
     local inclusive=(options or {}).inclusive
 return seed(self,'heg_cunsi',{},request)end)
@@ -6649,8 +6649,8 @@ original_policy(ai_skill_invoke,'heg_chuanxin',function(self,options,request)
 
     local damage=known(data:toDamage(),'chuanxin damage');local target=damage.to
     local niepan=shown(self,target,'heg_niepan')and shown_general_source(self,target,'heg_niepan',2)
-    if niepan and hegemony_source_query(target,'getMark','@nirvana')>0 then return (true) or false  end
-    return (not self:isFriend(target)and not self:hasHeavySlashDamage(self.player,damage.card,target)and not(target:getHp()==1 and not target:getArmor())) or false 
+    if niepan and hegemony_source_query(target,'getMark','@nirvana')>0 then return true  end
+    return not self:isFriend(target)and not self:hasHeavySlashDamage(self.player,damage.card,target)and not(target:getHp()==1 and not target:getArmor()) 
 end)
 original_policy(ai_skill_choice,'heg_chuanxin',function(self,options,request)
     local choices
@@ -6767,7 +6767,7 @@ end
 original_policy(ai_skill_invoke,'heg_niepan',function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-    if not hegemony_can_recover(self,self.player)then return (false) or false  end
+    if not hegemony_can_recover(self,self.player)then return false  end
     local dying=known(data:toDying(),'heg_niepan dying')
     local peaches=1-dying.who:getHp()
     return (self:getCardsNum('Peach')+self:getCardsNum('Analeptic')<peaches) or false 
@@ -6814,7 +6814,7 @@ ordinary(ai_skill_invoke,'heg_yicheng',function(self,options,request)
     if ai_skill_invoke.yicheng then return (ai_skill_invoke.yicheng(self,options,request)) or false end
     local p=data:toPlayer();return (p and self:isFriend(p)) or false 
 end)
-ordinary(ai_skill_invoke,'heg_shengxi',function(self,options,request)return (true) or false  end)
+ordinary(ai_skill_invoke,'heg_shengxi',function(self,options,request)return true  end)
 ordinary(ai_skill_invoke,'heg_shoucheng',function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
@@ -7328,7 +7328,7 @@ local function heg_skill_source_mouduan_valid_plan(self,who)
 end
 original_policy(ai_skill_invoke,'heg_mouduan',function(self,options,request)
     heg_skill_source_mouduan_clear(self)
-    return (true) or false 
+    return true 
 end)
 original_policy(sgs.ai_skill_playerchosen,'heg_mouduan',function(self,targets)
     local offered=sgs.QList2Table(targets)
@@ -7498,15 +7498,15 @@ ai_skill_invoke.heg_xibing =  function(self,options,request)
 
   self.xibing_skill = nil
   if not self:willShowForDefence() then
-    return (false) or false 
+    return false 
   end
   local target = data:toPlayer()
   if not target then
-    return (false) or false 
+    return false 
   end
   local draw_count = target:getHp() - target:getHandcardNum()
   if self:isFriend(target) and (draw_count > 1) then
-    return (true) or false 
+    return true 
   end
 	local eachother_shown = known(heg_player(self,target).shown_all,"shown_all") and known(heg_player(self,self.player).shown_all,"shown_all")
   if known(heg_player(self,target).shown_all,"shown_all") then
@@ -7527,13 +7527,13 @@ ai_skill_invoke.heg_xibing =  function(self,options,request)
     for _, skill in ipairs(skills) do
       if AIValue.callKnown(target,"hasSkill",skill) then
         self.xibing_skill = skill
-        return (true) or false 
+        return true 
       end
     end
   end
   if shown(self,target,"heg_buqu") and AIValue.callKnown(target,"getPileCount","scars") > 4 and self:isFriend(target) and eachother_shown then
     self.xibing_skill = "heg_buqu"
-    return (true) or false 
+    return true 
   end
   local not_firstskill = true
   for _, p in ipairs(self.enemies) do
@@ -7550,19 +7550,19 @@ ai_skill_invoke.heg_xibing =  function(self,options,request)
       for _, skill in ipairs(skills) do
         if AIValue.callKnown(target,"hasSkill",skill) then
           self.xibing_skill = skill
-          return (true) or false 
+          return true 
         end
       end
     end
   end
 
   if not self:isFriend(target) and (draw_count > 0 and draw_count < (self:slashIsAvailable(target) and 3 or 2)) then
-    return (true) or false 
+    return true 
   end
   if draw_count <= 0 then
-    return (true) or false 
+    return true 
   end
-  return (false) or false 
+  return false 
 end
 
 ai_skill_choice.heg_xibing = function(self,options,request)
@@ -7642,16 +7642,16 @@ ai_skill_invoke.heg_zhente = function(self,options,request)
   if AIValue.callKnown(self.player,"hasSkill","guzheng") then
     local lord_sunquan = self.room:getLord(self:originalHegemonyOwnKingdom())
     if lord_sunquan and AIValue.callKnown(lord_sunquan,"getPileCount","flame_map") > 1 then
-      return (true) or false 
+      return true 
     end
     for _, p in ipairs(self.friends_noself) do
       if original_shown_skills(self,p, sgs.drawcard_skill) then
-        return (true) or false 
+        return true 
       end
     end
   end
   if not self:willShowForDefence() then
-    return (false) or false 
+    return false 
   end
   local target = data:toPlayer()
   local use = heg_skill_source_event_context(self,"ZhenteUsedata","use")
@@ -7659,15 +7659,15 @@ ai_skill_invoke.heg_zhente = function(self,options,request)
   if target and self:isFriend(target) then
     if (card:isKindOf("IronChain") or card:isKindOf("HFightTogether") or card:isKindOf("FireAttack") or card:isKindOf("NatureSlash"))
       and not self.player:isChained() then
-        return (true) or false 
+        return true 
     elseif card:isKindOf("Slash") or card:isKindOf("Duel") or card:isKindOf("HDrowning")
       or card:isKindOf("HBurningCamps") or card:isKindOf("SavageAssault") or card:isKindOf("ArcheryAttack") then
-        return (true) or false 
+        return true 
     else
-      return (false) or false 
+      return false 
     end
   end
-  return (true) or false 
+  return true 
 end
 
 ai_skill_choice.heg_zhente = function(self,options,request)
@@ -7741,28 +7741,28 @@ ai_skill_invoke.heg_qiao =  function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
   if not self:willShowForDefence() then
-    return (false) or false 
+    return false 
   end
   local target = data:toPlayer()
   if not target or self:isFriend(target) or target:isNude() then
-    return (false) or false 
+    return false 
   end
   local use = heg_skill_source_event_context(self,"QiaoUsedata","use")
   local card = use.card
   if self.player:getHandcardNum() ==1 then
     if (card:isKindOf("Slash") and (self:hasHeavySlashDamage(use.from,card,self.player) or hegemony_source_query(self,'isWeak'))
       or card:isKindOf("ArcheryAttack")) and self:getCardsNum("Jink","h") == 1 then
-      return (false) or false 
+      return false 
     end
     if (card:isKindOf("SavageAssault") or card:isKindOf("Duel")) and hegemony_source_query(self,'isWeak') and self:getCardsNum("Slash","h") == 1 then
-      return (false) or false 
+      return false 
     end
   end
   if (self.player:getHandcardNum() <= 2 and (hegemony_source_query(self,'needKongcheng') or self:getLeastHandcardNum() > 0) and self:getCardsNum("Peach","h") == 0)
   or self.player:isNude() or hegemony_source_query(self,'getOverflow') > 0 or self:getDangerousCard(target) then
-    return (true) or false 
+    return true 
   end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_invoke.heg_chengshang = true
@@ -7771,9 +7771,9 @@ ai_skill_invoke.heg_kuangcai = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
   if self:originalHegemonyOwnerFact("owner_card_used_times") == 0 then
-    return (true) or false 
+    return true 
   end
-  return (false) or false 
+  return false 
 end
 
 function sgs.ai_cardneed.heg_kuangcai(to, card, self)
@@ -7795,22 +7795,22 @@ ai_skill_invoke.heg_shejian =  function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
   if not self:willShowForDefence() then
-    return (false) or false 
+    return false 
   end
   local target = data:toPlayer()
   if not target or self:isFriend(target) then
-    return (false) or false 
+    return false 
   end
   local use = heg_skill_source_event_context(self,"ShejianUsedata","use")
   local card = use.card
   if card:isKindOf("Slash") and self:hasHeavySlashDamage(use.from,card,self.player) and self:getCardsNum("Jink","h") > 0 then
-    return (false) or false 
+    return false 
   end
   if (self.player:getHandcardNum() < ((hegemony_source_query(self,'needKongcheng') or AIValue.callKnown(self.player,"hasSkill","lirang")) and 4 or 3) and self:getCardsNum("Peach","h") == 0)
   and target:getHp() <= (AIValue.callKnown(self.player,"hasSkill","heg_congjian") and 2 or 1) and hegemony_source_query(self,'isWeak',target) then
-    return (true) or false 
+    return true 
   end
-	return (false) or false 
+	return false 
 end
 
 function sgs.ai_cardneed.heg_shejian(to, card, self)
@@ -7821,19 +7821,19 @@ ai_skill_invoke.heg_yusui =  function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
   if not self:willShowForDefence() then
-    return (false) or false 
+    return false 
   end
   self.yusui_target = data:toPlayer()
   if not self.yusui_target or not self:isEnemy(self.yusui_target)
   or (self.player:getHp() == 1 and self:getCardsNum({"Peach", "Analeptic"}) == 0) then
-    return (false) or false 
+    return false 
   end
   local can_losehp = not AIValue.callKnown(self.yusui_target,"hasSkill","heg_hongfa") or (AIValue.callKnown(self.yusui_target,"getPileCount","heavenly_army") == 0)
   if (self.yusui_target:getHp() - math.max(self.player:getHp()-1, 1) > 1 and can_losehp)
   or (self.yusui_target:getHandcardNum() >= self.yusui_target:getMaxHp() and self.yusui_target:getHandcardNum() <= self.yusui_target:getMaxHp() + 2) then
-    return (true) or false 
+    return true 
   end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_yusui = function(self,options,request)
@@ -8369,18 +8369,18 @@ ai_skill_invoke.heg_anyong =  function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
   if not self:willShowForAttack() then
-    return (false) or false 
+    return false 
   end
   local damageStruct = heg_skill_source_event_context(self,"AnyongDamagedata","damage")
   if not self:damageIsEffective_(damageStruct) then
-    return (false) or false 
+    return false 
   end
   local card = damageStruct.card
   local original_num = damageStruct.damage
   local from = damageStruct.from
   local target = damageStruct.to
   if not target or (self:isFriend(target) and not target:isChained()) then
-    return (false) or false 
+    return false 
   end
 
   local function damageCount(tp,num,chained)
@@ -8417,7 +8417,7 @@ ai_skill_invoke.heg_anyong =  function(self,options,request)
 
   local anyong_damage = damageCount(target ,original_num)
   if AIValue.callKnown(target,"hasArmorEffect","Breastplate") and anyong_damage >= target:getHp() then
-    return (false) or false 
+    return false 
   end
 
   local allshown_invoke = known(heg_player(self,target).shown_all,"shown_all")
@@ -8459,26 +8459,26 @@ ai_skill_invoke.heg_anyong =  function(self,options,request)
   if chained_invoke or (not self:isFriend(target) and not known(heg_player(self,target).shown_one,"shown_one") and anyong_damage > 1)
   or (self:isEnemy(target) and anyong_damage > 1 and ((hegemony_source_query(self,'isWeak',target) and target:getHp() == 1)
       or oneshown_invoke or (anyong_damage > 2 and allshown_invoke))) then
-    return (true) or false 
+    return true 
   end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_invoke.heg_deshao = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
   if not self:willShowForDefence() then
-    return (false) or false 
+    return false 
   end
   local target = data:toPlayer()
 
   if target and self:isFriend(target) then
     if hegemony_source_query(self,'needToThrowArmor',target) then
-      return (true) or false 
+      return true 
     end
-    return (false) or false 
+    return false 
   end
-  return (true) or false 
+  return true 
 end
 
 ai_fill_skill.heg_mingfa = function(self,options,request)
@@ -9449,7 +9449,7 @@ end
 ai_skill_invoke.heg_zhiyu = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if not self:willShowForMasochism() then return (false) or false  end
+	if not self:willShowForMasochism() then return false  end
 	local damage = data:toDamage()
 	local from = damage.from
 	local cards = self.player:getHandcards()
@@ -9465,13 +9465,13 @@ ai_skill_invoke.heg_zhiyu = function(self,options,request)
 	end
 	if not difcolor and from then
 		if self:isFriend(from) and not from:isKongcheng() then
-			return (false) or false 
+			return false 
 		elseif not self:isFriend(from) then
-			if self:doNotDiscard(from, "h") and not from:isKongcheng() then return (false) or false  end
-			return (true) or false 
+			if self:doNotDiscard(from, "h") and not from:isKongcheng() then return false  end
+			return true 
 		end
 	end
-	return (true) or false 
+	return true 
 end
 
 ai_skill_invoke.heg_wanwei = true
@@ -9494,8 +9494,8 @@ ai_skill_invoke.heg_yuejian = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local target = self.room:getCurrent()
-	if target:getHandcardNum() > target:getMaxCards() and target:isWounded() then return (true) or false  end
-	return (false) or false 
+	if target:getHandcardNum() > target:getMaxCards() and target:isWounded() then return true  end
+	return false 
 end
 
 ai_fill_skill.heg_xiongsuan = function(self,options,request)
@@ -9932,7 +9932,7 @@ sgs.ai_use_priority.HYiguiCard = 2.8
 ai_skill_invoke.heg_jihun=true
 ai_skill_invoke.heg_jili=function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
-if not self:willShowForAttack()and not self:willShowForDefence()then return (false) or false  end;return (true) or false  end
+if not self:willShowForAttack()and not self:willShowForDefence()then return false  end;return true  end
 function SmartAI:shamokeUseWeaponPriority(card)
 	local class_name = card:getClassName()
 	local v = self:getUsePriority(card)
@@ -9962,23 +9962,23 @@ ai_skill_invoke.heg_zhiman = function(self,options,request)
 	local target = damage.to
 	local can_get = self:findPlayerToDiscard("ej", false, sgs.Card_MethodGet, nil, true)
 	if self:isFriend(target) and (table.contains(can_get, target) or not self:needToLoseHp(target, self.player)) then
-		return (true) or false 
+		return true 
 	end
 	if not self:isFriend(target) and not self:damageIsEffective_(damage) then
-		return (true) or false 
+		return true 
 	end
 	if not self:isFriend(target) and damage.damage > 1 and not AIValue.callKnown(target,"hasArmorEffect","SilverLion") then
-		return (false) or false 
+		return false 
 	end
 	if table.contains(can_get, target) and not hegemony_source_query(self,'isWeak',target) then
-		return (true) or false 
+		return true 
 	end
 	if self:hasKnownSkill(sgs.masochism_skill,target) and hegemony_source_query(self.player,"canGet",target,"e")
 	and self:needDamagedEffects(target, self.player) and not hegemony_source_query(self,'isWeak',target) then
 
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_zhiman = function(self, player, promptlist)
@@ -10339,7 +10339,7 @@ ai_skill_invoke.heg_diaodu = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	
-	return (true) or false 
+	return true 
 end
 
 sgs.ai_skill_playerchosen.heg_diaodu = function(self, targets)
@@ -10427,8 +10427,8 @@ end
 ai_skill_invoke.heg_diancai = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if not self:willShowForDefence() then return (false) or false  end
-	return (true) or false 
+	if not self:willShowForDefence() then return false  end
+	return true 
 end
 
 ai_skill_choice["transform_diancai"] = function(self,options,request)
@@ -10777,7 +10777,7 @@ end
 ai_skill_invoke.heg_yingzi_flamemap = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	return (true) or false 
+	return true 
 end
 
 ai_skill_invoke.heg_haoshi_flamemap = ai_skill_invoke.haoshi
@@ -10785,7 +10785,7 @@ ai_skill_invoke.heg_haoshi_flamemap = ai_skill_invoke.haoshi
 ai_skill_invoke.heg_shelie = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if AIValue.callKnown(self.player,"hasSkills","haoshi|heg_haoshi_flamemap") and self.player:getHandcardNum() < 2 then return (false) or false  end
+	if AIValue.callKnown(self.player,"hasSkills","haoshi|heg_haoshi_flamemap") and self.player:getHandcardNum() < 2 then return false  end
 	local extra = 0
 	if self.player:hasTreasure("JadeSeal") then
 		extra = extra+1
@@ -10819,8 +10819,8 @@ ai_skill_invoke.heg_shelie = function(self,options,request)
 		extra = extra+2
 		end
 	end
-	if extra > 1 then return (false) or false  end
-	return (true) or false 
+	if extra > 1 then return false  end
+	return true 
 end
 
 sgs.ai_skill_movecards.heg_shelie = function(self, upcards, downcards, min_num, max_num)
@@ -11518,9 +11518,9 @@ ai_skill_invoke.heg_enyuan = function(self,options,request)
 
   local target = data:toPlayer()
   if target:objectName() == self.player:objectName() then
-    return (false) or false 
+    return false 
   end
-  return (true) or false 
+  return true 
 end
 
 sgs.ai_skill_exchange["_enyuan"] = function(self,pattern,max_num,min_num,expand_pile)
@@ -12099,8 +12099,8 @@ ai_skill_invoke.heg_tieqi_xh = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local target = data:toPlayer()
-	if self:isFriend(target) then return (false) or false  end
-	return (true) or false 
+	if self:isFriend(target) then return false  end
+	return true 
 end
 
 ai_skill_choice.heg_tieqi_xh = function(self,options,request)
@@ -12147,9 +12147,9 @@ ai_skill_invoke.heg_liegong_xh = function(self,options,request)
 	local target = data:toPlayer()
 	if not self:isFriend(target) then
 		self.liegong_tg = target
-		return (true) or false 
+		return true 
 	end
-	return (false) or false 
+	return false 
 	
 end
 
@@ -12158,7 +12158,7 @@ ai_skill_choice.heg_liegong_xh = ai_skill_choice.heg_liegong
 ai_skill_invoke.heg_kuanggu_xh = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	return (true) or false 
+	return true 
 end
 
 ai_skill_choice.heg_kuanggu_xh = function(self,options,request)
@@ -12357,9 +12357,9 @@ ai_skill_invoke.heg_keshou = function(self,options,request)
     end
 	end
   if self.player:getHp() < 3 or self.player:getHandcardNum() > 3 or no_friend or hegemony_source_query(self.player,'getMark',"GlobalBattleRoyalMode") > 0 then
-    return (true) or false 
+    return true 
   end
-  return (false) or false 
+  return false 
 end
 
 sgs.ai_skill_cardask["@heg_keshou"] = function(self, data, pattern, target, target2)
@@ -12423,9 +12423,9 @@ ai_skill_invoke.heg_zhuwei= function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
     if not self:willShowForDefence() then
-		  return (false) or false 
+		  return false 
   	end
-    return (true) or false 
+    return true 
 end
 
 ai_skill_choice.heg_zhuwei = function(self,options,request)
@@ -12567,10 +12567,10 @@ ai_skill_invoke.heg_congjian = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
   if self.player:getPhase() ~= sgs.Player_NotActive then
-    return (false) or false 
+    return false 
   end
   local target = data:toDamage().to
-	return (not self:isFriend(target)) or false 
+	return not self:isFriend(target) 
 end
 
 ai_fill_skill.heg_weidi = function(self,options,request)
@@ -14434,16 +14434,16 @@ ai_skill_invoke.heg_duannian = function(self,options,request)
 	end
 	if not has_peach then
 		if self.player:getHandcardNum() < self.player:getMaxHp() then
-			return (true) or false 
+			return true 
 		end
 		if self.player:getHandcardNum() == self.player:getMaxHp() and self:getCardsNum("Jink") == 0 then
-			return (true) or false 
+			return true 
 		end
 		if self.player:getHandcardNum() > self.player:getMaxHp() and hegemony_source_query(self,'getOverflow') > 0 and self:getCardsNum("Jink") == 0 then
-			return (true) or false 
+			return true 
 		end
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_playerchosen.heg_lianyou = function(self, targets)
@@ -14473,9 +14473,9 @@ ai_skill_invoke.heg_xinghuo =  function(self,options,request)
 
 	local damage = data:toDamage()
 	if self:isFriend(damage.to) then
-		return (false) or false 
+		return false 
 	end
-	return (true) or false 
+	return true 
 end
 
 function sgs.ai_cardneed.heg_xinghuo(to, card, self)
@@ -14493,10 +14493,10 @@ ai_skill_invoke.heg_gongxiu = function(self,options,request)
 			end
 		end
 		if num == 0 or (num == 1 and hegemony_source_query(self,'isWeak') and not self:willSkipPlayPhase()) then
-			return (false) or false 
+			return false 
 		end
 	end
-	return (true) or false 
+	return true 
 end
 
 ai_skill_choice.gongxiu_choose = function(self,options,request)
@@ -14855,9 +14855,9 @@ ai_skill_invoke.heg_lundao =  function(self,options,request)
 
 	local target = data:toPlayer()
 	if target and self:isFriend(target) and target:getHandcardNum() > self.player:getHandcardNum() and not hegemony_source_query(self,'needToThrowArmor',target) then
-	  return (false) or false 
+	  return false 
 	end
-	return (true) or false 
+	return true 
 end
 
 ai_skill_invoke.heg_guanyue = true
@@ -14933,7 +14933,7 @@ end
 ai_skill_invoke.heg_guowu =  function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	return (true) or false 
+	return true 
 end
 
 sgs.ai_skill_playerschosen = sgs.ai_skill_playerschosen or {}
@@ -15126,11 +15126,11 @@ ai_skill_invoke.heg_sidi = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
     if not self:willShowForDefence() then
-        return (false) or false 
+        return false 
     end
     local target = data:toPlayer()
     if not self:isFriend(target) then
-        return (true) or false 
+        return true 
     end
     local num = 0
     for _, card in sgs.qlist(target:getHandcards()) do
@@ -15146,9 +15146,9 @@ ai_skill_invoke.heg_sidi = function(self,options,request)
         num = num + 1
     end
     if num == 0 then
-        return (false) or false 
+        return false 
     end
-    return (true) or false 
+    return true 
 end
 
 sgs.ai_skill_exchange.heg_sidi = function(self,pattern,max_num,min_num,expand_pile)
@@ -15543,15 +15543,15 @@ ai_skill_invoke.zhaofu = function(self,options,request)
     local card_name = prompt_list[4]
 
     if card_name:match("analeptic") then
-        return (false) or false 
+        return false 
     end
     local clonecard = heg_expansion_source_clone(self,card_name)
     local dummyuse = { isDummy = true, to = AIList.new{} }
     self:useCardByClassName(clonecard, dummyuse)
     if dummyuse.card then
-        return (true) or false 
+        return true 
     end
-    return (false) or false 
+    return false 
 end
 
 ai_skill_use["@@zhaofu2"] = function(self, prompt, request)
@@ -15646,24 +15646,24 @@ ai_skill_invoke.heg_danlao = function(self,options,request)
 	local use = data:toCardUse()
     local ucard = use.card
 	if ucard:isKindOf("GodSalvation") and hegemony_can_recover(self,self.player) then
-		return (false) or false 
+		return false 
     elseif ucard:isKindOf("AmazingGrace") and self:playerGetRound(self.player) < self.room:alivePlayerCount()/2 then
-		return (false) or false 
+		return false 
 	elseif ucard:isKindOf("IronChain") and self.player:isChained() then
-        return (false) or false 
+        return false 
     elseif ucard:isKindOf("HAwaitExhausted") and self.player:getHandcardNum() > 2
       and self:getCardsNum({"Peach", "Jink"}) == 0 then
-        return (false) or false 
+        return false 
     elseif ucard:isKindOf("HAllianceFeast") and use.from == self.player then
-        return (false) or false 
+        return false 
     elseif ucard:isKindOf("HConquering") then
-        return (false) or false 
+        return false 
     elseif ucard:isKindOf("ExNihilo") or ucard:isKindOf("HBefriendAttacking") then
-        return (false) or false 
+        return false 
     elseif self:isFriend(use.from) and (ucard:isKindOf("Snatch") or ucard:isKindOf("Dismantlement")) then
-        return (false) or false 
+        return false 
 	else
-		return (true) or false 
+		return true 
 	end
     return false
 
@@ -15673,7 +15673,7 @@ ai_skill_invoke.heg_jilei = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local damage = data:toDamage()
-	return (not self:isFriend(damage.from)) or false 
+	return not self:isFriend(damage.from) 
 end
 
 ai_skill_choice.heg_jilei = function(self,options,request)
@@ -15786,12 +15786,12 @@ end
 ai_skill_invoke.heg_moukui = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-    if not self:willShowForAttack() then return (false) or false  end
+    if not self:willShowForAttack() then return false  end
 	local target = data:toPlayer()
 	if self:isFriend(target) then
         return (hegemony_source_query(self,'needToThrowArmor',target)) or false 
     end
-    return (true) or false 
+    return true 
 end
 
 ai_skill_choice.heg_moukui = function(self,options,request)
@@ -15826,20 +15826,20 @@ ai_skill_invoke.heg_wanglie = function(self,options,request)
         end
     end
     if num == 0 then
-        return (true) or false 
+        return true 
     end
     if ucard:isKindOf("Slash") and hegemony_source_query(ucard,'hasFlag',"drank")
     and (hegemony_source_query(self,'getOverflow') <= 1 or num <= 1) then
-        return (true) or false 
+        return true 
     end
-    return (false) or false 
+    return false 
 end
 
 ai_skill_invoke.heg_zhenxi = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local target = data:toPlayer()
-    return (not self:isFriend(target)) or false 
+    return not self:isFriend(target) 
 end
 
 ai_skill_choice.heg_zhenxi = function(self,options,request)
@@ -16135,7 +16135,7 @@ ai_skill_invoke.heg_shiyong = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
     if heg_skill_source_slot(self,self.player,"head","heg_baoling") and not known(heg_player(self,self.player).shown_deputy,"shown_deputy") then
-        return (false) or false 
+        return false 
     end
     return (math.random(0,1) > 0) or false 
 end
@@ -16146,7 +16146,7 @@ ai_skill_invoke.guojue = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local target = data:toPlayer()
-    return (not self:isFriend(target)) or false 
+    return not self:isFriend(target) 
 end
 
 ai_skill_use["@@shangshi"] = function(self, prompt, request)
@@ -16173,7 +16173,7 @@ ai_skill_invoke.heg_zhuidu = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	local target = data:toPlayer()
-    return (not self:isFriend(target)) or false 
+    return not self:isFriend(target) 
 end
 
 sgs.ai_skill_discard.zhuidu_discard = function(self, discard_num, min_num, optional, include_equip)
@@ -16208,7 +16208,7 @@ ai_skill_invoke.heg_shigong = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
     if not hegemony_can_recover(self,self.player) then
-		return (false) or false 
+		return false 
 	end
 	return (self:getCardsNum({"Peach", "Analeptic"}) + self.player:getHp() < 1) or false 
 end
@@ -16273,31 +16273,31 @@ ai_skill_invoke.kangrui = function(self,options,request)
     local damagecard = {"slash","fire_slash","thunder_slash","burning_camps","savage_assault","archery_attack","duel"}
     local lowvaluecard = {"collateral","known_both","fire_attack","lure_tiger","imperial_order","iron_chain"}
     if hegemony_source_query(self,'isWeak',target) and table.contains(damagecard, prompt[4]) then
-        return (false) or false 
+        return false 
     end
     if friend:getMaxHp() - friend:getHandcardNum() > (table.contains(lowvaluecard, prompt[4]) and 1 or 2) then
-        return (true) or false 
+        return true 
     end
     if self:isEnemy(target) and hegemony_source_query(self,'isWeak',target) then
         if AIValue.callKnown(target,"hasArmorEffect","SilverLion") or (shown(self,target,"heg_gongqing") and friend:getAttackRange() < 3) then
-            return (false) or false 
+            return false 
         end
 		local damage = {}
 		damage.to = target
 		damage.from = friend
 		damage.damage = 2
 		if not self:damageIsEffective_(damage) then
-            return (false) or false 
+            return false 
         end
         local need_slashnum = self:originalHegemonyCardsNum("Slash", target, self.player) + 1
         if AIValue.callKnown(target,"hasSkills","wushuang|heg_wushuang_lvlingqi") then
             need_slashnum = need_slashnum * 2
         end
         if self:originalHegemonyCardsNum("Slash", friend, self.player) > need_slashnum then
-            return (true) or false 
+            return true 
         end
     end
-    return (false) or false 
+    return false 
 end
 
 ai_skill_choice.kangrui = function(self,options,request)
@@ -16559,9 +16559,9 @@ end
 ai_skill_invoke.benyu = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if not self:willShowForMasochism() then return (false) or false  end
+	if not self:willShowForMasochism() then return false  end
     
-	return (true) or false 
+	return true 
 end
 
 ai_skill_choice.benyu = function(self,options,request)
@@ -16762,25 +16762,25 @@ ai_skill_invoke.heg_qiuan = function(self,options,request)
 
 	local damage = data:toDamage()
   if damage.damage > 1 then
-    return (true) or false 
+    return true 
   end
   if damage.card:isKindOf("AOE") then
     if self.get_AOE_subcard then
       self.get_AOE_subcard = nil
-      return (not AIValue.callKnown(self.player,"hasSkill","nosjianxiong")) or false
+      return not AIValue.callKnown(self.player,"hasSkill","nosjianxiong")
     end
-    return (true) or false 
+    return true 
   end
   if not self:willShowForDefence() then
-    return (false) or false 
+    return false 
   end
   if AIValue.callKnown(self.player,"hasSkills",sgs.masochism_skill) and self.player:getHp() > 1 and damage.damage < 2 then
-    return (false) or false 
+    return false 
   end
   if AIValue.callKnown(self.player,"hasSkill","heg_wangxi") and damage.from and self:isFriend(damage.from) and damage.damage < 2 then
-    return (false) or false 
+    return false 
   end
-	return (true) or false 
+	return true 
 end
 
 ai_skill_invoke.heg_liangfan = true
@@ -16802,9 +16802,9 @@ ai_skill_invoke.heg_xingzhao = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if not self:willShowForAttack() then
-    return (false) or false 
+    return false 
   end
-	return (true) or false 
+	return true 
 end
 
 ai_skill_invoke.heg_xunxun_tangzi = true
@@ -16824,11 +16824,11 @@ end
 ai_skill_invoke.heg_bushi = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if self.player:getPhase() == sgs.Player_Start then return (false) or false  end
+	if self.player:getPhase() == sgs.Player_Start then return false  end
 	if not self:willShowForAttack() and not self:willShowForDefence() then
-		return (false) or false 
+		return false 
 	end
-	return (true) or false 
+	return true 
 end
 sgs.ai_skill_exchange.heg_bushi = function(self,pattern,max_num,min_num,expand_pile)
 	local cards = self.player:getCards("he")
@@ -16850,10 +16850,10 @@ ai_skill_invoke.heg_midao = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if not self:willShowForAttack() and not self:willShowForDefence() then
-		return (false) or false 
+		return false 
 	end
-	if not known(heg_player(self,self.player).shown_one,"shown_one") and self.player:isNude() then return (false) or false  end
-	return (true) or false 
+	if not known(heg_player(self,self.player).shown_one,"shown_one") and self.player:isNude() then return false  end
+	return true 
 end
 
 sgs.ai_skill_exchange._midao = function(self,pattern,max_num,min_num,expand_pile)
@@ -16997,26 +16997,26 @@ ai_skill_invoke.heg_fengshix = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if not self:willShowForAttack() then
-    return (false) or false 
+    return false 
   end
   local target = data:toPlayer()
   if not target or self:isFriend(target) then
-    return (false) or false 
+    return false 
   end
   local use = heg_expansion_source_event_context(self,"FengshixUsedata","CardUse")
   local card = use.card
   self.fengshix_discard = nil
   if card:isKindOf("FireAttack") and target:getCardCount(true) == 1 then
-    return (false) or false 
+    return false 
   end
   if card:isKindOf("HDrowning") and target:getEquips():length() == 1 then
     self.fengshix_discard = target:getEquips():first():getEffectiveId()
-    return (true) or false 
+    return true 
   end
   if self.player:getHandcardNum() > 3 or hegemony_source_query(self,'isWeak',target) then
-    return (true) or false 
+    return true 
   end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.heg_fengshix = function(self,options,request)
@@ -17474,9 +17474,9 @@ end
 ai_skill_invoke.heg_qiance = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if not self:willShowForAttack() then return (false) or false  end
+	if not self:willShowForAttack() then return false  end
 
-	return (true) or false 
+	return true 
 end
 
 ai_skill_choice["heg_qiance"] = function(self,options,request)
@@ -17591,11 +17591,11 @@ ai_skill_invoke.heg_zhidao = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if not self:willShowForDefence() or not self:willShowForAttack() then
-    return (false) or false 
+    return false 
   end
   if (self:getCardsNum("AmazingGrace") + self:getCardsNum("GodSalvation") +  self:getCardsNum("HAwaitExhausted") +
   self:getCardsNum("SavageAssault") + self:getCardsNum("ArcheryAttack") > 0) then
-    return (false) or false 
+    return false 
   end
   
   local max_range = 0
@@ -17610,7 +17610,7 @@ ai_skill_invoke.heg_zhidao = function(self,options,request)
     horse_range = 1
   end
   local range_fix = math.min(current_range - max_range, 0) - horse_range
-  if self:getCardsNum("Slash") == 0 then return (false) or false  end
+  if self:getCardsNum("Slash") == 0 then return false  end
 	local slashes = self:getCards("Slash")
 	self:sortByUseValue(slashes)
 	self:sortInPlace(self.enemies, "defenseSlash")
@@ -17619,11 +17619,11 @@ ai_skill_invoke.heg_zhidao = function(self,options,request)
 			if hegemony_source_query(self,'isWeak',enemy) and not self.player:canSlash(enemy,slash,true,range_fix) and not self:slashProhibit(slash, enemy)
 				and self:slashIsEffective(slash, enemy) and heg_expansion_source_good_target(self,enemy, self.enemies, self)
 				and not (hegemony_source_query(self.player,'hasFlag',"slashTargetFix") and not hegemony_source_query(enemy,'hasFlag',"SlashAssignee")) then
-				return (true) or false 
+				return true 
 			end
 		end
 	end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_playerchosen.heg_zhidao = function(self, targets)
@@ -17647,23 +17647,23 @@ ai_skill_invoke.heg_jilix = function(self,options,request)
 
   local prompt = data:toString()
   if prompt == "damage" then
-    return (true) or false 
+    return true 
   else
     local prompt_list = prompt:split(":")
     if prompt_list[2] == self.player:objectName() or prompt_list[4]:match("peach") or prompt_list[4]:match("befriend_attacking") then
-      return (true) or false 
+      return true 
     end
   end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_invoke.heg_quanji = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if not self:willShowForMasochism() and not self:willShowForAttack() then
-    return (false) or false 
+    return false 
   end
-	return (true) or false 
+	return true 
 end
 
 sgs.ai_skill_exchange._quanji = function(self,pattern,max_num,min_num,expand_pile)
@@ -17789,29 +17789,29 @@ end
 ai_skill_invoke.heg_fankui_simazhao = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
-	if not self:willShowForMasochism() then return (false) or false  end
+	if not self:willShowForMasochism() then return false  end
 	local target = data:toDamage().from
 	if not target then return false end
-	if sgs.ai_need_damaged.nosfankui(self, target, self.player) then return (true) or false  end
+	if sgs.ai_need_damaged.nosfankui(self, target, self.player) then return true  end
 
 	if self:isFriend(target) then
-		if hegemony_source_query(self,'getOverflow',target) > 2 then return (true) or false  end
-		if self:doNotDiscard(target) then return (true) or false  end
+		if hegemony_source_query(self,'getOverflow',target) > 2 then return true  end
+		if self:doNotDiscard(target) then return true  end
 		return ((original_shown_skills(self,target, sgs.lose_equip_skill) and not target:getEquips():isEmpty())
 		  or (hegemony_source_query(self,'needToThrowArmor',target) and target:getArmor()) or self:doNotDiscard(target)) or false 
 	end
 	if self:isEnemy(target) then
-		if self:doNotDiscard(target) then return (false) or false  end
-		return (true) or false 
+		if self:doNotDiscard(target) then return false  end
+		return true 
 	end
-	return (true) or false 
+	return true 
 end
 
 ai_skill_invoke.heg_zhaoxin = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
   if not self:willShowForDefence() or not self:willShowForMasochism() then
-    return (false) or false 
+    return false 
   end
   local my_hnum = self.player:getHandcardNum()
   local targets = {}
@@ -17822,7 +17822,7 @@ ai_skill_invoke.heg_zhaoxin = function(self,options,request)
     end
   end
   if #targets == 0 then
-    return (false) or false 
+    return false 
   end
   self:sortInPlace(targets, "handcard", true)
 
@@ -17857,7 +17857,7 @@ ai_skill_invoke.heg_zhaoxin = function(self,options,request)
           if need_peach and hegemony_source_query(self,'isWeak') then
 
             self.zhaoxin_target = p
-            return (true) or false 
+            return true 
           end
         end
       end
@@ -17865,7 +17865,7 @@ ai_skill_invoke.heg_zhaoxin = function(self,options,request)
     if value > my_value then
 
       self.zhaoxin_target = p
-      return (true) or false 
+      return true 
     end
     if p_hnum == my_hnum and not (known == p_hnum and value < my_value) and value >= same_card_value then
       same_card_value = value
@@ -17879,14 +17879,14 @@ ai_skill_invoke.heg_zhaoxin = function(self,options,request)
   if need_peach and same_card_target then
 
     self.zhaoxin_target = same_card_target
-    return (true) or false 
+    return true 
   end
   if need_peach and self.player:isWounded() and one_less_target then
 
     self.zhaoxin_target = one_less_target
-    return (true) or false 
+    return true 
   end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_playerchosen["zhaoxin_exchange"] = function(self, targets)
@@ -18062,21 +18062,21 @@ ai_skill_invoke.heg_xiongnve = function(self,options,request)
     local name = ai_skill_choice.xiongnve_attack(self,{reason='xiongnve_attack',choices=heg_expansion_source_general_pile(self,self.player,"massacre"),inquiry_scope='original_internal'},nil)
     if name and self.xiongnve_choice then
 
-      return (true) or false 
+      return true 
     end
   end
   if data:toString() == "defence"  then
     if hegemony_source_query(self.player,'getMark',"ThreatenEmperorExtraTurn") > 0 then
-      return (false) or false 
+      return false 
     end
     if hegemony_source_query(self.player,'getMark',"##xiongnve_avoid") > 0 then
-      return (false) or false 
+      return false 
     end
     if hegemony_source_query(self,'isWeak') or self.player:getHp() < 2 then
-      return (true) or false 
+      return true 
     end
     if not self.player:faceUp() then
-      return (true) or false 
+      return true 
     end
     local useless_num = 0
     local generals = heg_expansion_source_general_pile(self,self.player, "massacre")
@@ -18115,13 +18115,13 @@ ai_skill_invoke.heg_xiongnve = function(self,options,request)
       end
     end
     if useless_num > 1 and (self.player:getLostHp() > 1 or self.player:getHp() < 3) then
-      return (true) or false 
+      return true 
     end
     if useless_num > (self.player:isWounded() and 4 or 6) then
-      return (true) or false 
+      return true 
     end
   end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_choice.xiongnve_attack = function(self,options,request)
@@ -18547,7 +18547,7 @@ ai_skill_invoke.heg_baolie = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if not self:willShowForAttack() then
-    return (false) or false 
+    return false 
   end
   
 	return (self:getCardsNum("Slash") > 2 or self:getCardsNum("Jink") > 1) or false 
@@ -18569,12 +18569,12 @@ ai_skill_invoke.heg_gongqing = function(self,options,request)
 
   local damage = data:toDamage()
   if not damage.from or damage.from:getAttackRange() > 3 then
-    return (false) or false 
+    return false 
   end
   if damage.from:getAttackRange() < 3 and damage.damage > 1 then
-    return (true) or false 
+    return true 
   end
-	return (false) or false 
+	return false 
 end
 
 local jinfa_skill = {}
@@ -18960,7 +18960,7 @@ ai_skill_invoke.heg_juejue = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if not self:willShowForAttack() then
-    return (false) or false 
+    return false 
   end
   local friend_weak = 0
   local enemy_weak = 0
@@ -18974,13 +18974,13 @@ ai_skill_invoke.heg_juejue = function(self,options,request)
   end
   if hegemony_source_query(self,'getOverflow') > (hegemony_source_query(self.player,'getMark',"@halfmaxhp") < 1 and 1 or 3) and self.player:getHp() > 1 then
     if enemy_weak > 2 or enemy_weak > friend_weak  then
-      return (true) or false 
+      return true 
     end
     if (self.player:getHp() > 2 or AIValue.callKnown(self.player,"hasSkill","heg_wangxi")) and self:getCardsNum("Peach") > 0 and (#self.enemies > 2 or #self.enemies > #self.friends) then
-      return (true) or false 
+      return true 
     end
   end
-	return (false) or false 
+	return false 
 end
 
 sgs.ai_skill_cardask["@heg_juejue-discard"] = function(self, data, pattern, target, target2)
@@ -20666,17 +20666,17 @@ ai_skill_invoke.fanjian_show = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if self.player:isRemoved() then
-		return (false) or false 
+		return false 
 	end
 	if AIValue.callKnown(self.player,"hasSkill","heg_hongfa") and not (AIValue.callKnown(self.player,"getPileCount","heavenly_army") == 0) then
-		return (false) or false 
+		return false 
 	  end
     local suit = hegemony_source_query(self.player,'getMark',"FanjianSuit")
     local count = 0
     for _, card in sgs.qlist(self.player:getHandcards()) do
         if card:getSuit() == suit then
 			if self.player:getHp() == 1 and (self:isCard("Peach", card, self.player) or self:isCard("Analeptic", card, self.player)) then
-				return (false) or false 
+				return false 
 			end
             count = count + 1
             if self:isValuableCard(card) then count = count + 0.5 end
@@ -20693,9 +20693,9 @@ ai_skill_invoke.fanjian_show = function(self,options,request)
             end
         end
     end
-	if count <= 1 then return (true) or false  end
-	if self:getCardsNum("Peach") >= 1 and hegemony_source_query(self.player,'getMark',"GlobalBattleRoyalMode") == 0 and not self:willSkipPlayPhase() then return (false) or false  end
-	if self.player:getHandcardNum() <= 3 or hegemony_source_query(self,'isWeak') then return (true) or false  end
+	if count <= 1 then return true  end
+	if self:getCardsNum("Peach") >= 1 and hegemony_source_query(self.player,'getMark',"GlobalBattleRoyalMode") == 0 and not self:willSkipPlayPhase() then return false  end
+	if self.player:getHandcardNum() <= 3 or hegemony_source_query(self,'isWeak') then return true  end
     return (count / self.player:getCardCount(true) <= 0.6) or false 
 end
 sgs.ai_card_intention.HTianxiangCard = function(self, card, from, tos)
@@ -20742,16 +20742,16 @@ ai_skill_invoke.heg_fangquan = function(self,options,request)
     local data=request and self:getDecisionData(request) or nil
 
 	if hegemony_source_query(self.player,'hasFlag',"fangquanInvoked") then
-		return (false) or false 
+		return false 
 	end
 	self.fangquan_card_str = nil
 	self.fangquan_target = nil
 	if #self.friends == 1 then
-		return (false) or false 
+		return false 
 	end
 	local limit = self.player:getMaxCards()
-	if self.player:isKongcheng() then return (false) or false  end
-	if self:getCardsNum("Peach") >= limit - 2 and self.player:isWounded() then return (false) or false  end
+	if self.player:isKongcheng() then return false  end
+	if self:getCardsNum("Peach") >= limit - 2 and self.player:isWounded() then return false  end
 
 
 	local cards = sgs.QList2Table(self.player:getHandcards())
@@ -20804,7 +20804,7 @@ ai_skill_invoke.heg_fangquan = function(self,options,request)
 	if AIValue.callKnown(self.player,"hasSkill","heg_dangxian") then
 		shouldUse = shouldUse -  1
 	end
-	if shouldUse >= 2 then return (false) or false  end
+	if shouldUse >= 2 then return false  end
 
 
 	local to_discard = nil
@@ -20814,7 +20814,7 @@ ai_skill_invoke.heg_fangquan = function(self,options,request)
 			all_peaches = all_peaches + 1
 		end
 	end
-	if all_peaches >= 2 and hegemony_source_query(self,'getOverflow') <= 0 then return (false) or false  end
+	if all_peaches >= 2 and hegemony_source_query(self,'getOverflow') <= 0 then return false  end
 	self:sortByKeepValue(cards, true)
 
 	for i = #cards, 1, -1 do
@@ -20824,14 +20824,14 @@ ai_skill_invoke.heg_fangquan = function(self,options,request)
 			break
 		end
 	end
-	if to_discard == nil then return (false) or false  end
+	if to_discard == nil then return false  end
 
 
 	local AssistTarget = self:AssistTarget()
 	if AssistTarget and not self:willSkipPlayPhase(AssistTarget) then
 		self.fangquan_target = AssistTarget
 		self.fangquan_card_str = "@HFangquanCard=" .. to_discard .. "&heg_fangquan->" .. AssistTarget:objectName()
-		return (true) or false 
+		return true 
 	end
 
 	self:sortInPlace(self.friends_noself, "handcard", true)
@@ -20839,10 +20839,10 @@ ai_skill_invoke.heg_fangquan = function(self,options,request)
 		if original_shown_skills(self,target, "heg_zhiheng|" .. sgs.priority_skill .. "|heg_shensu") and (not self:willSkipPlayPhase(target) or heg_core_rule_shown(self,target,"heg_shensu")) then
 			self.fangquan_target = target
 			self.fangquan_card_str = "@HFangquanCard=" .. to_discard .. "&heg_fangquan->" .. target:objectName()
-			return (true) or false 
+			return true 
 		end
 	end
-	return (false) or false 
+	return false 
 end
 
 ai_skill_use["@@fangquan_ask"] = function(self, prompt)
@@ -20893,10 +20893,10 @@ ai_skill_invoke.heg_lieren = function(self,options,request)
 
 	local damage = data:toDamage()
 	if not damage.to then return false end
-	if not self:isEnemy(damage.to) then return (false) or false  end
+	if not self:isEnemy(damage.to) then return false  end
 
 	if self.player:getHandcardNum() == 1 then
-		if (hegemony_source_query(self,'needKongcheng') or not self:hasLoseHandcardEffective()) and not hegemony_source_query(self,'isWeak') then return (true) or false  end
+		if (hegemony_source_query(self,'needKongcheng') or not self:hasLoseHandcardEffective()) and not hegemony_source_query(self,'isWeak') then return true  end
 		local card = self.player:getHandcards():first()
 		if card:isKindOf("Jink") or card:isKindOf("Peach") then return false end
 	end
@@ -20904,10 +20904,10 @@ ai_skill_invoke.heg_lieren = function(self,options,request)
 	if (self.player:getHandcardNum() >= self.player:getHp() or self:originalHegemonyMaxNumberCard():getNumber() > 10
 		or (hegemony_source_query(self,'needKongcheng') and self.player:getHandcardNum() == 1) or not self:hasLoseHandcardEffective())
 		and not self:doNotDiscard(damage.to, "h", true) and not (self.player:getHandcardNum() == 1 and self:doNotDiscard(damage.to, "e", true)) then
-			return (true) or false 
+			return true 
 	end
-	if self:doNotDiscard(damage.to, "he", true, 2) then return (false) or false  end
-	return (false) or false 
+	if self:doNotDiscard(damage.to, "he", true, 2) then return false  end
+	return false 
 end
 
 function sgs.ai_skill_pindian.heg_lieren(minusecard, self, requestor)

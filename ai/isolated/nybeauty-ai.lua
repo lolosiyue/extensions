@@ -91,8 +91,8 @@ ai_skill_invoke.nyshanshen = function(self, options, request)
             break
         end
     end
-    if self:isFriend(target) then return (true) or false end
-    return (false) or false
+    if self:isFriend(target) then return true end
+    return false
 end
 
 
@@ -192,8 +192,8 @@ ai_skill_invoke.nylianhua = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local n = 1- self.player:getHp()
     local peachs = self:getCardsNum("Analeptic") + self:getCardsNum("Peach")
-    if n > peachs then return (true) or false end
-    return (false) or false
+    if n > peachs then return true end
+    return false
 end
 sgs.ai_ajustdamage_to.nylianhua = function(self, from, to, card, nature)
 	if to:getStrategyMark("nylianhua_lun") > 0
@@ -519,8 +519,8 @@ sgs.ai_suppress_intention["nylijian"] = true
 
 ai_skill_invoke.nyduoren = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self.player:getMaxHp() <= 3 then return (false) or false end
-    return (true) or false
+    if self.player:getMaxHp() <= 3 then return false end
+    return true
 end
 
 
@@ -802,12 +802,12 @@ end
 ai_skill_invoke.nyshouying = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local prompt = data:toString()
-    if string.find(prompt, "get") then return (true) or false end
+    if string.find(prompt, "get") then return true end
     local neednts = {"savage_assault","god_salvation","amazing_grace","peach","ex_nihilo"}
     for _,neednt in ipairs(neednts) do
-        if string.find(prompt, neednt) then return (false) or false end
+        if string.find(prompt, neednt) then return false end
     end
-    if string.find(prompt, "iron_chain") and self.player:isChained() then return (false) or false end
+    if string.find(prompt, "iron_chain") and self.player:isChained() then return false end
     if string.find(prompt, "nullified") then
         for _,p in sgs.qlist(self.room:getAlivePlayers()) do
             if p:hasFlag("nyshouying") then
@@ -815,7 +815,7 @@ ai_skill_invoke.nyshouying = function(self, options, request)
             end
         end
     end
-    return (false) or false 
+    return false 
 end
 
 
@@ -1111,8 +1111,8 @@ end
 ai_skill_invoke.ny_qiaoshi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = known(tag(self,"ny_qiaoshi"),"ny_qiaoshi")
-    if damage.damage > 1 then return (true) or false end
-    if damage.from and self:isFriend(damage.from) then return (true) or false end
+    if damage.damage > 1 then return true end
+    if damage.from and self:isFriend(damage.from) then return true end
     return (self:isWeak()) or false
 end
 
@@ -1384,7 +1384,7 @@ ai_skill_invoke.nyarz_xiaoyong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local prompt = data:toString()
     local num = tonumber(prompt:split(":")[2])
-    if self.player:getPhase() ~= sgs.Player_Play then return (true) or false end
+    if self.player:getPhase() ~= sgs.Player_Play then return true end
     return (num > 1) or false
 end
 
@@ -1724,7 +1724,7 @@ sgs.ai_playerchosen_intention.nyarz_lingxi = 40
 ai_skill_invoke.nyarz_lingxi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local use = known(tag(self,"nyarz_lingxi_use"),"nyarz_lingxi_use")
-    if use.card:isKindOf("EquipCard") then return (false) or false end
+    if use.card:isKindOf("EquipCard") then return false end
     local all = sgs.IntList()
     for _,id in sgs.qlist(self.player:getPile("nyarz_lingxi_yi")) do
         all:append(id)

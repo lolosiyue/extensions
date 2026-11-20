@@ -40,7 +40,7 @@ end
 
 ai_skill_invoke.jinfan = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_choice.jinfan = function(self, options, request)
@@ -330,12 +330,12 @@ ai_skill_invoke.duXiaoguo = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
     if not self:isEnemy(damage.to) then
-        return (false) or false
+        return false
     end
 
     if self.player:getHandcardNum() == 1 then
         if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then
-            return (true) or false
+            return true
         end
         local card = self.player:getHandcards():first()
         if card:isKindOf("Jink") or card:isKindOf("Peach") then
@@ -346,7 +346,7 @@ ai_skill_invoke.duXiaoguo = function(self, options, request)
         return (self:doDisCard(damage.to, "h")) or false
     end
 
-    return (false) or false
+    return false
 end
 
 function sgs.ai_skill_pindian.duXiaoguo(minusecard, self, requestor, maxcard)
@@ -605,9 +605,9 @@ ai_skill_invoke.du_tongque = function(self, options, request)
         end
     end
     if self_people >= list:length() / 2 then
-        return (false) or false
+        return false
     end
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_cardask["#caocao_tongque"] = function(self, data)
@@ -657,13 +657,13 @@ ai_skill_invoke.du_xixing = function(self, options, request)
     local target = data:toPlayer()
 
     if self:isFriend(target) then
-        return (false) or false
+        return false
     end
     if self:isEnemy(target) then
         return (self:doDisCard(target, "h", true)) or false
     end
 
-    return (true) or false
+    return true
 end
 
 sgs.ai_can_damagehp.du_xixing = function(self, from, card, to)
@@ -694,7 +694,7 @@ ai_skill_invoke["tongpao_jink"] = function(self, options, request)
     local lieges = self.room:getLieges("wu", self.player)
     for _, p in sgs.qlist(lieges) do
         if self:hasEightDiagramEffect(p) and self:isFriend(p) then
-            return (true) or false
+            return true
         end
     end
     return (self:getCardsNum("Jink") == 0) or false
@@ -852,21 +852,21 @@ ai_skill_invoke["tongpao_slash"] = function(self, options, request)
     for _, p in sgs.qlist(lieges) do
         if p and p:getPhase() ~= sgs.Player_NotActive and self:isFriend(p) and self:getOverflow(p) > 2 and
             not self:hasCrossbowEffect(p) then
-            return (true) or false
+            return true
         end
     end
     local cards = self.player:getHandcards()
     for _, card in sgs.qlist(cards) do
         if isCard("Slash", card, self.player) then
-            return (false) or false
+            return false
         end
     end
     for _, p in sgs.qlist(lieges) do
         if self:isFriend(p) then
-            return (true) or false
+            return true
         end
     end
-    return (false) or false
+    return false
 end
 sgs.ai_choicemade_filter.skillInvoke.tongpao_slash = function(self, player, promptlist)
     if promptlist[#promptlist] == "yes" then

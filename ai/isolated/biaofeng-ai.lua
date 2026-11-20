@@ -699,8 +699,8 @@ end
 
 ai_skill_invoke.PlusLuoyi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:isSkipped(sgs.Player_Play) then return (false) or false end
-	if self:needBear() then return (false) or false end
+	if self.player:isSkipped(sgs.Player_Play) then return false end
+	if self:needBear() then return false end
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
 	local slashtarget = 0
@@ -727,9 +727,9 @@ ai_skill_invoke.PlusLuoyi = function(self, options, request)
 		end
 	end
 	if (slashtarget + dueltarget) > 0 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 local PlusLuoyi_skill = {}
@@ -904,7 +904,7 @@ sgs.need_equip_skill = sgs.need_equip_skill .. "|PlusLuoyi"
 
 ai_skill_invoke.PlusHuwei = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getHp() == 1 then return (false) or false end
+	if self.player:getHp() == 1 then return false end
 	local dying = 0
 	local handang = self.room:findPlayerBySkillName("nosjiefan")
 	for _, aplayer in sgs.qlist(self.room:getAlivePlayers()) do
@@ -913,7 +913,7 @@ ai_skill_invoke.PlusHuwei = function(self, options, request)
 			break
 		end
 	end
-	if handang and self:isFriend(handang) and dying > 0 then return (false) or false end
+	if handang and self:isFriend(handang) and dying > 0 then return false end
 
 	local heart_jink = false
 	for _, card in sgs.qlist(self.player:getCards("he")) do
@@ -924,25 +924,25 @@ ai_skill_invoke.PlusHuwei = function(self, options, request)
 	end
 
 	local current = self.room:getCurrent()
-	if current and self:isFriend(current) and self.player:isChained() and self:isGoodChainTarget(self.player, current) then return (false) or false end
+	if current and self:isFriend(current) and self.player:isChained() and self:isGoodChainTarget(self.player, current) then return false end
 
 	if self.player:getHandcardNum() == 1 and self:getCardsNum("Jink") == 1 and self.player:hasSkills("zhiji|beifa") and self:needKongcheng() then
 		local enemy_num = self:getEnemyNumBySeat(self.room:getCurrent(), self.player, self.player)
-		if self.player:getHp() > enemy_num and enemy_num <= 1 then return (false) or false end
+		if self.player:getHp() > enemy_num and enemy_num <= 1 then return false end
 	end
-	if handang and self:isFriend(handang) and dying > 0 then return (false) or false end
-	if self.player:hasFlag("dahe") then return (false) or false end
+	if handang and self:isFriend(handang) and dying > 0 then return false end
+	if self.player:hasFlag("dahe") then return false end
 	local hujia_requester = self:getHujiaRequester(data)
-	if hujia_requester and (not self:isFriend(hujia_requester) or hujia_requester:hasFlag("dahe")) then return (false) or false end
-	if sgs.lianlisource and (not self:isFriend(sgs.lianlisource) or sgs.lianlisource:hasFlag("dahe")) then return (false) or false end
-	if self:needToLoseHp(self.player, nil, nil, true, true) then return (false) or false end
+	if hujia_requester and (not self:isFriend(hujia_requester) or hujia_requester:hasFlag("dahe")) then return false end
+	if sgs.lianlisource and (not self:isFriend(sgs.lianlisource) or sgs.lianlisource:hasFlag("dahe")) then return false end
+	if self:needToLoseHp(self.player, nil, nil, true, true) then return false end
 	if self:getCardsNum("Jink") == 0 then
-		return (true) or false
+		return true
 	else
-		return (false) or false
+		return false
 	end
 
-	return (true) or false
+	return true
 end
 
 ai_get_cardType = function(card)
@@ -1125,14 +1125,14 @@ function ai_skill_invoke.PlusJushou(self, options, request)
 	local sbdiaochan = self.room:findPlayerBySkillName("lihun")
 	if sbdiaochan and sbdiaochan:faceUp() and not self:willSkipPlayPhase(sbdiaochan)
 		and (self:isEnemy(sbdiaochan) or (self.room:getTurnCount() <= 1 and self:getRoleEstimate(sbdiaochan) == "neutral")) then
-		return (false) or false
+		return false
 	end
-	if not self.player:faceUp() then return (true) or false end
+	if not self.player:faceUp() then return true end
 	for _, friend in ipairs(self.friends) do
-		if self:hasSkills("fangzhu|jilve", friend) then return (true) or false end
+		if self:hasSkills("fangzhu|jilve", friend) then return true end
 		if friend:hasSkill("junxing") and friend:faceUp() and not self:willSkipPlayPhase(friend)
 			and not (friend:isKongcheng() and self:willSkipDrawPhase(friend)) then
-			return (true) or false
+			return true
 		end
 	end
 	return (self:isWeak()) or false
@@ -1263,7 +1263,7 @@ end
 
 ai_skill_invoke.PlusYizhong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 function sgs.ai_cardneed.PlusYizhong(to, card)
@@ -1290,10 +1290,10 @@ ai_skill_invoke.PlusJilei = function(self, options, request)
 	local damage = data:toDamage()
 	if damage.from and self:isEnemy(damage.from) then
 		if not damage.from:isKongcheng() and self:doDisCard(damage.from, "h") then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_suit["PlusJilei"] = function(self)
@@ -1446,11 +1446,11 @@ ai_skill_invoke.PlusDanji = function(self, options, request)
 	local damage = data:toDamage()
 	if damage.card and damage.card:isKindOf("Slash") then
 		if self:hasHeavyDamage(damage.from, damage.card, self.player) then
-			return (true) or false
+			return true
 		end
 	end
-	if self:needToLoseHp(self.player, damage.from) and damage.damage <= 1 then return (false) or false end
-	return (true) or false
+	if self:needToLoseHp(self.player, damage.from) and damage.damage <= 1 then return false end
+	return true
 end
 
 sgs.ai_ajustdamage_to.PlusDanji = function(self, from, to, card, nature)
@@ -1488,7 +1488,7 @@ end
 
 ai_skill_invoke.PlusFuzheng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_card_intention["#PlusFuzheng_Card"] = function(self, card, from, tos)
@@ -1799,12 +1799,12 @@ sgs.recover_hp_skill = sgs.recover_hp_skill .. "|PlusRende"
 
 ai_skill_invoke.PlusGuanxing = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.PlusKongcheng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.PlusKongcheng = function(self, targets)
@@ -1957,7 +1957,7 @@ end
 
 ai_skill_invoke.PlusChangsheng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.PlusLongdan_suit_value = {
@@ -2098,11 +2098,11 @@ end
 ai_skill_invoke.PlusTieji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not self:isEnemy(target) then return (false) or false end
-	if not self.player:canPindian(target, true) then return (false) or false end
+	if not self:isEnemy(target) then return false end
+	if not self.player:canPindian(target, true) then return false end
 
 	if self.player:getHandcardNum() == 1 then
-		if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then return (true) or false end
+		if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then return true end
 		local card = self.player:getHandcards():first()
 		if card:isKindOf("Jink") or card:isKindOf("Peach") then return false end
 	end
@@ -2110,10 +2110,10 @@ ai_skill_invoke.PlusTieji = function(self, options, request)
 	if (self.player:getHandcardNum() >= self.player:getHp() or self:getMaxCard():getNumber() > 10
 			or (self:needKongcheng() and self.player:getHandcardNum() == 1) or not self:hasLoseHandcardEffective())
 		and self:doDisCard(target, "he") then
-		return (true) or false
+		return true
 	end
-	if self:doDisCard(target, "e") then return (true) or false end
-	return (false) or false
+	if self:doDisCard(target, "e") then return true end
+	return false
 end
 
 ai_audited_aliases.register{id="ai_choicemade_filter.cardChosen.PlusTieji",registry="ai_choicemade_filter",path={"cardChosen","PlusTieji"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","snatch"},self_index=1,defer_canonical=true}
@@ -2132,7 +2132,7 @@ ai_skill_invoke.PlusJizhi = function(self, options, request)
 	if target then
 		return (self:doDisCard(target, "h")) or false
 	end
-	return (true) or false
+	return true
 end
 
 function sgs.ai_cardneed.PlusJizhi(to, card)
@@ -2147,7 +2147,7 @@ end
 ai_skill_invoke.PlusYongyi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	return (not self:isFriend(target)) or false
+	return not self:isFriend(target)
 end
 
 ai_skill_invoke.PlusLiegong = function(self, options, request)
@@ -2156,7 +2156,7 @@ ai_skill_invoke.PlusLiegong = function(self, options, request)
 	if use.from then
 		return (self:doDisCard(use.from, "h")) or false
 	end
-	return (true) or false
+	return true
 end
 
 sgs.ai_canliegong_skill.PlusLiegong = function(self, from, to)
@@ -2264,9 +2264,9 @@ ai_skill_invoke.PlusZaiqi_ss = function(self, options, request)
 	local card = self:cloneEvaluationCard("savage_assault")
 	
 	if self:getAoeValue(card) > 0 and ((self.player:getHandcardNum() <= 4)) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["@PlusZhongyong_Slash"] = function(self, data, pattern, target)
@@ -2364,9 +2364,9 @@ function ai_skill_invoke.PlusChouyuan(self, options, request)
 		end
 	end
 	if target and self:isFriend(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.PlusChouyuan = function(self,player,promptlist)
@@ -2389,15 +2389,15 @@ ai_skill_invoke.PlusChenggui = function(self, options, request)
 	if ((card:isKindOf("DefensiveHorse") and self.player:getDefensiveHorse())
 			or (card:isKindOf("OffensiveHorse") and (self.player:getOffensiveHorse() or (self.player:hasSkill("drmashu") and self.player:getDefensiveHorse()))))
 		and not self.player:hasSkills(sgs.lose_equip_skill) then
-		return (false) or false
+		return false
 	end
 	if card:isKindOf("Armor")
 		and ((self.player:hasSkills("bazhen|yizhong") and not self.player:getArmor())
 			or (self.player:getArmor() and self:evaluateArmor(card) < self:evaluateArmor(self.player:getArmor()))) then
-		return (false) or false
+		return false
 	end
-	if card:isKindOf("Weanpon") and (self.player:getWeapon() and self:evaluateArmor(card) < self:evaluateArmor(self.player:getWeapon())) then return (false) or false end
-	return (true) or false
+	if card:isKindOf("Weanpon") and (self.player:getWeapon() and self:evaluateArmor(card) < self:evaluateArmor(self.player:getWeapon())) then return false end
+	return true
 end
 
 local PlusChenggui_skill = {}
@@ -2847,20 +2847,20 @@ ai_skill_invoke["#PlusKeji_Jink"] = function(self, options, request)
 			break
 		end
 	end
-	if handang and self:isFriend(handang) and dying > 0 then return (false) or false end
+	if handang and self:isFriend(handang) and dying > 0 then return false end
 
 	local current = self.room:getCurrent()
-	if current and self:isFriend(current) and self.player:isChained() and self:isGoodChainTarget(self.player, current) then return (false) or false end
+	if current and self:isFriend(current) and self.player:isChained() and self:isGoodChainTarget(self.player, current) then return false end
 
 	if self.player:getHandcardNum() == 1 and self:getCardsNum("Jink") == 1 and self.player:hasSkills("zhiji|beifa") and self:needKongcheng() then
 		local enemy_num = self:getEnemyNumBySeat(self.room:getCurrent(), self.player, self.player)
-		if self.player:getHp() > enemy_num and enemy_num <= 1 then return (false) or false end
+		if self.player:getHp() > enemy_num and enemy_num <= 1 then return false end
 	end
-	if handang and self:isFriend(handang) and dying > 0 then return (false) or false end
-	if self:needToLoseHp(self.player, nil, nil, true, true) then return (false) or false end
-	if self:getCardsNum("Jink") == 0 then return (true) or false end
+	if handang and self:isFriend(handang) and dying > 0 then return false end
+	if self:needToLoseHp(self.player, nil, nil, true, true) then return false end
+	if self:getCardsNum("Jink") == 0 then return true end
 
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@PlusCuorui"] = function(self, prompt, request)
@@ -2979,7 +2979,7 @@ ai_skill_invoke.PlusQixi = function(self, options, request)
 	if self:isFriend(target) then
 		return (self:needToThrowArmor(target) or self:doDisCard(target, "hej") or target:getJudgingArea():length() > 0) or false
 	end
-	return (not self:isFriend(target)) or false
+	return not self:isFriend(target)
 end
 
 sgs.ai_skill_cardask["@PlusQixi_prompt"] = function(self, data, pattern, target)
@@ -3377,7 +3377,7 @@ sgs.ai_card_intention["#PlusLiangyuan_Card"] = -80
 
 ai_skill_invoke.PlusYinli = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 sgs.ai_skill_askforag.PlusYinli = function(self, card_ids)
 	if self:needKongcheng(self.player, true) then return card_ids[1] else return -1 end
@@ -3387,10 +3387,10 @@ ai_skill_invoke.PlusHongyan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isFriend(target) then
-		return (true) or false
+		return true
 	end
 
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_askforag.PlusHongyan = function(self, card_ids)
@@ -3478,9 +3478,9 @@ end
 function ai_skill_invoke.PlusBuqu(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if #self.enemies == 1 and self.enemies[1]:hasSkill("guhuo") then
-		return (false) or false
+		return false
 	else
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -3496,23 +3496,23 @@ function ai_skill_invoke.PlusHuzhu(self, options, request)
 	local dying = data:toDying()
 	local target = dying.who
 	if target and self:isFriend(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 function ai_skill_invoke.PlusBiyou(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isFriend(target) then
-		return (not self:isWeak()) or false
+		return not self:isWeak()
 	end
-	return (false) or false
+	return false
 end
 
 function ai_skill_invoke.PlusLiangjie(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 function ai_skill_invoke.PlusQiaojian(self, options, request)
@@ -3522,21 +3522,21 @@ function ai_skill_invoke.PlusQiaojian(self, options, request)
 		if not current:containsTrick("YanxiaoCard") then
 			if (current:containsTrick("lightning") and not self:hasWizard(self.friends) and self:hasWizard(self.enemies))
 				or (current:containsTrick("lightning") and #self.friends > #self.enemies) then
-				return (true) or false
+				return true
 			elseif current:containsTrick("supply_shortage") then
 				
-				return (true) or false
+				return true
 			elseif current:containsTrick("indulgence") then
-				if self.player:getHandcardNum() > 3 or self.player:getHandcardNum() > self.player:getHp() - 1 then return (true) or false end
+				if self.player:getHandcardNum() > 3 or self.player:getHandcardNum() > self.player:getHp() - 1 then return true end
 				for _, friend in ipairs(self.friends_noself) do
 					if not friend:containsTrick("YanxiaoCard") and (friend:containsTrick("indulgence") or friend:containsTrick("supply_shortage")) then
-						return (true) or false
+						return true
 					end
 				end
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["@PlusQiaojian_Prompt"] = function(self, data, pattern, target, target2)
@@ -4503,7 +4503,7 @@ ai_skill_invoke.PlusAnxi = function(self, options, request)
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
 	local target = self.room:getCurrent()
-	if self:isFriend(target) then return (false) or false end
+	if self:isFriend(target) then return false end
 	if target:getHandcardNum() > self.player:getHandcardNum() and not target:isKongcheng() and self.player:canPindian(target) then
 		local enemy_max_card = self:getMaxCard(target)
 		local allknown = 0
@@ -4514,15 +4514,15 @@ ai_skill_invoke.PlusAnxi = function(self, options, request)
 			or (enemy_max_card and max_point > enemy_max_card:getNumber() and allknown < 1 and max_point > 10)
 			or (not enemy_max_card and max_point > 10) then
 			self:remember("PlusAnxi_card", max_card:getKnownEffectiveId())
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.PlusAnxidamage = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_audited_aliases.register{id="ai_cardneed.PlusAnxi",registry="ai_cardneed",path={"PlusAnxi"},canonical_registry="ai_cardneed",canonical_path={"bignumber"},self_index=3,defer_canonical=true}
@@ -4659,8 +4659,8 @@ end
 ai_skill_invoke.PlusChenghao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:getCurrent()
-	if self:isFriend(target) then return (true) or false end
-	return (false) or false
+	if self:isFriend(target) then return true end
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.PlusChenghao = function(self, player, promptlist)
@@ -4702,19 +4702,19 @@ ai_skill_invoke.SixWulve = function(self, options, request)
 			local c = disclosed(self,id)
 			if c:targetFixed() then
 				if c:isKindOf("Peach") and target:isWounded() and target:getHp() <= 2 then
-					return (true) or false
+					return true
 				end
 				if c:isKindOf("ExNihilo") and target:getHandcardNum() <= 2 then
-					return (true) or false
+					return true
 				end
 				if c:isKindOf("SavageAssault") then
 					if self:getAoeValue(c) > 0 then
-						return (true) or false
+						return true
 					end
 				end
 				if c:isKindOf("ArcheryAttack") then
 					if self:getAoeValue(c) > 0 then
-						return (true) or false
+						return true
 					end
 				end
 				if c:isKindOf("AmazingGrace") then
@@ -4725,18 +4725,18 @@ ai_skill_invoke.SixWulve = function(self, options, request)
 						end
 					end
 					if low_handcard_friend then
-						return (true) or false
+						return true
 					end
 				end
 				if c:isKindOf("GodSalvation") then
 					if self:willUseGodSalvation(c) then
-						return (true) or false
+						return true
 					end
 				end
 				if c:isKindOf("EquipCard") then
 					local equip_index = c:getEquipSlot()
 					if target:getEquip(equip_index) == nil and target:hasEquipArea(equip_index) then
-						return (true) or false
+						return true
 					end
 				end
 			else
@@ -4745,7 +4745,7 @@ ai_skill_invoke.SixWulve = function(self, options, request)
 					local targets = {}
 					if not dummyuse.to:isEmpty() then
 						for _, p in sgs.qlist(dummyuse.to) do
-							return (true) or false
+							return true
 						end
 					end
 				end
@@ -4756,7 +4756,7 @@ ai_skill_invoke.SixWulve = function(self, options, request)
 					if not dummyuse.to:isEmpty() then
 						for _, p in sgs.qlist(dummyuse.to) do
 							if p:getHp() <= 2 and p:getCards("he"):length() <= 2 and p:getHandcardNum() <= 1 then
-								return (true) or false
+								return true
 							end
 						end
 					end
@@ -4765,7 +4765,7 @@ ai_skill_invoke.SixWulve = function(self, options, request)
 
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_askforag.SixWulve = function(self, card_ids)
@@ -5130,9 +5130,9 @@ end
 ai_skill_invoke.SixJushou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if sgs.ai_skill_playerchosen.SixJushou(self, AIList.new(self.room:getOtherPlayers(self.player))) ~= nil then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.SixJushou = function(self, targets)
@@ -5252,12 +5252,12 @@ ai_skill_invoke.SixQiaoxie = function(self, options, request)
 		if not dummy_use.to:isEmpty() then
 			for _, p in sgs.qlist(dummy_use.to) do
 				if not self.player:inMyAttackRange(p) then
-					return (true) or false
+					return true
 				end
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["@SixQiaoxie"] = function(self, data, pattern, target)
@@ -5299,8 +5299,8 @@ ai_skill_invoke.SixZhidi = function(self, options, request)
 	local use = data:toCardUse()
 
 	if use.card then
-		if use.card:isKindOf("Peach") then return (false) or false end
-		return (not (use.card:isKindOf("Slash") and self:isPriorFriendOfSlash(self.player, use.card, use.from))) or false
+		if use.card:isKindOf("Peach") then return false end
+		return not (use.card:isKindOf("Slash") and self:isPriorFriendOfSlash(self.player, use.card, use.from))
 	end
 	return false
 
@@ -5894,18 +5894,18 @@ ai_skill_invoke.SixZhongyong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	local use = tag(self,"CurrentUseStruct"):toCardUse()
-	if not self:isFriend(target) or self:isFriend(use.from) then return (false) or false end
+	if not self:isFriend(target) or self:isFriend(use.from) then return false end
 	if use.card and use.card:isKindOf("Slash") then
-		if target:hasSkills("liuli|tianxiang|ol_tianxiang") and target:getHandcardNum() > 1 then return (false) or false end
-		if not self:slashIsEffective(use.card, target, use.from) then return (false) or false end
-		if self:getCardsNum("Jink") > 0 then return (true) or false end
+		if target:hasSkills("liuli|tianxiang|ol_tianxiang") and target:getHandcardNum() > 1 then return false end
+		if not self:slashIsEffective(use.card, target, use.from) then return false end
+		if self:getCardsNum("Jink") > 0 then return true end
 	end
-	if self:needToLoseHp(target, use.from, use.card) then return (false) or false end
-	if self.player:getHandcardNum() + self.player:getEquips():length() < 2 and not self:isWeak(target) then return (false) or false end
+	if self:needToLoseHp(target, use.from, use.card) then return false end
+	if self.player:getHandcardNum() + self.player:getEquips():length() < 2 and not self:isWeak(target) then return false end
 
-	if self:isWeak(target) and not self:isWeak() then return (true) or false end
+	if self:isWeak(target) and not self:isWeak() then return true end
 
-	return (false) or false
+	return false
 end
 
 ai_skill_use["@@SixChouyuan"] = function(self, prompt, request)
@@ -5932,10 +5932,10 @@ ai_skill_invoke.SixWujun = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:getCurrent()
 	if target and self:isEnemy(target) then
-		return (true) or false
+		return true
 	end
 
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.SixWujun = function(self, player, promptlist)
@@ -6090,13 +6090,13 @@ end
 ai_skill_invoke.SixHusi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local move = data:toMoveOneTime()
-	if self.player:isLord() and self:isWeak() then return (false) or false end
+	if self.player:isLord() and self:isWeak() then return false end
 	if move.from and self:isFriend(move.from) and move.to and not self:isFriend(move.to) then
 		return (move.card_ids:length() >= 2 or self:isWeak(move.from)) or false
 	end
-	if move.from and move.from:objectName() == self.player:objectName() then return (not self:isWeak()) or false end
+	if move.from and move.from:objectName() == self.player:objectName() then return not self:isWeak() end
 
-	return (false) or false
+	return false
 end
 
 sgs.exclusive_skill = sgs.exclusive_skill .. "|SixToujing"
@@ -6139,7 +6139,7 @@ end
 
 ai_skill_invoke.PlusYingwu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not (self.player:hasSkill("yingzi") and self.player:hasSkill("yinghun"))) or false
+	return not (self.player:hasSkill("yingzi") and self.player:hasSkill("yinghun"))
 end
 
 sgs.ai_skill_cardask["@PlusYingwu"] = function(self, data, pattern, target, target2)
@@ -6182,7 +6182,7 @@ end
 
 ai_skill_invoke.SixLiangjieDraw = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_cardask["@SixZenhui"] = function(self, data, pattern, target, target2)
@@ -6232,7 +6232,7 @@ end
 
 ai_skill_invoke.SixJiahuoSecond = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 local SixChunlao_skill = {}
@@ -6488,7 +6488,7 @@ end
 
 ai_skill_invoke["SevenJiujia"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 function sgs.ai_slash_prohibit.SevenJiujia(self, from, to, card)
@@ -6685,11 +6685,11 @@ ai_skill_invoke["SixJianCe"] = function(self, options, request)
 			or (not enemy_max_card and max_point > 10) then
 			if self.player:getHandcardNum() > target:getHandcardNum() then
 				self:remember("SixJianCe_card", max_card:getKnownEffectiveId())
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_discard.SixJianCe = function(self, discard_num, optional, include_equip)
@@ -6716,20 +6716,20 @@ end
 ai_audited_aliases.register{id="ai_cardneed.SixShouLue",registry="ai_cardneed",path={"SixShouLue"},canonical_registry="ai_cardneed",canonical_path={"equip"},self_index=3,defer_canonical=true}
 ai_skill_invoke["SixYangShi"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke["SevenRenDe"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if self.player:isWounded() or self:isWeak() or self.player:getHandcardNum() < 3 then
-		return (true) or false
+		return true
 	end
 
 	if #self.friends_noself >= #self.enemies then
-		return (true) or false
+		return true
 	end
 
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["@SevenRenDe"] = function(self, data, pattern, target, target2)
@@ -6750,7 +6750,7 @@ end
 
 function ai_skill_invoke.SevenJuDi(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@@SevenJuDi"] = function(self, prompt, request)
@@ -6804,13 +6804,13 @@ function ai_skill_invoke.SevenKanLuan(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local discard_num = self.player:getHandcardNum() - self.player:getHp()
 	if discard_num >= 3 then
-		return (false) or false
+		return false
 	end
 	local cardstr = source_uses["@@SevenKanLuan"](self, "@SevenKanLuan")
 	if cardstr:match("->") then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_use["@@SevenKanLuan"] = function(self, prompt, request)
@@ -6937,14 +6937,14 @@ function ai_skill_invoke.SevenTaoHui(self, options, request)
 	local sbdiaochan = self.room:findPlayerBySkillName("lihun")
 	if sbdiaochan and sbdiaochan:faceUp() and not self:willSkipPlayPhase(sbdiaochan)
 		and (self:isEnemy(sbdiaochan) or (self.room:getTurnCount() <= 1 and self:getRoleEstimate(sbdiaochan) == "neutral")) then
-		return (false) or false
+		return false
 	end
-	if not self.player:faceUp() then return (true) or false end
+	if not self.player:faceUp() then return true end
 	for _, friend in ipairs(self.friends) do
-		if self:hasSkills("fangzhu|jilve", friend) then return (true) or false end
+		if self:hasSkills("fangzhu|jilve", friend) then return true end
 		if friend:hasSkill("junxing") and friend:faceUp() and not self:willSkipPlayPhase(friend)
 			and not (friend:isKongcheng() and self:willSkipDrawPhase(friend)) then
-			return (true) or false
+			return true
 		end
 	end
 	local current = self.room:getCurrent()
@@ -6954,7 +6954,7 @@ end
 
 function ai_skill_invoke.SevenLangMou(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_cardask["@SevenQuanBian-card"] = function(self, data)
@@ -7050,20 +7050,20 @@ function ai_skill_invoke.SevenQuanBian(self, options, request)
 	end
 
 	if down > 0 and card:isBlack() then
-		return (true) or false
+		return true
 	elseif up > 0 and card:isRed() then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.SevenChuaiYi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage and damage.from and self:isEnemy(damage.from) then
-		return (true) or false
+		return true
 	end
-	return (not self:needToLoseHp(damage.to, damage.from, damage.card)) or false
+	return not self:needToLoseHp(damage.to, damage.from, damage.card)
 end
 
 sgs.ai_skill_cardask["@SevenChuaiYi-show"] = function(self, data)
@@ -7116,10 +7116,10 @@ ai_skill_invoke.SevenZhiDi = function(self, options, request)
 	local target = data:toPlayer()
 	if target then
 		if self:isEnemy(target) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.SevenZhiDi = function(self, player, promptlist)
@@ -7222,7 +7222,7 @@ sgs.ai_card_intention["#SevenFenLiang"] = 80
 
 ai_skill_invoke.SevenPingPan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 -- Fixed donor tests #promptlist (integer) against the string "yes".
@@ -7235,9 +7235,9 @@ ai_skill_invoke.SevenHuBei = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isFriend(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["@SevenHuBei"] = function(self, data)
@@ -7306,7 +7306,7 @@ end
 
 ai_skill_invoke.SevenYiZe = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.SevenYiZe = function(self, targets)
@@ -7644,9 +7644,9 @@ ai_skill_invoke.SevenTaDao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isEnemy(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.SevenTaDao = function(self, targets)
@@ -7655,7 +7655,7 @@ sgs.ai_skill_playerchosen.SevenTaDao = function(self, targets)
 end
 ai_skill_invoke.SevenMiDao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 local SevenChuanJiao_skill = {}
@@ -7781,7 +7781,7 @@ end
 ai_skill_invoke.SevenYueDan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local ids = tag(self,"SevenFengPing"):toString():split("+") or {}
-	if #ids == 0 then return (false) or false end
+	if #ids == 0 then return false end
 	local x = 0
 	for _, id in pairs(ids) do
 		if disclosed(self,id):isKindOf("BasicCard") and self.room:getCardPlace(tonumber(id)) == sgs.Player_DiscardPile then
@@ -7789,9 +7789,9 @@ ai_skill_invoke.SevenYueDan = function(self, options, request)
 		end
 	end
 	if x >= 3 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 for _,skill in ipairs(package_skills)do ai_fill_skill[skill.name]=skill.getTurnUseCard end

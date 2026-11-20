@@ -193,11 +193,11 @@ end
 
 ai_skill_invoke.keqizhenglue = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 ai_skill_invoke.keqizhengluegaincard = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerschosen.keqizhenglue = function(self, targets, max, min)
@@ -287,9 +287,9 @@ ai_skill_invoke.keqijishan = function(self, options, request)
 	local damage = package_known(data,"toDamage")
 
 	if (package_known(damage.to,"objectName") == package_known(self.player,"objectName")) then
-		return (true) or false
+		return true
 	elseif package_known(self,"isFriend",damage.to) and (not package_known(self,"isWeak") or (package_known(damage.to,"isLord") and package_known(self,"isWeak",damage.to))) then
-		return (not package_known(self,"needToLoseHp",damage.to, damage.from, damage.card)) or false
+		return not package_known(self,"needToLoseHp",damage.to, damage.from, damage.card)
 	end
 	return false
 
@@ -558,7 +558,7 @@ end
 ai_skill_invoke.keqizhaobing = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self.player,"getHandcardNum") < 3 then
-	    return (not sgs.ai_skill_playerschosen.keqizhaobing(self,  package_known(self.room,"getOtherPlayers",self.player), package_known(self.player,"getHandcardNum"), 0):isEmpty()) or false
+	    return not sgs.ai_skill_playerschosen.keqizhaobing(self,  package_known(self.room,"getOtherPlayers",self.player), package_known(self.player,"getHandcardNum"), 0):isEmpty()
 	end
 	return false
 
@@ -717,7 +717,7 @@ ai_skill_invoke.keqimingshi = function(self, options, request)
 
 	local data = request and self:getDecisionData(request) or nil
 	local dmg = package_known(data,"toDamage")
-	if dmg.to and not package_known(self,"isFriend",dmg.to) then return (false) or false end
+	if dmg.to and not package_known(self,"isFriend",dmg.to) then return false end
 	if package_known(self.player,"isChained") and dmg.nature~=sgs.DamageStruct_Normal
 	and not package_known(self, "isGoodChainTarget", self.player, dmg.from, not dmg.card and dmg.nature or nil, dmg.damage, dmg.card)
 	then
@@ -725,20 +725,20 @@ ai_skill_invoke.keqimingshi = function(self, options, request)
 	and (package_known(self.player,"hasSkills",sgs.recover_skill)
 		or package_known(self,"needToLoseHp",self.player, dmg.from, dmg.card)
 		or (package_known(self.player,"getHandcardNum")<3 and (package_known(self.player,"hasSkill","nosrende") or (package_known(self.player,"hasSkill","rende") and not package_known(self.player,"hasUsed","RendeCard")))))
-	then return (true) or false
+	then return true
 	elseif dmg.card and package_known(dmg.card,"getTypeId")==sgs.Card_TypeTrick
 	and package_known(self.player,"hasSkill","wuyan")
-	then return (true) or false
+	then return true
 	elseif hasBuquEffect(self.player)
-	then return (true) or false end
-	if package_known(self,"isWeak",dmg.to) then return (true) or false end
-	return (false) or false
+	then return true end
+	if package_known(self,"isWeak",dmg.to) then return true end
+	return false
 end
 
 ai_skill_invoke.keqilirang_use = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self.player,"getStrategyFlag","aiuselirang") then
-	    return (true) or false
+	    return true
 	end
 	return false
 
@@ -768,7 +768,7 @@ sgs.ai_skill_discard.keqilirang = function(self)
 end
 ai_skill_invoke.keqilirang_get = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .. "|keqilirang"
 
@@ -777,10 +777,10 @@ ai_skill_invoke.keqichaozheng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _, p in sgs.qlist(package_known(self.room,"getOtherPlayers",self.player)) do
 		if package_known(self,"isFriend",p) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -961,15 +961,15 @@ end
 
 ai_skill_invoke.keqijulian = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_invoke.keqitushe = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _, c in sgs.qlist(package_known(self.player,"getCards","h")) do
-		if package_known(c,"isKindOf","BasicCard") then return (false) or false end
+		if package_known(c,"isKindOf","BasicCard") then return false end
 	end
-    return (true) or false
+    return true
 end
 
 
@@ -1098,23 +1098,23 @@ function sgs.ai_cardneed.keqijuezhi(to,card,self)
 end
 ai_skill_invoke.keqijuezhi_wq = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_invoke.keqijuezhi_fj = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_invoke.keqijuezhi_fy = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_invoke.keqijuezhi_jg = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_invoke.keqijuezhi_bw = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_ajustdamage_from.keqijuezhi = function(self, from, to, card, nature)
@@ -1130,7 +1130,7 @@ end
 
 ai_skill_invoke.keqijuezhi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 sgs.ai_skill_playerchosen.keqijizhao = function(self, targets)
 	targets = sgs.QList2Table(targets)
@@ -1416,8 +1416,8 @@ end
 ai_skill_invoke.keqifendi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = package_call(data,"toPlayer")
-	if not package_known(self,"isFriend",target) then return (true) or false end
-	return (false) or false
+	if not package_known(self,"isFriend",target) then return true end
+	return false
 end
 
 ai_skill_invoke.keqijuxiang = function(self, options, request)
@@ -1444,7 +1444,7 @@ sgs.hit_skill = sgs.hit_skill .. "|keqifendi"
 
 ai_skill_invoke.keqijizhanw = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_choice.keqijizhanw = function(self, options, request)
@@ -1515,7 +1515,7 @@ sgs.ai_card_intention.kechengduxingCard = 66
 
 ai_skill_invoke.kechengzhasi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_canNiepan_skill.kechengzhasi = function(player)
@@ -1876,7 +1876,7 @@ end
 
 ai_skill_invoke.kechenglipan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_discard.kechenglipan = function(self)
@@ -2334,12 +2334,12 @@ ai_skill_invoke.kechengyirang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _,p in sgs.qlist(package_known(self.room,"getOtherPlayers",self.player)) do
 		if package_known(self,"isFriend",p) and package_known(p,"getMaxHp")>package_known(self.player,"getMaxHp") then
-			return (true) or false
+			return true
 		end
 	end
 	for _,p in sgs.qlist(package_known(self.room,"getOtherPlayers",self.player)) do
 		if not package_known(self,"isEnemy",p) and package_known(p,"getMaxHp")>=package_known(self.player,"getMaxHp") and package_known(self,"isWeak") then
-			return (true) or false
+			return true
 		end
 	end
 	return false
@@ -2467,7 +2467,7 @@ end
 
 ai_skill_invoke.kechengneifa = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.kechengneifa = function(self, targets)
@@ -2694,7 +2694,7 @@ ai_skill_invoke.kezhuandingce = function(self, options, request)
 	elseif package_known(self,"isFriend",from) then
 		return (package_known(from,"getHandcardNum")>package_known(from,"getHp")) or false
 	else
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -3403,7 +3403,7 @@ end
 ai_skill_invoke.kezhuanshacheng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self.player,"getStrategyFlag","wantuseshacheng") then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -3411,7 +3411,7 @@ end
 
 ai_skill_invoke.kezhuanninghan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -3488,7 +3488,7 @@ end
 
 ai_skill_invoke.kezhuanhujian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 local kezhuanshili_skill={}
@@ -3577,7 +3577,7 @@ sgs.ai_card_intention.kezhuanyangmingCard = 80
 
 ai_skill_invoke.kezhuanyangming = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 -- The fixed producer passes its newly-created plain list to getUseValue.
@@ -3931,7 +3931,7 @@ end
 ai_skill_invoke.keheyinlue = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self.player,"getStrategyFlag","wantuseyinlue") then
-	    return (true) or false
+	    return true
 	end
 	return false
 
@@ -3950,7 +3950,7 @@ sgs.ai_use_priority.kehechushiCard = 7.5
 
 ai_skill_invoke.kehedaimou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.kehefangjie = function(self, options, request)
@@ -4023,7 +4023,7 @@ sgs.ai_card_intention.kehefuhaiCard = 33
 
 ai_skill_invoke.kehepianchong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -4236,12 +4236,12 @@ end
 
 ai_skill_invoke.keheyingshi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.kehetuigu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.kehetuigu = function(self, targets)
@@ -4472,7 +4472,7 @@ sgs.ai_card_intention.kehedailaoCard = 80
 
 ai_skill_invoke.keheyaoyan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.keheyaoyan = function(self, options, request)
@@ -4654,12 +4654,12 @@ end
 
 ai_skill_invoke.keshuaizhimeng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.keshuaitianyu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_fill_skill.keshuaizhuni = function(self, options, request)
@@ -4932,7 +4932,7 @@ end
 
 ai_skill_invoke.keshuairuzong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 local keshuaidaoren={}
@@ -4988,7 +4988,7 @@ sgs.ai_use_priority.keshuaidaorenCard = 2.4
 
 ai_skill_invoke.keshuaixuchong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.keshuaixuchong = function(self, options, request)
@@ -5014,7 +5014,7 @@ ai_skill_invoke.keshuaigangfen = function(self, options, request)
 	local use = room_tag(self,"keshuaigangfenData")
 	if package_known(str,"contains","ask2") then
 		if package_known(self,"isFriend",package_known(use.to,"at",0)) then
-			return (true) or false
+			return true
 		end
 	else
 		if package_known(self,"isEnemy",use.from) and package_known(self,"isFriend",package_known(use.to,"at",0)) then
@@ -5027,7 +5027,7 @@ end
 
 ai_skill_invoke.keshuaidangren = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -5124,12 +5124,12 @@ end
 
 ai_skill_invoke.keshuaixiangjia = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.keshuaijueyin = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.keshuaizonghai = function(self, options, request)

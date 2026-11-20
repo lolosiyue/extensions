@@ -240,10 +240,10 @@ end
 ai_skill_invoke.GodManwu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local card = tag_card(self,"GodManwu")
-	if self:isWeak() and (card:isKindOf("Peach") or card:isKindOf("Analeptic")) then return (true) or false end
-	if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow") and card:isKindOf("Slash") then return (true) or false end
-	if not self:isWeak() and (card:isKindOf("Snatch") or card:isKindOf("ExNihilo") or card:isKindOf("Dismantlement")) then return (true) or false end
-	return (false) or false
+	if self:isWeak() and (card:isKindOf("Peach") or card:isKindOf("Analeptic")) then return true end
+	if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow") and card:isKindOf("Slash") then return true end
+	if not self:isWeak() and (card:isKindOf("Snatch") or card:isKindOf("ExNihilo") or card:isKindOf("Dismantlement")) then return true end
+	return false
 end
 
 
@@ -262,13 +262,13 @@ function ai_skill_invoke.LuaXJianshou(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local sbdiaochan = self.room:findPlayerBySkillName("lihun")
 	if sbdiaochan and sbdiaochan:faceUp() and not self:willSkipPlayPhase(sbdiaochan)
-		and (self:isEnemy(sbdiaochan) or (known(self.world.turn_count,"turncount") <= 1 and role(self,sbdiaochan) == "neutral")) then return (false) or false end
-	if not self.player:faceUp() then return (true) or false end
+		and (self:isEnemy(sbdiaochan) or (known(self.world.turn_count,"turncount") <= 1 and role(self,sbdiaochan) == "neutral")) then return false end
+	if not self.player:faceUp() then return true end
 	for _, friend in ipairs(self.friends) do
-		if self:hasSkills("fangzhu|jilve", friend) then return (true) or false end
+		if self:hasSkills("fangzhu|jilve", friend) then return true end
 		if friend:hasSkill("junxing") and friend:faceUp() and not self:willSkipPlayPhase(friend)
 			and not (friend:isKongcheng() and self:willSkipDrawPhase(friend)) then
-			return (true) or false
+			return true
 		end
 	end
 	return (self:isWeak()) or false

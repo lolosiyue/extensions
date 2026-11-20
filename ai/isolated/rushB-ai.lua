@@ -216,9 +216,9 @@ ai_skill_invoke.rushB_jiuyuan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and self:isFriend(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.rushB_jiuyuan = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -575,7 +575,7 @@ ai_skill_invoke.wen_jingtian = true
 ai_skill_invoke.wen_jtweidi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	return (not self:needToLoseHp(self.player, damage.from, damage.card)) or false
+	return not self:needToLoseHp(self.player, damage.from, damage.card)
 end
 
 ai_skill_invoke.wen_zemin = function(self, options, request)
@@ -915,9 +915,9 @@ end
 
 -- audited alias ai_skill_playerchosen.diy_k_qizhi
 ai_skill_invoke.diy_k_jinqu = function(self, options, request)
-	if self.room:getCurrent() and self.room:getCurrent():objectName() ~= self.player:objectName() then return (true) or false end
-	if self.player:getStrategyMark("&qizhi-Clear")>=self.player:getHandcardNum() then return (true) or false end
-	return (false) or false
+	if self.room:getCurrent() and self.room:getCurrent():objectName() ~= self.player:objectName() then return true end
+	if self.player:getStrategyMark("&qizhi-Clear")>=self.player:getHandcardNum() then return true end
+	return false
 end
 
 ai_fill_skill.diy_k_fanghun=function(self, options, request)
@@ -962,7 +962,7 @@ ai_skill_invoke.diy_k_fuhan = function(self, options, request)
 	else
 		return (meiying>self.player:getMaxHp()) or false
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -2558,14 +2558,14 @@ end
 ai_skill_invoke.mk_danlveYY = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
-	if use.card:isKindOf("DelayedTrick") or use.card:isKindOf("EquipCard") then return (false) or false end
-    return (true) or false
+	if use.card:isKindOf("DelayedTrick") or use.card:isKindOf("EquipCard") then return false end
+    return true
 end
 ai_skill_invoke.mk_danlveQG = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
-	if use.card:isKindOf("DelayedTrick") or use.card:isKindOf("EquipCard") then return (false) or false end
-    return (true) or false
+	if use.card:isKindOf("DelayedTrick") or use.card:isKindOf("EquipCard") then return false end
+    return true
 end
 
 

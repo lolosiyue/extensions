@@ -342,7 +342,7 @@ end
 
 ai_skill_invoke.double_sword = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not query(self,"needKongcheng",self.player,true)) or false
+	return not query(self,"needKongcheng",self.player,true)
 end
 
 
@@ -351,22 +351,22 @@ ai_skill_invoke.ice_sword = function(self, options, request)
 	local damage = known(data:toDamage(), "decision damage")
 	local target = damage.to
 	if query(self,"isFriend",target) then
-		if query(self,"needToLoseHp",target,self.player,damage.card) then return (false) or false
-		elseif target:isChained() and query(self, "isGoodChainTarget", target, nil, nil, nil, damage.card) then return (false) or false
-		elseif query(self,"isWeak",target) or damage.damage>1 then return (true) or false
-		elseif query(target,"getLostHp")<1 then return (false) or false end
-		return (true) or false
+		if query(self,"needToLoseHp",target,self.player,damage.card) then return false
+		elseif target:isChained() and query(self, "isGoodChainTarget", target, nil, nil, nil, damage.card) then return false
+		elseif query(self,"isWeak",target) or damage.damage>1 then return true
+		elseif query(target,"getLostHp")<1 then return false end
+		return true
 	else
-		if query(self,"isWeak",target) then return (false) or false end
-		if damage.damage>1 or query(self,"ajustDamage",self.player,target,1,damage.card)>1 then return (false) or false end
-		if query(target,"hasSkill","lirang") and #query(self,"getFriends",target,true)>0 then return (false) or false end
-		if target:getArmor() and query(self,"evaluateArmor",target:getArmor(),target)>3 and not (query(target,"hasArmorEffect","SilverLion") and query(target,"isWounded")) then return (true) or false end
+		if query(self,"isWeak",target) then return false end
+		if damage.damage>1 or query(self,"ajustDamage",self.player,target,1,damage.card)>1 then return false end
+		if query(target,"hasSkill","lirang") and #query(self,"getFriends",target,true)>0 then return false end
+		if target:getArmor() and query(self,"evaluateArmor",target:getArmor(),target)>3 and not (query(target,"hasArmorEffect","SilverLion") and query(target,"isWounded")) then return true end
 		local num = query(target,"getHandcardNum")
-		if query(self.player,"hasSkill","tieji") or query(self,"canLiegong",target,self.player) then return (false) or false end
-		if hasTuntianEffect(target, true) and query(target,"getPhase")==sgs.Player_NotActive then return (false) or false end
-		if query(self,"hasSkills",sgs.need_kongcheng,target) then return (false) or false end
-		if (query(target,"getHandcardNum")+query(target,"getEquips"):length())<4 and (query(target,"getHandcardNum")+query(target,"getEquips"):length())>1 then return (true) or false end
-		return (false) or false
+		if query(self.player,"hasSkill","tieji") or query(self,"canLiegong",target,self.player) then return false end
+		if hasTuntianEffect(target, true) and query(target,"getPhase")==sgs.Player_NotActive then return false end
+		if query(self,"hasSkills",sgs.need_kongcheng,target) then return false end
+		if (query(target,"getHandcardNum")+query(target,"getEquips"):length())<4 and (query(target,"getHandcardNum")+query(target,"getEquips"):length())>1 then return true end
+		return false
 	end
 	return false
 
@@ -376,7 +376,7 @@ end
 ai_skill_invoke.kylin_bow = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = known(data:toDamage(), "decision damage")
-	if query(damage.from,"hasSkill","kuangfu") and query(damage.to,"getCards","e"):length()==1 then return (false) or false end
+	if query(damage.from,"hasSkill","kuangfu") and query(damage.to,"getCards","e"):length()==1 then return false end
 	if query(self,"hasSkills",sgs.lose_equip_skill,damage.to) then
 		return (query(self,"isFriend",damage.to)) or false
 	end
@@ -755,7 +755,7 @@ ai_skill_invoke.eight_diagram = function(self, options, request)
 	for _,aplayer in sgs.list(query(self.room,"getAlivePlayers"))do
 		if query(aplayer,"getHp")<1 and not query(aplayer,"hasSkill","nosbuqu") then dying = 1 break end
 	end
-	if handang and query(self,"isFriend",handang) and dying>0 then return (false) or false end
+	if handang and query(self,"isFriend",handang) and dying>0 then return false end
 
 	local heart_jink = false
 	for _,card in sgs.list(query(self.player,"getCards","he"))do
@@ -767,31 +767,31 @@ ai_skill_invoke.eight_diagram = function(self, options, request)
 
 	local hujia_requester=self:getHujiaRequester(data)
 	if query(self,"hasSkills","tiandu|leiji|nosleiji|gushou") then
-		if query(self.player,"getStrategyFlag","dahe") and not heart_jink then return (true) or false end
-		if hujia_requester and not query(self,"isFriend",hujia_requester) and (query(hujia_requester,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return (true) or false end
-		if lianlisource and not query(self,"isFriend",lianlisource) and (query(lianlisource,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return (true) or false end
-		if query(self.player,"getStrategyFlag","dahe") and handang and query(self,"isFriend",handang) and dying>0 then return (true) or false end
+		if query(self.player,"getStrategyFlag","dahe") and not heart_jink then return true end
+		if hujia_requester and not query(self,"isFriend",hujia_requester) and (query(hujia_requester,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return true end
+		if lianlisource and not query(self,"isFriend",lianlisource) and (query(lianlisource,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return true end
+		if query(self.player,"getStrategyFlag","dahe") and handang and query(self,"isFriend",handang) and dying>0 then return true end
 	end
 	if query(self.player,"getHandcardNum")==1 and query(self,"getCardsNum","Jink")==1 and query(self.player,"hasSkills","zhiji|beifa") and query(self,"needKongcheng") then
 		local enemy_num = query(self,"getEnemyNumBySeat",self.room:getCurrent(),self.player,self.player)
-		if query(self.player,"getHp")>enemy_num and enemy_num<=1 then return (false) or false end
+		if query(self.player,"getHp")>enemy_num and enemy_num<=1 then return false end
 	end
-	if handang and query(self,"isFriend",handang) and dying>0 then return (false) or false end
-	if query(self.player,"getStrategyFlag","dahe") then return (false) or false end
-	if hujia_requester and (not query(self,"isFriend",hujia_requester) or query(hujia_requester,"getStrategyFlag","dahe")) then return (false) or false end
-	if lianlisource and (not query(self,"isFriend",lianlisource) or query(lianlisource,"getStrategyFlag","dahe")) then return (false) or false end
-	if SevenJiujia and (not query(self,"isFriend",SevenJiujia) or query(SevenJiujia,"getStrategyFlag","dahe")) then return (false) or false end
-	if tongpaoJink and (not query(self,"isFriend",tongpaoJink) or query(tongpaoJink,"getStrategyFlag","dahe")) then return (false) or false end
-	if tongpao and (not query(self,"isFriend",tongpao) or query(tongpao,"getStrategyFlag","dahe")) then return (false) or false end
-	if query(self,"needToLoseHp",self.player,nil,query(self,"getEvaluationCard","slash"),true) then return (false) or false end
-	if query(self,"getCardsNum","Jink")==0 then return (true) or false end
+	if handang and query(self,"isFriend",handang) and dying>0 then return false end
+	if query(self.player,"getStrategyFlag","dahe") then return false end
+	if hujia_requester and (not query(self,"isFriend",hujia_requester) or query(hujia_requester,"getStrategyFlag","dahe")) then return false end
+	if lianlisource and (not query(self,"isFriend",lianlisource) or query(lianlisource,"getStrategyFlag","dahe")) then return false end
+	if SevenJiujia and (not query(self,"isFriend",SevenJiujia) or query(SevenJiujia,"getStrategyFlag","dahe")) then return false end
+	if tongpaoJink and (not query(self,"isFriend",tongpaoJink) or query(tongpaoJink,"getStrategyFlag","dahe")) then return false end
+	if tongpao and (not query(self,"isFriend",tongpao) or query(tongpao,"getStrategyFlag","dahe")) then return false end
+	if query(self,"needToLoseHp",self.player,nil,query(self,"getEvaluationCard","slash"),true) then return false end
+	if query(self,"getCardsNum","Jink")==0 then return true end
 	local zhangjiao = self.room:findPlayerBySkillName("guidao")
 	if zhangjiao and query(self,"isEnemy",zhangjiao) then
-		if getKnownCard(zhangjiao,self.player,"black",false,"he")>1 then return (false) or false end
-		if query(self,"getCardsNum","Jink")>1 and getKnownCard(zhangjiao,self.player,"black",false,"he")>0 then return (false) or false end
+		if getKnownCard(zhangjiao,self.player,"black",false,"he")>1 then return false end
+		if query(self,"getCardsNum","Jink")>1 and getKnownCard(zhangjiao,self.player,"black",false,"he")>0 then return false end
 	end
-	if query(self,"getCardsNum","Jink")>0 and query(self.player,"getPile","incantation"):length()>0 then return (false) or false end
-	return (true) or false
+	if query(self,"getCardsNum","Jink")>0 and query(self.player,"getPile","incantation"):length()>0 then return false end
+	return true
 end
 
 

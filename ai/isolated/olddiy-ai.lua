@@ -398,9 +398,9 @@ ai_skill_invoke.lybeixi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toDamage().from
 	if self:toTurnOver(target,target:getLostHp(),"lybeixi") then
-        return (true) or false
+        return true
     end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.lybeixi = function(self, player, promptlist)
@@ -433,29 +433,29 @@ ai_skill_invoke.fjsp_youlong = function(self, options, request)
 	if not self.player:faceUp() then
 		if self.player:canSlash(damage.from, slash, false) then
 			if self:isEnemy(damage.from) and self:isGoodTarget(damage.from, self.enemies, slash) and self:slashIsEffective(slash, damage.from, self.player) then
-				return (true) or false
+				return true
 			end
 		end
 		if self.player:canSlash(damage.to, slash, false) then
 			if self:isEnemy(damage.to) and self:isGoodTarget(damage.to, self.enemies, slash) and self:slashIsEffective(slash, damage.to, self.player) then
-				return (true) or false
+				return true
 			end
 		end
 	else
 		if self:getEnemyNumBySeat(self.room:getCurrent(), self.player, self.player, true) >= 2 then
 			if self.player:canSlash(damage.from, slash, false) then
 				if self:isEnemy(damage.from) and self:isGoodTarget(damage.from, self.enemies, slash) and self:slashIsEffective(slash, damage.from, self.player) then
-					return (true) or false
+					return true
 				end
 			end
 		end
 		if self.player:canSlash(damage.to, slash, false) then
 			if self:isEnemy(damage.to) and self:isGoodTarget(damage.to, self.enemies, slash) and self:slashIsEffective(slash, damage.to, self.player) then
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.fjsp_youlong = sgs.ai_skill_playerchosen.zero_card_as_slash
@@ -524,12 +524,12 @@ ai_skill_invoke.cuoyong = function(self, options, request)
 			end
 			if target then
 				if self:isFriend(target) then
-					return (not target:hasSkill("manjuan")) or false
+					return not target:hasSkill("manjuan")
 				end
 			end
 		end
 	end
-	return (true) or false
+	return true
 end
 
 
@@ -672,12 +672,12 @@ ai_skill_invoke.LuaLongya = function(self, options, request)
 	local damage = data:toDamage()
 	local target = damage.to
 	if self:isEnemy(target) then
-		if self.player:getStrategyMark("&zhican") < 6 then return (false) or false end
-		if self:isWeak(target) then return (false) or false end
-		if hasZhaxiangEffect(target) then return (false) or false end
-		return (true) or false
+		if self.player:getStrategyMark("&zhican") < 6 then return false end
+		if self:isWeak(target) then return false end
+		if hasZhaxiangEffect(target) then return false end
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -685,12 +685,12 @@ ai_skill_invoke["#LuaLongyaT"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isEnemy(target) then
-		if self.player:getStrategyMark("&zhican") < 6 then return (false) or false end
-		if self:isWeak(target) then return (false) or false end
-		if hasZhaxiangEffect(target) then return (false) or false end
-		return (true) or false
+		if self.player:getStrategyMark("&zhican") < 6 then return false end
+		if self:isWeak(target) then return false end
+		if hasZhaxiangEffect(target) then return false end
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -778,13 +778,13 @@ ai_skill_invoke.qingyue = function(self, options, request)
 	if target  then
 		if self:isFriend(target) then
 			if(target:hasSkill("kongcheng") or target:hasSkill("lianying") or target:hasSkill("tuntian")) and target:getHandcardNum() == 1 then
-			return (true) or false
+			return true
 			end
 		else
-	return (not target:hasSkill("kongcheng")) or false
+	return not target:hasSkill("kongcheng")
 		end
 	end
-	return (false) or false
+	return false
 end
 sgs.exclusive_skill = sgs.exclusive_skill .. "|xhjtangqiang"
 

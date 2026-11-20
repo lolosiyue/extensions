@@ -221,27 +221,27 @@ ai_skill_invoke._xingshuai = function(self, options, request)
             am_safe = true
         end
         if self:hasSkills(sgs.masochism_skill) and am_safe then
-            return (true) or false
+            return true
         elseif must_save then
             if am_safe then
-                return (true) or false
+                return true
             elseif hp_max+count<=0 then
-                return (true) or false
+                return true
             elseif self.role=="renegade" or self.role=="lord" then
-                return (false) or false
+                return false
             end
         end
         if am_safe then
             if self:getBestHp(self.player)>self.player:getHp() then
-                return (true) or false
+                return true
             end
         elseif self.player:hasSkill("wuhun") and self:needDeath(self.player) then
             if self.role~="renegade" and self.role~="lord" then
-                return (true) or false
+                return true
             end
         end
     end
-    return (false) or false
+    return false
 end
 sgs.ai_choicemade_filter["skillInvoke"]["_xingshuai"] = function(self,player,promptlist)
     if #promptlist=="yes" then
@@ -267,7 +267,7 @@ ai_skill_invoke["taoxi"] = function(self, options, request)
                     if dummy_use.card then
                         for _,p in sgs.qlist(dummy_use.to)do
                             if p:objectName()==to:objectName() then
-                                return (true) or false
+                                return true
                             end
                         end
                     end
@@ -285,7 +285,7 @@ ai_skill_invoke["taoxi"] = function(self, options, request)
                     if dummy_use.card then
                         for _,p in sgs.qlist(dummy_use.to)do
                             if p:objectName()==to:objectName() then
-                                return (true) or false
+                                return true
                             end
                         end
                     end
@@ -310,7 +310,7 @@ ai_skill_invoke["taoxi"] = function(self, options, request)
         local handcards = disclosed_hand(self,to)
         local hidden_count = to:getHandcardNum()-#handcards
         if dismantlement_count>=to:getHandcardNum() then
-            return (true) or false
+            return true
         end
 
         local can_use,cant_use = {},{}
@@ -323,11 +323,11 @@ ai_skill_invoke["taoxi"] = function(self, options, request)
         end
 
         if #can_use==0 and hidden_count==0 and dismantlement_count==0 then
-            return (false) or false
+            return false
         end
 
         if self:needToLoseHp() then
-            return (true) or false
+            return true
         end
 
         local knowns,unknowns = {},hidden_count
@@ -497,17 +497,17 @@ ai_skill_invoke["taoxi"] = function(self, options, request)
             end
 
             if can_use_count>=to_can_use_count+unknowns then
-                return (true) or false
+                return true
             elseif can_use_count>0 and ( can_use_count+0.01 )/( to_can_use_count+0.01 )>=0.5 then
-                return (true) or false
+                return true
             end
         end
 
         if self:getCardsNum("Peach")>0 then
-            return (true) or false
+            return true
         end
     end
-    return (false) or false
+    return false
 end
 
 local taoxi = {}
@@ -646,7 +646,7 @@ ai_skill_use["@@huaiyi"] = function(self, prompt, request)
 end
 
 ai_skill_invoke.jigong = function(self, options, request)
-    if self.player:isKongcheng() then return (true) or false end
+    if self.player:isKongcheng() then return true end
     for _,c in sgs.qlist(self.player:getHandcards())do
         local x = nil
         if isCard("ArcheryAttack",c,self.player) then
@@ -657,10 +657,10 @@ ai_skill_invoke.jigong = function(self, options, request)
 
         local du = AIUsePlan.new()
         self:useTrickCard(x,du)
-        if (du.card) then return (true) or false end
+        if (du.card) then return true end
     end
 
-    return (false) or false
+    return false
 end
 
 ai_skill_invoke.shifei = function(self, options, request)
@@ -691,9 +691,9 @@ ai_skill_invoke.shifei = function(self, options, request)
     end
 
     for _,p in ipairs(most)do
-        if table.contains(self.enemies,self.room:findPlayerByObjectName(p)) then return (true) or false end
+        if table.contains(self.enemies,self.room:findPlayerByObjectName(p)) then return true end
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_playerchosen.shifei = function(self,targets)

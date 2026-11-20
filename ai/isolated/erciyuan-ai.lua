@@ -139,12 +139,12 @@ ai_skill_invoke.ak_renzha = function(self, options, request)
 	local damage = data:toDamage()
 	local x = self.player:getMark("ak_renzha")
 	if damage.damage >= 2 and x >= 2 then
-		return (true) or false
+		return true
 	end
 	if not self.player:faceUp() then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_discard.ak_renzha = function(self)
@@ -540,12 +540,12 @@ ai_skill_invoke.LuaBuwu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if not target:faceUp() and self:isFriend(target) then
-		return (not self:toTurnOver(target, target:getHp() - 1, "LuaBuwu")) or false
+		return not self:toTurnOver(target, target:getHp() - 1, "LuaBuwu")
 	end
 
 	if self:isEnemy(target) then
 		if self:toTurnOver(target, target:getHp() - 1, "LuaBuwu") then
-			return (true) or false
+			return true
 		end
 	end
 	return false
@@ -570,12 +570,12 @@ end
 
 ai_skill_invoke.LuaTianmoDefense = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getMark("@tianmo") == 0 then return (false) or false end
+	if self.player:getMark("@tianmo") == 0 then return false end
 	local damage = data:toDamage()
 	if not self:needToLoseHp(damage.to, damage.from, damage.card) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -637,10 +637,10 @@ ai_skill_invoke.LuaGqset                = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _, card in sgs.qlist(self.player:getHandcards()) do
 		if card:isKindOf("BasicCard") or card:isKindOf("TrickCard") then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardchosen.LuaGqset            = function(self, who, flags)
@@ -967,9 +967,9 @@ ai_skill_invoke.LuaBimie = function(self, options, request)
 	local damage = data:toDamage()
 	local target = damage.to
 	if self:isEnemy(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.LuaBimie = function(self, player, promptlist)
 	local intention = 100
@@ -1305,13 +1305,13 @@ ai_skill_invoke.LuaChamberMove = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if self.player:getMark("@Chamber") == 1 then
 		if self.player:getHp() < 2 then
-			return (true) or false
+			return true
 		end
 	end
 	if self.player:getMark("@Chamber") == 0 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.LuaRedoWake = function(self, targets)
@@ -1601,10 +1601,10 @@ ai_skill_invoke.LuaYinguo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
 		if p:isMale() and self:isFriend(p) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.LuaYinguo = function(self, targets)
@@ -1672,16 +1672,16 @@ ai_skill_invoke.slyanhuo = function(self, options, request)
 		for _, id in sgs.qlist(self.player:getPile("confuse")) do
 			local card = disclosed(self,id)
 			if card:getSuit() == sgs.Card_Spade and self:isFriend(damage.from) and self:isWeak(damage.from) then
-				return (true) or false
+				return true
 			elseif card:getSuit() == sgs.Card_Heart or card:getSuit() == sgs.Card_Diamond then
 				if self:isEnemy(damage.from) then
-					return (true) or false
+					return true
 				end
 			end
 		end
 	end
 	
-	return (false) or false
+	return false
 end
 
 
@@ -1753,10 +1753,10 @@ ai_skill_invoke.LuaHeartlead       = function(self, options, request)
 	local source = use.from
 	local target = use.to:first()
 	local card = use.card
-	if card:isKindOf("Peach") and self:isEnemy(target) then return (true) or false end
-	if self:isEnemy(source) and self:isFriend(target) and self.player:getHp() > 1 then return (true) or false end
-	if self:isEnemy(source) and self:isFriend(target) and target:getHp() == 1 then return (true) or false end
-	return (false) or false
+	if card:isKindOf("Peach") and self:isEnemy(target) then return true end
+	if self:isEnemy(source) and self:isFriend(target) and self.player:getHp() > 1 then return true end
+	if self:isEnemy(source) and self:isFriend(target) and target:getHp() == 1 then return true end
+	return false
 end
 
 ai_skill_choice["LuaHeartlead"]    = "chained"
@@ -1782,22 +1782,22 @@ end
 
 ai_skill_invoke.LuaHeartlead       = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getHp() == 1 and self.player:getHandcardNum() < 3 then return (true) or false end
-	return (false) or false
+	if self.player:getHp() == 1 and self.player:getHandcardNum() < 3 then return true end
+	return false
 end
 
 
 ai_skill_invoke["erciyuan_qiji"]            = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
-	if self:isFriend(dying.who) then return (true) or false end
-	return (false) or false
+	if self:isFriend(dying.who) then return true end
+	return false
 end
 ai_skill_invoke["suipian"]         = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local judge = data:toJudge()
-	if self:needRetrial(judge) and (judge.pattern ~= ".") then return (true) or false end
-	return (false) or false
+	if self:needRetrial(judge) and (judge.pattern ~= ".") then return true end
+	return false
 end
 
 sgs.ai_ajustdamage_from.LuaGungnir     = function(self, from, to, card, nature)
@@ -1840,8 +1840,8 @@ ai_audited_aliases.register{id="ai_cardneed.LuaCangshan",registry="ai_cardneed",
 ai_skill_invoke["moesenskill"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local p = data:toPlayer()
-	if self:isFriend(p) then return (true) or false end
-	return (false) or false
+	if self:isFriend(p) then return true end
+	return false
 end
 
 
@@ -2175,7 +2175,7 @@ ai_skill_invoke.LuaDikai            = function(self, options, request)
 	local damage = data:toDamage()
 	if damage.from and self:isEnemy(damage.from) then
 		if self:doDisCard(damage.from) then
-			return (true) or false
+			return true
 		end
 	end
 	if self:isFriend(damage.from) then

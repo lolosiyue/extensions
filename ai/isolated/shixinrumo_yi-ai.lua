@@ -685,13 +685,13 @@ ai_skill_invoke.chenjiehuo = function(self, options, request)
 	for _,c in sgs.list(package_known(self,"getCards","Duel,FireAttack","he"))do
 		local d = package_known(self,"aiUseCard",c)
 		if d.card and package_known(self,"isEnemy",package_known(d.to,"at",0)) then
-			return (true) or false
+			return true
 		end
 	end
 	for _,c in sgs.list(package_known(self,"getCards","Slash","he"))do
 		local d = package_known(self,"aiUseCard",c)
 		if d.card and package_known(self,"isEnemy",package_known(d.to,"at",0)) and getCardsNum("Jink",package_known(d.to,"at",0),self.player)<1 then
-			return (true) or false
+			return true
 		end
 	end
 	return (package_known(self,"isWeak") and #self.enemies>0) or false
@@ -907,7 +907,7 @@ ai_skill_invoke.chenlanjiao = function(self, options, request)
     package_call(self,"sortByKeepValue",handcards)
 	for i,c in sgs.list(handcards)do
 		if i>#handcards/2 and package_known(ids,"contains",package_known(c,"getId")) and not package_known(self,"isWeak") then
-			return (true) or false
+			return true
 		end
 	end
 	return (package_known(self.player,"hasSkill","kurou")) or false
@@ -919,7 +919,7 @@ ai_skill_invoke.chenyangbei = function(self, options, request)
 	if srt~="" then
 		for i,p in sgs.list(self.enemies)do
 			if package_known(srt,"endsWith",package_known(p,"objectName")) and not package_known(self,"isWeak") then
-				return (true) or false
+				return true
 			end
 		end
 	else

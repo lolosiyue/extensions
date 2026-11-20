@@ -180,7 +180,7 @@ end
 
 ai_skill_invoke.dev_jianshi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 --藏刀
@@ -239,7 +239,7 @@ ai_skill_invoke.dev_cangdao = function(self, options, request)
 		if self:slashIsEffective(slash, to, self.player)
 		and self:damageIsEffective(to, slash, self.player)
 		and not self:needToLoseHp(enemy, self.player, self:getEvaluationCard("slash"))
-		then return (true) or false end
+		then return true end
 	end
 	if self:isFriend(to) then
 		local huatuo = false
@@ -253,16 +253,16 @@ ai_skill_invoke.dev_cangdao = function(self, options, request)
 		and ((self:findLeijiTarget(to, 50, self.player, -1) or (self:findLeijiTarget(to, 50, self.player, 1) and to:isWounded()))
 		or (to:isLord() and self.player:hasSkill("guagu") and to:getLostHp()>=1 and getCardsNum("Jink",to,self.player)==0)
 		or (friend:hasSkill("jieming") and self.player:hasSkill("nosrende") and huatuo)) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 --全能
 ai_skill_invoke.dev_quanneng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.dev_quanneng_buyi = function(self, options, request)
@@ -622,15 +622,15 @@ end
 ai_skill_invoke.dev_shuguang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local who = data:toPlayer()
-	if who:getLostHp()==0 or not self:isFriend(who) then return (false) or false end
+	if who:getLostHp()==0 or not self:isFriend(who) then return false end
 	if who:getMaxHp()-who:getHp()==1 and not self.player:hasFlag("Global_PreventPeach") then
 		for _,peach in sgs.list(self:getCards("Peach"))do
 			if not self.player:isProhibited(who, peach) then
-				return (false) or false
+				return false
 			end
 		end
 	end
-	return (true) or false
+	return true
 end
 
 --妮妮
@@ -797,11 +797,11 @@ ai_skill_invoke.dev_meihuo = function(self, options, request)
 				return (self:isGoodChainTarget(self.player, use.from, nature)
 				and self:slashIsEffective(use.card, self.player, use.from)) or false
 			end
-			return (true) or false
+			return true
 		end
 		return (self:isWeak() and not self:isFriend(use.from) and self:slashIsEffective(use.card, self.player, use.from) and self:damageIsEffective(self.player, nature, use.from)) or false
 	end
-	return (false) or false
+	return false
 end
 
 --女神
@@ -829,7 +829,7 @@ end
 --嗝屁
 ai_skill_invoke.dev_gepi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getCardCount()==1 and not self.player:isKongcheng() and self.player:getCards("h"):first():isKindOf("Peach") and self:isWeak(self.friends) then return (false) or false end
+	if self.player:getCardCount()==1 and not self.player:isKongcheng() and self.player:getCards("h"):first():isKindOf("Peach") and self:isWeak(self.friends) then return false end
 	local target = data:toPlayer()
 	local skills = {}
 	for _,sk in sgs.qlist(target:getVisibleSkillList())do
@@ -842,7 +842,7 @@ ai_skill_invoke.dev_gepi = function(self, options, request)
 		for _,sk in sgs.list(skills)do
 			if string.find(sgs.bad_skills,sk) then
 				remember(self,"gepi_choice",sk)
-				return (true) or false
+				return true
 			end
 		end
 	elseif self:isEnemy(target) then
@@ -850,25 +850,25 @@ ai_skill_invoke.dev_gepi = function(self, options, request)
 			if not string.find(self.room:getPublicSkill(sk):getDescription(),"出牌阶段") then continue end
 			if self:isValueSkill(sk, target) then
 				remember(self,"gepi_choice",sk)
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 --柴刀
 ai_skill_invoke.dev_chaidao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local str = data:toString():split(":")
-	if #str~=2 then return (false) or false end
+	if #str~=2 then return false end
 	local target = self.room:findPlayerByObjectName(str[2])  --被横置就先不考虑了
 	if str[1]=="DamageCaused" then
 		return (self:isEnemy(target) and not self:cantDamageMore(self.player, target)) or false
 	elseif str[1]=="DamageInflicted" then
-		return (not self:isFriend(target)) or false  --被横置就先不考虑了，有卖血技也先不考虑了
+		return not self:isFriend(target)  --被横置就先不考虑了，有卖血技也先不考虑了
 	end
-	return (false) or false
+	return false
 end
 
 --骚动
@@ -965,7 +965,7 @@ sgs.ai_playerchosen_intention.dev_zhiyin = -20
 ai_skill_invoke.dev_jiaodao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = context(self,"jiaodao_use")
-	if not use then return (false) or false end
+	if not use then return false end
 	return (self:willUse(self.player, use.card, false, false, true)) or false
 end
 
@@ -1047,9 +1047,9 @@ sgs.ai_playerchosen_intention.dev_qiliao = -20
 ai_skill_invoke.dev_qiliao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local strs = data:toString():split(":")
-	if #strs~=2 then return (false) or false end
+	if #strs~=2 then return false end
 	local target = self.room:findPlayerByObjectName(strs[2])
-	if not target or target:isDead() then return (false) or false end
+	if not target or target:isDead() then return false end
 	return (self:isFriend(target) and self:isWeak(target) and target:getLostHp()>0) or false
 end
 
@@ -1088,15 +1088,15 @@ end
 ai_skill_invoke.dev_jiaoqi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local strs = data:toString():split(":")
-	if #strs~=2 then return (false) or false end
+	if #strs~=2 then return false end
 	local target = self.room:findPlayerByObjectName(strs[2])
-	if not target or target:isDead() then return (false) or false end
+	if not target or target:isDead() then return false end
 	if strs[1]=="discard" then
 		return (self:isEnemy(target) and self:doDisCard(target, "e")) or false
 	elseif strs[1]=="jink" then
 		return (self:isEnemy(target)) or false
 	end
-	return (false) or false
+	return false
 end
 
 --饺猾

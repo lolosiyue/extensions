@@ -1132,7 +1132,7 @@ ai_skill_invoke.zd_zhungangshuo = function(self, options, request)
         local use = target_specified_history(self)
         if table.contains(use.nullified_list,target:objectName())
         or table.contains(use.nullified_list,"_ALL_TARGETS")
-        then return (false) or false end
+        then return false end
         if type(self.doDisCard)~="function"then ai_unsupported("doDisCard provider missing","yongjian.target_history")end
         local result=self:doDisCard(target,"h")
         if AIUnsupported.is(result)then error(result,0)end

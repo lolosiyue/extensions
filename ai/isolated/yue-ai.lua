@@ -64,7 +64,7 @@ end
 ai_skill_invoke.jinmaihuo=function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target=(data:toCardUse()).from
-    if target then return (not (self:isFriend(target))) or false end
+    if target then return not (self:isFriend(target)) end
     return false
 
 end

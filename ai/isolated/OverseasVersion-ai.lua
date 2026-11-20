@@ -354,7 +354,7 @@ sgs.ai_keep_value.OvLingbaoxianhu = 11
 
 ai_skill_invoke.ov_miaolve = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -569,7 +569,7 @@ sgs.ai_use_priority.ov_beiniCard = 4.8
 
 ai_skill_invoke.ov_dingfa = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -829,7 +829,7 @@ ai_skill_invoke.ov_fengpo = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -862,7 +862,7 @@ ai_skill_invoke.ov_moukui = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -1140,7 +1140,7 @@ sgs.ai_use_priority.ov_yujuevsCard = 4.8
 
 ai_skill_invoke.ov_fengqi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -1156,7 +1156,7 @@ end
 remember_function('ai_skill_cardask','ov_gezhi0',sgs.ai_skill_cardask['ov_gezhi0'],{},{})
 ai_skill_invoke.ov_lingfa = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -1189,7 +1189,7 @@ ai_skill_invoke.ov_zhian = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -1679,16 +1679,16 @@ remember_function('ai_skill_use','@@ov_kaiji',ai_skill_use['@@ov_kaiji'],{},{})
 ai_skill_invoke.ov_shepan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target then return (true) or false end
+	if target then return true end
 	local use = tag(self,"ov_shepan","CardUse")
 	if use and use.card
 	then
 		if use.card:isDamageCard()
-		then return (true) or false
+		then return true
 		elseif use.to:contains(use.from)
-		then return (false) or false
+		then return false
 		elseif self:isEnemy(use.from)
-		then return (true) or false end
+		then return true end
 	end
 	return false
 
@@ -2150,7 +2150,7 @@ ai_skill_invoke.ov_linglu = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -2277,7 +2277,7 @@ ai_skill_invoke.ov_zhengjian = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return (math.random(1,5)<3) or false
 end
@@ -2321,22 +2321,22 @@ ai_skill_invoke.ov_niju = function(self, options, request)
 			then
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.to_card:getKnownEffectiveId())
 				if pindian.from_number<=pindian.to_number+qun
-				then return (true) or false end
+				then return true end
 				self.ov_niju_choice = 2
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.from_card:getKnownEffectiveId())
 				if pindian.from_number-qun<=pindian.to_number
-				then return (true) or false end
+				then return true end
 			end
 		else
 			if pindian.from_number<=pindian.to_number
 			then
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.from_card:getKnownEffectiveId())
 				if pindian.from_number+qun>=pindian.to_number
-				then return (true) or false end
+				then return true end
 				self.ov_niju_choice = 2
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.to_card:getKnownEffectiveId())
 				if pindian.from_number>=pindian.to_number-qun
-				then return (true) or false end
+				then return true end
 			end
 		end
 	else
@@ -2346,22 +2346,22 @@ ai_skill_invoke.ov_niju = function(self, options, request)
 			then
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.from_card:getKnownEffectiveId())
 				if pindian.from_number+qun>pindian.to_number
-				then return (true) or false end
+				then return true end
 				self.ov_niju_choice = 2
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.to_card:getKnownEffectiveId())
 				if pindian.from_number>pindian.to_number-qun
-				then return (true) or false end
+				then return true end
 			end
 		else
 			if pindian.from_number>pindian.to_number
 			then
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.to_card:getKnownEffectiveId())
 				if pindian.from_number<=pindian.to_number+qun
-				then return (true) or false end
+				then return true end
 				self.ov_niju_choice = 2
 				dynamic(self,'ai_skill_askforag','ov_niju',pindian.from_card:getKnownEffectiveId())
 				if pindian.from_number-qun<=pindian.to_number
-				then return (true) or false end
+				then return true end
 			end
 		end
 	end
@@ -2572,7 +2572,7 @@ ai_skill_invoke.ov_juchen = function(self, options, request)
 	cards = self:sortByKeepValue(cards,nil,true)
 	for i,c in sgs.list(cards)do
 		if i<=#cards/2 and c:isRed()
-		then return (true) or false end
+		then return true end
 	end
 	return (#cards>1 and cards[1]:isRed()) or false
 end
@@ -3132,7 +3132,7 @@ ai_skill_invoke.ov_ruilian = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isEnemy(target)) or false
+		return not self:isEnemy(target)
 	end
 	return false
 
@@ -3560,7 +3560,7 @@ ai_skill_invoke.ov_lihuo = function(self, options, request)
 	local fs = self:observeOverseasLihuoHypothesis()
 	use.card = fs
 	if self:aiUseCard(fs).card
-	then return (true) or false end
+	then return true end
 	return false
 
 end
@@ -3601,7 +3601,7 @@ ai_skill_invoke.ov_chunlao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
 	if to and self:isFriend(to)
-	then return (true) or false end
+	then return true end
 	return false
 
 end
@@ -3793,7 +3793,7 @@ ai_skill_invoke.ov_xiewei = function(self, options, request)
 	then
 		for _,fp in sgs.list(self.friends_noself)do
 			if target:canSlash(fp) and self:isWeak(fp)
-			then return (true) or false end
+			then return true end
 		end
 		return (not self:isWeak()
 		and (self:getCardsNum("Slash")>2 or target:getHandcardNum()<3)) or false
@@ -3973,7 +3973,7 @@ end
 remember_function('ai_guhuo_card','ov_mouli',sgs.ai_guhuo_card['ov_mouli'],{},{})
 ai_skill_invoke.ov_qianxi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -4023,7 +4023,7 @@ ai_skill_invoke.ov_enyuan = function(self, options, request)
 	local target = data:toPlayer()
 	if self.player:getStrategyFlag("Damaged")
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	if self.player:getStrategyFlag("CardsMoveOneTime")
 	then
@@ -4366,7 +4366,7 @@ end
 remember_function('ai_skill_invoke','ov_juezhu',ai_skill_invoke['ov_juezhu'],{},{})
 ai_skill_invoke.ov_zhilve = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -4611,7 +4611,7 @@ end
 remember_function('ai_skill_use','@@ov_xingluan!',ai_skill_use['@@ov_xingluan!'],{},{})
 ai_skill_invoke.ov_xingluan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -4630,7 +4630,7 @@ remember_function('ai_skill_playerchosen','ov_qirang',sgs.ai_skill_playerchosen[
 ai_skill_invoke.ov_yuhua = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	sgs.guanXingFriend = true
-	return (true) or false
+	return true
 end
 
 
@@ -4639,7 +4639,7 @@ ai_skill_invoke.ov_xuhe = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -5160,7 +5160,7 @@ ai_skill_invoke.ov_qingxi = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -5218,16 +5218,16 @@ ai_skill_invoke.ov_yuzhang = function(self, options, request)
 		ts = ts:split(":")[2]
 		if ts=="Player_Judge"
 		and self:doDisCard(self.player,"j")
-		then return (true) or false end
+		then return true end
 		if ts=="Player_Discard"
 		and self.player:getHandcardNum()>self.player:getMaxCards()*(math.random()+1)
-		then return (true) or false end
+		then return true end
 		return false
 	end
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -5259,7 +5259,7 @@ ai_skill_invoke.ov_guoyi = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -5521,7 +5521,7 @@ ai_skill_invoke.ov_wanwei = function(self, options, request)
 		and self:isWeak(target)
 		and not self:isWeak()) or false
 	end
-	return (true) or false
+	return true
 end
 
 
@@ -5959,7 +5959,7 @@ ai_skill_invoke.ov_lijian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	self.ov_lijian_to = target
-	return (true) or false
+	return true
 end
 
 
@@ -6290,7 +6290,7 @@ ai_skill_invoke.ov_chue = function(self, options, request)
 		local du = self:aiUseCard(use.card,dummy(true,99,use.to))
 		if du.card and du.to:length()>0 then
 			self.ov_chue_to = du.to
-			return (not self:isWeak()) or false
+			return not self:isWeak()
 		end
 	else
 		local dc = clone(self)
@@ -6821,12 +6821,12 @@ ai_skill_invoke.ov_zhihuan = function(self, options, request)
 	local damage = data:toDamage()
 	self.ov_zhihuan_to = damage.to
 	if self:isEnemy(damage.to) then
-		return (not self:isWeak(damage.to)) or false
+		return not self:isWeak(damage.to)
 	end
 	if self:isFriend(damage.to) then
 		return (#self:poisonCards("e",damage.to)>0) or false
 	end
-	return (true) or false
+	return true
 end
 
 
@@ -7071,7 +7071,7 @@ end
 remember_function('ai_skill_cardask','ov_lifeng0',sgs.ai_skill_cardask['ov_lifeng0'],{},{})
 ai_skill_invoke.ov_lifeng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -8145,7 +8145,7 @@ ai_skill_invoke.ov_qinyi = function(self, options, request)
 		if self.player:getStrategyMark("ov_qinyiBan"..cn)>0 then continue end
 		local dc = clone(self,cn,"ov_qinyi")
 		if dc:isAvailable(self.player) and self:aiUseCard(dc).card then
-			return (true) or false
+			return true
 		end
 	end
 	return false

@@ -325,7 +325,7 @@ sgs.ai_use_priority.YHHuntianCard = 1.8
 
 ai_skill_invoke.yhhuntian = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 
@@ -344,7 +344,7 @@ end
 
 ai_skill_invoke.yhsancai = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_askforyiji.yhsancai = function(self,card_ids)
@@ -1077,7 +1077,7 @@ end
 
 ai_skill_invoke.yhkunmo = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_use["@@yhkunmo"] = function(self, prompt, request)
@@ -1149,7 +1149,7 @@ ai_skill_invoke.yhjixiang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _,fp in sgs.list(self.room:getOtherPlayers(self.player))do
 		if not self:isEnemy(fp)
-		then return (true) or false end
+		then return true end
 	end
 	return false
 
@@ -1269,7 +1269,7 @@ end
 
 ai_skill_invoke.yhyange = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_choice.yhqupai = function(self, options, request)

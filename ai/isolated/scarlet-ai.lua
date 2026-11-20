@@ -2193,8 +2193,8 @@ end
 ai_skill_invoke.s4_wuhu_fuyong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return (true) or false end
-    return (false) or false
+    if not self:isFriend(target) then return true end
+    return false
 end
 sgs.ai_ajustdamage_from.s4_wuhu_fuyong = function(self, from, to, card, nature)
     if not card then return end

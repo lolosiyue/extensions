@@ -131,9 +131,9 @@ function ai_skill_invoke.jglingyu(self, options, request)
 			end
 		end
 	end
-	if not self.player:faceUp() then return (true) or false end
+	if not self.player:faceUp() then return true end
 	for _,friend in ipairs(self.friends)do
-		if friend:hasSkills("fangzhu") then return (true) or false end
+		if friend:hasSkills("fangzhu") then return true end
 	end
 	return (weak>=2) or false
 end
@@ -260,9 +260,9 @@ function ai_skill_invoke.jgdixian(self, options, request)
 	for _,enemy in ipairs(self.enemies)do
 		throw = throw+enemy:getCards("e"):length()
 	end
-	if not self.player:faceUp() then return (true) or false end
+	if not self.player:faceUp() then return true end
 	for _,friend in ipairs(self.friends)do
-		if friend:hasSkills("fangzhu") then return (true) or false end
+		if friend:hasSkills("fangzhu") then return true end
 	end
 	return (throw>=3) or false
 end

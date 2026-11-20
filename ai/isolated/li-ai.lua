@@ -40,8 +40,8 @@ end
 ai_skill_invoke.jinbuchen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local player = data:toPlayer()
-	if self:needKongcheng(self.player,true) then return (false) or false end
-	if self:doDisCard(player,"he") then return (true) or false end
+	if self:needKongcheng(self.player,true) then return false end
+	if self:doDisCard(player,"he") then return true end
 	return false
 
 end
@@ -303,7 +303,7 @@ ai_skill_invoke.jincaiwang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local name = data:toString():split(":")[2]
 	local to = self.room:findPlayerByObjectName(name)
-	if not to then return (false) or false end
+	if not to then return false end
 	return (self:isEnemy(to) and self:doDisCard(to,"he")) or false
 end
 
@@ -349,7 +349,7 @@ end
 --车悬
 ai_skill_invoke.chexuan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_fill_skill.chexuan = function(self, options, request)
@@ -462,9 +462,9 @@ ai_skill_invoke.olxibing = function(self, options, request)
 		then
 			if self.player:getHandcardNum()-dama.from:getHandcardNum()>2
 			or dama.from:getHandcardNum()-self.player:getHandcardNum()>2
-			then return (true) or false end
+			then return true end
 		else
-			return (true) or false
+			return true
 		end
 	end
 	return false

@@ -138,9 +138,9 @@ ai_skill_invoke.xiansheng=function(self, options, request)
 		end
 	end
 
-	if rebel*2+3>(#self.player:getEquips()*2+self.player:getHandcardNum()) then return (true) or false end
-	if self.player:getHp()==1 and self.player:getHandcardNum()<=1 then return (true) or false end
-	return (false) or false
+	if rebel*2+3>(#self.player:getEquips()*2+self.player:getHandcardNum()) then return true end
+	if self.player:getHp()==1 and self.player:getHandcardNum()<=1 then return true end
+	return false
 end
 
 ai_skill_use["@@smalltuxi"] = function(self,prompt,request)

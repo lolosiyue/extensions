@@ -496,7 +496,7 @@ end
 ai_skill_invoke.Dragon_fankui = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if sgs.ai_need_damaged.Dragon_fankui(self,target,self.player) then return (true) or false end
+    if sgs.ai_need_damaged.Dragon_fankui(self,target,self.player) then return true end
     return (self:doDisCard(target,"h", true)) or false
 end
 
@@ -602,7 +602,7 @@ end
 ai_skill_invoke.Dragon_ganglie = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local mode = self.room:getMode()
-    if mode:find("_mini_41") or mode:find("_mini_46") then return (true) or false end
+    if mode:find("_mini_41") or mode:find("_mini_46") then return true end
     local damage = data:toDamage()
     if not damage.from then
         local zhangjiao = self.room:findPlayerBySkillName("guidao")
@@ -610,9 +610,9 @@ ai_skill_invoke.Dragon_ganglie = function(self, options, request)
     end
     if self:needToLoseHp(damage.from,self.player,damage.card) then
         if self:isFriend(damage.from) then
-            return (true) or false
+            return true
         end
-        return (false) or false
+        return false
     end
     return (not self:isFriend(damage.from) and self:canAttack(damage.from)) or false
 end
@@ -758,7 +758,7 @@ end
 ai_skill_invoke.Dragon_kylin_bowSkill = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
-    if damage.from:hasSkill("kuangfu") and damage.to:getCards("e"):length()==1 then return (false) or false end
+    if damage.from:hasSkill("kuangfu") and damage.to:getCards("e"):length()==1 then return false end
     if self:hasSkills(sgs.lose_equip_skill, damage.to) then
         return (self:isFriend(damage.to)) or false
     end
@@ -1118,7 +1118,7 @@ sgs.ai_skill_playerchosen.Promote_xuanwu = function(self, targets)
 end
 ai_skill_invoke.Promote_xuanwu = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if math.random(1, 5) > 3 then return (true) or false else return (false) or false end
+    if math.random(1, 5) > 3 then return true else return false end
     return false
 
 end
@@ -1131,7 +1131,7 @@ sgs.ai_skill_playerchosen.Promote_zhuyou = function(self, targets)
 end
 ai_skill_invoke.Promote_zhuyou = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if math.random(1, 5) > 3 then return (true) or false else return (false) or false end
+    if math.random(1, 5) > 3 then return true else return false end
     return false
 
 end

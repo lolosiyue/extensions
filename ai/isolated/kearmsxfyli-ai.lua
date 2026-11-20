@@ -578,7 +578,7 @@ ai_skill_invoke.kesxhuiji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _,p in sgs.list(self.friends_noself)do
 		if package_known(p,"getStrategyMark","&kesxhuiji-Clear")>0 and getCardsNum("Jink",p,self.player)>0 then
-			return (true) or false
+			return true
 		end
 	end
 	return false
@@ -800,7 +800,7 @@ ai_skill_invoke.sxshangjian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local ids = package_known(data,"toIntList")
 	if package_known(self,"canDraw") then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -810,7 +810,7 @@ ai_skill_invoke.sxfunan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local effect = package_known(data,"toCardEffect")
 	if package_known(self,"canDraw") then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -843,7 +843,7 @@ end
 ai_skill_invoke.sxdingyi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -919,7 +919,7 @@ end
 ai_skill_invoke.sxshiren = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -1116,7 +1116,7 @@ end
 ai_skill_invoke.sxyuanqing = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -1144,7 +1144,7 @@ end
 ai_skill_invoke.sxjinglve = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -1223,7 +1223,7 @@ sgs.ai_card_intention.sxzhanjueCard = 66
 ai_skill_invoke.sxqinwang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if #self.friends_noself>0 then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -1245,7 +1245,7 @@ end
 ai_skill_invoke.sxhuituo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -1336,7 +1336,7 @@ end
 ai_skill_invoke.sxfenyin = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self,"canDraw") then
-		return (not package_known(self.player,"isSkipped",sgs.Player_Play)) or false
+		return not package_known(self.player,"isSkipped",sgs.Player_Play)
 	end
 	return false
 
@@ -1996,7 +1996,7 @@ sgs.ai_use_priority.zcyuanzhuoCard = 7.2
 ai_skill_invoke.zcyuanzhuo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local tp = data:toPlayer()
-	return (not package_known(self,"isFriend",tp)) or false
+	return not package_known(self,"isFriend",tp)
 end
 
 ai_skill_use["@@zcwuwei"]=function(self,prompt,request)
@@ -2030,7 +2030,7 @@ end
 ai_skill_invoke.zcleiruo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local tp = data:toPlayer()
-	return (not package_known(self,"isFriend",tp)) or false
+	return not package_known(self,"isFriend",tp)
 end
 
 sgs.ai_skill_playerschosen.zclijun = function(self,players,x)
@@ -2046,7 +2046,7 @@ end
 ai_skill_invoke.zczhuying = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local tp = data:toPlayer()
-	return (not package_known(self,"isFriend",tp)) or false
+	return not package_known(self,"isFriend",tp)
 end
 
 ai_fill_skill.sxgongqiao = function(self, options, request)
@@ -2093,7 +2093,7 @@ sgs.ai_use_priority.sxwangluCard = 7.2
 
 ai_skill_invoke.sxjinhui = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.sxjinhui = function(self,players)
@@ -2209,7 +2209,7 @@ end
 
 ai_skill_invoke.sxchenghao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.sxchenghao = function(self,players)
@@ -2464,7 +2464,7 @@ end
 
 ai_skill_invoke.sxtongli = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.sxshezang = function(self, options, request)

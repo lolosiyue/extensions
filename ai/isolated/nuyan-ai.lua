@@ -60,8 +60,8 @@ local function register_ai(sp)
         local data = request and self:getDecisionData(request) or nil
         if m=="fenji" then return (self.player:getHp()>2) or false end
         if m=="miji" then local u=data:toCardUse();return (u.from and self:isEnemy(u.from) and self.player:getHp()>1) or false end
-        if m=="kuanggu" then return (true) or false end
-        return (true) or false
+        if m=="kuanggu" then return true end
+        return true
     end
     ai_skill_choice[id]=function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil

@@ -319,10 +319,10 @@ ai_skill_invoke.mtrenyu_jin = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = owner_use(self)
     if self:isFriend(use.from)
-	then return (true) or false
+	then return true
 	elseif self:isWeak()
 	and use.card:isDamageCard()
-	then return (true) or false end
+	then return true end
 	return false
 
 end
@@ -391,7 +391,7 @@ end
 
 ai_skill_invoke.mtrenyi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_askforag.mtrenyi = function(self,card_ids)
@@ -512,12 +512,12 @@ sgs.ai_use_priority.mtzhilie = 4.8
 
 ai_skill_invoke.mtguanda = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_invoke.mtweiqie = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_cardask["@mtweiqie"] = function(self,data,pattern,prompt)
@@ -646,7 +646,7 @@ ai_skill_invoke.mtxianzheng = function(self, options, request)
 		then
 			write(self,"mtxianzheng_to",p)
 			write(self,"mtxianzheng_cid",c:getKnownEffectiveId())
-			return (true) or false
+			return true
 		end
 	end
 	return false

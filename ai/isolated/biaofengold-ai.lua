@@ -319,7 +319,7 @@ sgs.ai_use_value["#FiveHuangtianA_Card"] = 8.5
 
 ai_skill_invoke.FiveGuidaoA = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 local FiveGuidaoA_skill = {}
@@ -398,10 +398,10 @@ ai_skill_invoke.FiveGuidaoB = function(self, options, request)
         end
     else
         if (self:isEnemy(target) and not target:isChained()) or (self:isFriend(target) and target:isChained()) or (target:getKnownKingdom() == "qun" and not target:isChained() and self.player:hasLordSkill("FiveHuangtianB")) then
-            return (true) or false
+            return true
         end
     end
-	return (false) or false
+	return false
 end
 
 ai_skill_choice.FiveGuidaoB = function(self, options, request)
@@ -587,12 +587,12 @@ ai_skill_invoke.FourFenyong = function(self, options, request)
 	if self.room:getTurnCount() <= 1 and #self.enemies == 0 then return false end
 
 	local current = self.room:getCurrent()
-	if not current or current:getPhase() >= sgs.Player_Finish then return (true) or false end
+	if not current or current:getPhase() >= sgs.Player_Finish then return true end
 	if self:isFriend(current) then
-		return (false) or false
+		return false
 	end
 
-	return (true) or false
+	return true
 end
 
 function sgs.ai_slash_prohibit.FourFenyong(self, from, to)
@@ -632,10 +632,10 @@ ai_skill_invoke.FourXuehen = function(self, options, request)
         local eff = self:slashIsEffective(slash, current) and self:isGoodTarget(current, self.enemies, slash)
 
         if self.player:canSlash(current, nil, false) and not self:slashProhibit(nil, current) and eff and def < 6 then
-            return (true) or false
+            return true
         end
     end
-	return (false) or false
+	return false
 end
 
 sgs.ai_view_as.FourWusheng = function(card, player, card_place)
@@ -1143,7 +1143,7 @@ end
 
 ai_skill_invoke.FourQixiA = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_cardask["@FourQixiA_Exchange"] = function(self, data, pattern, target)
@@ -1204,7 +1204,7 @@ end
 
 ai_skill_invoke.FourQixiB = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_cardask["@FourQixiB_Exchange"] = function(self, data, pattern, target)
@@ -1384,11 +1384,11 @@ sgs.FourGuidao_keep_value = {
 
 ai_skill_invoke.FourGuidao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 ai_skill_invoke.FourGuidaotake = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not (self.player:hasSkill("FourDedao") and self.player:getMark("FourDedao") == 0 and self.player:getPile("symbol"):length() < 4 )) or false
+	return not (self.player:hasSkill("FourDedao") and self.player:getMark("FourDedao") == 0 and self.player:getPile("symbol"):length() < 4 )
 end
 
 local FourTaiping_Others_skill = {}

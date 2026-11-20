@@ -371,7 +371,7 @@ end
 ai_skill_invoke.luajuying = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if self.room:getTurnCount() > 1 then
-		return (true) or false
+		return true
 	end
 	return false
 

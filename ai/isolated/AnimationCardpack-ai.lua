@@ -38,27 +38,27 @@ ai_skill_invoke.Elucidator = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
     if self:isFriend(damage.to) and self:canDraw(damage.to, self.player) then
-        return (true) or false
+        return true
     end
     local slash = self:getCard("Slash")
     if slash then
         local dummy_use = self:aiUseCard(slash,{isDummy=true,extra_target=0,current_targets={},to=AIList.new({})})
 
         if dummy_use.card and not dummy_use.to:isEmpty() then
-            return (true) or false
+            return true
         end
     end
 
-    return (false) or false
+    return false
 end
 
 ai_skill_invoke.htms_rishi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if target and self:isEnemy(target) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_canliegong_skill.htms_rishi = function(self, from, to)
@@ -230,9 +230,9 @@ ai_skill_invoke.Murasame = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if target and self:isEnemy(target) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 sgs.weapon_range.Murasame = 2
 
@@ -242,9 +242,9 @@ ai_skill_invoke.tywz = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toDamage().to
     if target and self:isEnemy(target) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 sgs.ai_choicemade_filter.skillInvoke.tywz = function(self,player,promptlist)
     -- The live Room CurrentDamageStruct is not projected into event callbacks.

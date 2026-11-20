@@ -108,7 +108,7 @@ sgs.ai_event_callback[sgs.Death or "Death"].luaRquanxiang=function(self,player,e
 end
 ai_skill_invoke.luaRquanxiang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -226,9 +226,9 @@ function ai_skill_invoke.luaRhuogen(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target and (self:isFriend(target)) then
-		return (not (self:isWeak())) or false
+		return not (self:isWeak())
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.luaRhuogen = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -408,37 +408,37 @@ ai_skill_invoke.luaRqice = function(self, options, request)
         local cards = AIList.new((self.player:getCards("h")))
 	    for _,c in sgs.list(cards)do
             if (self:willUse(self.player,c)) then
-                return (false) or false
+                return false
             end
         end
     end
     if use.from and (self:isFriend(use.from)) then
-        if (self.player:isKongcheng()) and (self:isWeak()) then return (false) or false end
+        if (self.player:isKongcheng()) and (self:isWeak()) then return false end
         if (use.card:isDamageCard()) or (use.card:isKindOf("SingleTargetTrick")) then
             for _,to in sgs.list(use.to)do
                 if (self:isFriend(to))
-                then return (false) or false end
+                then return false end
             end
             if not (self.player:isKongcheng()) then
                 local cards = AIList.new((self.player:getCards("h")))
                 for _,c in sgs.list(cards)do
                     if (self:getUseValue(c)) > (self:getUseValue(use.card)) then
-                        return (false) or false
+                        return false
                     end
                 end
             end
-            return (true) or false
+            return true
         end
         local dummy_use = (self:aiUseCard(use.card,dummy()))
         if dummy_use.card and dummy_use.to then
             for _, p in sgs.qlist(dummy_use.to) do
                 if (use.to:contains(p)) then
-                    return (true) or false
+                    return true
                 end
             end
         end
     end
-	return (false) or false
+	return false
 end
 
 local luaRziao_skill = {}

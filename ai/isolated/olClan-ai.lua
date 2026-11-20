@@ -453,7 +453,7 @@ ai_skill_invoke.zujiewu = function(self, options, request)
 	for _,p in ipairs(self.room:getAlivePlayers())do
 		if mark(self,p,"&zujiewu+#"..self.player:objectName().."-PlayClear")>0
 		and getKnownCard(p,self.player,self:readOlClanSuitSlot())>0
-		then return (true) or false end
+		then return true end
 	end
 	return false
 
@@ -642,7 +642,7 @@ ai_skill_invoke.zuheta = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for i,c in ipairs(self:getTurnUse())do
 		if c:isKindOf("BasicCard") or c:isNDTrick() then
-			return (true) or false
+			return true
 		end
 	end
 	return false
@@ -652,7 +652,7 @@ end
 -- Source olClan-ai.lua:1909
 ai_skill_invoke.zuyingxiang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 -- Source olClan-ai.lua:1928
@@ -1918,7 +1918,7 @@ ai_skill_invoke.kezushangshen=function(self, options, request)
     local damage=known(self:getDecisionData().toDamage(),"kezushangshen.damage")
     if self:isFriend(damage.to)and damage.to:getHandcardNum()<4 then
         local to=player(self,row(self,"fenchaiPlayer"))
-        if to and to:isAlive()and self.player:hasSkill("kezufenchai")then return (true) or false end
+        if to and to:isAlive()and self.player:hasSkill("kezufenchai")then return true end
         local finalRetrial=self:getFinalRetrial(nil,"lightning")
         known(finalRetrial,"kezushangshen.finalRetrial")
         if finalRetrial<2 then return (not to or to:isAlive()or not self.player:hasSkill("kezufenchai")) or false end
@@ -1953,8 +1953,8 @@ ai_skill_invoke.kezumingjie=function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local st=known(row(self,"invoke_string"),"kezumingjie.string")
     local sts=st:split(":");local to=player(self,sts[2]);local use=use_data(self,"kezumingjieData")
-    if self:isFriend(to)and cardq(use.card,"targetFixed")then return (true) or false
-    elseif self:isEnemy(to)and cardq(use.card,"isDamageCard")then return (true) or false end
+    if self:isFriend(to)and cardq(use.card,"targetFixed")then return true
+    elseif self:isEnemy(to)and cardq(use.card,"isDamageCard")then return true end
     return false
 
 end
@@ -2013,7 +2013,7 @@ ai_skill_invoke.zuheta = function(self, options, request)
     if AIUnsupported.is(cards) then error(cards, 0) end
     for _, card in ipairs(cards) do
         if card:isKindOf("BasicCard") or card:isNDTrick() then
-            return (true) or false
+            return true
         end
     end
     return false

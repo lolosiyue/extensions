@@ -212,45 +212,45 @@ ai_skill_invoke.sgkgoddingming = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
 	local x = math.abs(to:getHp() - to:getLostHp())
-	if self.player:getMaxHp() == 1 then return (false) or false end
+	if self.player:getMaxHp() == 1 then return false end
 	--情形1：自己的准备阶段
 	if self.player:getSeat() == to:getSeat() and self.player:getPhase() == sgs.Player_Start then
 		--有【桃】或【酒】，想炸血卖
 		if getYinyangState(self.player) == "hp_Yang" and self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 then
-			if x >= 2 then return (true) or false end
+			if x >= 2 then return true end
 			--有界黄盖的【诈降】，哪怕差值只有1也卖
-			if self:hasZhaxiangEffect(self.player) then return (true) or false end
+			if self:hasZhaxiangEffect(self.player) then return true end
 			--能触发夏侯霸的【豹变】也卖了
-			if self.player:hasSkill("baobian") and self.player:getHp() - x <= 3 then return (true) or false end
+			if self.player:hasSkill("baobian") and self.player:getHp() - x <= 3 then return true end
 			--如果有【英魂】/【再起】也卖
-			if self.player:hasSkills("yinghun|zaiqi") and self.player:getLostHp() + x >= 2 and self.player:getHp() - x >= 0 then return (true) or false end
+			if self.player:hasSkills("yinghun|zaiqi") and self.player:getLostHp() + x >= 2 and self.player:getHp() - x >= 0 then return true end
 			--有神孙策的【冯河】，必须得卖，否则保不住手牌上限
-			if self.player:hasSkill("f_pinghe") and self.player:getHp() - x >= 0 then return (true) or false end
+			if self.player:hasSkill("f_pinghe") and self.player:getHp() - x >= 0 then return true end
 		end
 		--自己刚好状态很残
-		if getYinyangState(self.player) == "hp_Yin" and x >= 2 then return (true) or false end
+		if getYinyangState(self.player) == "hp_Yin" and x >= 2 then return true end
 	end
 	--情形2：伤害类
 	local damage = data:toDamage()
 	--分支2-1：自己受到伤害时
 	if self.player:getSeat() == to:getSeat() then
-		if getYinyangState(self.player) == "hp_Yin" and x >= 1 then return (true) or false end
+		if getYinyangState(self.player) == "hp_Yin" and x >= 1 then return true end
 		--特殊：自己有孙策的【魂姿】且没觉醒的时候，即使自己处在“阳”也要炸血，并且压得越多越好，先保证能觉醒
 		if getYinyangState(self.player) == "hp_Yang" and self.player:getStrategyMark("@waked") == 0 and self.player:hasSkill("hunzi") then
-			if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 and self.player:getHp() - x <= 1 then return (true) or false end
+			if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 and self.player:getHp() - x <= 1 then return true end
 		end
 	else
 	--分支2-2：对其他角色造成伤害时
 		if self:isEnemy(to) then
 			if getYinyangState(to) == "hp_Yang" and not (to:hasSkill("hunzi") and to:getStrategyMark("@waked") == 0) then
-				if (x >= 2 or to:getHp() - x <= 1) and self.player:getMaxHp() > 1 and canChangeYinyangState(self.player, "lose") then return (true) or false end
+				if (x >= 2 or to:getHp() - x <= 1) and self.player:getMaxHp() > 1 and canChangeYinyangState(self.player, "lose") then return true end
 			end
 		elseif self:isFriend(to) then
 			--特例：如果这个人是没觉醒且有【魂姿】的孙策
 			if getYinyangState(to) == "hp_Yang" and not (to:hasSkill("hunzi") and to:getStrategyMark("@waked") == 0) then
-				if self.player:getMaxHp() > 1 and to:getLostHp() == 1 then return (true) or false end
+				if self.player:getMaxHp() > 1 and to:getLostHp() == 1 then return true end
 			else
-				if getYinyangState(to) == "hp_Yin" then return (true) or false end
+				if getYinyangState(to) == "hp_Yin" then return true end
 			end
 		end
 	end
@@ -384,8 +384,8 @@ end
 --劫营
 ai_skill_invoke.sgkgodjieying = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (nil) or false end
-	return (true) or false
+	if #self.enemies == 0 then return false end
+	return true
 end
 
 sgs.ai_skill_playerchosen.sgkgodjieying = function(self, targets)
@@ -460,10 +460,10 @@ ai_skill_invoke.sgkgodlangxi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use.card:isKindOf("ExNihilo") or use.card:isKindOf("GodSalvation") or use.card:isKindOf("IronChain") or use.card:isKindOf("AmazingGrace") or use.card:isKindOf("Collateral") then
-		return (false) or false
+		return false
 	end
-	if use.card:isKindOf("Dongzhuxianji") or use.card:isKindOf("Chuqibuyi") then return (false) or false end
-	return (true) or false
+	if use.card:isKindOf("Dongzhuxianji") or use.card:isKindOf("Chuqibuyi") then return false end
+	return true
 end
 
 sgs.sgkgodlangxi_keep_value = {
@@ -479,7 +479,7 @@ sgs.sgkgodlangxi_keep_value = {
 --神隐
 ai_skill_invoke.sgkgodshenyin = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getPhase() == sgs.Player_Start and self.player:getStrategyMark("&sgkgodshenyin") > 0 then return (true) or false end
+	if self.player:getPhase() == sgs.Player_Start and self.player:getStrategyMark("&sgkgodshenyin") > 0 then return true end
 	local dying = data:toDying()
 	if dying.who:objectName() == self.player:objectName() then
 		local peaches = 1 - self.player:getHp()
@@ -495,24 +495,24 @@ ai_skill_invoke["#sgkgodshenyinLose"] = true
 --潜渊
 ai_skill_invoke.sgkgodqianyuan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if data:toString() and data:toString():startsWith("sgkgodjiguan_") then return (false) or false end
-	if self.player:getStrategyMark("sgkgodhualong") < 8 then return (true) or false end
+	if data:toString() and data:toString():startsWith("sgkgodjiguan_") then return false end
+	if self.player:getStrategyMark("sgkgodhualong") < 8 then return true end
 	return false
 
 end
 
 ai_skill_invoke["#sgkgodqianyuanLose"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if data:toString():startsWith("sgkgodjiguan_") then return (false) or false end
-	return (true) or false
+	if data:toString():startsWith("sgkgodjiguan_") then return false end
+	return true
 end
 
 
 --化龙
 ai_skill_invoke.sgkgodhualong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (false) or false end
-	return (true) or false
+	if #self.enemies == 0 then return false end
+	return true
 end
 
 sgs.ai_skill_playerchosen.sgkgodhualong = function(self, targets)
@@ -749,10 +749,10 @@ end
 --玲珑
 ai_skill_invoke.sgkgodlinglong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if incoming(self,"maxhp").change < 0 then return (true) or false end
-	if incoming(self,"hp_lost").lose > 0 then return (true) or false end
-	if undefined_player(self) and #self.enemies > 0 then return (true) or false end
-	if data:toDamage().damage > 0 and (not self:needToLoseHp(self.player)) then return (true) or false end
+	if incoming(self,"maxhp").change < 0 then return true end
+	if incoming(self,"hp_lost").lose > 0 then return true end
+	if undefined_player(self) and #self.enemies > 0 then return true end
+	if data:toDamage().damage > 0 and (not self:needToLoseHp(self.player)) then return true end
 	return false
 
 end

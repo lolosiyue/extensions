@@ -440,10 +440,10 @@ ai_skill_invoke.sfofl_liushang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _, p in sgs.qlist(package_known(self.room,"findPlayersBySkillName","sfofl_liushang")) do
         if not package_known(self,"isEnemy",p) then
-            return (true) or false
+            return true
         end
     end
-	return (false) or false
+	return false
 end
 
 
@@ -631,9 +631,9 @@ ai_skill_invoke.sfofl_sheji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_known(data,"toDamage").to
 	if not package_known(self,"doDisCard",target, "e", true) then
-		return (false) or false
+		return false
 	end
-	return (true) or false
+	return true
 end
 sgs.need_kongcheng = sgs.need_kongcheng .. "|sfofl_hengzheng"
 
@@ -678,7 +678,7 @@ end
 ai_skill_invoke.sfofl_young_ganglie = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local mode = package_known(self.room,"getMode")
-	if package_known(mode,"find","_mini_41") or package_known(mode,"find","_mini_46") then return (true) or false end
+	if package_known(mode,"find","_mini_41") or package_known(mode,"find","_mini_46") then return true end
 	local damage = package_known(data,"toDamage")
 	return (not package_known(self,"isFriend",damage.from) and package_known(self,"doDisCard",damage.from, "h")) or false
 end
@@ -800,8 +800,8 @@ sgs.ai_card_intention["sfofl_quanyi"] = 80
 
 ai_skill_invoke.sfofl_quanyi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if package_known(self.player,"getStrategyMark","ai_sfofl_quanyi-PlayClear") > 0 then return (false) or false end
-	return (true) or false
+	if package_known(self.player,"getStrategyMark","ai_sfofl_quanyi-PlayClear") > 0 then return false end
+	return true
 end
 ai_skill_use["@@sfofl_qupo"]=function(self,prompt,request)
 
@@ -1006,9 +1006,9 @@ end
 
 ai_skill_invoke.sfofl_qixing = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if package_known(self,"needKongcheng") then return (true) or false end
-	if 7 - package_known(self.player,"getHandcardNum") > math.random(1, 3) then return (true) or false end
-	return (false) or false
+	if package_known(self,"needKongcheng") then return true end
+	if 7 - package_known(self.player,"getHandcardNum") > math.random(1, 3) then return true end
+	return false
 end
 
 sgs.ai_card_priority.sfofl_qixing = function(self,card,v)
@@ -1022,8 +1022,8 @@ end
 ai_skill_invoke.sfofl_lyre = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_known(data,"toDamage").from
-	if target and package_known(self,"doDisCard",target, "he") then return (true) or false end
-	return (false) or false
+	if target and package_known(self,"doDisCard",target, "he") then return true end
+	return false
 end
 sgs.ai_choicemade_filter.cardChosen.sfofl_lyre = sgs.ai_choicemade_filter.cardChosen.snatch
 
@@ -1655,13 +1655,13 @@ ai_skill_invoke["sfofl_jiufa"] = function(self, options, request)
 	if package_known(card,"isKindOf","EquipCard") then
 		local i = package_known(card,"getRealCard"):toEquipCard():location()
 		if package_call(self.player,"getEquip",i) and package_known(self.player,"hasEquipArea",i) and not package_known(self,"doDisCard",self.player, package_call(self.player,"getEquip",i):getEffectiveId()) then
-			return (false) or false
+			return false
 		end
 	end
 	if package_known(card,"isKindOf","DelayedTrick") then
-		return (false) or false
+		return false
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke["underhengwu"] = true
@@ -2591,7 +2591,7 @@ ai_skill_invoke.sfofl_xiandao = function(self, options, request)
 	if #ids>0 then
 		local c = disclosed_card(self,ids[1])
 		if package_known(c,"isKindOf","TrickCard") then
-			return (true) or false
+			return true
 		elseif package_known(c,"isKindOf","EquipCard") then
 			if package_known(c,"isKindOf","Weapon") then
 				return (package_known(self,"damageIsEffective",target, sgs.DamageStruct_Normal) and ((not package_known(self,"cantbeHurt",target) and package_known(self,"isEnemy",target)) or (package_known(self,"isFriend",target) and package_known(self,"needToLoseHp",target, self.player)))) or false
@@ -2723,13 +2723,13 @@ end
 ai_skill_invoke.sfofl_qizhen = function(self, options, request)
    	local data = request and self:getDecisionData(request) or nil
    	local use = package_known(data,"toCardUse")
-	if package_known(use.card,"hasFlag","DamageDone") then return (true) or false end
+	if package_known(use.card,"hasFlag","DamageDone") then return true end
 	for _,p in sgs.qlist(use.to) do
 		if not package_known(self,"doDisCard",p, "e") then
-			return (false) or false
+			return false
 		end
 	end
-    return (true) or false
+    return true
 end
 
 
@@ -2833,8 +2833,8 @@ end
 ai_skill_invoke.sfofl_mingjian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(self.room,"getCurrent")
-    if target and package_known(self,"isFriend",target) then return (true) or false end
-	return (false) or false
+    if target and package_known(self,"isFriend",target) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.sfofl_mingjian = function(self, player, promptlist)
     local current = package_call(self.room,"getCurrent")
@@ -2887,8 +2887,8 @@ end
 ai_skill_invoke.sfofl_zuifu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
-    if target and package_known(self,"isEnemy",target) and package_known(self,"damageIsEffective",target, sgs.DamageStruct_Normal) and not package_known(self,"cantbeHurt",target) then return (true) or false end
-	return (false) or false
+    if target and package_known(self,"isEnemy",target) and package_known(self,"damageIsEffective",target, sgs.DamageStruct_Normal) and not package_known(self,"cantbeHurt",target) then return true end
+	return false
 end
 
 
@@ -2983,8 +2983,8 @@ ai_skill_invoke.sfofl_suozhou = function(self, options, request)
 			end
 		end
 	end
-	if x < 0 then return (false) or false end
-	return (true) or false
+	if x < 0 then return false end
+	return true
 end
 
 sgs.ai_useto_revises.sfofl_yihuo = function(self, card, use, p)
@@ -3006,8 +3006,8 @@ end
 ai_skill_invoke.sfofl_lijun = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_known(data,"toDamage").to
-    if target and package_known(self,"isFriend",target) and package_known(self,"canDraw",target, self.player) then return (true) or false end
-	return (false) or false
+    if target and package_known(self,"isFriend",target) and package_known(self,"canDraw",target, self.player) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.sfofl_lijun = function(self, player, promptlist)
     local damage = source_fact(self,"CurrentDamageStruct","toDamage")
@@ -3024,8 +3024,8 @@ end
 ai_skill_invoke.sfofl_tongbei = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = package_known(data,"toDamage")
-    if damage.to and package_known(self,"isEnemy",damage.to) then return (true) or false end
-	return (false) or false
+    if damage.to and package_known(self,"isEnemy",damage.to) then return true end
+	return false
 end
 
 sgs.ai_skill_cardask["@sfofl_tongbei"] = function(self, data, pattern, target)
@@ -3076,9 +3076,9 @@ end
 ai_skill_invoke.sfofl_yujun = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = package_known(data,"toDamage")
-	if package_known(self,"isWeak") and package_known(self,"getAllPeachNum") < 1 and damage.damage <= 1 then return (false) or false end
-    if damage.to and package_known(self,"isFriend",damage.to) and package_known(self,"damageIsEffective",damage.to,damage.card,damage.from) and not package_known(self,"needToLoseHp",damage.to, damage.from, damage.card) then return (true) or false end
-	return (false) or false
+	if package_known(self,"isWeak") and package_known(self,"getAllPeachNum") < 1 and damage.damage <= 1 then return false end
+    if damage.to and package_known(self,"isFriend",damage.to) and package_known(self,"damageIsEffective",damage.to,damage.card,damage.from) and not package_known(self,"needToLoseHp",damage.to, damage.from, damage.card) then return true end
+	return false
 end
 
 sgs.ai_useto_revises.sfofl_yujun = function(self, card, use, p)
@@ -3101,7 +3101,7 @@ ai_skill_invoke.sfofl_cailue = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
 	if target then return (package_known(self,"doDisCard",target, "he")) or false end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.sfofl_sashuang = true
@@ -3244,15 +3244,15 @@ ai_skill_invoke.sfofl_dimeng = function(self, options, request)
 	local pindian = package_known(data,"toPindian")
 	if pindian.from and pindian.to and package_known(self,"isFriend",pindian.to) and package_known(self,"isEnemy",pindian.from) then
 		if package_known(pindian.to_card,"getNumber") < package_known(pindian.from_card,"getNumber") then
-			return (true) or false
+			return true
 		end
 	end
 	if pindian.from and pindian.to and package_known(self,"isFriend",pindian.from) and package_known(self,"isEnemy",pindian.to) then
 		if package_known(pindian.to_card,"getNumber") >= package_known(pindian.from_card,"getNumber") then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 local sfofl_2_zhouji_skill = {}
@@ -3313,8 +3313,8 @@ ai_skill_invoke["sfofl_louchuan"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
 	if package_known(self,"isEnemy",target) and not(package_known(target,"isChained") or package_known(self,"needToLoseHp",target))
-		and package_known(self,"isGoodTarget",target,self.enemies) then return (true) or false end
-	return (false) or false
+		and package_known(self,"isGoodTarget",target,self.enemies) then return true end
+	return false
 end
 
 ai_card_use.Yiguzuoqi=function(self,card,use, request)
@@ -3373,8 +3373,8 @@ ai_skill_invoke.sfofl_lilu = function(self, options, request)
 		invoke = true
 		break
 	end ::package_continue_9:: end
-	if not invoke then return (false) or false end
-	return (true) or false
+	if not invoke then return false end
+	return true
 end
 
 ai_skill_use["@@sfofl_lilu!"]=function(self,prompt,request)
@@ -3557,9 +3557,9 @@ ai_skill_invoke.sfofl_sitong = function(self, options, request)
 	package_call(slash,"setSkillName","sfofl_sitong")
 	local dummy_use = package_known(self,"withOwnerRange","slashNoDistanceLimit","sfofl_sitong",function() return package_known(self,"aiUseCard",slash, dummy(true, 99, package_known(self.room,"getOtherPlayers",target))) end)
 	if dummy_use.card and dummy_use and dummy_use.to and package_known(dummy_use.to,"contains",target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.sfofl_jianjing = sgs.ai_skill_playerchosen.damage
@@ -3698,10 +3698,10 @@ ai_skill_invoke.sfofl_qingjin = function(self, options, request)
 	local dummy_use = package_known(self,"withOwnerRange","slashNoDistanceLimit","sfofl_qingjin",function() return package_known(self,"aiUseCard",slash, dummy(true, 99, package_known(self.room,"getOtherPlayers",target))) end)
 	if dummy_use.card and dummy_use and dummy_use.to and package_known(dummy_use.to,"contains",target) then
 		if not package_known(self,"isWeak") or getCardsNum("Jink",target,self.player)==0 then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -3883,14 +3883,14 @@ function ai_skill_invoke.sfofl_jushou(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local sbdiaochan = package_call(self.room,"findPlayerBySkillName","lihun")
 	if sbdiaochan and package_known(sbdiaochan,"faceUp") and not package_known(self,"willSkipPlayPhase",sbdiaochan)
-		and (package_known(self,"isEnemy",sbdiaochan) or (turn_count(self)<=1 and package_call(self,"getRoleEstimate",sbdiaochan)=="neutral")) then return (false) or false end
-	if not package_known(self.player,"faceUp") then return (true) or false end
-	if package_known(self,"toTurnOver",self.player,package_known(self.room,"getAlivePlayers"):length(),"sfofl_jushou") then return (true) or false end
+		and (package_known(self,"isEnemy",sbdiaochan) or (turn_count(self)<=1 and package_call(self,"getRoleEstimate",sbdiaochan)=="neutral")) then return false end
+	if not package_known(self.player,"faceUp") then return true end
+	if package_known(self,"toTurnOver",self.player,package_known(self.room,"getAlivePlayers"):length(),"sfofl_jushou") then return true end
 	for _,friend in ipairs(self.friends)do
-		if package_known(self,"hasSkills","fangzhu|jilve",friend) then return (true) or false end
+		if package_known(self,"hasSkills","fangzhu|jilve",friend) then return true end
 		if package_known(friend,"faceUp") and package_known(friend,"hasSkill","junxing") and not package_known(self,"willSkipPlayPhase",friend)
 			and not (package_known(friend,"isKongcheng") and package_known(self,"willSkipDrawPhase",friend)) then
-			return (true) or false
+			return true
 		end
 	end
 	return (package_known(self,"isWeak")) or false
@@ -3898,11 +3898,11 @@ end
 function ai_skill_invoke.sfofl_jushouTurnOver(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self.player,"getHp") < 2 or package_known(self.player,"getHandcardNum") == 0 then
-		return (true) or false
+		return true
 	end
 
 	package_call(self,"sort",self.enemies,"defense")
-	if package_known(self,"getCardsNum","Slash") == 0 then return (false) or false end
+	if package_known(self,"getCardsNum","Slash") == 0 then return false end
 
 	local slashs = package_known(self,"getCards","Slash")
 	if #slashs == 0 then return false end
@@ -3911,7 +3911,7 @@ function ai_skill_invoke.sfofl_jushouTurnOver(self, options, request)
 			if not package_known(self,"damageprohibit",enemy) and package_known(self,"TheWuhun",enemy) >= 0 and package_known(self,"damageIsEffective",enemy) and package_known(self.player,"distanceTo",enemy) == 1
 				and package_known(self.player,"canSlash",enemy, slash) and not package_known(self,"slashProhibit",slash, enemy, self.player)
 				and not package_known(enemy,"hasArmorEffect","SilverLion") and package_known(self,"hasCrossbowEffect") then
-				return (true) or false
+				return true
 			end
 		end
 	end
@@ -4163,10 +4163,10 @@ ai_skill_invoke.sfofl_yure = function(self, options, request)
 			package_call(card_ids,"append",card_id)
 		end
 	end
-	if #self.friends_noself == 0 then return (false) or false end
-	if package_known(card_ids,"length") > 3 then return (true) or false end
-	if package_known(self,"isWeak") and package_known(card_ids,"length") >= 2 then return (true) or false end
-	return (false) or false
+	if #self.friends_noself == 0 then return false end
+	if package_known(card_ids,"length") > 3 then return true end
+	if package_known(self,"isWeak") and package_known(card_ids,"length") >= 2 then return true end
+	return false
 end
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|sfofl_suiqu"
 ai_skill_choice["sfofl_suiqu"] = function(self, options, request)
@@ -4492,8 +4492,8 @@ ai_skill_invoke.sfofl_gaiming = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local judge = package_known(data,"toJudge")
 	if not package_known(judge,"isGood") then
-	return (true) or false end
-	return (false) or false
+	return true end
+	return false
 end
 
 sgs.ai_ajustdamage_from.sfofl_tunquan = function(self, from, to, card, nature)
@@ -4654,16 +4654,16 @@ ai_skill_invoke.sfofl_dafu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
 	if package_known(self,"isFriend",target) then
-		if package_known(target,"isKongcheng") then return (true) or false end
-		if (package_known(target,"getHandcardNum") >= 3 or package_known(self,"isWeak",target)) then return (false) or false end
+		if package_known(target,"isKongcheng") then return true end
+		if (package_known(target,"getHandcardNum") >= 3 or package_known(self,"isWeak",target)) then return false end
 		if package_known(self,"needToLoseHp",target,self.player) then
-			return (true) or false
+			return true
 		end
 	end
-	if package_known(target,"isKongcheng") then return (false) or false end
-	if package_known(self.player,"hasSkill","sfofl_jipin") and package_known(target,"getHandcardNum") + 1 >= package_known(self.player,"getHandcardNum") then return (true) or false end
-	if math.random() < 0.5 then return (true) or false end
-	return (false) or false
+	if package_known(target,"isKongcheng") then return false end
+	if package_known(self.player,"hasSkill","sfofl_jipin") and package_known(target,"getHandcardNum") + 1 >= package_known(self.player,"getHandcardNum") then return true end
+	if math.random() < 0.5 then return true end
+	return false
 end
 
 ai_skill_invoke.sfofl_jipin = function(self, options, request)
@@ -5032,8 +5032,8 @@ ai_skill_invoke.sfofl_dangjing = true
 ai_skill_invoke.sfofl_jijun = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local tr = package_known(data,"toString")
-	if tr == "obtain" and not package_known(self.player,"hasSkill","sfofl_fangtong") then return (false) or false end
-	return (true) or false
+	if tr == "obtain" and not package_known(self.player,"hasSkill","sfofl_fangtong") then return false end
+	return true
 end
 
 
@@ -5308,11 +5308,11 @@ ai_skill_invoke.sfofl_shice = function(self, options, request)
 		if package_known(self,"doDisCard",target, "e") then
 			local dummy_use = package_known(self,"aiUseCard",use.card, dummy(true, 0, package_known(self.room,"getOtherPlayers",target)))
 			if dummy_use.card and dummy_use and dummy_use.to and package_known(dummy_use.to,"contains",target) then
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_choice.sfofl_podai = function(self, options, request)
@@ -5804,7 +5804,7 @@ ai_skill_invoke.sfofl_kuixiang = function(self, options, request)
             break
         end
     end
-    if not target then return (false) or false end
+    if not target then return false end
     return (package_known(self,"isEnemy",target)) or false
 end
 
@@ -6025,9 +6025,9 @@ ai_skill_invoke.sfofl_lvedao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = package_known(data,"toDamage")
 	if package_known(self,"isEnemy",damage.to) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 local sfofl_bixiong_skill = {}
@@ -6397,7 +6397,7 @@ ai_skill_invoke.sfofl_sixiong =  function(self, options, request)
 				end
 			end
 			if good > 0 then
-				return (true) or false
+				return true
 			end
 			break
 		end
@@ -6414,9 +6414,9 @@ ai_skill_invoke.sfofl_sixiong =  function(self, options, request)
 		if package_known(c,"isBlack") then black = black + 1 end
 	end
 	if max > black then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_choice.sfofl_sixiong = function(self, options, request)
@@ -6605,8 +6605,8 @@ end
 ai_skill_invoke.sfofl_chuce = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = package_known(data,"toCardUse")
-    if use.from and package_known(self,"isEnemy",use.from) then return (true) or false end
-	return (false) or false
+    if use.from and package_known(self,"isEnemy",use.from) then return true end
+	return false
 end
 ai_skill_invoke.sfofl_chuceuse = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
@@ -6617,9 +6617,9 @@ ai_skill_invoke.sfofl_chuceuse = function(self, options, request)
 	package_call(card,"deleteLater")
     local dummy_use = package_known(self,"aiUseCard",card, dummy())
 	if package_known(card,"isAvailable",self.player) and dummy_use.card then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -6816,10 +6816,10 @@ ai_skill_invoke.sfofl_jubing = function(self, options, request)
 		package_call(slash,"deleteLater")
 		local dummy_use = package_known(self,"withOwnerRange","InfinityAttackRange","sfofl_jubing",function() return package_known(self,"aiUseCard",slash,dummy(true, 0, package_known(self.room,"getOtherPlayers",damage.to))) end)
 		if dummy_use.card and dummy_use and dummy_use.to and package_known(dummy_use.to,"contains",damage.to) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -7155,9 +7155,9 @@ ai_skill_invoke.sfofl_bozhan = function(self, options, request)
 	package_call(duel,"setSkillName","sfofl_bozhan")
 	local dummy_use = package_known(self,"aiUseCard",duel, dummy(true, 99, package_known(self.room,"getOtherPlayers",current)))
 	if dummy_use.card and dummy_use and dummy_use.to and package_known(dummy_use.to,"contains",current) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_canliegong_skill.sfofl_tieti = function(self, from, to)
@@ -7175,9 +7175,9 @@ ai_skill_invoke.sfofl_guwei = function(self, options, request)
     end
 	local use = package_known(data,"toCardUse")
 	if target and package_known(self,"isFriend",target) and package_known(self,"isWeak",target) and package_known(self,"slashIsEffective",use.card,target,use.from) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.sfofl_guwei = function(self, player, promptlist)
@@ -7262,9 +7262,9 @@ ai_skill_invoke.sfofl_juedou = function(self, options, request)
 	package_call(slash,"setSkillName","sfofl_juedou")
 	local dummy_use = package_known(self,"withOwnerRange","slashNoDistanceLimit","sfofl_juedou",function() return package_known(self,"aiUseCard",slash, dummy(true, 0, package_known(self.room,"getOtherPlayers",target))) end)
 	if dummy_use.card and dummy_use and dummy_use.to and package_known(dummy_use.to,"contains",target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.sfofl_wanwang = function(self, options, request)
@@ -7821,18 +7821,18 @@ ai_skill_invoke.sfofl_xiaofan_damage = function(self, options, request)
 	local damage = package_known(data,"toDamage")
 	if damage.to and package_known(self,"isEnemy",damage.to) then
 		if not package_known(self,"cantbeHurt",damage.to) and package_known(self,"canDamage",damage.to,self.player,nil) and package_known(self,"damageIsEffective",damage.to, sgs.DamageStruct_Normal, self.player) then
-			return (true) or false
+			return true
 		end
 	end
 	if package_known(damage.to,"objectName") == package_known(self.player,"objectName") then
 		if not package_known(self,"damageIsEffective",damage.to, sgs.DamageStruct_Normal, self.player) or package_known(self,"needToLoseHp",damage.to,self.player,nil) then
-			return (true) or false
+			return true
 		end
 		if not package_known(self,"isWeak") then
 			return (math.random() < 0.5) or false
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_ajustdamage_from.sfofl_huoluan = function(self, from, to, card, nature)
@@ -7975,7 +7975,7 @@ ai_skill_invoke.sfofl_bianchi = function(self, options, request)
 		for _,card in sgs.qlist(package_known(p,"getCards","e")) do
 			if package_known(card,"isKindOf","sfofl_xingbian") then
 				if package_known(self,"isEnemy",p) and (package_known(p,"getHandcardNum") > 2 or package_known(self,"isWeak",p) ) then
-					return (true) or false
+					return true
 				end
 				if package_known(self,"isEnemy",p)  then
 					x = x + 1
@@ -7984,9 +7984,9 @@ ai_skill_invoke.sfofl_bianchi = function(self, options, request)
 		end
 	end
 	if x >= 2 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_choice.sfofl_bianchi = function(self, options, request)
@@ -8106,9 +8106,9 @@ ai_skill_invoke.sfofl_chiyan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
 	if package_known(self,"isEnemy",target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_ajustdamage_to["&sfofl_chiyan"] = function(self,from,to,card,nature)
@@ -8317,20 +8317,20 @@ ai_skill_invoke.sfofl_chihe = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = package_known(data,"toCardUse")
 	if package_known(use.from,"objectName") == package_known(self.player,"objectName") then
-		if package_known(self,"isFriend",package_known(use.to,"first")) then return (false) or false end
-		return (true) or false
+		if package_known(self,"isFriend",package_known(use.to,"first")) then return false end
+		return true
 	else
 		if use.from and package_known(self,"isEnemy",use.from) then
 			if not package_known(self,"canLiegong",self.player, use.from) and (package_known(self,"getCardsNum","Jink")>0 or package_known(self,"hasEightDiagramEffect")) then
-				return (true) or false
+				return true
 			end
 			if package_known(self,"ajustDamage",use.from,self.player,1,use.card) <= 0 then
-				return (true) or false
+				return true
 			end
 		end
 	end
 
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.sfofl_niqu = function(self, options, request)
@@ -8341,18 +8341,18 @@ ai_skill_invoke.sfofl_niqu = function(self, options, request)
 	package_call(slash,"setSkillName","sfofl_niqu")
 	local dummy_use = package_known(self,"aiUseCard",slash, dummy(true, 0, package_known(self.room,"getOtherPlayers",target)))
 	if dummy_use.card and dummy_use and dummy_use.to and package_known(dummy_use.to,"contains",target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.sfofl_miaoyu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
 	if target and package_known(self,"isEnemy",target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.sfofl_miaoyu = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -8858,12 +8858,12 @@ end
 ai_skill_invoke.sfofl_zhiyang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
-	if target and package_known(self,"isFriend",target) then return (false) or false end
+	if target and package_known(self,"isFriend",target) then return false end
 	local max_card = package_call(self,"getMaxCard")
 	if max_card and package_known(max_card,"getNumber") >= 10  then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.sfofl_cuanzun = true
@@ -8961,14 +8961,14 @@ sgs.ai_target_revises.sfofl_xiongtu = sgs.ai_target_revises.jianxiong
 
 ai_skill_invoke.sfofl_fuxiang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.friends==1 then return (false) or false end
+	if #self.friends==1 then return false end
 
 	local cards = sgs.QList2Table(package_known(self.player,"getHandcards"))
 
 
 	local limit = package_known(self.player,"getMaxCards")
-	if package_known(self.player,"isKongcheng") then return (false) or false end
-	if package_known(self,"getCardsNum","Peach")>=limit-2 and package_known(self.player,"isWounded") then return (false) or false end
+	if package_known(self.player,"isKongcheng") then return false end
+	if package_known(self,"getCardsNum","Peach")>=limit-2 and package_known(self.player,"isWounded") then return false end
 
 	local to_discard = nil
 
@@ -8976,13 +8976,13 @@ ai_skill_invoke.sfofl_fuxiang = function(self, options, request)
 	if sgs.playerRoles.rebel==0 then
 		local lord = package_call(self.room,"getLord")
 		if lord and package_known(self,"isFriend",lord) then
-			return (true) or false
+			return true
 		end
 	end
 
 	local AssistTarget = package_call(self,"AssistTarget")
 	if AssistTarget and not package_known(self,"willSkipPlayPhase",AssistTarget) then
-		return (true) or false
+		return true
 	end
 
 	package_call(self,"sort",self.friends_noself,"handcard")
@@ -8990,7 +8990,7 @@ ai_skill_invoke.sfofl_fuxiang = function(self, options, request)
 	for _,target in ipairs(self.friends_noself)do
 		if not package_known(target,"hasSkill","dawu") and package_known(target,"hasSkills","yongsi|zhiheng|"..sgs.priority_skill.."|shensu")
 			and (not package_known(self,"willSkipPlayPhase",target) or package_known(target,"hasSkill","shensu")) then
-			return (true) or false
+			return true
 		end
 	end
 
@@ -9001,13 +9001,13 @@ ai_skill_invoke.sfofl_fuxiang = function(self, options, request)
 				if package_known(p,"getStrategyMark","&dawu")>0 then use = false break end
 			end
 			if use then
-				return (true) or false
+				return true
 			end
 		else
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.sfofl_fuxiang = function(self,targets)
@@ -9231,7 +9231,7 @@ end
 ai_skill_invoke.tongkai = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local to = package_call(data,"toPlayer")
-	return (not package_known(self,"isEnemy",to)) or false
+	return not package_known(self,"isEnemy",to)
 end
 
 
@@ -9865,8 +9865,8 @@ ai_skill_invoke.sfofl_xingshang = ai_skill_invoke.mobilexingshang
 
 ai_skill_invoke.sfofl_xingshanglord = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if ai_skill_choice.mobilexingshang(self,{reason="mobilexingshang",choices={"get","recover"},inquiry_scope="nested"},request) == "recover" then return (true) or false end
-	return (false) or false
+	if ai_skill_choice.mobilexingshang(self,{reason="mobilexingshang",choices={"get","recover"},inquiry_scope="nested"},request) == "recover" then return true end
+	return false
 end
 
 sgs.ai_skill_playerchosen.sfofl_fangzhu = function(self,targets)
@@ -10598,9 +10598,9 @@ ai_skill_invoke.sfofl_shoufan_equip = function(self, options, request)
 	local card = package_known(data,"toCard")
 	local dummy_use = package_known(self,"aiUseCard",card)
 	if dummy_use.card then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_use["@@sfofl_dunji"]=function(self,prompt,request)
@@ -10645,14 +10645,14 @@ end
 ai_skill_invoke.sfofl_liefu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
-	if not package_known(self,"isEnemy",target) then return (false) or false end
+	if not package_known(self,"isEnemy",target) then return false end
 
 	if package_known(self.player,"getHandcardNum")==1 then
-		if (package_known(self,"needKongcheng") or not package_known(self,"hasLoseHandcardEffective")) and not package_known(self,"isWeak") then return (true) or false end
+		if (package_known(self,"needKongcheng") or not package_known(self,"hasLoseHandcardEffective")) and not package_known(self,"isWeak") then return true end
 		local card  = package_known(self.player,"getHandcards"):first()
 		if package_known(card,"isKindOf","Jink") or package_known(card,"isKindOf","Peach") then return false end
 	end
-	if package_known(self,"doDisCard",target,"he",true,2) then return (true) or false end
+	if package_known(self,"doDisCard",target,"he",true,2) then return true end
 	return false
 
 end
@@ -10787,11 +10787,11 @@ end
 ai_skill_invoke.sfofl_n_chedian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
-	if not package_known(self,"isEnemy",target) then return (false) or false end
+	if not package_known(self,"isEnemy",target) then return false end
 	if package_known(self,"canDamage",target,self.player,nil) and package_known(self,"damageIsEffective",target, sgs.DamageStruct_Thunder, self.player) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -10893,8 +10893,8 @@ end
 
 ai_skill_invoke.sfofl_n_luanjian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if package_known(self.player,"getEquips"):length() <= 2 then return (true) or false end
-	return (false) or false
+	if package_known(self.player,"getEquips"):length() <= 2 then return true end
+	return false
 end
 
 local sfofl_n_luanjian_skill = {}
@@ -10974,8 +10974,8 @@ end
 
 ai_skill_invoke.sfofl_n_xuezhan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if package_known(self.player,"getEquips"):length() <= 2 then return (true) or false end
-	return (false) or false
+	if package_known(self.player,"getEquips"):length() <= 2 then return true end
+	return false
 end
 local sfofl_n_xuezhan_skill = {}
 sfofl_n_xuezhan_skill.name = "sfofl_n_xuezhan"
@@ -11000,9 +11000,9 @@ end
 ai_skill_invoke.sfofl_n_jianbing = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = package_known(data,"toDamage")
-	if package_known(self,"doDisCard",damage.to, "he", true) then return (true) or false end
-	if package_known(self,"isFriend",damage.to) and package_known(self,"isWeak",damage.to) and getKnownCard(damage.to,self.player,"heart")>0 then return (true) or false end
-	return (false) or false
+	if package_known(self,"doDisCard",damage.to, "he", true) then return true end
+	if package_known(self,"isFriend",damage.to) and package_known(self,"isWeak",damage.to) and getKnownCard(damage.to,self.player,"heart")>0 then return true end
+	return false
 end
 
 sgs.ai_target_revises.sfofl_n_bishi = function(to,card)
@@ -11435,7 +11435,7 @@ ai_skill_invoke.sfofl_n_chongsha = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
 	if not package_known(self,"isFriend",target) then return (package_known(self,"doDisCard",target, "he", true)) or false end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.sfofl_n_tuxi = function(self, targets)
@@ -11481,14 +11481,14 @@ ai_skill_invoke.sfofl_n_baijiang = function(self, options, request)
 	local use = package_known(data,"toCardUse")
 	if use.from and package_known(self,"isFriend",use.from) then
 		if package_known(self,"getOverflow") == 0 and package_known(use.from,"getMaxCards") - package_known(use.from,"getHandcardNum") > 2 then
-			return (true) or false
+			return true
 		end
 	end
 	if not package_known(self,"isFriend",use.from) then
-		if package_known(use.from,"getStrategyMark","sfofl_n_baijiang-Clear") == 0 then return (true) or false end
-		if package_known(use.from,"getMaxCards") > 0 then return (true) or false end
+		if package_known(use.from,"getStrategyMark","sfofl_n_baijiang-Clear") == 0 then return true end
+		if package_known(use.from,"getMaxCards") > 0 then return true end
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_skill_discard.sfofl_n_zhuying = function(self)
 	local to_discard = {}
@@ -11664,8 +11664,8 @@ end
 ai_skill_invoke.sfofl_yanli = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_known(data,"toDying").who
-    if target and package_known(self,"isFriend",target) then return (true) or false end
-	return (false) or false
+    if target and package_known(self,"isFriend",target) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.sfofl_yanli = function(self, player, promptlist)
     local dying = package_known(self.room,"getCurrentDyingPlayer")
@@ -11700,8 +11700,8 @@ end
 ai_skill_invoke.sfofl_xianli = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
-    if target and package_known(self,"doDisCard",target, "he", true) then return (true) or false end
-	return (false) or false
+    if target and package_known(self,"doDisCard",target, "he", true) then return true end
+	return false
 end
 
 sgs.ai_skill_cardask["@sfofl_guisha"] = function(self,data)
@@ -11742,8 +11742,8 @@ end
 ai_skill_invoke.sfofl_shuli = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(data,"toPlayer")
-    if target and package_known(self,"isFriend",target) then return (true) or false end
-	return (false) or false
+    if target and package_known(self,"isFriend",target) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.sfofl_shuli = function(self, player, promptlist)
     local target = package_call(self.room,"findPlayerByObjectName",promptlist[#promptlist-1])
@@ -11754,8 +11754,8 @@ end
 ai_skill_invoke.sfofl_meiniang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_call(self.room,"getCurrent")
-    if target and package_known(self,"isFriend",target) then return (true) or false end
-	return (false) or false
+    if target and package_known(self,"isFriend",target) then return true end
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.sfofl_meiniang = function(self, player, promptlist)
@@ -11767,8 +11767,8 @@ end
 ai_skill_invoke.sfofl_yaoli = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_known(data,"toCardUse").from
-    if target and package_known(self,"isFriend",target) then return (true) or false end
-	return (false) or false
+    if target and package_known(self,"isFriend",target) then return true end
+	return false
 end
 
 
@@ -11838,7 +11838,7 @@ ai_skill_invoke.sfofl_moli_zhenji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local id = package_known(data,"toInt")
 	local card = disclosed_card(self,id)
-	if not package_known(card,"isBlack") then return (false) or false end
+	if not package_known(card,"isBlack") then return false end
 	return (package_known(self.player,"getStrategyMark","&sfofl_moli") < 5) or false
 end
 ai_skill_invoke.sfofl_jinghong = function(self, options, request)
@@ -11847,11 +11847,11 @@ ai_skill_invoke.sfofl_jinghong = function(self, options, request)
 	if package_known(self.player,"getStrategyMark","&sfofl_moli") <= 1 and package_known(self.player,"getPhase") ~= sgs.Player_NotActive then
 		package_known(self,"getTurnUse")
 		if #self.toUse > 2 then
-			return (false) or false
+			return false
 		end
 	end
-	if target and package_known(self,"isFriend",target) and package_known(self,"canDraw",target) then return (true) or false end
-	return (false) or false
+	if target and package_known(self,"isFriend",target) and package_known(self,"canDraw",target) then return true end
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.sfofl_jinghong = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -11875,7 +11875,7 @@ ai_skill_invoke.sfofl_haiyou = function(self, options, request)
 		end
 	end
 	if package_known(use.card,"isKindOf","AOE") and use.from and package_known(self,"isFriend",use.from) then
-		return (false) or false
+		return false
 	end
 	return (package_known(self,"shouldInvokeCostNullifySkill",use, false, false, 0, target)) or false
 end
@@ -11888,8 +11888,8 @@ end
 ai_skill_invoke.sfofl_susheng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = package_known(data,"toDying").who
-	if target and package_known(self,"isFriend",target) then return (true) or false end
-	return (false) or false
+	if target and package_known(self,"isFriend",target) then return true end
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.sfofl_susheng = function(self,player,promptlist)

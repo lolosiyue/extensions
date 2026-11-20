@@ -800,9 +800,9 @@ end
 ai_skill_invoke.tenyearyijue = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local name = data:toString():split(":")
-	if #name<=1 or name[2]=="" or name[2]==nil then return (false) or false end
+	if #name<=1 or name[2]=="" or name[2]==nil then return false end
 	local player = self.room:findPlayerByObjectName(name[2])
-	if not player or player:isDead() then return (false) or false end
+	if not player or player:isDead() then return false end
 	return (self:isFriend(player)) or false
 end
 
@@ -816,9 +816,9 @@ ai_skill_invoke.tenyeartishen = function(self, options, request)
 			break
 		end
 	end
-	if not hascard then return (true) or false end
-	if self:getCardsNum("Jink")==0 then return (false) or false end
-	return (true) or false  --偷懒
+	if not hascard then return true end
+	if self:getCardsNum("Jink")==0 then return false end
+	return true  --偷懒
 end
 
 --观星
@@ -870,18 +870,18 @@ end
 ai_skill_invoke.tenyearjizhi_discard = function(self, options, request)
 	local choices = request and self:getDecisionData(request) or nil
 	local data = nil
-	if self.player:getHandcardNum()<=self.player:getMaxCards() then return (false) or false end
+	if self.player:getHandcardNum()<=self.player:getMaxCards() then return false end
 	local id = tag(self,"tenyearjizhi_id","Int")
 	local card = known_card(self,id)
-	if card:isKindOf("Jink") and self:getCardsNum("Jink")<=1 then return (false) or false end
-	if card:isKindOf("Peach") then return (false) or false end
-	if not self.player:canUse(card) then return (true) or false end
-	if card:isKindOf("Analeptic") and self:willUse(self.player,card) then return (false) or false end
+	if card:isKindOf("Jink") and self:getCardsNum("Jink")<=1 then return false end
+	if card:isKindOf("Peach") then return false end
+	if not self.player:canUse(card) then return true end
+	if card:isKindOf("Analeptic") and self:willUse(self.player,card) then return false end
 	local dummy_use = dummy_plan()
 	self:useCardByClassName(card,dummy_use)
-	if not dummy_use.card or dummy_use.to:isEmpty() then return (true) or false end
-	if card:isKindOf("Slash") and self:getCardsNum("Slash")>1 and (self.player:canSlashWithoutCrossbow() or self.player:hasWeapon("Crossbow")) then return (false) or false end
-	return (false) or false
+	if not dummy_use.card or dummy_use.to:isEmpty() then return true end
+	if card:isKindOf("Slash") and self:getCardsNum("Slash")>1 and (self.player:canSlashWithoutCrossbow() or self.player:hasWeapon("Crossbow")) then return false end
+	return false
 end
 
 --奸雄
@@ -946,19 +946,19 @@ end
 
 --裸衣
 ai_skill_invoke.tenyearluoyi = function(self, options, request)
-	if self.player:getPile("yiji"):length()>1 then return (false) or false end
+	if self.player:getPile("yiji"):length()>1 then return false end
 	local diaochans,nosdiaochans = self.room:findPlayersBySkillName("lijian"),self.room:findPlayersBySkillName("noslijian")
 	for _,diaochan in sgs.qlist(diaochans)do
 		if self:isEnemy(diaochan) then
 			for _,friend in ipairs(self.friends_noself)do
-				if self:isWeak(friend) or friend:getHp()<=2 then return (false) or false end
+				if self:isWeak(friend) or friend:getHp()<=2 then return false end
 			end
 		end
 	end
 	for _,diaochan in sgs.qlist(nosdiaochans)do
 		if self:isEnemy(diaochan) then
 			for _,friend in ipairs(self.friends_noself)do
-				if self:isWeak(friend) or friend:getHp()<=2 then return (false) or false end
+				if self:isWeak(friend) or friend:getHp()<=2 then return false end
 			end
 		end
 	end
@@ -1001,28 +1001,28 @@ ai_skill_invoke.tenyearluoshen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if self.player:getStrategyFlag("AI_doNotInvoke_tenyearluoshen") then
 		self:setStrategyPlayerFlag(self.player,"AI_doNotInvoke_tenyearluoshen",false)
-		return (false) or false
+		return false
 	end
-	if self.player:getStrategyFlag("AI_TenyearLuoshen_Conflict_With_Guanxing") and self.player:getStrategyMark("AI_tenyearluoshen_times")==0 then return (false) or false end
+	if self.player:getStrategyFlag("AI_TenyearLuoshen_Conflict_With_Guanxing") and self.player:getStrategyMark("AI_tenyearluoshen_times")==0 then return false end
 	if self:willSkipPlayPhase() then
 		local erzhang = self.room:findPlayerBySkillName("guzheng")
-		if erzhang and self:isEnemy(erzhang) and self:getOverflow()>1 then return (false) or false end
+		if erzhang and self:isEnemy(erzhang) and self:getOverflow()>1 then return false end
 		if self.player:getPile("incantation"):length()>0 then
 			local card = known_card(self,self.player:getPile("incantation"):first())
 			if not self.player:getJudgingArea():isEmpty() and not self.player:containsTrick("YanxiaoCard") and not self:hasWizard(self.enemies,true) then
 				local trick = self.player:getJudgingArea():last()
 				if trick:isKindOf("Indulgence") then
-					if card:getSuit()==sgs.Card_Heart or (self.player:hasSkill("hongyan") and card:getSuit()==sgs.Card_Spade) then return (false) or false end
+					if card:getSuit()==sgs.Card_Heart or (self.player:hasSkill("hongyan") and card:getSuit()==sgs.Card_Spade) then return false end
 				elseif trick:isKindOf("SupplyShortage") then
-					if card:getSuit()==sgs.Card_Club then return (false) or false end
+					if card:getSuit()==sgs.Card_Club then return false end
 				end
 			end
 			local zhangbao = self.room:findPlayerBySkillName("yingbing")
 			if zhangbao and self:isEnemy(zhangbao) and not zhangbao:hasSkill("manjuan")
-				and (card:isRed() or (self.player:hasSkill("hongyan") and card:getSuit()==sgs.Card_Spade)) then return (false) or false end
+				and (card:isRed() or (self.player:hasSkill("hongyan") and card:getSuit()==sgs.Card_Spade)) then return false end
 		end
 	end
-	return (true) or false
+	return true
 end
 
 --突袭
@@ -1588,7 +1588,7 @@ end
 ai_skill_invoke.tenyearjianchu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not target then return (false) or false end
+	if not target then return false end
 	return (not self:isFriend(target) and self:doDisCard(target,"he")) or false
 end
 
@@ -1743,15 +1743,15 @@ end
 --当先
 ai_skill_invoke.tenyeardangxian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self:isWeak() then return (false) or false end
-	if self:getCardsNum("Slash")>1 then return (false) or false end
+	if self:isWeak() then return false end
+	if self:getCardsNum("Slash")>1 then return false end
 	local slashs = AIList.new({})
 	for _,id in sgs.qlist(self.room:getDiscardPile())do
 		if known_card(self,id):isKindOf("Slash") then
 			slashs:append(known_card(self,id))
 		end
 	end
-	if slashs:isEmpty() then return (false) or false end
+	if slashs:isEmpty() then return false end
 	local slash
 	if slashs:length()==1 then
 		slash = slashs:first()
@@ -1761,9 +1761,9 @@ ai_skill_invoke.tenyeardangxian = function(self, options, request)
 	local dummy_use = dummy_plan()
 	self:useCardSlash(slash,dummy_use)
 	if dummy_use.card and dummy_use.to:length()>0 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 --伏枥
@@ -1814,7 +1814,7 @@ end
 
 ai_skill_invoke.secondtenyearlihuo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if data:toString()=="put" then return (true) or false end
+	if data:toString()=="put" then return true end
 	return (ai_skill_invoke.lihuo(self, options, request)) or false
 end
 
@@ -2159,13 +2159,13 @@ end
 ai_skill_invoke.tenyeardanshou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local name = data:toString():split(":")
-	if #name<2 then return (false) or false end
+	if #name<2 then return false end
 	if name[1]=="tenyeardanshou_invoke" then
 		local target = self.room:getCurrent()
 		return (self:isFriend(target) or target:getHandcardNum()>self.player:getHandcardNum()) or false
 	end
 	local target = self.room:findPlayerByObjectName(name[2])
-	if not target or target:isDead() then return (false) or false end
+	if not target or target:isDead() then return false end
 	return (self:isFriend(target) and self:needToLoseHp(target,self.player)
 	or not self:isFriend(target) and self:canAttack(target)) or false
 end
@@ -2446,8 +2446,8 @@ end
 ai_skill_invoke.tenyearpojun = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return (true) or false end
-    return (false) or false
+    if not self:isFriend(target) then return true end
+    return false
 end
 
 ai_skill_choice.tenyearpojun_num = function(self, options, request)
@@ -2667,33 +2667,33 @@ end
 ai_skill_invoke.tenyearyonglve = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local name = data:toString():split(":")[2]
-	if not name then return (false) or false end
+	if not name then return false end
 	local current = self.room:findPlayerByObjectName(name)
-	if not current or current:isDead() then return (false) or false end
+	if not current or current:isDead() then return false end
 	local slash = clone(self,"tenyearyonglve","_tenyearyonglve","slash",sgs.Card_NoSuit,0,{})
 	if self:isFriend(current) and self:doDisCard(current,"j") then
-		if self.player:inMyAttackRange(current) then return (true) or false end
-		if not self:slashIsEffective(slash,current,self.player) then return (true) or false end
-		if not self:isWeak(current) or getKnownCard(current,self.player,"Jink")>0 then return (true) or false end
+		if self.player:inMyAttackRange(current) then return true end
+		if not self:slashIsEffective(slash,current,self.player) then return true end
+		if not self:isWeak(current) or getKnownCard(current,self.player,"Jink")>0 then return true end
 	elseif self:isEnemy(current)
 	then
-		if self:doDisCard(current,"j") then return (true) or false end
+		if self:doDisCard(current,"j") then return true end
 		for _,card in sgs.qlist(current:getJudgingArea())do
 			if card:isKindOf("SupplyShortage") and (current:getHandcardNum()>4 or current:containsTrick("indulgence"))
 			then
 				save_override(self,"cardchosen","tenyearyonglve",card:getKnownEffectiveId())
-				return (true) or false
+				return true
 			elseif card:isKindOf("Indulgence") and current:getHandcardNum()+self:ImitateResult_DrawNCards(current)<=self:getOverflow(current,true)
 			then
 				save_override(self,"cardchosen","tenyearyonglve",card:getKnownEffectiveId())
-				return (true) or false
+				return true
 			end
 		end
-		if self.player:inMyAttackRange(current) and self.player:getHandcardNum()<3 then return (true) or false end
+		if self.player:inMyAttackRange(current) and self.player:getHandcardNum()<3 then return true end
 		if self:isWeak(current) and current:getHp()<2 and getCardsNum("Jink",current,self.player)<1
 		and self:slashIsEffective(slash,current,self.player) then
 			save_override(self,"cardchosen","tenyearyonglve",source_random_card(self,current,"j"))
-			return (true) or false
+			return true
 		end
 	end
 	return false
@@ -3407,9 +3407,9 @@ end
 --惴恐
 ai_skill_invoke.tenyearzhuikong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getHandcardNum()<=(self:isWeak() and 2 or 1) then return (false) or false end
+	if self.player:getHandcardNum()<=(self:isWeak() and 2 or 1) then return false end
 	local current = self.room:getCurrent()
-	if not current or self:isFriend(current) then return (false) or false end
+	if not current or self:isFriend(current) then return false end
 
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
@@ -3421,14 +3421,14 @@ ai_skill_invoke.tenyearzhuikong = function(self, options, request)
 		if enemy_max_card and current:hasSkill("yingyang") then enemy_max_point = math.min(enemy_max_point+3,13) end
 		if max_point>enemy_max_point or max_point>10 then
 			self:remember("tenyearzhuikong_card",max_card:getKnownEffectiveId())
-			return (true) or false
+			return true
 		end
 	end
 	if current:distanceTo(self.player)==1 and not self:isValuableCard(max_card) then
 		self:remember("tenyearzhuikong_card",max_card:getKnownEffectiveId())
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 --求援
@@ -3570,11 +3570,11 @@ end
 ai_skill_invoke.tenyearjueqing = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = tag(self,"tenyearjueqing_data","Damage")
-	if not damage or damage.to:isDead() or self:isFriend(damage.to) then return (false) or false end
-	if self:cantDamageMore(self.player,damage.to) then return (false) or false end
+	if not damage or damage.to:isDead() or self:isFriend(damage.to) then return false end
+	if self:cantDamageMore(self.player,damage.to) then return false end
 	local n = damage.damage-self.player:getHp()
-        if n<0 or hasBuquEffect(self.player) or self:getSaveNum(true)>=n then return (true) or false end
-	return (false) or false
+        if n<0 or hasBuquEffect(self.player) or self:getSaveNum(true)>=n then return true end
+	return false
 end
 
 --弓骑
@@ -3732,7 +3732,7 @@ end
 --急攻
 ai_skill_invoke.tenyearjigong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_choice.tenyearjigong = function(self, options, request)
@@ -3779,7 +3779,7 @@ end
 --二版精策
 ai_skill_invoke.secondtenyearjingce = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.secondtenyearjingce = function(self, options, request)
@@ -3798,7 +3798,7 @@ end
 --二版将驰
 ai_skill_invoke.secondtenyearjiangchi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.secondtenyearjingce = function(self, options, request)
@@ -3829,7 +3829,7 @@ ai_skill_invoke.tenyearqieting = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local items = data:toString():split(":")
     local target = self.room:findPlayerByObjectName(items[2])
-	if target then return (not self:isFriend(target)) or false end
+	if target then return not self:isFriend(target) end
 	return false
 
 end
@@ -4018,7 +4018,7 @@ ai_skill_invoke.tenyearqiaoshi = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isEnemy(target)) or false
+		return not self:isEnemy(target)
 	end
 	return false
 
@@ -4060,7 +4060,7 @@ sgs.ai_use_priority.TenyearYjYanyuCard = 5.8
 
 ai_skill_invoke.tenyearqianxi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_playerchosen.tenyearqianxi = function(self,players)
@@ -4443,7 +4443,7 @@ end
 
 ai_skill_invoke.TenyearJianying = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_use_revises.TenyearJianying = function(self,card,use)
@@ -4773,7 +4773,7 @@ ai_skill_invoke.tenyearzhiyu = function(self, options, request)
 		local hs = self.player:getHandcards()
 		for _,h in sgs.list(hs)do
 			if hs:first():getColor()~=h:getColor()
-			then return (true) or false end
+			then return true end
 		end
 		local damage = data:toDamage()
 		return (not(damage.from and self:isFriend(damage.from))) or false

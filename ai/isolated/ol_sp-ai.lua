@@ -211,7 +211,7 @@ end
 
 ai_skill_invoke.xianlve = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_askforag.xianlve = function(self,card_ids)
@@ -243,7 +243,7 @@ sgs.ai_use_priority.ZaowangCard = 4.8
 
 ai_skill_invoke.guowu = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_use["@@guowu2"] = function(self, prompt, request)
@@ -283,7 +283,7 @@ ai_skill_invoke.yuqi = function(self, options, request)
 	if target then
 		save_player(self,"yuqi_to",target)
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@@yuqi1"] = function(self, prompt, request)
@@ -325,12 +325,12 @@ end
 
 ai_skill_invoke.shanshen = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_invoke.xianjing = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_can_damagehp.yuqi = function(self,from,card,to)
@@ -457,7 +457,7 @@ end
 
 ai_skill_invoke.lanjiang = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_invoke.lanjiang_draw = function(self, options, request)
@@ -975,9 +975,9 @@ ai_skill_invoke.zhangji = function(self, options, request)
     local target = self.room:getCurrent()
 	if items[1]=="draw"
 	then
-		return (not self:isEnemy(target)) or false
+		return not self:isEnemy(target)
 	else
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -1182,7 +1182,7 @@ end
 
 ai_skill_invoke.tiqi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_choice.tiqi = function(self, options, request)
@@ -1214,7 +1214,7 @@ end
 
 ai_skill_invoke.tianyun = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_playerchosen.tianyun = function(self,players)
@@ -1545,7 +1545,7 @@ end
 
 ai_skill_invoke.chenjian = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_use["@@chenjian1"] = function(self, prompt, request)
@@ -1686,7 +1686,7 @@ end
 
 ai_skill_invoke.xingchong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_choice.xingchong = function(self, options, request)
@@ -2612,7 +2612,7 @@ end
 
 ai_skill_invoke.qingzhe = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@@qingzhe"] = function(self, prompt, request)
@@ -3236,7 +3236,7 @@ end
 ai_skill_invoke.olmouhulie = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	return (not self:isFriend(use.to:at(0))) or false
+	return not self:isFriend(use.to:at(0))
 end
 
 sgs.ai_skill_playerchosen.olmouhulie = function(self,players)
@@ -3312,8 +3312,8 @@ ai_skill_invoke.chuyuan = function(self, options, request)
 		if self.player:hasSkill("dengji") and self.player:getStrategyMark("dengji")<=0 then return (self.player:getMaxHp()>1) or false end
 		if self.player:hasSkill("tianxing") and self.player:getStrategyMark("tianxing")<=0 then return (self.player:getMaxHp()>1) or false end
 	end
-	if not self:doDisCard(player, "h", true) then return (false) or false end
-	return (true) or false
+	if not self:doDisCard(player, "h", true) then return false end
+	return true
 end
 
 sgs.ai_skill_discard.chuyuan = function(self,discard_num,min_num,optional,include_equip)
@@ -3955,7 +3955,7 @@ ai_skill_invoke.SkillEffect = function(self, options, request)
 		return (self:isFriend(damage.to) and (self:isWeak(damage.to) or damage.from and self:isFriend(damage.from))
 		or self:isEnemy(damage.to) and not self:isWeak(damage.to) and damage.from and self:isFriend(damage.from) and self:canDraw(damage.from)) or false
 	end
-	return (true) or false
+	return true
 end
 
 for i=0,99 do
@@ -4273,7 +4273,7 @@ end
 
 ai_skill_invoke.siqi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@@siqi"] = function(self, prompt, request)
@@ -4566,7 +4566,7 @@ ai_skill_invoke.fulve = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use.to then
-		return (not self:isFriend(use.to:last())) or false
+		return not self:isFriend(use.to:last())
 	end
 	return false
 
@@ -5353,7 +5353,7 @@ sgs.ai_use_priority.ZhijueCard = 2.2
 
 ai_skill_invoke.olduduan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_fill_skill.yinglve = function(self, options, request)

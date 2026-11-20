@@ -257,12 +257,12 @@ end
 ai_skill_invoke.y_chongqi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return (nil) or false end
+    if not player then return false end
     local enemy = self:isEnemy(player)
-    if enemy == nil then return (nil) or false end
-    if not enemy then return (false) or false end
+    if enemy == nil then return false end
+    if not enemy then return false end
     local discard = self:doDisCard(player, "he")
-    if discard == nil then return (nil) or false end
+    if discard == nil then return false end
     return (discard == true) or false
 end
 
@@ -291,7 +291,7 @@ end
 ai_skill_invoke.y_yongjue = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return (nil) or false end
+    if not player then return false end
     return (self:isFriend(player)) or false
 end
 
@@ -299,31 +299,31 @@ ai_skill_invoke.y_yjtargetmove = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local use = data:toCardUse()
     local card = use and use.card
-    if not card then return (nil) or false end
-    if card:isKindOf("AmazingGrace") or card:isKindOf("ExNihilo") then return (false) or false end
+    if not card then return false end
+    if card:isKindOf("AmazingGrace") or card:isKindOf("ExNihilo") then return false end
     if card:isKindOf("GodSalvation") then
         local wounded = self.player:isWounded()
-        if wounded == nil then return (nil) or false end
-        if wounded then return (false) or false end
+        if wounded == nil then return false end
+        if wounded then return false end
     end
-    return (true) or false
+    return true
 end
 
 ai_skill_invoke.y_cunsi = function(self, options, request)
-    if type(self.player.getRole) ~= "function" then return (nil) or false end
+    if type(self.player.getRole) ~= "function" then return false end
     local role = self.player:getRole()
-    if type(role) ~= "string" or role == "" then return (nil) or false end
-    if role == "lord" then return (false) or false end
-    if not self.friends_noself or #self.friends_noself < 1 then return (false) or false end
+    if type(role) ~= "string" or role == "" then return false end
+    if role == "lord" then return false end
+    if not self.friends_noself or #self.friends_noself < 1 then return false end
     local count = number(self.player:getHandcardNum())
-    if count == nil then return (nil) or false end
-    if count == 1 then return (true) or false end
+    if count == nil then return false end
+    if count == 1 then return true end
     local cards = self.player:getCards("h")
-    if not cards then return (nil) or false end
+    if not cards then return false end
     for _, card in ipairs(cards) do
-        if card:isKindOf("Peach") or card:isKindOf("Analeptic") then return (false) or false end
+        if card:isKindOf("Peach") or card:isKindOf("Analeptic") then return false end
     end
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_playerchosen.y_cunsi = function(self, targets)
@@ -364,12 +364,12 @@ sgs.ai_cardneed.y_shenzhi = function(to)
 end
 
 ai_skill_invoke.y_shushen = function(self, options, request)
-    if not self.friends_noself or not self.enemies then return (nil) or false end
-    if #self.friends_noself > 0 then return (true) or false end
+    if not self.friends_noself or not self.enemies then return false end
+    if #self.friends_noself > 0 then return true end
     for _, enemy in ipairs(self.enemies) do
-        if enemy:hasSkill("kongcheng") and enemy:isKongcheng() then return (true) or false end
+        if enemy:hasSkill("kongcheng") and enemy:isKongcheng() then return true end
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_playerchosen.y_shushen = function(self)
@@ -390,13 +390,13 @@ end
 
 ai_skill_invoke.y_baiyi = function(self, options, request)
     local nude = self.player:isNude()
-    if nude == nil then return (nil) or false end
-    return (not nude) or false
+    if nude == nil then return false end
+    return not nude
 end
 
 ai_skill_invoke.y_baiyier = function(self, options, request)
     local players = self:findPlayerToDiscard("hej", true, false, nil, true)
-    if not players then return (nil) or false end
+    if not players then return false end
     return (#players > 0) or false
 end
 
@@ -429,7 +429,7 @@ ai_skill_invoke.y_yuanjiu = function(self, options, request)
     if pile then
         for _, left in ipairs(pile) do
             for _, right in ipairs(pile) do
-                if left ~= right and left:getNumber() == right:getNumber() then return (true) or false end
+                if left ~= right and left:getNumber() == right:getNumber() then return true end
             end
         end
     end
@@ -439,7 +439,7 @@ ai_skill_invoke.y_yuanjiu = function(self, options, request)
     end
     local who = dying.who
     local friend = self:isFriend(who)
-    if friend == nil or type(self.askForSinglePeach) ~= "function" then return (nil) or false end
+    if friend == nil or type(self.askForSinglePeach) ~= "function" then return false end
     return (self:askForSinglePeach(who) == true and friend == true) or false
 end
 
@@ -517,7 +517,7 @@ ai_skill_invoke.y_zishou = function(self, options, request)
     local lost = number(self.player:getLostHp())
     local hp = number(self.player:getHp())
     local cards = self.player:getHandcards()
-    if lost == nil or hp == nil or not cards then return (nil) or false end
+    if lost == nil or hp == nil or not cards then return false end
     local jink, slash, nullification, peach = 0, 0, 0, 0
     for _, card in ipairs(cards) do
         if card:isKindOf("Jink") then jink = jink + 1
@@ -527,7 +527,7 @@ ai_skill_invoke.y_zishou = function(self, options, request)
         end
     end
     local basic = jink + slash + nullification
-    if lost >= 2 then return (true) or false end
+    if lost >= 2 then return true end
     if lost == 1 then
         if slash > 0 then return (hp >= basic) or false end
         return (hp > basic) or false
@@ -597,28 +597,28 @@ ai_skill_invoke.y_fenying = true
 ai_skill_invoke.y_dushi = function(self, options, request)
     local hand = number(self.player:getHandcardNum())
     local hp = number(self.player:getHp())
-    if hand == nil or hp == nil then return (nil) or false end
-    if hand < hp then return (true) or false end
-    if not self.enemies or not self.friends then return (nil) or false end
+    if hand == nil or hp == nil then return false end
+    if hand < hp then return true end
+    if not self.enemies or not self.friends then return false end
     local players = self:findPlayerToDiscard("hej", true, false, nil, true)
-    if players and players[1] then return (true) or false end
+    if players and players[1] then return true end
     for _, enemy in ipairs(self.enemies) do
-        if enemy:isNude() == false then return (true) or false end
+        if enemy:isNude() == false then return true end
     end
     for _, friend in ipairs(self.friends) do
         if friend:containsTrick("indulgence") or friend:containsTrick("supply_shortage") then
-            return (true) or false
+            return true
         end
         if friend:containsTrick("lightning") then
             for _, other in ipairs(self.friends) do
                 if other:hasSkill("guicai") or other:hasSkill("guidao") or other:hasSkill("guanxing") then
-                    return (false) or false
+                    return false
                 end
             end
-            return (true) or false
+            return true
         end
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_slash_prohibit.y_dushi = function(self, from, to)
@@ -663,16 +663,16 @@ end
 ai_skill_invoke.y_zhensha = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return (nil) or false end
+    if not player then return false end
     return (self:isEnemy(player)) or false
 end
 
 ai_skill_invoke.y_shipo = function(self, options, request)
-    if not self.enemies then return (nil) or false end
+    if not self.enemies then return false end
     for _, enemy in ipairs(self.enemies) do
-        if enemy:isKongcheng() == false then return (true) or false end
+        if enemy:isKongcheng() == false then return true end
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_playerchosen.y_shipo = function(self)
@@ -832,14 +832,14 @@ sgs.ai_skill_playerchosen.y_bailian = function(self, targets)
 end
 
 ai_skill_invoke.y_caipei = function(self, options, request)
-    if not self.friends then return (nil) or false end
+    if not self.friends then return false end
     local peach = self:getCardsNum("Peach")
     local hand = number(self.player:getHandcardNum())
-    if peach == nil or hand == nil then return (nil) or false end
+    if peach == nil or hand == nil then return false end
     for _, friend in ipairs(self.friends) do
         if friend:isKongcheng() == false then return (peach < hand) or false end
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_playerchosen.y_caipei = function(self)
@@ -857,7 +857,7 @@ end
 ai_skill_invoke.y_kongzhen = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return (nil) or false end
+    if not player then return false end
     return (self:isFriend(player)) or false
 end
 
@@ -865,11 +865,11 @@ ai_skill_invoke.y_huaiju = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local move = shadow_move(self)
 	if move.from:getSeat() ~= self.player:getSeat() then
-		return (true) or false
+		return true
 	elseif move.from:getSeat() == self.player:getSeat() then
-		if #self.friends_noself > 0 then return (true) or false end
+		if #self.friends_noself > 0 then return true end
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_use["@@y_huntian"] = function(self)
@@ -972,11 +972,11 @@ end
 
 ai_skill_invoke.y_weiji = function(self, options, request)
     local max_hp = number(self.player:getMaxHp())
-    if max_hp == nil then return (nil) or false end
+    if max_hp == nil then return false end
     if max_hp == 1 then
         local peach = self:getCardsNum("Peach")
         local wine = self:getCardsNum("Analeptic")
-        if peach == nil or wine == nil then return (nil) or false end
+        if peach == nil or wine == nil then return false end
         return (peach > 0 or wine > 0) or false
     end
     return (max_hp > 1) or false
@@ -1099,13 +1099,13 @@ ai_skill_invoke.y_shouju = function(self, options, request)
 			end
 		end
 	end
-	if sj == false then return (false) or false end
+	if sj == false then return false end
 	for _, c in sgs.qlist(self.player:getCards("h")) do
 		if c:isKindOf("Basic") and not c:isKindOf("Peach") then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_skill_playerchosen.y_shouju = function(self, targets)
 	targets = sgs.QList2Table(targets)
@@ -1181,22 +1181,22 @@ end
 ai_skill_invoke.y_wenliang = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local player = data:toPlayer()
-    if not player then return (nil) or false end
+    if not player then return false end
     local friend = self:isFriend(player)
     local enemy = self:isEnemy(player)
-    if friend == nil or enemy == nil then return (nil) or false end
+    if friend == nil or enemy == nil then return false end
     local armor = player:getArmor()
     if friend then
-        if armor and armor:objectName() == "silverlion" and player:isWounded() then return (true) or false end
+        if armor and armor:objectName() == "silverlion" and player:isWounded() then return true end
         if not (armor and armor:isKindOf("EightDiagram")) then
             local hand = number(player:getHandcardNum())
             local hp = number(player:getHp())
-            if hand == nil or hp == nil then return (nil) or false end
-            if hand < 2 and hp == 1 then return (true) or false end
+            if hand == nil or hp == nil then return false end
+            if hand < 2 and hp == 1 then return true end
             local cards = self.player:getCards("h")
-            if not cards then return (nil) or false end
+            if not cards then return false end
             for _, card in ipairs(cards) do
-                if not card:isKindOf("Peach") then return (true) or false end
+                if not card:isKindOf("Peach") then return true end
             end
         else
             return (player:isKongcheng() and number(player:getHp()) == 1) or false
@@ -1204,14 +1204,14 @@ ai_skill_invoke.y_wenliang = function(self, options, request)
     elseif enemy then
         local hand = number(player:getHandcardNum())
         local hp = number(player:getHp())
-        if hand == nil or hp == nil then return (nil) or false end
-        if hp == 1 or hand <= 1 then return (false) or false end
+        if hand == nil or hp == nil then return false end
+        if hp == 1 or hand <= 1 then return false end
         if (armor and (armor:isKindOf("EightDiagram") or armor:isKindOf("RenwangShield")))
             or player:getDefensiveHorse() or player:getWeapon() or player:getOffensiveHorse() then
-            return (true) or false
+            return true
         end
     end
-    return (false) or false
+    return false
 end
 
 ai_skill_invoke.y_duoqi = true
@@ -1219,11 +1219,11 @@ ai_skill_invoke.y_duoqi = true
 ai_skill_invoke.y_youfang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local move = shadow_move(self)
-	if not move.from or not move.from:isAlive() then return (false) or false end
+	if not move.from or not move.from:isAlive() then return false end
 	if move.from and self:isFriend(move.from) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 ai_skill_choice.y_youfang = function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
@@ -1248,11 +1248,11 @@ end
 ai_skill_invoke.y_zhixi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local move = shadow_move(self)
-	if not move.to or not move.to:isAlive() then return (false) or false end
+	if not move.to or not move.to:isAlive() then return false end
 	if move.to and self:isFriend(move.to) then
-		return (false) or false
+		return false
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.y_xiaoyi = true
@@ -1435,8 +1435,8 @@ ai_skill_invoke.y_huiyu = function(self, options, request)
     local use = data:toCardUse()
     local card = use and use.card
     local from = use and use.from
-    if not card or not from or not use.to then return (nil) or false end
-    if not self.enemies then return (nil) or false end
+    if not card or not from or not use.to then return false end
+    if not self.enemies then return false end
     local function usable(target)
         if type(self.player.canSlash) ~= "function" then return nil end
         local slash = self.player:canSlash(target)
@@ -1448,27 +1448,27 @@ ai_skill_invoke.y_huiyu = function(self, options, request)
     if self.player:objectName() == from:objectName() then
         for _, target in ipairs(use.to) do
             local ok = usable(target)
-            if ok == nil then return (nil) or false end
-            if self:isFriend(target) and ok and self:dontHurt(target, self.player) then return (false) or false end
+            if ok == nil then return false end
+            if self:isFriend(target) and ok and self:dontHurt(target, self.player) then return false end
         end
         for _, target in ipairs(use.to) do
             local ok = usable(target)
             local good = self:isGoodTarget(target, self.enemies, card)
-            if ok == nil or good == nil then return (nil) or false end
-            if self:isEnemy(target) and ok and good then return (true) or false end
+            if ok == nil or good == nil then return false end
+            if self:isEnemy(target) and ok and good then return true end
         end
-        return (true) or false
+        return true
     end
     local lose = self:needToLoseHp(self.player, from, card)
-    if lose == nil then return (nil) or false end
-    if lose then return (true) or false end
+    if lose == nil then return false end
+    if lose then return true end
     for _, target in ipairs(use.to) do
         local ok = usable(target)
         local good = self:isGoodTarget(target, self.enemies, card)
-        if ok == nil or good == nil then return (nil) or false end
-        if self:isEnemy(target) and ok and good then return (true) or false end
+        if ok == nil or good == nil then return false end
+        if self:isEnemy(target) and ok and good then return true end
     end
-    return (false) or false
+    return false
 end
 
 -- Same accepted Huaiju chain: the mark identifies an already discarded face.

@@ -67,13 +67,13 @@ ai_skill_invoke.zuilun = function(self, options, request)
 
 	if n==0 then
 		local to = self:findPlayerToLoseHp()
-		if not to then return (false) or false end
-		if to:getHp()>self.player:getHp() then return (false) or false end
-		if (self.player:isLord() or self.player:getKnownRole()=="renegade") and self:isWeak() then return (false) or false end
-		return (true) or false
+		if not to then return false end
+		if to:getHp()>self.player:getHp() then return false end
+		if (self.player:isLord() or self.player:getKnownRole()=="renegade") and self:isWeak() then return false end
+		return true
 	end
-	if self:hasJieyingyEffect(self.player) then return (false) or false end
-	return (true) or false
+	if self:hasJieyingyEffect(self.player) then return false end
+	return true
 end
 
 sgs.ai_skill_playerchosen.zuilun = function(self,targets)
@@ -334,16 +334,16 @@ ai_skill_invoke.zhengrong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isFriend(target) then
-		if self:getOverflow(target)>2 then return (true) or false end
-		if self:needToThrowCard(target) then return (true) or false end
-		if self:needKongcheng(target) and target:getHandcardNum()==1 then return (true) or false end
-		return (false) or false
+		if self:getOverflow(target)>2 then return true end
+		if self:needToThrowCard(target) then return true end
+		if self:needKongcheng(target) and target:getHandcardNum()==1 then return true end
+		return false
 	end
 	if self:isEnemy(target) then
-		if not self:doDisCard(target,"he",true) then return (false) or false end
-		return (true) or false
+		if not self:doDisCard(target,"he",true) then return false end
+		return true
 	end
-	return (true) or false
+	return true
 end
 
 --鸿举

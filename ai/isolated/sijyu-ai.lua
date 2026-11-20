@@ -89,8 +89,8 @@ do
  ai_skill_invoke.sijyu_lijian=function(self, options, request)
   local data = request and self:getDecisionData(request) or nil
   local damage=data:toDamage()
-  if not self:isFriend(damage.to)then return (true) or false end
-  return (false) or false
+  if not self:isFriend(damage.to)then return true end
+  return false
  end
  sgs.ai_skill_discard.sijyu_lijian=function(self,discard_num,min_num,optional,include_equip)
   local cards=sgs.QList2Table(self.player:getCards('he'))

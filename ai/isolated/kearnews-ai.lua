@@ -50,7 +50,7 @@ end
 
 ai_skill_invoke.kejianxiong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@@kejianxiong"]=function(self,prompt,request)
@@ -459,8 +459,8 @@ sgs.ai_card_intention.kequshangCard = 80
 ai_skill_invoke.kenewfengming = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:findPlayerByObjectName(data:toString():split(":")[2])
-	if target and self:isFriend(target) then return (false) or false end
-	return (true) or false
+	if target and self:isFriend(target) then return false end
+	return true
 end
 
 
@@ -504,8 +504,8 @@ end
 ai_skill_invoke["keliuliqp"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	if use.from and self:doDisCard(use.from, "he") then return (true) or false end
-	return (false) or false
+	if use.from and self:doDisCard(use.from, "he") then return true end
+	return false
 end
 ai_fill_skill.keguose=function(self, options, request)
     local inclusive = options and options.inclusive
@@ -730,7 +730,7 @@ end
 
 ai_skill_invoke.kexingshuai = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.xingshuai_choice = function(self, options, request)
@@ -832,10 +832,10 @@ ai_skill_invoke.kenewqizhi = function(self, options, request)
 	local target = self.room:findPlayerByObjectName(data:toString():split(":")[2])
 	if target then
 		if self:isFriend(target) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 ai_fill_skill.keyanzhu=function(self, options, request)
@@ -925,7 +925,7 @@ end
 
 ai_skill_invoke.kezhenggong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_fill_skill.kesuni=function(self, options, request)
@@ -1012,10 +1012,10 @@ ai_skill_invoke.keceyin = function(self, options, request)
 	local damage = fact(self,"keceyin")
 	if damage.to and self:isFriend(damage.to) then
 		if not self:needToLoseHp(damage.to, damage.from, damage.card) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.keceyin = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -1040,9 +1040,9 @@ ai_skill_invoke.keraoxi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isEnemy(target) and self:getOverflow(target) > 0 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_discard.keceyin = function(self, discard_num, min_num, optional, include_equip)
@@ -1138,9 +1138,9 @@ ai_skill_invoke.kexianjie = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:findPlayerByObjectName(data:toString():split(":")[2])
 	if target and self:isFriend(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.kexianjie = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -1376,10 +1376,10 @@ ai_skill_invoke.kenewgonghuan = function(self, options, request)
 	local target = use.to:first()
 	if target and self:isFriend(target) then
 		if not self:isFriend(use.from) then
-			return (not self:isWeak()) or false
+			return not self:isWeak()
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -1699,9 +1699,9 @@ ai_skill_invoke.kenewshiren = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
 	if current and self:isEnemy(current) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.kenewshiren = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
@@ -1788,7 +1788,7 @@ ai_skill_invoke.kenewbiting = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
 	if current and self:isEnemy(current) and current:isLord() then
-		return (true) or false
+		return true
 	end
 	if current and self:isEnemy(current) then
         for _,sk in ipairs(sgs.getPlayerSkillList(current))do
@@ -1796,7 +1796,7 @@ ai_skill_invoke.kenewbiting = function(self, options, request)
 			if string.find(dp,"摸牌阶段") and string.find(dp,"额外") then
 				local t = trigger(self,sk)
 				if t and t:hasEvent(sgs.DrawNCards)
-				then return (true) or false end
+				then return true end
 			end
 		end
     end
@@ -1806,12 +1806,12 @@ ai_skill_invoke.kenewbiting = function(self, options, request)
 			if string.find(dp,"摸牌阶段") and string.find(dp,"额外") then
 				local t = trigger(self,sk)
 				if t and t:hasEvent(sgs.DrawNCards)
-				then return (false) or false end
+				then return false end
 			end
 		end
 		return (#self.enemies>0) or false
 	end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_discard.kenewbiting = function(self)
@@ -1839,13 +1839,13 @@ ai_skill_invoke.kenewmieyao = function(self, options, request)
 			local use = fact(self,"kenewmieyao")
 			for _, p in sgs.qlist(use.to) do
 				if self:isFriend(p) then
-					return (false) or false
+					return false
 				end
 			end
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_ajustdamage_from.kenewjueling = function(self,from,to,card,nature)
@@ -1879,15 +1879,15 @@ ai_skill_invoke.kenewsiji = function(self, options, request)
 	if target then
 		if self:isEnemy(target) then
 			if not self.player:getStrategyFlag("kenewsiji_damage") then
-				return (true) or false
+				return true
 			end
 		elseif self:isFriend(target) and not self:needToLoseHp(target) then
 			if self.player:getStrategyFlag("kenewsiji_damage") then
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 --张让
@@ -1963,7 +1963,7 @@ sgs.ai_cardneed.kenewqingran = sgs.ai_cardneed.slash
 ai_skill_invoke.kenewlvefeng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	return (not self:isFriend(target)) or false
+	return not self:isFriend(target)
 end
 sgs.ai_can_damagehp.kenewlvefeng = function(self,from,card,to)
 	if from and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from, to, 1, card)>0
@@ -1978,21 +1978,21 @@ end
 
 ai_skill_invoke.kenewzhenlietwo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self:isWeak() then return (false) or false end
+	if self:isWeak() then return false end
 	local use = data:toCardUse()
 	for _, szm in sgs.qlist(use.to) do
 		if self:isFriend(szm) then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.kenewzhenlie = ai_skill_invoke.zhenlie
 
 ai_skill_invoke.kenewmiji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.kenewmiji = function(self, targets)

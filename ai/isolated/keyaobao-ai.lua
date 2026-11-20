@@ -21,16 +21,16 @@ end
 
 ai_skill_invoke.yaochangetupo = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (false) or false
+    return false
 end
 
 --张角
 
 ai_skill_invoke.keyaotuzhong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self:isWeak() then return (true) or false end
+    if self:isWeak() then return true end
     if self:ImitateResult_DrawNCards(self.player, self.player:getVisibleSkillList(true)) > 2 then
-        return (false) or false
+        return false
     end
     return (sgs.ai_skill_playerchosen.keyaotuzhong(self) ~= nil) or false
 end
@@ -269,9 +269,9 @@ end
 
 ai_skill_invoke.kejieyaotuzhong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self:isWeak() then return (true) or false end
+    if self:isWeak() then return true end
     if self:ImitateResult_DrawNCards(self.player, self.player:getVisibleSkillList(true)) > 2 then
-        return (false) or false
+        return false
     end
     return (sgs.ai_skill_playerchosen.kejieyaotuzhong(self) ~= nil) or false
 end
@@ -511,12 +511,12 @@ end
 ai_skill_invoke.keyaozhabing = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self:isWeak() and self:getAllPeachNum() > 0 then
-        return (true) or false
+        return true
     end
     if self.player:getHp() > getBestHp(self.player) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_ajustdamage_to["&keyaozhabing"] = function(self, from, to, card, nature)
@@ -532,12 +532,12 @@ end
 ai_skill_invoke.kejieyaozhabing = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self:isWeak() and self:getAllPeachNum() > 0 then
-        return (true) or false
+        return true
     end
     if self.player:getHp() > getBestHp(self.player) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_getBestHp_skill.kejieyaoguimou = function(owner)
@@ -566,15 +566,15 @@ end
 
 ai_skill_invoke.kejieyaofenwei_shouhui = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 ai_skill_invoke.kejieyaofenwei_mopai = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if target and self:isEnemy(target) then
-        return (false) or false
+        return false
     end
-    return (true) or false
+    return true
 end
 
 --小乔
@@ -664,12 +664,12 @@ end
 
 ai_skill_invoke.kejieyaoquwutwo = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_invoke.kejieyaotongquetwo = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_discard.kejieyaotongquetwo = function(self, discard_num, min_num, optional, include_equip)
@@ -868,7 +868,7 @@ end
 
 ai_skill_invoke.keyaozhongyi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_getLeastHandcardNum_skill.keyaozhongyi = function(self, player, least)
@@ -904,7 +904,7 @@ end
 
 ai_skill_invoke.keyaoshiwei = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 
@@ -928,7 +928,7 @@ sgs.ai_playerchosen_intention.kejieyaoxieqin = 80
 
 ai_skill_invoke.kejieyaoshiwei = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_choice["kejieyaoshiwei"] = function(self, options, request)

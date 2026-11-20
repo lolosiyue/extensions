@@ -22,10 +22,10 @@ ai_skill_invoke.tuntian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if #self.enemies==1 and self.room:alivePlayerCount()==2 and self:hasSkills("noswuyan|qianxun",self.enemies[1]) then
 		if (skill(self,self.player,"zaoxian") and self.player:getMark("zaoxian")==0) or (skill(self,self.player,"olzaoxian") and self.player:getMark("olzaoxian")==0) then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 
 sgs.ai_slash_prohibit.tuntian = function(self,from,to,card)
@@ -69,7 +69,7 @@ end
 
 ai_skill_invoke.fangquan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.friends==1 then return (false) or false end
+	if #self.friends==1 then return false end
 
 	-- First we'll judge whether it's worth skipping the Play Phase
 	local cards = AIList.new(self.player:getHandcards())
@@ -110,8 +110,8 @@ ai_skill_invoke.fangquan = function(self, options, request)
 
 	-- Then we need to find the card to be discarded
 	local limit = self.player:getMaxCards()
-	if self.player:isKongcheng() then return (false) or false end
-	if self:getCardsNum("Peach")>=limit-2 and self.player:isWounded() then return (false) or false end
+	if self.player:isKongcheng() then return false end
+	if self:getCardsNum("Peach")>=limit-2 and self.player:isWounded() then return false end
 
 	local to_discard = nil
 
@@ -122,7 +122,7 @@ ai_skill_invoke.fangquan = function(self, options, request)
 			all_peaches = all_peaches+1
 		end
 	end
-	if all_peaches>=2 and self:getOverflow()<=0 then return (false) or false end
+	if all_peaches>=2 and self:getOverflow()<=0 then return false end
 	cards = self:sortByKeepValue(cards)
 
 	for _,card in ipairs(cards)do
@@ -136,13 +136,13 @@ ai_skill_invoke.fangquan = function(self, options, request)
 		if known(self:getRoleCounts().rebel,"mountain.role_count")==0 then
 			local lord = self.room:getLord()
 			if lord and self:isFriend(lord) then
-				return (true) or false
+				return true
 			end
 		end
 
 		local AssistTarget = self:AssistTarget()
 		if AssistTarget and not self:willSkipPlayPhase(AssistTarget) then
-			return (true) or false
+			return true
 		end
 
 		self.friends_noself = self:sortInPlace(self.friends_noself, "handcard")
@@ -150,7 +150,7 @@ ai_skill_invoke.fangquan = function(self, options, request)
 		for _,target in ipairs(self.friends_noself)do
 			if not skill(self,target,"dawu") and skill(self,target,"yongsi|zhiheng|"..sgs.priority_skill.."|shensu")
 			and (not self:willSkipPlayPhase(target) or skill(self,target,"shensu")) then
-				return (true) or false
+				return true
 			end
 		end
 
@@ -161,14 +161,14 @@ ai_skill_invoke.fangquan = function(self, options, request)
 					if p:getMark("&dawu")>0 then use = false break end
 				end
 				if use then
-					return (true) or false
+					return true
 				end
 			else
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -242,7 +242,7 @@ ai_skill_invoke.jilve_guicai = function(self, options, request)
 	local n = self.player:getMark("&bear")
 	local use = (n>2 or self:getOverflow()>0)
 	local judge = data:toJudge()
-	if not self:needRetrial(judge) then return (false) or false end
+	if not self:needRetrial(judge) then return false end
 	return ((use or judge.who:objectName()==self.player:objectName() or judge.reason=="lightning")
 	and self:getRetrialCardId(AIList.new(self.player:getHandcards()),judge)~=-1) or false
 end

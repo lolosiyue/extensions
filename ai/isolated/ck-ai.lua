@@ -237,8 +237,8 @@ end
 ai_skill_invoke.ckdalian = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if target and (self:isFriend(target)) then return (false) or false end
-	return (true) or false
+    if target and (self:isFriend(target)) then return false end
+	return true
 end
 
 sgs.ai_target_revises.ckhuansha = function(to,card)
@@ -278,33 +278,33 @@ ai_skill_invoke.ckxueni = function(self, options, request)
     local target = data:toPlayer()
     if target  then 
         if (self:isEnemy(target)) then
-			return (true) or false
+			return true
 		end
         if (self:isFriend(target)) and visible_role(self,target) == "rebel" then
 			for _, friend in ipairs(self.friends) do
-				if getKnownCard(friend, self.player, "Peach", true, "h") > 0 then return (false) or false end
-				if (friend:getHandcardNum()) > 3 then return (false) or false end
+				if getKnownCard(friend, self.player, "Peach", true, "h") > 0 then return false end
+				if (friend:getHandcardNum()) > 3 then return false end
 			end
-            return (true) or false
+            return true
 		end
     end
-    return (false) or false
+    return false
 end
 
 ai_skill_invoke.ckyongchang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local effect = context(self,"effect")
     local dest = effect.to
-    if dest and (self:isEnemy(dest)) then return (false) or false end
-	if effect.card and (effect.card:hasFlag("NosJiefanUsed")) then return (false) or false  end
+    if dest and (self:isEnemy(dest)) then return false end
+	if effect.card and (effect.card:hasFlag("NosJiefanUsed")) then return false  end
 
 	if not effect.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,effect.from)
 		or (effect.card:isKindOf("NatureSlash")) and (self.player:isChained()) and (self:isGoodChainTarget(dest, effect.from, nil, nil, effect.card))
-		or (self:needToLoseHp(dest,effect.from,effect.card)) and (self:ajustDamage(effect.from,dest,1,effect.card))==1 then return (false) or false end
-	if (self:needToLoseHp(dest,effect.from,effect.card,true,true)) then return (false) or false end
-	if (self:getCardsNum("Jink")) == 0 then return (true) or false end
+		or (self:needToLoseHp(dest,effect.from,effect.card)) and (self:ajustDamage(effect.from,dest,1,effect.card))==1 then return false end
+	if (self:needToLoseHp(dest,effect.from,effect.card,true,true)) then return false end
+	if (self:getCardsNum("Jink")) == 0 then return true end
 	
-	return (true) or false
+	return true
 end
 
 sgs.ai_choicemade_filter.skillInvoke.ckyongchang = function(self,player,promptlist)

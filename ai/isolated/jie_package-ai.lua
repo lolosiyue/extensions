@@ -71,7 +71,7 @@ end
 
 ai_skill_invoke.jinbolan = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_fill_skill.jinbolan_skill = function(self, options, request)
@@ -238,12 +238,12 @@ ai_skill_invoke.jinxiongshu_guess = function(self, options, request)
 			then
 				if (c:isDamageCard() or c:isKindOf("SingleTargetTrick"))
 				and self:isEnemy(target, to)
-				then return (true) or false end
+				then return true end
 			end
 		end
 		if c:targetFixed()
 		and not c:isDamageCard()
-		then return (true) or false end
+		then return true end
 	end
    	return false
 

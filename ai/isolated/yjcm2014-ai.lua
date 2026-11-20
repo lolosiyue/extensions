@@ -113,7 +113,7 @@ sgs.ai_card_intention.DingpinCard = -10
 ai_skill_invoke.faen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local player = data:toPlayer()
-	if self:needKongcheng(player, true) then return (not self:isFriend(player)) or false end
+	if self:needKongcheng(player, true) then return not self:isFriend(player) end
 	return (self:isFriend(player)) or false
 end
 
@@ -180,33 +180,33 @@ ai_skill_invoke.yonglve = function(self, options, request)
 	local slash = self:evaluateSkillCard("_yonglve","slash",{})
 	if self:isFriend(current)
 	and choose_card(self,current,"j","dummyReason",sgs.Card_MethodDiscard) then
-		if not self:slashIsEffective(slash, current, self.player) then return (true) or false end
-		if not self:isWeak(current) or getKnownCard(current,self.player,"Jink")>0 then return (true) or false end
+		if not self:slashIsEffective(slash, current, self.player) then return true end
+		if not self:isWeak(current) or getKnownCard(current,self.player,"Jink")>0 then return true end
 	elseif self:isEnemy(current) then
-		if choose_card(self,current,"j","dummyReason",sgs.Card_MethodDiscard) then return (true) or false end
+		if choose_card(self,current,"j","dummyReason",sgs.Card_MethodDiscard) then return true end
 		for _,card in sgs.qlist(current:getJudgingArea())do
 			if card:isKindOf("SupplyShortage")
 			and (current:getHandcardNum()>4 or current:containsTrick("indulgence")) then
 				save_yonglve(self,card:getKnownEffectiveId())
-				return (true) or false
+				return true
 			elseif card:isKindOf("Indulgence")
 			and current:getHandcardNum()+self:ImitateResult_DrawNCards(current)<=self:getOverflow(current, true) then
 				save_yonglve(self,card:getKnownEffectiveId())
-				return (true) or false
+				return true
 			end
 		end
 		if self:isWeak(current) and current:getHp()==1
 		and getCardsNum("Jink",current,self.player)<1
 		and self:slashIsEffective(slash, current, self.player) then
 			save_yonglve(self,random_judge(self,current))
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.qiangzhi = function(self, options, request)
-	return (not self:needKongcheng(self.player, true)) or false
+	return not self:needKongcheng(self.player, true)
 end
 
 sgs.ai_skill_playerchosen.qiangzhi = function(self,targetlist)
@@ -280,17 +280,17 @@ end
 ai_skill_invoke.xiantu = function(self, options, request)
 	local current = self.room:getCurrent()
 	if self:isFriend(current) then
-		if current:isLord() and self:isLordInDanger() then return (true) or false end
-		if self.player:getKnownRole()=="renegade" and not self:needToThrowArmor() then return (false) or false end
-		if self:getRoleEstimate(current)=="renegade" and not self:needToThrowArmor() then return (false) or false end
+		if current:isLord() and self:isLordInDanger() then return true end
+		if self.player:getKnownRole()=="renegade" and not self:needToThrowArmor() then return false end
+		if self:getRoleEstimate(current)=="renegade" and not self:needToThrowArmor() then return false end
 		for _,enemy in ipairs(self.enemies)do
 			if self:isWeak(enemy) and enemy:getHp()==1 and not self:slashProhibit(nil, enemy, current)
 				and (not sgs.isJinkAvailable(current,enemy) or getCardsNum("Jink",enemy,self.player)<1)
 				and (getCardsNum("Slash",current,self.player)>=1 or self:getCardsNum("Slash")>0) then
-				return (true) or false
+				return true
 			end
 		end
-		if not self.player:isWounded() and self:isWeak(current) then return (true) or false end
+		if not self.player:isWounded() and self:isWeak(current) then return true end
 	end
 	return false
 
@@ -845,7 +845,7 @@ sgs.ai_card_intention.XianzhouDamageCard = function(self,card,from,tos)
 end
 
 ai_skill_invoke.jianying = function(self, options, request)
-	return (not self:needKongcheng(self.player, true)) or false
+	return not self:needKongcheng(self.player, true)
 end
 
 sgs.ai_skill_playerchosen.youdi = function(self,targets)

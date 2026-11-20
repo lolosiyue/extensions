@@ -654,9 +654,9 @@ end
 
 ai_skill_invoke.shuangxiong=function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if query(self,"needBear") then return (false) or false end
+	if query(self,"needBear") then return false end
 	if query(self.player,"isSkipped",sgs.Player_Play) or (query(self.player,"getHp")<2 and not (query(self,"getCardsNum","Slash")>1 and query(self.player,"getHandcardNum")>=3)) or #self.enemies==0 then
-		return (false) or false
+		return false
 	end
 	local duel = query(self,"getEvaluationCard","duel")
 
@@ -706,13 +706,13 @@ ai_skill_invoke.mengjin = function(self, options, request)
 	local effect = query(data,"toCardEffect")
 	if query(self,"isEnemy",effect.to) then
 		if query(self,"doDisCard",effect.to) then
-			return (true) or false
+			return true
 		end
 	end
 	if query(self,"isFriend",effect.to) then
 		return (query(self,"needToThrowArmor",effect.to) or query(self,"doDisCard",effect.to)) or false
 	end
-	return (not query(self,"isFriend",effect.to)) or false
+	return not query(self,"isFriend",effect.to)
 end
 
 sgs.ai_suit_priority.lianhuan= "club|diamond|heart|spade"
@@ -767,12 +767,12 @@ ai_skill_invoke.qinyin = function(self, options, request)
 
 	if down>0 then
 		query(self,"setStrategyMemory","fire.qinyin_choice","down")
-		return (true) or false
+		return true
 	elseif up>0 then
 		query(self,"setStrategyMemory","fire.qinyin_choice","up")
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 

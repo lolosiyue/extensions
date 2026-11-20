@@ -20,14 +20,14 @@ end
 
 ai_skill_invoke.shengchangetupo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (false) or false
+	return false
 end
 
 --圣孙权
 
 ai_skill_invoke.keshengxionglve = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_getBestHp_skill.keshengxionglve = function(owner)
@@ -42,17 +42,17 @@ ai_skill_invoke.keshengganen = function(self, options, request)
 			if self:isWeak(target) then
 				return (not target:isKongcheng() and self:needKongcheng(target) and self:canDraw(target, self.player)) or false
 			elseif self:canDraw(target, self.player) and (self:getOverflow() > 0 or self.player:isSkipped(sgs.Player_Play)) then
-				return (true) or false
+				return true
 			else
 				return (math.random() < 0.45 and self:canDraw(target, self.player)) or false
 			end
 		elseif self:isEnemy(target) then
 			if target:isKongcheng() and self:needKongcheng(target) then
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.keshengganen = function(self, player, promptlist)
@@ -67,7 +67,7 @@ end
 
 ai_skill_invoke.kejieshengxionglve = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_getBestHp_skill.kejieshengxionglve = function(owner)
@@ -81,13 +81,13 @@ ai_skill_invoke.kejieshengganen = function(self, options, request)
 		if self:isWeak(target) then
 			return (self:canDraw(target, self.player)) or false
 		elseif self:canDraw(target, self.player) and (self:getOverflow() > 0 or self.player:isSkipped(sgs.Player_Play)) then
-			return (true) or false
-		elseif self:hasSkills(sgs.cardneed_skill, self.player) then return (false) or false
+			return true
+		elseif self:hasSkills(sgs.cardneed_skill, self.player) then return false
 		else
 			return (math.random() < 0.8 and self:canDraw(target, self.player)) or false
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.kejieshengganen = function(self, player, promptlist)
@@ -188,7 +188,7 @@ sgs.ai_cardneed.kejieshenghujutwo = sgs.ai_cardneed.slash
 
 ai_skill_invoke.keshengliufeng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|keshengliufeng"
 
@@ -256,7 +256,7 @@ sgs.ai_use_priority.keshenghuixueCard = 9.5
 
 ai_skill_invoke.kejieshengliufeng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_hasTuntianEffect_skill.kejieshengliufeng = function(to, need_zaoxian)
@@ -384,10 +384,10 @@ sgs.ai_card_intention.keshengzhuihun = -80
 ai_skill_invoke.keshengjiuzhu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = self.room:getCurrentDyingPlayer()
-	if target and self:canNiepan(target) then return (false) or false end
+	if target and self:canNiepan(target) then return false end
 	if self.player:getKnownRole() == "loyalist" and self:isWeak(self.room:getLord())
 		and target and target:objectName() ~= self.player:objectName() and target:objectName() ~= self.room:getLord():objectName() then
-		return (false) or false
+		return false
 	end
 	return (self:isFriend(target)) or false
 end
@@ -487,16 +487,16 @@ ai_skill_invoke.kejieshengqinggang = function(self, options, request)
 	if target then
 		return (self:doDisCard(target, "he")) or false
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.kejieshengjiuzhu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target and self:canNiepan(target) then return (false) or false end
+	if target and self:canNiepan(target) then return false end
 	if (self.player:getKnownRole() == "loyalist" or self.player:getKnownRole() == "renegade")   and self:isWeak(self.room:getLord())
 		and target and target:objectName() ~= self.player:objectName() and target:objectName() ~= self.room:getLord():objectName() then
-		return (false) or false
+		return false
 	end
 	return (self:isFriend(target)) or false
 end
@@ -504,7 +504,7 @@ end
 --圣郭嘉
 ai_skill_invoke.keshengqizuo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.keshengqizuo = function(self, targets)
@@ -526,7 +526,7 @@ end
 
 ai_skill_invoke.keshengxiangzhi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_askforyiji.keshengxiangzhi = function(self, card_ids)
@@ -571,7 +571,7 @@ end
 
 ai_skill_invoke.kejieshengqizuo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 sgs.ai_skill_playerchosen.kejieshengqizuo = function(self, targets)
 	targets = sgs.QList2Table(targets)
@@ -606,7 +606,7 @@ end
 
 ai_skill_invoke.kejieshengxiangzhi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_askforyiji.kejieshengxiangzhi = function(self, card_ids)
@@ -655,7 +655,7 @@ end
 
 ai_skill_invoke.keshengtonggui = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.keshengtonggui = function(self, targets)
@@ -675,9 +675,9 @@ ai_skill_invoke.keshengfuchou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
 	if current and self:isEnemy(current) then
-		return (true) or false
+		return true
 	else
-		return (false) or false
+		return false
 	end
 	return false
 
@@ -700,7 +700,7 @@ end
 
 ai_skill_invoke.kejieshengtonggui = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.kejieshengtonggui = function(self, targets)
@@ -722,9 +722,9 @@ ai_skill_invoke.kejieshengfuchou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
 	if current and self:isEnemy(current) then
-		return (true) or false
+		return true
 	else
-		return (false) or false
+		return false
 	end
 	return false
 
@@ -750,7 +750,7 @@ end
 
 ai_skill_invoke.keshengyuma = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 function sgs.ai_cardneed.keshengyuma(to, card)
 	return card:isKindOf("OffensiveHorse") or card:isKindOf("DefensiveHorse")
@@ -758,7 +758,7 @@ end
 
 ai_skill_invoke.kejieshengyuma = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 function sgs.ai_cardneed.kejieshengyuma(to, card)
@@ -768,17 +768,17 @@ end
 ai_skill_invoke.kejieshengliema = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local mode = self.room:getMode()
-	if mode:find("_mini_41") or mode:find("_mini_46") then return (true) or false end
+	if mode:find("_mini_41") or mode:find("_mini_46") then return true end
 	local damage = data:toDamage()
 	local target = damage.from
 	if target then
 		if self:isEnemy(target) and self:doDisCard(target, "he") then
-			return (true) or false
+			return true
 		elseif self:isFriend(target) and self:doDisCard(target, "he") then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 function sgs.ai_slash_prohibit.kejieshengliema(self, from, to)
 	if self:isFriend(from, to) then return false end

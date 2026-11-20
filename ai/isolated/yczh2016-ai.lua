@@ -307,9 +307,9 @@ ai_skill_invoke.danxin = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local level = level(self,self.player)
 	if level>1 then
-		if not self:canDraw(self.player) then return (false) or false end
+		if not self:canDraw(self.player) then return false end
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.danxin = function(self, options, request)
@@ -332,8 +332,8 @@ end
 --瑰藻
 ai_skill_invoke.guizao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getLostHp()<=0 and not self:canDraw(self.player) then return (false) or false end
-	return (true) or false
+	if self.player:getLostHp()<=0 and not self:canDraw(self.player) then return false end
+	return true
 end
 
 ai_skill_choice.guizao = function(self, options, request)

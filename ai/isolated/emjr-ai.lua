@@ -150,7 +150,7 @@ ai_skill_invoke.ehuwu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = (data:toCardUse())
 	if (self:isFriend(use.from)) then
-		return (true) or false
+		return true
 	end
 	return ((self.room:getCardPlace((use.card:getKnownEffectiveId()))) == sgs.Player_DiscardPile) or false
 end
@@ -280,8 +280,8 @@ end
 ai_skill_invoke.eqiangbian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target and (self:isFriend(target)) then return (false) or false end
-	return (true) or false
+	if target and (self:isFriend(target)) then return false end
+	return true
 end
 
 ai_skill_invoke.eaocai = function(self, options, request)
@@ -295,13 +295,13 @@ ai_skill_invoke.ezhuanquan = function(self, options, request)
 	local target = self.room:getCurrent()
 	if (self:isEnemy(target)) then
 		if (self:doDisCard(target,"h")) then
-			return (false) or false
+			return false
 		end
 	end
 	if (self:isFriend(target)) then
 		return ((self:doDisCard(target,"h"))) or false
 	end
-	return (not (self:isFriend(target))) or false
+	return not (self:isFriend(target))
 end
 
 -- Audited ezhuanquan -> snatch alias is registered by event-intention.
@@ -309,7 +309,7 @@ end
 
 ai_skill_invoke.etushou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.etushou = function(self, targets)
@@ -480,7 +480,7 @@ for _, skill in ipairs({ "emjr_cc_fanji", "emjr_cc_chuanji", "emjr_cc_huiqiang" 
     else
         -- TriggerSkill 已確認有合法相鄰敵軍候選；穿擊不消耗資源，可直接發動。
         ai_skill_invoke[skill] = function(self, options, request)
-            return (true) or false
+            return true
         end
         sgs.ai_skill_playerchosen[skill] = choose_enemy
     end
@@ -510,21 +510,21 @@ ai_skill_invoke["emjr_cc_jinglei"] = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damaged = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
     local access = beast(self.player) or treasure(self.player) == 1
-    if not access or not can_spend(self.player) then return (false) or false end
+    if not access or not can_spend(self.player) then return false end
     for _, enemy in ipairs(self.enemies or {}) do
-        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return (true) or false end
+        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return true end
     end
-    return (false) or false
+    return false
 end
 ai_skill_invoke["emjr_cc_tianhuo"] = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damaged = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
     local access = beast(self.player) or treasure(self.player) == 3
-    if not access or not can_spend(self.player) then return (false) or false end
+    if not access or not can_spend(self.player) then return false end
     for _, enemy in ipairs(self.enemies or {}) do
-        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return (true) or false end
+        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return true end
     end
-    return (false) or false
+    return false
 end
 
 local function use_skill(self, skill, card_class, card_kind, useful, request)

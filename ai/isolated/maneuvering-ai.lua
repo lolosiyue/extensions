@@ -36,14 +36,14 @@ ai_skill_invoke.fan=function(self, options, request)
         local fire=self:getFanConversionProbe(known(use.card,"fan use card"))
         local damage=query(self,"ajustDamage",self.player,target,1,fire)
         if query(self,"isFriend",target) then
-            if damage==0 or query(target,"isChained") and query(self, "isGoodChainTarget", target, nil, nil, nil, fire) then return (true) or false end
+            if damage==0 or query(target,"isChained") and query(self, "isGoodChainTarget", target, nil, nil, nil, fire) then return true end
         else
             if query(target,"isChained") then
-                if query(self, "isGoodChainTarget", target, nil, nil, nil, fire) then return (true) or false end
-            elseif damage>=query(self,"ajustDamage",self.player,target,1,use.card) then return (true) or false end
+                if query(self, "isGoodChainTarget", target, nil, nil, nil, fire) then return true end
+            elseif damage>=query(self,"ajustDamage",self.player,target,1,use.card) then return true end
         end
     end
-    return (false) or false
+    return false
 end
 sgs.ai_weapon_value.fan=function(self,enemy)
     if enemy and query(self,"ajustDamage",self.player,enemy,1,nil,"F")>1 then return 6 end

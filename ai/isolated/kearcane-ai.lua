@@ -127,7 +127,7 @@ sgs.ai_card_intention.kefanmaoCard = 80
 
 ai_skill_invoke["flydoorswapback-ask"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.kebengneng = function(self, options, request)
@@ -148,9 +148,9 @@ ai_skill_invoke.kechetan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if not self:isFriend(target) and self:doDisCard(target, "h") then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.kechetan = function(self,player,promptlist)
@@ -197,9 +197,9 @@ ai_skill_invoke.kegonghuan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isFriend(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.kegonghuan = function(self,player,promptlist)
@@ -246,9 +246,9 @@ ai_skill_invoke.kechupan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use.from and self:isFriend(use.from) then
-		return (false) or false
+		return false
 	end
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.kechupan = function(self, targets)
@@ -362,30 +362,30 @@ ai_skill_invoke.keblood = function(self, options, request)
 	local use = data:toCardUse()
 	if use.from and use.from:objectName() == self.player:objectName() then
 		if self:isFriend(use.to:first()) then
-			return (false) or false
+			return false
 		end
 	end
 	if use.from and use.from:objectName() ~= self.player:objectName() then
 		if self:isFriend(use.from) then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 ai_skill_invoke.kebloodangry = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if use.from and use.from:objectName() == self.player:objectName() then
 		if self:isFriend(use.to:first()) then
-			return (false) or false
+			return false
 		end
 	end
 	if use.from and use.from:objectName() ~= self.player:objectName() then
 		if self:isFriend(use.from) then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 
 local killaround_targets
@@ -506,10 +506,10 @@ ai_skill_invoke.kezhengyi = function(self, options, request)
 	local target = data:toPlayer()
 	if target then
 		if self:isEnemy(target) and self:isWeak(target) and target:getHp() + self:getAllPeachNum(target) - target:getLostHp() < 1 and not self:cantDamageMore(self.player, target) and self:damageIsEffective(target, sgs.DamageStruct_Thunder, self.player) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 ai_fill_skill.kehaojin=function(self, options, request)
@@ -680,16 +680,16 @@ ai_skill_invoke.azirslash = function(self, options, request)
 		if (p:getStrategyMark("@sandsoldier") > 0) then
 			local dummy_use = self:aiUseCard(use.card, dummy(true, 99, self.room:getOtherPlayers(p)))
 			if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:contains(p) then
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_invoke.playmovesoldier = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.playmovesoldier = function(self, targets)

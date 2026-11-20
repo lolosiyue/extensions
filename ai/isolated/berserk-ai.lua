@@ -23,7 +23,7 @@ end
 ai_skill_invoke.berserk_xinxian = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
-    return (not self:isFriend(damage.from)) or false
+    return not self:isFriend(damage.from)
 end
 sgs.ai_skill_playerchosen["@menghuan-target2"] = function(self)
     local enemies = known(self.enemies, "berserk.enemies")

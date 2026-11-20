@@ -464,10 +464,10 @@ ai_skill_invoke["sr_wenjiu"] = function(self, options, request)
 	local use = data:toCardUse()
 	for _,p in ipairs(self.friends) do
 		if use.to:contains(p) then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 sgs.ai_ajustdamage_from.sr_wenjiu = function(self, from, to, card, nature)
 	if (card and (sget(card,"isKindOf","Slash") )) and sget(from,"getMark","wenjiuslash") > 0
@@ -575,7 +575,7 @@ ai_skill_invoke["sr_paoxiao"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _,c in sgs.qlist(self.player:getHandcards()) do
 		if sget(c,"isKindOf","Slash") then
-			return (true) or false
+			return true
 		end
 	end
 	return (sget(self.player,"getHandcardNum") >=2) or false
@@ -1251,7 +1251,7 @@ end
 
 ai_skill_invoke["sr_youdi"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 ai_skill_use["@@sr_youdi"] = function(self, prompt, request)
 	if self.player:isKongcheng() then return "." end
@@ -1280,11 +1280,11 @@ ai_skill_use["@@sr_youdi"] = function(self, prompt, request)
 end
 ai_skill_invoke["sr_ruya"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if sget(self.player,"hasSkill","sr_youdi") then return (true) or false end
-	if self:isWeak() then return (true) or false end
+	if sget(self.player,"hasSkill","sr_youdi") then return true end
+	if self:isWeak() then return true end
 	if sget(self.player,"getPhase") == sgs.Player_Play and sget(self.player,"hasSkill","sr_dailao")
-		and not self.player:hasUsed("#sr_dailaocard") then return (true) or false end
-	return (false) or false
+		and not self.player:hasUsed("#sr_dailaocard") then return true end
+	return false
 end
 
 local function sortHandcards(self,typename,smallToBig)
@@ -1417,22 +1417,22 @@ end
 
 ai_skill_invoke["sr_shixue"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 sgs.ai_cardneed.sr_shixue = sgs.ai_cardneed.slash
 
 
 ai_skill_invoke["sr_guoshibegin"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 ai_skill_invoke["sr_guoshiend"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
 	if current and current:isAlive() and self:isFriend(current) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke["sr_guoshiend"] = function(self, player, promptlist)
 	local current = self.room:getCurrent()
@@ -1567,7 +1567,7 @@ sgs.ai_use_value["sr_zhouyancard"] = 5
 
 ai_skill_invoke["sr_zhouyan_draw"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 ai_skill_invoke["sr_zhouyan"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
@@ -1726,13 +1726,13 @@ ai_skill_invoke["sr_xiyu"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _,p in sgs.qlist(self.room:getAllPlayers()) do
 		if self:isFriend(p) and sget(p,"getHandcardNum")>=3 then
-			return (true) or false
+			return true
 		end
 		if self:isEnemy(p) and sget(p,"getHandcardNum")<=2 then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen["sr_xiyu"] = function(self, targets)
@@ -1905,10 +1905,10 @@ ai_skill_invoke["sr_zhaoxiang"] = function(self, options, request)
 	local use = data:toCardUse()
 	for _,p in sgs.qlist(use.to) do
 		if self:isFriend(p) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["srzhaoxiangdiscard"] = function(self, data, pattern, target, target2)
@@ -2026,8 +2026,8 @@ sgs.ai_playerchosen_intention.sr_jianxiong = -50
 
 ai_skill_invoke["sr_tianshang"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.friends_noself > 0 then return (true) or false end
-	return (false) or false
+	if #self.friends_noself > 0 then return true end
+	return false
 end
 sgs.ai_skill_playerchosen["sr_tianshang"] = function(self, targets)
 	local friends = {}
@@ -2056,7 +2056,7 @@ ai_skill_invoke.sr_yiji = function(self, options, request)
 			break
 		end
 	end
-	if sget(self.player,"getHandcardNum") < 2 then return (true) or false end
+	if sget(self.player,"getHandcardNum") < 2 then return true end
 	local invoke
 	for _, friend in ipairs(self.friends) do
 		if not (sget(friend,"hasSkill","manjuan") and sget(friend,"getPhase") == sgs.Player_NotActive) and
@@ -2396,7 +2396,7 @@ sgs.ai_use_value.sr_aozhanCard = 7
 
 ai_skill_invoke.sr_aozhan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice["sr_aozhan"] = function(self, options, request)
@@ -2430,9 +2430,9 @@ sgs.ai_cardneed.sr_huxiao = sgs.ai_cardneed.slash
 ai_skill_invoke["sr_guicai"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local judge = data:toJudge()
-	if judge:isGood() and self:isEnemy(judge.who) then return (true) or false end
-	if judge:isBad() and self:isFriend(judge.who) then return (true) or false end
-	return (false) or false
+	if judge:isGood() and self:isEnemy(judge.who) then return true end
+	if judge:isBad() and self:isFriend(judge.who) then return true end
+	return false
 end
 ai_skill_choice["sr_guicai"] = function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
@@ -2486,7 +2486,7 @@ ai_skill_invoke["sr_langgu"] = function(self, options, request)
 	if damage.from:objectName() == self.player:objectName() then
 		return (self:isEnemy(damage.to)) or false
 	end
-	return (true) or false
+	return true
 end
 ai_skill_invoke["sr_zhuizun"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
@@ -2545,7 +2545,7 @@ end
 ai_skill_invoke["sr_lingbo"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = self.room:getCurrent()
-	if not current or sget(current,"isDead") then return (false) or false end
+	if not current or sget(current,"isDead") then return false end
 	if self:isFriend(current) then
 		local delay = sgs.QList2Table(current:getJudgingArea())
 		if #delay > 0 then
@@ -2556,18 +2556,18 @@ ai_skill_invoke["sr_lingbo"] = function(self, options, request)
 						if sget(delay[1],"isKindOf","Indulgence") and sget(c,"getSuit") == sgs.Card_Heart then
 							self:setStrategyMemory("srkill.lingbocard",c:getId())
  self:setStrategyMemory("srkill.lingboperson",p:objectName())
-							return (true) or false
+							return true
 						end
 						if sget(delay[1],"isKindOf","SupplyShortage") and sget(c,"getSuit") == sgs.Card_Club then
 							self:setStrategyMemory("srkill.lingbocard",c:getId())
  self:setStrategyMemory("srkill.lingboperson",p:objectName())
-							return (true) or false
+							return true
 						end
 						if sget(delay[1],"isKindOf","Lightning") and not (sget(c,"getSuit") == sgs.Card_Spade and
 							sget(c,"getNumber")<=9 and sget(c,"getNumber") >=2) then
 							self:setStrategyMemory("srkill.lingbocard",c:getId())
  self:setStrategyMemory("srkill.lingboperson",p:objectName())
-							return (true) or false
+							return true
 						end
 					end
 				end
@@ -2578,7 +2578,7 @@ ai_skill_invoke["sr_lingbo"] = function(self, options, request)
 				for _,c in sgs.qlist(p:getCards("j")) do
 					self:setStrategyMemory("srkill.lingbocard",c:getId())
  self:setStrategyMemory("srkill.lingboperson",p:objectName())
-					return (true) or false
+					return true
 				end
 			end
 		end
@@ -2587,7 +2587,7 @@ ai_skill_invoke["sr_lingbo"] = function(self, options, request)
 				for _,c in sgs.qlist(p:getCards("e")) do
 					self:setStrategyMemory("srkill.lingbocard",c:getId())
  self:setStrategyMemory("srkill.lingboperson",p:objectName())
-					return (true) or false
+					return true
 				end
 			end
 		end
@@ -2601,25 +2601,25 @@ ai_skill_invoke["sr_lingbo"] = function(self, options, request)
 						if sget(delay[1],"isKindOf","Indulgence") and sget(c,"getSuit") ~= sgs.Card_Heart and not AIValue.sameLegacyIdentity(delay[1],c) then
 							self:setStrategyMemory("srkill.lingbocard",c:getId())
  self:setStrategyMemory("srkill.lingboperson",p:objectName())
-							return (true) or false
+							return true
 						end
 						if sget(delay[1],"isKindOf","SupplyShortage") and sget(c,"getSuit") ~= sgs.Card_Club  and not AIValue.sameLegacyIdentity(delay[1],c)  then
 							self:setStrategyMemory("srkill.lingbocard",c:getId())
  self:setStrategyMemory("srkill.lingboperson",p:objectName())
-							return (true) or false
+							return true
 						end
 						if sget(delay[1],"isKindOf","Lightning") and (sget(c,"getSuit") == sgs.Card_Spade and not AIValue.sameLegacyIdentity(delay[1],c)  and
 							sget(c,"getNumber")<=9 and sget(c,"getNumber") >=2) and not enemyChainedWithUs(self,p) then
 							self:setStrategyMemory("srkill.lingbocard",c:getId())
  self:setStrategyMemory("srkill.lingboperson",p:objectName())
-							return (true) or false
+							return true
 						end
 					end
 				end
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen["sr_lingbo"] = function(self,targets)
@@ -2808,7 +2808,7 @@ ai_skill_invoke["sr_ganglie"] = function(self, options, request)
 				for _, p in ipairs(self.enemies) do
 					if self.player:canSlash(p,true) then
 						if self:isWeak(p) or (p:isKongcheng() and not p:getArmor()) then
-							return (true) or false
+							return true
 						end
 					end
 				end
@@ -2820,7 +2820,7 @@ ai_skill_invoke["sr_ganglie"] = function(self, options, request)
 				for _, p in ipairs(self.enemies) do
 					if not self.player:isProhibited(p,c) then
 						if self:isWeak(p) or p:isKongcheng() then
-							return (true) or false
+							return true
 						end
 					end
 				end
@@ -2829,14 +2829,14 @@ ai_skill_invoke["sr_ganglie"] = function(self, options, request)
 					if not self.player:isProhibited(p,c) then
 						if (self:isWeak(p) or p:getArmor() and p:getArmor():isKindOf("Vine"))
 							and not p:isKongcheng() and sget(self.player,"getHandcardNum"):length()>=4 then
-							return (true) or false
+							return true
 						end
 					end
 				end
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_ajustdamage_from.sr_ganglie   = function(self, from, to, card, nature)
 	if from and not sget(from,"hasFlag","damageincreased") and sget(from,"hasFlag","srganglieinvoked") then
@@ -3295,10 +3295,10 @@ end
 ai_skill_invoke["sr_guagu"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
-	if self:isFriend(dying.who) then return (true) or false end
+	if self:isFriend(dying.who) then return true end
 	if source_role(self,self.player) == "renegade" and sget(dying.who,"isLord") and
-		self.room:getAlivePlayers():length()>2 then return (true) or false end
-	return (false) or false
+		self.room:getAlivePlayers():length()>2 then return true end
+	return false
 end
 
 sgs.ai_skill_cardask["srwuqindiscard"]=function(self, data, pattern, target, target2)

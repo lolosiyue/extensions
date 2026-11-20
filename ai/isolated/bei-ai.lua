@@ -64,7 +64,7 @@ end
 --宝箧
 ai_skill_invoke.jinbaoqie = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not self.player:getTreasure()) or false
+	return not self.player:getTreasure()
 end
 
 sgs.ai_can_damagehp.jinbaoqie = function(self,from,card,to)
@@ -361,9 +361,9 @@ ai_skill_invoke.jinyimie = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local str = data:toString():split(":")
 	local to = self.room:findPlayerByObjectName(str[2])
-	if not to or to:isDead() or not self:isEnemy(to) or tonumber(str[4])<1 then return (false) or false end
-	if self:cantDamageMore(self.player,to) then return (false) or false end
-	return (true) or false
+	if not to or to:isDead() or not self:isEnemy(to) or tonumber(str[4])<1 then return false end
+	if self:cantDamageMore(self.player,to) then return false end
+	return true
 end
 
 --睿略
@@ -463,7 +463,7 @@ end
 
 ai_skill_invoke.jinzhuosheng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.jinzhuosheng = function(self, options, request)

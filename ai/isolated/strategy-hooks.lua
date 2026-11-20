@@ -212,6 +212,39 @@ function sgs.declareValueHookStages(registry_name, key, declarations)
     end
 end
 
+local value_hook_context_index = {
+    damage=6, defense=3, least=4, best=2, empty=4, overflow=4,
+    effect=4, needed=5, slash_defense=4, target_value=3,
+}
+
+-- The legacy ABI ends just before the context slot. Forward the supplied
+-- prefix, retaining explicit nils without padding a shorter call.
+function sgs.registerValueHookStages(registry_name, key, declarations, policy, inherit_context)
+    local registry = sgs[registry_name]
+    local context_index = value_hook_context_index[value_hook_abis[registry_name]]
+    assert(context_index, "unknown value hook registry: " .. tostring(registry_name))
+    local previous = registry[key]
+    if type(previous) ~= "function" then previous = nil end
+    registry[key] = function(...)
+        local count = select("#", ...)
+        local argc = math.min(count, context_index - 1)
+        local context = count >= context_index and select(context_index, ...)
+        if sgs.isValueHookContext(context) then
+            for _, stage in ipairs(declarations) do
+                if context.phase == stage.phase and context.rule == stage.rule then
+                    return policy(...)
+                end
+            end
+            if inherit_context == false or not previous then return context.value end
+            argc = context_index
+        end
+        if not previous then return end
+        if argc == count then return previous(...) end
+        return previous(table.unpack({...}, 1, argc))
+    end
+    sgs.declareValueHookStages(registry_name, key, declarations)
+end
+
 -- Compatibility order only: the source constructed these five keys in one Lua
 -- hash part and used pairs. Numeric HP policies belong to the owning packages.
 local best_hp_source_order = {ganlu=true,yinghun=true,nosmiji=true,xueji=true,baobian=true}

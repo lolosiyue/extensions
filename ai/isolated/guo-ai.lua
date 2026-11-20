@@ -124,7 +124,7 @@ ai_skill_invoke.jinshiren = function(self, options, request)
 		return (self:doDisCard(current,"h",true)
 		or not self:needToThrowLastHandcard(current)) or false
 	end
-	return (true) or false
+	return true
 end
 
 sgs.ai_can_damagehp.jinshiren = function(self,from,card,to)

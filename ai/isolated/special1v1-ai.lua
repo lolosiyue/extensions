@@ -548,8 +548,8 @@ ai_skill_invoke.kofkuanggu = function(self, options, request)
 	local zhangbao = self.room:findPlayerBySkillName("yingbing")
 	if zhangbao and self:isEnemy(zhangbao)
 		and self.player:getPile("incantation"):length()>0 and visible(self,self.player:getPile("incantation"):first()):isRed()
-		and not self:hasWizard(self.friends) then return (false) or false end
-	if self.player:isWounded() then return (true) or false end
+		and not self:hasWizard(self.friends) then return false end
+	if self.player:isWounded() then return true end
 	local zhangjiao = self.room:findPlayerBySkillName("guidao")
 	return (zhangjiao and self:isFriend(zhangjiao) and not zhangjiao:isNude()) or false
 end
@@ -707,7 +707,7 @@ ai_skill_invoke.renwang = function(self, options, request)
 		local id = self:recommendCardChosen(use.from,"he","dummy",sgs.Card_MethodDiscard).id
 		return (self:needToThrowArmor(use.from) and id==use.from:getArmor():getEffectiveId()) or false
 	elseif self:doDisCard(use.from,"he") then
-		return (true) or false
+		return true
 	end
 	return false
 end

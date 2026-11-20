@@ -693,9 +693,9 @@ ai_skill_invoke.olshebian = function(self, options, request)
 		shebian_slot(self,'record','olshebian_from',from:objectName())
 		shebian_slot(self,'record','olshebian',card:getKnownId())
 		shebian_slot(self,'record','olshebian_to',to:objectName())
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 ai_fill_skill.olqimou = function(self, options, request)
@@ -834,23 +834,23 @@ end
 
 ai_skill_invoke.olxueyi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if not self:canDraw() then return (false) or false end
-	if self:willSkipPlayPhase() then return (false) or false end
+	if not self:canDraw() then return false end
+	if self:willSkipPlayPhase() then return false end
 	local num = 2  --偷懒不管别的摸牌数了，也不管手里的【无中生有】了
 	if self:willSkipDrawPhase() then
 		num = 0
 	end
-	if self.player:getHandcardNum()>=4 then return (false) or false end
-	if self.player:getHandcardNum()+1+num<self.player:getMaxCards()-2 then return (true) or false end
-	return (false) or false
+	if self.player:getHandcardNum()>=4 then return false end
+	if self.player:getHandcardNum()+1+num<self.player:getMaxCards()-2 then return true end
+	return false
 end
 
 ai_skill_invoke.secondolxueyi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if not self:canDraw() then return (false) or false end
-	if self.player:getHandcardNum()>=4 then return (false) or false end
-	if self.player:getHandcardNum()+1<self.player:getMaxCards()-1 then return (true) or false end
-	return (false) or false
+	if not self:canDraw() then return false end
+	if self.player:getHandcardNum()>=4 then return false end
+	if self.player:getHandcardNum()+1<self.player:getMaxCards()-1 then return true end
+	return false
 end
 
 ai_fill_skill.olhuoji = function(self, options, request)
@@ -985,8 +985,8 @@ end
 ai_skill_invoke.olhanzhan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	if to and not self:isFriend(to) then return (true) or false end
-	return (false) or false
+	if to and not self:isFriend(to) then return true end
+	return false
 end
 
 ai_skill_invoke.secondolhanzhan = function(self, options, request)
@@ -1340,12 +1340,12 @@ ai_skill_invoke.olqiaomeng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local player = data:toPlayer()
 	if self:isFriend(player) then
-		if player:getArmor() and self:needToThrowArmor(player) and self.player:canDiscard(player, player:getArmor():getEffectiveId()) then return (true) or false end
+		if player:getArmor() and self:needToThrowArmor(player) and self.player:canDiscard(player, player:getArmor():getEffectiveId()) then return true end
 		if self.player:canDiscard(player, "j") and not player:containsTrick("YanxiaoCard") then
-			if player:containsTrick("indulgence") or player:containsTrick("supply_shortage") then return (true) or false end
-			if (player:containsTrick("lightning") and self:getFinalRetrial(player)==2) or #self.enemies==0 then return (true) or false end
+			if player:containsTrick("indulgence") or player:containsTrick("supply_shortage") then return true end
+			if (player:containsTrick("lightning") and self:getFinalRetrial(player)==2) or #self.enemies==0 then return true end
 		end
-		return (false) or false
+		return false
 	end
 	return (self:doDisCard(player, "e")) or false
 end
@@ -1679,7 +1679,7 @@ ai_skill_invoke.olbeige = function(self, options, request)
 	local target = data:toPlayer()
 	if target
 	then
-		return (not self:isEnemy(target)) or false
+		return not self:isEnemy(target)
 	end
 	return false
 
@@ -1968,7 +1968,7 @@ end
 
 ai_skill_invoke.oljiushi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke.olguzheng = function(self, options, request)
@@ -2064,7 +2064,7 @@ ai_skill_invoke.oljiang = function(self, options, request)
 	if use.card then
 		return (self:canDraw()) or false
 	end
-	return (not self:isWeak()) or false
+	return not self:isWeak()
 end
 
 ai_skill_invoke.olfuli = function(self, options, request)
@@ -2077,7 +2077,7 @@ ai_skill_invoke.oldangxian = function(self, options, request)
 	if self:getCardsNum("Slash")<1 then
 		for _,enemy in ipairs(self.enemies)do
 			if self.player:canSlash(enemy) then
-				return (true) or false
+				return true
 			end
 		end
 	end
@@ -2089,7 +2089,7 @@ ai_skill_invoke.olenyuan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	if damage.from then
-		return (not self:isFriend(damage.from)) or false
+		return not self:isFriend(damage.from)
 	end
 	local move = data:toMoveOneTime()
 	if move.from then

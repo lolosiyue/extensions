@@ -20,13 +20,13 @@ local function skill(self, player, names)
 end
 
 ai_skill_invoke.jushou = function(self, options, request)
-    if not self.player:faceUp() then return (true) or false end
+    if not self.player:faceUp() then return true end
     for _, friend in ipairs(known(self.friends,"jushou.friends")) do
-        if skill(self,friend,"fangzhu|jilve") and not self:isWeak(friend) then return (true) or false end
+        if skill(self,friend,"fangzhu|jilve") and not self:isWeak(friend) then return true end
         if skill(self,friend,"junxing") and friend:faceUp() and not self:willSkipPlayPhase(friend)
-            and not (friend:isKongcheng() and self:willSkipDrawPhase(friend)) then return (true) or false end
+            and not (friend:isKongcheng() and self:willSkipDrawPhase(friend)) then return true end
     end
-    if not skill(self,self.player,"jiewei") then return (false) or false end
+    if not skill(self,self.player,"jiewei") then return false end
     for _, card in ipairs(self.player:getHandcards()) do
         local use
         if card:getTypeId()==sgs.Card_TypeTrick and not card:isKindOf("Nullification") then
@@ -34,7 +34,7 @@ ai_skill_invoke.jushou = function(self, options, request)
         elseif card:getTypeId()==sgs.Card_TypeEquip then
             use=dummy_use(); self:useEquipCard(card,use)
         end
-        if use and use.card then return (true) or false end
+        if use and use.card then return true end
     end
     return (math.random()+self.player:getCardCount()/10+self.player:getHp()/10>1.1) or false
 end
@@ -42,7 +42,7 @@ ai_skill_invoke.jiewei = true
 ai_skill_invoke.liegong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target=known(data and data:toPlayer(),"liegong.target")
-    return (not self:isFriend(target)) or false
+    return not self:isFriend(target)
 end
 
 sgs.ai_skill_cardask["@guidao-card"] = function(self,data)
@@ -338,9 +338,9 @@ ai_skill_invoke.fenji=function(self, options, request)
     local from=move.from
     if type(from)=="string" then from=self.room:findPlayerByObjectName(from) end
     if self:isWeak() or not from or not self:isFriend(from)
-        or self:hasManjuanEffect(from) or self:needKongcheng(from, true) then return (false) or false end
+        or self:hasManjuanEffect(from) or self:needKongcheng(from, true) then return false end
     local reason=known(move.skill or move.reason and move.reason.skill_name,"fenji.reason")
-    if reason=="rende" or reason=="nosrende" then return (true) or false end
+    if reason=="rende" or reason=="nosrende" then return true end
     return (from:getHandcardNum()<(self.player:getHp()<=1 and 3 or 5)) or false
 end
 sgs.ai_choicemade_filter.skillInvoke=sgs.ai_choicemade_filter.skillInvoke or {}

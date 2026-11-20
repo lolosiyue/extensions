@@ -3,12 +3,12 @@
 
 ai_skill_invoke["weapon_recast"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self:hasSkills(sgs.lose_equip_skill, self.player) then return (false) or false end
+	if self:hasSkills(sgs.lose_equip_skill, self.player) then return false end
 	if self.player:isLord() then
 		local card_use = data:toCardUse()
-		if card_use.card:objectName()~="Crossbow" then return (true) or false end
+		if card_use.card:objectName()~="Crossbow" then return true end
 	else
-		if self.player:getWeapon() then return (true) or false end
+		if self.player:getWeapon() then return true end
 	end
 	return false
 
@@ -16,7 +16,7 @@ end
 
 ai_skill_invoke["draw_1v3"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not self:needKongcheng(self.player, true)) or false
+	return not self:needKongcheng(self.player, true)
 end
 
 ai_skill_choice.Hulaopass = "recover"
@@ -219,10 +219,10 @@ ai_skill_invoke.shimandai = function(self, options, request)
 	local use = data:toCardUse()
 	if use.card:isDamageCard() then
 		if self:canDamageHp(use.from, use.card) then
-			return (false) or false
+			return false
 		end
 	end
-	return (not self:isFriend(use.from)) or false
+	return not self:isFriend(use.from)
 end
 
 sgs.ai_use_value.Shimandai = 4.4

@@ -283,9 +283,9 @@ function ai_skill_invoke.LuaYinyan(self, options, request)
     if target and self:isEnemy(target) and self.player:canPindian(target) and number >= 7
         and self:objectiveLevel(target) > 3 and not self:cantbeHurt(target)
         and self:damageIsEffective(target, sgs.DamageStruct_Fire, self.player) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 sgs.ai_cardneed.LuaYinyan = sgs.ai_cardneed.bignumber
 

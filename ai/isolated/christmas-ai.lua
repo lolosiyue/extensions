@@ -2,7 +2,7 @@
 local known = AIValue.requireKnown
 
 ai_skill_invoke.RLiwa = function(self, options, request)
-    return (not (self.player:isKongcheng() and self:needKongcheng(self.player))) or false
+    return not (self.player:isKongcheng() and self:needKongcheng(self.player))
 end
 ai_fill_skill.RLiwa = function(self, options, request)
     local inclusive = options and options.inclusive

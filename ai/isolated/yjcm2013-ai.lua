@@ -122,7 +122,7 @@ end
 
 ai_skill_invoke.jingce = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not self:needKongcheng(self.player,true)) or false
+	return not self:needKongcheng(self.player,true)
 end
 
 sgs.ai_can_damagehp.chengxiang = function(self,from,card,to)
@@ -729,7 +729,7 @@ end
 
 ai_skill_invoke.zongshih = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not self:needKongcheng(self.player,true)) or false
+	return not self:needKongcheng(self.player,true)
 end
 
 sgs.ai_skill_cardask["@duodao-get"] = function(self,data)
@@ -971,9 +971,9 @@ sgs.ai_playerchosen_intention.zhiyan = -60
 
 ai_skill_invoke.zhuikong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getHandcardNum()<=(self:isWeak() and 2 or 1) then return (false) or false end
+	if self.player:getHandcardNum()<=(self:isWeak() and 2 or 1) then return false end
 	local current = self.room:getCurrent()
-	if not current or self:isFriend(current) then return (false) or false end
+	if not current or self:isFriend(current) then return false end
 
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
@@ -984,14 +984,14 @@ ai_skill_invoke.zhuikong = function(self, options, request)
 		if enemy_max_card and skill(self,current,"yingyang") then enemy_max_point = math.min(enemy_max_point+3,13) end
 		if max_point>enemy_max_point or max_point>10 then
 			self:remember("zhuikong_card",max_card:getEffectiveId())
-			return (true) or false
+			return true
 		end
 	end
 	if current:distanceTo(self.player)==1 and not self:isValuableCard(max_card) then
 		self:remember("zhuikong_card",max_card:getEffectiveId())
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.qiuyuan = function(self,targets)

@@ -407,14 +407,14 @@ ai_skill_invoke.diezhang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
     if to and not self:isFriend(to) and self.player:canSlash(to, nil, false)
-	then return (true) or false end
+	then return true end
 	return false
 
 end
 
 ai_skill_invoke.cibei = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.cibei = function(self,players)

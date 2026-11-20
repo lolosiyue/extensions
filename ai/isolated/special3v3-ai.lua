@@ -60,15 +60,15 @@ ai_skill_invoke.huanshi = function(self, options, request)
 		local cards = sgs.QList2Table(self.player:getCards("he"))
 		if self:isFriend(judge.who) then
 			local card_id = self:getRetrialCardId(cards, judge)
-			if card_id~=-1 then return (true) or false end
+			if card_id~=-1 then return true end
 		elseif self:isEnemy(judge.who) then
 			for _,card in sgs.list(cards)do
-				if judge:isGood(card) or self:isValuableCard(card) then return (false) or false end
+				if judge:isGood(card) or self:isValuableCard(card) then return false end
 			end
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_askforag.huanshi = function(self,card_ids)
@@ -136,9 +136,9 @@ ai_skill_invoke.hongyuan = function(self, options, request)
 		else
 			count = count+1
 		end
-		if count==2 then return (true) or false end
+		if count==2 then return true end
 	end
-	return (false) or false
+	return false
 end
 
 function sgs.ai_cardneed.mingzhe(to,card,self)

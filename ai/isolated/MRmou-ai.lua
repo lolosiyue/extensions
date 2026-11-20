@@ -624,7 +624,7 @@ ai_skill_invoke.MR_zhian = function(self, options, request)
     local target = data:toCardUse().to:first()
     if target
     then
-        return (not self:isFriend(target)) or false
+        return not self:isFriend(target)
     end
     return false
 

@@ -148,7 +148,7 @@ end
 ai_skill_invoke.guichangetupo = function(self, options, request)
 
 	local data = request and self:getDecisionData(request) or nil
-	return (false) or false
+	return false
 end
 
 --鬼曹操
@@ -239,7 +239,7 @@ end
 --鬼关羽
 ai_skill_invoke.keguiwumo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.keguituodao = function(self, targets)
@@ -307,7 +307,7 @@ ai_skill_invoke.keguixiaoshou = function(self, options, request)
 	if damage.from then
 		return (self:doDisCard(damage.from, "he", true)) or false
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.keguixiaoshou = function(self, options, request)
@@ -351,7 +351,7 @@ end
 --鬼诸葛亮
 ai_skill_invoke.keguizhuangshen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.keguizhuangshen = function(self, targets)
@@ -590,14 +590,14 @@ ai_skill_invoke.keguiqinwang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	local damage = source_damage(self)
-	if not self:isFriend(target) or (damage.from and self:isFriend(damage.from)) then return (false) or false end
-	if self:needToLoseHp(target, damage.from, damage.card) then return (false) or false end
-	if self.player:getHandcardNum() + self.player:getEquips():length() < 2 and not self:isWeak(target) then return (false) or false end
+	if not self:isFriend(target) or (damage.from and self:isFriend(damage.from)) then return false end
+	if self:needToLoseHp(target, damage.from, damage.card) then return false end
+	if self.player:getHandcardNum() + self.player:getEquips():length() < 2 and not self:isWeak(target) then return false end
 
 
-	if self:isWeak(target) and not self:isWeak() then return (true) or false end
+	if self:isWeak(target) and not self:isWeak() then return true end
 
-	return (false) or false
+	return false
 end
 
 
@@ -674,7 +674,7 @@ sgs.ai_use_value["kejieguixianjiCard"] = 8.5
 --界鬼诸葛亮
 ai_skill_invoke.kejieguizhuangshen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.kejieguizhuangshen = function(self, targets)
@@ -842,7 +842,7 @@ end
 
 ai_skill_invoke.jueqiaogainslash = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 
@@ -872,7 +872,7 @@ end
 
 ai_skill_invoke.kejieguiwumo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 sgs.ai_cardneed.kejieguiwumo = function(to,card,self)
 	return (isCard("Slash",card,to) and card:isRed())
@@ -915,17 +915,17 @@ ai_skill_invoke.kejieguisheji = function(self, options, request)
 	local target = data:toPlayer()
 	local slash = use.card
 	local from = use.from
-	if from and self:isFriend(from) then return (false) or false end
+	if from and self:isFriend(from) then return false end
 	local willSave = false
 	local friend
 	if self:isFriend(target) and self:slashIsEffective(slash, target, from) then
-		return (true) or false
+		return true
 	end
 	if self:isEnemy(from) and self:damageIsEffective(from, sgs.DamageStruct_Normal, self.player) and not self:cantbeHurt(from) then
-		return (true) or false
+		return true
 	end
 
-	return (false) or false
+	return false
 end
 sgs.ai_cardneed.kejieguisheji = sgs.ai_cardneed.bignumber
 
@@ -980,7 +980,7 @@ ai_skill_invoke.kejieguixiaoshou = function(self, options, request)
 	elseif damage.from and damage.from:objectName() == self.player:objectName() then
 		return (self:doDisCard(damage.to, "e", true)) or false
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.kejieguixiaoshou = function(self, options, request)

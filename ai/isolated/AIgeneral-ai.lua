@@ -34,9 +34,9 @@ ai_skill_invoke.deep_seek = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toDamage().to
     if  self:getRoleEstimate(target) ~= "neutral" or target:isLord()  then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 ai_skill_choice.deep_seek = function(self, options, request)
@@ -201,12 +201,12 @@ ai_skill_invoke.huiyuanshenli = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
     if self:isEnemy(target) and not self:cantbeHurt(target) and self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player) and not self:needToLoseHp(target, self.player, nil) then
-        return (true) or false
+        return true
     end
     if self:isFriend(target) and self:needToLoseHp(target, self.player, nil) then
-        return (true) or false
+        return true
     end
-    return (false) or false
+    return false
 end
 
 --通义
@@ -265,20 +265,20 @@ ai_skill_invoke.tiaojiaoCMT = function(self, options, request)
     local damage = data:toDamage()
     if damage.from and self.player:objectName() == damage.from:objectName() then
         if self:isFriend(damage.to) and damage.to:isWounded() and known(getBestHp(damage.to),"getBestHp") < damage.to:getHp() then
-            return (true) or false
+            return true
         end
         if self:isEnemy(damage.to) then
-            if damage.damage > 1 then return (false) or false end
+            if damage.damage > 1 then return false end
             if not damage.to:isWounded() then
                 return (self:doDisCard(damage.to, "h", true)) or false
             end
             if self:isWeak(damage.to) then
-                return (false) or false
+                return false
             end
             return (self:doDisCard(damage.to, "h", true) and math.random() < 0.5) or false
         end
     end
-    return (false) or false
+    return false
 end
 
 ai_skill_invoke.daduanCMT = true

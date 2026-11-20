@@ -42,8 +42,8 @@ ai_skill_invoke.Se_Elucidator = function(self, options, request)
     local duel = self:evaluateSkillCard("Se_Elucidator", "duel", {})
     local use = {isDummy=true, extra_target=0, current_targets=self.room:getOtherPlayers(effect.to), to=AIList.new({})}
     local planned = self:evaluateCard(duel, use)
-    if planned.card and planned and planned.to and planned.to:contains(effect.to) then return (true) or false end
-    return (false) or false
+    if planned.card and planned and planned.to and planned.to:contains(effect.to) then return true end
+    return false
 end
 function SmartAIView:useCardreijyuu(card, use)
     local recommend = self:targetRecommendScorer(card)

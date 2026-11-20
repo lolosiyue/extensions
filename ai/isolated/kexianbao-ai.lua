@@ -505,8 +505,8 @@ rawset(ai_skill_choice,"kejiexianguiyi",nil)
 ai_skill_invoke.kejiexianguiyi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target and self:isFriend(target) then return (false) or false end
-	return (true) or false
+	if target and self:isFriend(target) then return false end
+	return true
 end
 
 ai_skill_choice.kejiexianguiyi = function(self, options, request)
@@ -639,27 +639,27 @@ ai_skill_invoke.kexianmabi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local target = damage.to
-	if known(target:getStrategyMark("&kexianmabimopai"),"kexianmabi.mark") > 0 then return (false) or false end
+	if known(target:getStrategyMark("&kexianmabimopai"),"kexianmabi.mark") > 0 then return false end
 	if self:isFriend(target)
 	then
 		if self:needToLoseHp(target, self.player, damage.card) then
-			return (false) or false
+			return false
 		elseif target:isChained() and self:isGoodChainTarget(target, nil, nil, nil, damage.card) then
-			return (false) or false
+			return false
 		elseif self:isWeak(target) or damage.damage > 1 then
-			return (true) or false
+			return true
 		elseif target:getLostHp() < 1 then
-			return (false) or false
+			return false
 		end
-		return (true) or false
+		return true
 	else
-		if self:isWeak(target) then return (false) or false end
-		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return (false) or false end
-		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return (false) or false end
-		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return (true) or false end
-		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return (false) or false end
-		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return (true) or false end
-		return (false) or false
+		if self:isWeak(target) then return false end
+		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return false end
+		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return false end
+		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return true end
+		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return false end
+		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return true end
+		return false
 	end
 	return false
 
@@ -687,28 +687,28 @@ ai_skill_invoke.kejiexianmabi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 	local target = damage.to
-	if known(target:getStrategyMark("&kejiexianmabimp"),"kejiexianmabi.mark") > 0 then return (false) or false end
-	if known(target:getStrategyMark("&kejiexianmabicp"),"kejiexianmabi.mark") > 0 then return (false) or false end
+	if known(target:getStrategyMark("&kejiexianmabimp"),"kejiexianmabi.mark") > 0 then return false end
+	if known(target:getStrategyMark("&kejiexianmabicp"),"kejiexianmabi.mark") > 0 then return false end
 	if self:isFriend(target)
 	then
 		if self:needToLoseHp(target, self.player, damage.card) then
-			return (false) or false
+			return false
 		elseif target:isChained() and self:isGoodChainTarget(target, nil, nil, nil, damage.card) then
-			return (false) or false
+			return false
 		elseif self:isWeak(target) or damage.damage > 1 then
-			return (true) or false
+			return true
 		elseif target:getLostHp() < 1 then
-			return (false) or false
+			return false
 		end
-		return (true) or false
+		return true
 	else
-		if self:isWeak(target) then return (false) or false end
-		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return (false) or false end
-		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return (false) or false end
-		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return (true) or false end
-		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return (false) or false end
-		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return (true) or false end
-		return (false) or false
+		if self:isWeak(target) then return false end
+		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return false end
+		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return false end
+		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return true end
+		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return false end
+		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return true end
+		return false
 	end
 	return false
 
@@ -871,27 +871,27 @@ rawset(ai_skill_invoke,"kejiexianaoce",nil)
 ai_skill_invoke.kejiexianaoce = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toCardUse().from
-	if not target then return (false) or false end
-	if self:isFriend(target) then return (false) or false end
+	if not target then return false end
+	if self:isFriend(target) then return false end
 	if self.player:getHp() > 1 and not self:canHit(self.player, target)
 		and not (target:hasWeapon("double_sword") and self.player:getGender() ~= target:getGender())
 	then
-		return (true) or false
+		return true
 	end
 	if getCardsNum("Slash", target, self.player) < 1
 		or self:needLeiji(self.player, target)
 		or self:needToLoseHp(self.player, target, dummyCard())
 	then
-		return (true) or false
+		return true
 	end
-	if self:getOverflow() and self:getCardsNum("Jink") > 1 then return (true) or false end
+	if self:getOverflow() and self:getCardsNum("Jink") > 1 then return true end
 
 	for _, c in sgs.qlist(self.player:getCards("h")) do
 		if c:isKindOf("Jink") then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -918,8 +918,8 @@ rawset(ai_skill_playerchosen,"kejiexianjibian",nil)
 rawset(ai_skill_choice,"kejiexianjibian",nil)
 ai_skill_invoke.kexianbenxi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:isSkipped(sgs.Player_Play) then return (false) or false end
-	if self:needBear() then return (false) or false end
+	if self.player:isSkipped(sgs.Player_Play) then return false end
+	if self:needBear() then return false end
 	local cards = self.player:getHandcards()
 	cards = sgs.QList2Table(cards)
 	local slashtarget = 0
@@ -936,9 +936,9 @@ ai_skill_invoke.kexianbenxi = function(self, options, request)
 		end
 	end
 	if (slashtarget) > 0 then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_skill_playerchosen.kexianbenxi = function(self, targets)
 	self:sort(self.enemies, "handcard")
@@ -1009,7 +1009,7 @@ sgs.kexianbenxi_keep_value = {
 sgs.ai_cardneed.kejiexianjibian = sgs.ai_cardneed.slash
 ai_skill_invoke.kejiexianjibian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.kejiexianjibian = function(self, options, request)

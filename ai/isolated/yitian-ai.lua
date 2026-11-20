@@ -186,7 +186,7 @@ end
 ai_skill_invoke.jueji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not target then self:remember("jueji_card",false) return (false) or false end
+	if not target then self:remember("jueji_card",false) return false end
 	local invoke = self:doDisCard(target,"h")
 	if invoke then
 		local cards = sgs.QList2Table(self.player:getHandcards())
@@ -300,15 +300,15 @@ ai_skill_invoke.lukang_weiyan = function(self, options, request)
 
 	local prompt = data:toString()
 	if prompt=="draw2play" then
-		if self:needBear() then return (false) or false end
-		if slashnum>1 and target>0 then return (true) or false end
-		if self.player:isSkipped(sgs.Player_Play) and #(self:getTurnUse())>0 then return (true) or false end
-		return (false) or false
+		if self:needBear() then return false end
+		if slashnum>1 and target>0 then return true end
+		if self.player:isSkipped(sgs.Player_Play) and #(self:getTurnUse())>0 then return true end
+		return false
 	elseif prompt=="play2draw" then
-		if self:needBear() then return (true) or false end
-		if slashnum>0 and target>0 then return (false) or false end
-		if #(self:getTurnUse())==0 then return (true) or false end
-		return (false) or false
+		if self:needBear() then return true end
+		if slashnum>0 and target>0 then return false end
+		if #(self:getTurnUse())==0 then return true end
+		return false
 	end
 	return false
 
@@ -429,7 +429,7 @@ ai_skill_invoke["lianli_jink"] = function(self, options, request)
 	for _,player in sgs.qlist(self.room:getOtherPlayers(self.player))do
 		if player:getStrategyMark("@tied")>0 then tied = player break end
 	end
-	if self:hasEightDiagramEffect(tied) then return (true) or false end
+	if self:hasEightDiagramEffect(tied) then return true end
 	return (self:getCardsNum("Jink")==0) or false
 end
 
@@ -524,18 +524,18 @@ ai_skill_invoke["lianli_slash"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local asked = data:toStringList()
 	local prompt = asked[2]
-	if self:askForCard("slash",prompt,1)=="." then return (false) or false end
+	if self:askForCard("slash",prompt,1)=="." then return false end
 
 	local xiahoujuan = self.room:findPlayerBySkillName("lianli")
 	if xiahoujuan and xiahoujuan:getPhase()~=sgs.Player_NotActive
 		and self:isFriend(xiahoujuan) and self:getOverflow(xiahoujuan)>2 and not self:hasCrossbowEffect(xiahoujuan) then
-		return (true) or false
+		return true
 	end
 
 	local cards = self.player:getHandcards()
 	for _,card in sgs.qlist(cards)do
 		if isCard("Slash",card,self.player) then
-			return (false) or false
+			return false
 		end
 	end
 	return (xiahoujuan and self:isFriend(xiahoujuan)) or false
@@ -625,16 +625,16 @@ sgs.ai_use_priority.GuihanCard = 8
 ai_skill_invoke.caizhaoji_hujia = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local zhangjiao = self.room:findPlayerBySkillName("guidao")
-	if zhangjiao and self:isEnemy(zhangjiao) and getKnownCard(zhangjiao,self.player,"black",false,"he")>1 then return (false) or false end
+	if zhangjiao and self:isEnemy(zhangjiao) and getKnownCard(zhangjiao,self.player,"black",false,"he")>1 then return false end
 	if not self.player:faceUp() then
-		return (true) or false
+		return true
 	end
 	local invokeNum = hujia_count(self,self.player)
 	if invokeNum<2 then
 		self:setStrategyMemory("yitian.hujia:"..self.player:objectName(),invokeNum+1)
-		return (true) or false
+		return true
 	else
-		return (false) or false
+		return false
 	end
 	return false
 
@@ -688,10 +688,10 @@ function ai_skill_invoke.shaoying(self, options, request)
 			enemynum = enemynum+1
 		end
 	end
-	if enemynum<1 then return (false) or false end
+	if enemynum<1 then return false end
 	local zhangjiao = self.room:findPlayerBySkillName("guidao")
-	if zhangjiao and self:isEnemy(zhangjiao) and getKnownCard(zhangjiao,self.player,"black",false,"he")>1 then return (false) or false end
-	return (true) or false
+	if zhangjiao and self:isEnemy(zhangjiao) and getKnownCard(zhangjiao,self.player,"black",false,"he")>1 then return false end
+	return true
 end
 
 sgs.ai_skill_playerchosen.shaoying = function(self,targets)
@@ -877,8 +877,8 @@ end
 
 ai_skill_invoke.zhenggong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if known(self.world.turn_count,"turn count")<=1 and #self.enemies==0 then return (false) or false end
-	return (true) or false
+	if known(self.world.turn_count,"turn count")<=1 and #self.enemies==0 then return false end
+	return true
 end
 
 
@@ -1025,7 +1025,7 @@ sgs.ai_skill_defense.xiliang = 2
 
 ai_skill_invoke.ytzhenwei = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (not self:needKongcheng(self.player)) or false
+	return not self:needKongcheng(self.player)
 end
 
 ai_skill_invoke.yitian = function(self, options, request)

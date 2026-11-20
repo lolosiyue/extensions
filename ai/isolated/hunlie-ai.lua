@@ -219,8 +219,8 @@ ai_skill_invoke.sgkgodsuyin = function(self, options, request)
 	for _, p in ipairs(self.friends_noself) do
 	    if not package_known(p,"faceUp") then a = a + 1 end
 	end
-	if a > 0 then return (true) or false end
-	return (false) or false
+	if a > 0 then return true end
+	return false
 end
 
 
@@ -475,14 +475,14 @@ ai_skill_invoke.sgkgoddianjie = function(self, options, request)
 	if #self.enemies == 0 then
 	    if package_known(self.player,"hasSkill","sgkgodleihun") and not package_known(self.player,"hasSkill","jueqing") then
 	        if not package_known(self.player,"isWounded") then
-		        return (false) or false
+		        return false
 	        else
-	            if a <= 2 then return (true) or false end
+	            if a <= 2 then return true end
 		    end
 		end
 	else
-	    if package_known(self.player,"getHp") <= 1 then return (true) or false end
-		if a <= 1 then return (true) or false end
+	    if package_known(self.player,"getHp") <= 1 then return true end
+		if a <= 1 then return true end
 	end
     return false
 
@@ -544,10 +544,10 @@ ai_skill_invoke.sgkgodshendao = function(self, options, request)
 		if package_known(self,"getRetrialCardId",sgs.QList2Table(package_known(self.player,"getHandcards")), judge) ~= -1 then judge_fromhandcardmyself = true end
 	end
 	if judge_fromhandcardmyself or #to > 0 then
-	    if package_known(judge,"isGood") and package_known(self,"isEnemy",judge.who) then return (true) or false end
-	    if package_known(judge,"isBad") and package_known(self,"isFriend",judge.who) then return (true) or false end
+	    if package_known(judge,"isGood") and package_known(self,"isEnemy",judge.who) then return true end
+	    if package_known(judge,"isBad") and package_known(self,"isFriend",judge.who) then return true end
 	end
-	return (false) or false
+	return false
 end
 
 ai_skill_choice["sgkgodshendao"] = function(self, options, request)
@@ -839,7 +839,7 @@ ai_skill_invoke.sgkgodjizhao_damage = function(self, options, request)
 	if damage and package_known(damage,"getTo") then
 	    return (package_known(self,"isEnemy",package_known(damage,"getTo"))) or false
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_use_value["sgkgodjizhaoCard"] = 9
@@ -913,11 +913,11 @@ ai_skill_invoke.sgkgodluezhen = function(self, options, request)
 	if package_known(use.card,"isKindOf","Slash") and package_known(use.from,"objectName") == package_known(ganning,"objectName") and not package_known(use.to,"contains",ganning) then
 	    for _, t in sgs.qlist(use.to) do
 		    if package_known(self,"isEnemy",t) then
-			    return (true) or false
+			    return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_cardneed.sgkgodluezhen = sgs.ai_cardneed.slash
@@ -1190,9 +1190,9 @@ ai_skill_invoke.tongtian_fankui = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = package_known(data,"toDamage")
 	if package_known(self,"isEnemy",damage.from) then
-	    return (true) or false
+	    return true
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -2627,17 +2627,17 @@ ai_skill_invoke.sgkgodguixin = function(self, options, request)
 	local diaochan = package_call(self.room,"findPlayerBySkillName","lihun")
 	local lihun_eff = (diaochan and package_known(self,"isEnemy",diaochan))
 	local manjuan_eff = hasManjuanEffect(self.player)
-	if lihun_eff and not manjuan_eff then return (false) or false end
+	if lihun_eff and not manjuan_eff then return false end
 	local players = package_known(self.room,"getPlayers")
 	local t = 0
 	for _, _player in sgs.qlist(players) do
 	    if package_known(_player,"objectName") ~= package_known(self.player,"objectName") and package_known(_player,"getCards","hej"):length() > 0 then t = t + 1 end
 		if package_known(_player,"isDead") then t = t + 1 end
 	end
-	if not package_known(self.player,"faceUp") then return (true) or false
+	if not package_known(self.player,"faceUp") then return true
 	else
-		if manjuan_eff then return (false) or false end
-		if t >= 3 then return (true) or false end
+		if manjuan_eff then return false end
+		if t >= 3 then return true end
 		local value = 0
 		for _, player in sgs.qlist(package_known(self.room,"getOtherPlayers",self.player)) do
 			value = value + sgkgodguixinValue(self, player)
@@ -3358,14 +3358,14 @@ end
 ai_skill_invoke.sgkgodjieyan = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local use = package_known(data,"toCardUse")
-	if package_known(use.to,"length") ~= 1 then return (false) or false end
+	if package_known(use.to,"length") ~= 1 then return false end
 	local to = package_known(use.to,"at",0)
-	if package_known(self,"isFriend",to) then return (false) or false end
-	if package_known(self.player,"isKongcheng") then return (false) or false end
+	if package_known(self,"isFriend",to) then return false end
+	if package_known(self.player,"isKongcheng") then return false end
 	if use.card and package_known(use.card,"isRed") and (package_known(use.card,"isKindOf","Slash") or package_known(use.card,"isNDTrick")) then
-	    if package_known(self,"damageIsEffective",to, sgs.DamageStruct_Fire) and package_known(self,"objectiveLevel",to) >= 3 then return (true) or false else return (false) or false end
+	    if package_known(self,"damageIsEffective",to, sgs.DamageStruct_Fire) and package_known(self,"objectiveLevel",to) >= 3 then return true else return false end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardask["@sgkgodjieyan"] = function(self, data, pattern)
@@ -3690,21 +3690,21 @@ ai_skill_invoke.sgkgodqinyin = function(self, options, request)
 	end
 	if package_known(self,"isWeak") and package_known(self.player,"getCards","he"):length() >= 2 then
 	    package_call(self,"setStrategyMemory","hunlie.choice.qinyin","qinyin_allrecover")
-		return (true) or false
+		return true
 	end
 	if down > 0 then
 		package_call(self,"setStrategyMemory","hunlie.choice.qinyin","qinyin_alllose")
-		return (true) or false
+		return true
 	elseif up > 0 then
 		package_call(self,"setStrategyMemory","hunlie.choice.qinyin","qinyin_allrecover")
-		return (true) or false
+		return true
 	else
 	    if not package_known(self,"isWeak") then
 	        package_call(self,"setStrategyMemory","hunlie.choice.qinyin","qinyin_alllose")
-		    return (true) or false
+		    return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -3965,9 +3965,9 @@ end
 
 ai_skill_invoke.sgkgodluoyan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (false) or false end
-	if #self.enemies == 1 and package_known(self.room,"getAlivePlayers"):length() > 2 and isDangerousCaopi(self.enemies[1]) then return (false) or false end
-	return (true) or false
+	if #self.enemies == 0 then return false end
+	if #self.enemies == 1 and package_known(self.room,"getAlivePlayers"):length() > 2 and isDangerousCaopi(self.enemies[1]) then return false end
+	return true
 end
 
 sgs.ai_skill_playerchosen.sgkgodluoyan = function(self, targets)
@@ -4144,13 +4144,13 @@ end
 ai_skill_invoke.sgkgodxingwu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if package_known(self.player,"getRole") == "rebel" then
-		if package_call(self.room,"findPlayerBySkillName","sgkgodluocha") or package_call(self.room,"findPlayerBySkillName","sgkgodguoqu") then return (false) or false end
-		return (true) or false
+		if package_call(self.room,"findPlayerBySkillName","sgkgodluocha") or package_call(self.room,"findPlayerBySkillName","sgkgodguoqu") then return false end
+		return true
 	end
 	if math.random(1, 100) <= 50 then
 		return (package_known(self.player,"getStrategyMark","&sgkgodxingwu") < 1) or false
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -4275,11 +4275,11 @@ ai_skill_invoke.sgkgodjuechen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local to = package_call(data,"toPlayer")
 	if package_known(self,"isEnemy",to) then
-		if package_known(to,"hasSkills",sgs.masochism_skill.."|"..sgs.recover_skill.."|longhun|buqu|nosbuqu") then return (true) or false end
-		if package_known(to,"hasSkills","wuhun|sgkgodsuohun|duanchang|sgkgodshenyin|sgkgodguiqu|sgkgodfangu|sgkgodlonghun|sgkgodchenyu") then return (true) or false end
+		if package_known(to,"hasSkills",sgs.masochism_skill.."|"..sgs.recover_skill.."|longhun|buqu|nosbuqu") then return true end
+		if package_known(to,"hasSkills","wuhun|sgkgodsuohun|duanchang|sgkgodshenyin|sgkgodguiqu|sgkgodfangu|sgkgodlonghun|sgkgodchenyu") then return true end
 		return (package_known(to,"getLostHp") <= 1) or false
 	elseif package_known(self,"isFriend",to) then
-		if package_known(to,"hasSkills","zhaxiang|mouzhaxiang") then return (true) or false end
+		if package_known(to,"hasSkills","zhaxiang|mouzhaxiang") then return true end
 	end
 	return false
 
@@ -4892,12 +4892,12 @@ ai_skill_invoke.sgkgodliluan = function(self, options, request)
 	if move.to_place == sgs.Player_DiscardPile and (package_known(move.from_places,"contains",sgs.Player_PlaceHand)
 	or package_known(move.from_places,"contains",sgs.Player_PlaceEquip)) and not package_known(move.from_places,"contains",sgs.Player_PlaceDelayedTrick) and
 	bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD then
-		if package_known(move.card_ids,"length") >= 2 and package_known(self,"isFriend",target) then return (true) or false end
+		if package_known(move.card_ids,"length") >= 2 and package_known(self,"isFriend",target) then return true end
 	end
 
 	if move.to_place == sgs.Player_PlaceHand and move.to and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DRAW
 	or move.reason.m_reason == sgs.CardMoveReason_S_REASON_DRAW) then
-		if package_known(move.card_ids,"length") >= 2 and package_known(self,"isEnemy",target) then return (true) or false end
+		if package_known(move.card_ids,"length") >= 2 and package_known(self,"isEnemy",target) then return true end
 	end
 	return false
 
@@ -5017,10 +5017,10 @@ end
 ai_skill_invoke.nos_sgkgodnizhan = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = package_known(data,"toDamage")
-	if package_known(self,"isFriend",damage.from) and (not package_known(self,"isFriend",damage.to)) then return (true) or false end
-	if package_known(self,"isFriend",damage.to) and (not package_known(self,"isFriend",damage.from)) then return (true) or false end
-	if package_known(self,"isEnemy",damage.from) and package_known(self,"isEnemy",damage.to) then return (true) or false end
-	return (false) or false
+	if package_known(self,"isFriend",damage.from) and (not package_known(self,"isFriend",damage.to)) then return true end
+	if package_known(self,"isFriend",damage.to) and (not package_known(self,"isFriend",damage.from)) then return true end
+	if package_known(self,"isEnemy",damage.from) and package_known(self,"isEnemy",damage.to) then return true end
+	return false
 end
 
 
@@ -5262,9 +5262,9 @@ ai_skill_invoke.tongtian_fankui = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = package_known(data,"toDamage")
 	if package_known(self,"isEnemy",damage.from) then
-	    return (true) or false
+	    return true
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -6625,7 +6625,7 @@ ai_skill_invoke.jlsgchongsheng = function(self, options, request)
 		local peaches = 1 - package_known(dying.who,"getHp")
 		return (package_known(self,"getCardsNum","Peach") + package_known(self,"getCardsNum","Analeptic") < peaches) or false
 	else
-		if package_known(self.player,"getPile","jlsgyuanhua"):length() < 3 then return (false) or false end
+		if package_known(self.player,"getPile","jlsgyuanhua"):length() < 3 then return false end
 		return (package_known(self,"isFriend",dying.who)) or false
 	end
 	return false
@@ -6763,9 +6763,9 @@ ai_skill_choice.sgkgodqinyin=function(self, options, request)local value,known=p
 ai_skill_invoke.sgkgodlihun = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	for _, p in sgs.qlist(package_known(self.room, "getOtherPlayers", self.player)) do
-		if package_known(self, "isFriend", p) then return (true) or false end
+		if package_known(self, "isFriend", p) then return true end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.sgkgodlihun = function(self, targets)
@@ -6784,11 +6784,11 @@ sgs.ai_playerchosen_intention.sgkgodlihun = -80
 ai_skill_invoke.sgkgodfenghe = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = package_known(data, "toCardUse")
-	if not use.card then return (false) or false end
+	if not use.card then return false end
 	local candidates = {}
 	if use.from then table.insert(candidates, use.from) end
 	for _, t in sgs.qlist(use.to) do table.insert(candidates, t) end
-	if #candidates == 0 then return (false) or false end
+	if #candidates == 0 then return false end
 	local min_n = nil
 	for _, t in ipairs(candidates) do
 		local h = package_known(t, "getHandcardNum")
@@ -6796,10 +6796,10 @@ ai_skill_invoke.sgkgodfenghe = function(self, options, request)
 	end
 	for _, t in ipairs(candidates) do
 		if package_known(t, "getHandcardNum") == min_n and package_known(self, "isEnemy", t) then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 
 ai_card_use["#sgkgodfuhaiCard"] = function(self, card, use, request)

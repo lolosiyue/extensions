@@ -97,7 +97,7 @@ ai_skill_invoke.olpojun = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -111,7 +111,7 @@ end
 
 ai_skill_invoke.lixia = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_invoke.biluan = function(self, options, request)
@@ -127,11 +127,11 @@ end
 
 ai_skill_invoke.mobilemiji = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if #self.friends==0 then return (false) or false end
+    if #self.friends==0 then return false end
     for _,friend in ipairs(self.friends)do
-        if not friend:hasSkill("manjuan") and not self:isLihunTarget(friend) then return (true) or false end
+        if not friend:hasSkill("manjuan") and not self:isLihunTarget(friend) then return true end
     end
-    return (false) or false
+    return false
 end
 
 sgs.ai_skill_askforyiji.mobilemiji = function(self,card_ids)
@@ -874,7 +874,7 @@ end
 
 ai_skill_invoke.liangzhu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_choice.liangzhu = function(self, options, request)
@@ -896,18 +896,18 @@ ai_skill_invoke.cihuai = function(self, options, request)
 	for _,card in ipairs(cards)do
 		if card:isKindOf("Slash") then has_slash = true end
 	end
-	if has_slash then return (false) or false end
+	if has_slash then return false end
 
 	self:sortInPlace(self.enemies, "defenseSlash")
 	for _,enemy in ipairs(self.enemies)do
 		local slash = evaluation(self)
 		local eff = self:slashIsEffective(slash, enemy) and self:isGoodTarget(enemy, self.enemies, slash)
 		if eff and self.player:canSlash(enemy) and not self:slashProhibit(nil, enemy) then
-			return (true) or false
+			return true
 		end
 	end
 
-return (false) or false
+return false
 end
 
 ai_fill_skill.cihuai = function(self, options, request)
@@ -919,7 +919,7 @@ end
 ai_skill_invoke.kunfen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if not self:isWeak() and (self:getCardsNum("Peach")+self.player:getHp()>1 or self:hasZhaxiangEffect(self.player)) then
-		return (true) or false
+		return true
 	end
 	return false
 

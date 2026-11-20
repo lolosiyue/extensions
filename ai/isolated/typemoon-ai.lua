@@ -23,19 +23,19 @@ ai_skill_invoke["yinyang"] = function(self, options, request)
 		counter = self.player:getPile("femaleshiki"):length()
 	end
 	if has_skill(self,self.player,"lianying|noslianying|sijian",true) or (has_skill(self,self.player,"shangshi|nosshangshi",true) and self.player:isWounded()) then
-		return (true) or false
+		return true
 	end
 	if self.player:containsTrick("indulgence") then
-		if counter <= self.player:getHandcardNum() then return (true) or false else return (false) or false end
+		if counter <= self.player:getHandcardNum() then return true else return false end
 	end
 	if self.player:isFemale() then
 		if self.player:getHandcardNum() > math.max(counter, 4) then
-			return (true) or false
+			return true
 		end
 	elseif counter > math.max(self.player:getHandcardNum(), 4) then
-		return (false) or false
+		return false
 	end
-	if counter >= self.player:getHandcardNum() then return (true) or false else return (false) or false end
+	if counter >= self.player:getHandcardNum() then return true else return false end
 	return false
 
 end
@@ -67,11 +67,11 @@ ai_skill_invoke["Tohnozhisi"] = function(self, options, request)
 		for _, enemy in ipairs(self.enemies) do
 			if not self:slashProhibit(slash, enemy) and self.player:canSlash(enemy, slash, false) and self:isGoodTarget(enemy, self.enemies, nil)
 				and self.player:distanceTo(enemy) <= self.player:getAttackRange() and not self:isWeak(self.player) then
-				return (true) or false
+				return true
 			end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 ai_fill_skill.jisha = function(self, options, request)
@@ -132,7 +132,7 @@ sgs.ai_use_priority.jishaCard = 10
 
 ai_skill_invoke["#jishamod"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 -- Jiuzi has two distinct live bodies under the fixed package load order.

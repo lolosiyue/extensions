@@ -46,9 +46,9 @@ ai_skill_invoke.sy_old_renji = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = (data:toDamage())
 	if (self:isEnemy(damage.from)) then
-	    return (true) or false
+	    return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_can_damagehp.sy_old_renji = function(self,from,card,to)
@@ -103,8 +103,8 @@ ai_skill_invoke.sy_old_kuangxi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local room = self.room
 	local use = (data:toCardUse())
-	if (use.to:contains(self.player)) then return (false) or false end
-	if not (use.card:isNDTrick()) then return (false) or false end
+	if (use.to:contains(self.player)) then return false end
+	if not (use.card:isNDTrick()) then return false end
 	local F = 0
 	local E = 0
 	if (use.card:isKindOf("AmazingGrace")) or (use.card:isKindOf("GodSalvation")) then
@@ -115,7 +115,7 @@ ai_skill_invoke.sy_old_kuangxi = function(self, options, request)
 			    E = E + 1
 			end
 		end
-		if E - F >= 2 then return (true) or false else return (false) or false end
+		if E - F >= 2 then return true else return false end
 	end
 	if (use.card:isKindOf("IronChain")) then
 	    for _, p in sgs.qlist(use.to) do
@@ -126,7 +126,7 @@ ai_skill_invoke.sy_old_kuangxi = function(self, options, request)
 			end
 		end
 		if F == 0 and E > 0 then
-		    if math.random(1, 5) > 3 then return (true) or false else return (false) or false end
+		    if math.random(1, 5) > 3 then return true else return false end
 		end
 	end
 	for _, p in sgs.qlist(use.to) do
@@ -144,10 +144,10 @@ ai_skill_invoke.sy_old_kuangxi = function(self, options, request)
 			end
 		end
 		if E == n then
-		    if math.random(1, 100) >= 45 then return (true) or false else return (false) or false end
+		    if math.random(1, 100) >= 45 then return true else return false end
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -538,7 +538,7 @@ ai_skill_invoke.sy_old_huangyin = function(self, options, request)
 		end
 	end
 	if s <= 0 then
-	    return (false) or false
+	    return false
 	else
 	    local a = math.random(1, 100)
 		return (a >= 70) or false

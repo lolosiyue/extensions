@@ -21,16 +21,16 @@ end
 ai_skill_invoke.LuaOldEnemyHermit = function(self, options, request)
     local target = hermitTarget(self)
     if self:isFriend(target) then
-        if self:getOverflow(target) > 2 then return (true) or false end
-        if canDiscard(self, target) then return (true) or false end
+        if self:getOverflow(target) > 2 then return true end
+        if canDiscard(self, target) then return true end
     end
     if self:isEnemy(target) then
-        if canDiscard(self, target) then return (true) or false end
-        return (false) or false
+        if canDiscard(self, target) then return true end
+        return false
     end
-    return (true) or false
+    return true
 end
-ai_skill_invoke.LuaPublicEnemy = function(self, options, request) return (true) or false end
+ai_skill_invoke.LuaPublicEnemy = function(self, options, request) return true end
 sgs.ai_skill_playerchosen.LuaOldEnemyHermit = function(self)
     local friends = self.friends_noself
     if not AIValue.isList(friends) then ai_unsupported("OldEnemy friend order is unknown", "friends_noself") end

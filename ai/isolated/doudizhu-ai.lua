@@ -126,7 +126,7 @@ ai_skill_invoke.longgong = function(self, options, request)
 	if damage.from then
 		return (self:isFriend(damage.from) or self:isWeak()) or false
 	end
-	return (true) or false
+	return true
 end
 
 ai_fill_skill.sitian = function(self, options, request)

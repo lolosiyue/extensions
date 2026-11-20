@@ -198,8 +198,8 @@ function sgs.ai_slash_weaponfilter.EXCard_FLDF(self, to, player)
 end
 ai_skill_invoke.EXCard_FLDF_revive = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return (false) or false end
-	return (true) or false
+	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return false end
+	return true
 end
 ai_skill_invoke.EXCard_FLDF = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil

@@ -158,7 +158,7 @@ ai_skill_invoke.kelqjuesui = function(self, options, request)
 		return (self:isFriend(target)
 		or not self:isEnemy(target) and #self.enemies>=#self.friends) or false
 	else
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -295,7 +295,7 @@ ai_skill_invoke.tyfuhan1 = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -494,7 +494,7 @@ end
 
 ai_skill_invoke.tybianwo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@@tybianwo"]=function(self,prompt,request)
@@ -541,7 +541,7 @@ ai_skill_invoke.tyzhongen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
 	if self:isFriend(to) and self:canDraw(to) then
-		return (true) or false
+		return true
 	end
 	return (#self.enemies>0) or false
 end

@@ -117,23 +117,23 @@ ai_skill_invoke.xionglie = function(self, options, request)
 		if not ((self.player:getJudgingArea()):isEmpty()) and not (self.player:containsTrick("YanxiaoCard")) and not (self:hasWizard(self.enemies,true)) then
 			local trick = ((self.player:getJudgingArea()):last())
 			if (trick:isKindOf("Indulgence")) then
-				if (card:getSuit()) == sgs.Card_Heart or ((self.player:hasSkill("hongyan")) and (card:getSuit()) == sgs.Card_Spade) then return (false) or false end
+				if (card:getSuit()) == sgs.Card_Heart or ((self.player:hasSkill("hongyan")) and (card:getSuit()) == sgs.Card_Spade) then return false end
 			elseif (trick:isKindOf("SupplyShortage")) then
-				if (card:getSuit()) == sgs.Card_Club then return (false) or false end
+				if (card:getSuit()) == sgs.Card_Club then return false end
 			end
 		end
 		local zhangbao = self.room:findPlayerBySkillName("yingbing")
 		if zhangbao and (self:isEnemy(zhangbao)) and not (zhangbao:hasSkill("manjuan"))
 			and ((card:isRed()) or ((self.player:hasSkill("hongyan")) and (card:getSuit()) == sgs.Card_Spade)) then
-			return (false) or false
+			return false
 		end
 	end
 	for _, p in ipairs(self.enemies) do
 		if (self.player:distanceTo(p)) == 1 and not (p:isKongcheng()) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -295,10 +295,10 @@ ai_skill_invoke.duanqiao = function(self, options, request)
 	local target = (data:toDamage()).from
 	if target then
 		if (self:doDisCard(target,"he",false)) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 sgs.ai_choicemade_filter.skillInvoke.duanqiao = function(self,player,promptlist)
 	local damage = current_damage(self)
@@ -557,13 +557,13 @@ ai_skill_invoke.shengui = function(self, options, request)
 		if not (self:isFriend(target)) then
 			if (self:hasHeavyDamage(self.player,nil,target)) and (self:canLiegong(target,self.player)) then
 				if (self.player:canDiscard(target,"h")) and getCardsNum("Jink", target, self.player) > 1 then
-					return (false) or false
+					return false
 				end
 			end
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 ai_audited_aliases.register{id="ai_cardneed.shengui",registry="ai_cardneed",path={"shengui"},canonical_registry="ai_cardneed",canonical_path={"slash"},self_index=3,defer_canonical=true}
 

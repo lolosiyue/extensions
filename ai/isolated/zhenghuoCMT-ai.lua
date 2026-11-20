@@ -79,12 +79,12 @@ end
 --甄族
 ai_skill_invoke.zhenzuZHCMT = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 --魏代
 ai_skill_invoke.weidaiZHCMT = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 sgs.ai_skill_playerchosen.weidaiZHCMT = function(self, targets)
     local chosen = nil
@@ -205,7 +205,7 @@ end
 ai_skill_invoke.hunjuZHCMT = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     if self.player:getHp() <= 2 then
-        return (true) or false
+        return true
     end
     return false
 
@@ -213,7 +213,7 @@ end
 --敛财
 ai_skill_invoke.liancaiZHCMT = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 --诈逆
 sgs.ai_skill_playerchosen.zhaniZHCMT = function(self, targets)

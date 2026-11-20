@@ -1169,7 +1169,6 @@ sgs.ai_card_intention.NosRenxinCard = sgs.ai_card_intention.Peach
 
 --standard package
 sgs.ai_skill_invoke.nosjianxiong = function(self,data)
-	if self.nosjianxiong then self.nosjianxiong = nil return true end
 	return not self:needKongcheng(self.player,true)
 end
 

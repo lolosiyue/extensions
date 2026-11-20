@@ -34,10 +34,10 @@ ai_skill_invoke.juzhan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self.player:getChangeSkillState("juzhan")==2 then
-		if self:isFriend(target) then return (false) or false end
-		if self:isEnemy(target) and not self:doDisCard(target,"he") then return (false) or false end
+		if self:isFriend(target) then return false end
+		if self:isEnemy(target) and not self:doDisCard(target,"he") then return false end
 	end
-	return (true) or false
+	return true
 end
 
 --飞军
@@ -190,16 +190,16 @@ sgs.ai_playerchosen_intention.weili = -80
 
 --整论
 ai_skill_invoke.zhenglun = function(self, options, request)
-	if self.player:isSkipped(sgs.Player_Play) then return (true) or false end
+	if self.player:isSkipped(sgs.Player_Play) then return true end
 	for _,enemy in ipairs(self.enemies)do
 		local slash = known(self:getEvaluationCard("slash"),"Slash")
 		if self.player:canSlash(enemy) and self:slashIsEffective(slash,enemy,self.player)
 			and self:isGoodTarget(enemy,self.enemies,slash) and self:getCardsNum("Slash")<1 then
-			return (false) or false
+			return false
 		end
 	end
-	if self.player:getHandcardNum()>1 or self.player:getHandcardNum()+1>self.player:getHp() then return (true) or false end
-	return (false) or false
+	if self.player:getHandcardNum()>1 or self.player:getHandcardNum()+1>self.player:getHp() then return true end
+	return false
 end
 
 --溃诛
@@ -339,7 +339,7 @@ end
 ai_skill_invoke.lijun = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not target then return (false) or false end
+	if not target then return false end
 	return (self:isFriend(target) and not self:needKongcheng(friend,true)) or false
 end
 
@@ -357,7 +357,7 @@ end
 ai_skill_invoke.ollijun = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not target then return (false) or false end
+	if not target then return false end
 	return (self:isFriend(target) and not self:needKongcheng(friend,true)) or false
 end
 
@@ -394,8 +394,8 @@ end
 
 --进趋
 ai_skill_invoke.jinqu = function(self, options, request)
-	if self.player:getStrategyMark("&qizhi-Clear")>=self.player:getHandcardNum() then return (true) or false end
-	return (false) or false
+	if self.player:getStrategyMark("&qizhi-Clear")>=self.player:getHandcardNum() then return true end
+	return false
 end
 
 --荐降
@@ -475,21 +475,21 @@ sgs.ai_use_value.ShenshiCard = 3
 
 ai_skill_invoke.shenshi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self:needToThrowArmor() then return (true) or false end
+	if self:needToThrowArmor() then return true end
 	local from = data:toPlayer()
 	write(self,"shenshi_from",from)
 	if self:isFriend(from) then
-		return (true) or false
+		return true
 	end
 	if self:isEnemy(from) then
 		if self:getCardsNum("Jink")>0 or self:getCardsNum("Nullification")>0 then
-			return (true) or false
+			return true
 		end
 		if self:getCardsNum("Slash")>0 and not (self:hasCrossbowEffect(from) or (from:inMyAttackRange(self.player) and from:canSlashWithoutCrossbow())) then
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_discard.shenshi = function(self,discard_num,min_num,optional,include_equip)
@@ -577,7 +577,7 @@ end
 --恃才
 ai_skill_invoke.yinshicai = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 --明任
@@ -811,8 +811,8 @@ ai_skill_invoke.cuike = function(self, options, request)
 		end
 	end
 
-	if self.player:getKnownRole()=="renegade" then return (not self:isWeak(self.room:getLord())) or false end
-	if self.player:getKnownRole()=="loyalist" or self.player:isLord() then return (not has_weak_friend) or false end
+	if self.player:getKnownRole()=="renegade" then return not self:isWeak(self.room:getLord()) end
+	if self.player:getKnownRole()=="loyalist" or self.player:isLord() then return not has_weak_friend end
 	if self.player:getKnownRole()=="rebel" then
 		if has_weak_friend then
 			local friend_peach_num = 0
@@ -828,11 +828,11 @@ ai_skill_invoke.cuike = function(self, options, request)
                     if visible_count(self,friend,"Analeptic")>=1 then table.insert(has_analeptic_friend,friend)end
                 end
             end
-			if friend_peach_num<one_hp_friend_num and #has_analeptic_friend<one_hp_friend_num then return (true) or false end
-			return (false) or false
+			if friend_peach_num<one_hp_friend_num and #has_analeptic_friend<one_hp_friend_num then return true end
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 
 --绽火

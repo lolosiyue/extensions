@@ -60,8 +60,8 @@ sgs.save_skill = sgs.save_skill .. "|se_guwu"
 ai_skill_invoke.se_guwu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if self:isFriend(target) then return (true) or false end
-	return (false) or false
+	if self:isFriend(target) then return true end
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.se_guwu = function(self,player,promptlist)

@@ -11,8 +11,8 @@ local function huayuan_answer(self,names)
 end
 ai_skill_invoke["modao"] = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if #self.enemies == 0 then return (false) or false end
-    return (true) or false
+    if #self.enemies == 0 then return false end
+    return true
 end
 
 ai_skill_choice["modao"] = function(self, options, request)
@@ -316,15 +316,15 @@ end
 
 ai_skill_invoke.guihao = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    if self:isWeak(self.player) and self:getAllPeachNum() == 0 then return (false) or false end
-    if self:willSkipPlayPhase(self.player) then return (false) or false end
+    if self:isWeak(self.player) and self:getAllPeachNum() == 0 then return false end
+    if self:willSkipPlayPhase(self.player) then return false end
     for _,card in ipairs(self.player:getHandcards()) do
         if card:isKindOf("Peach") or card:isKindOf("Analeptic") or card:isKindOf("Slash") then
-            return (true) or false
+            return true
         end
     end
-    if math.random()<0.6 then return (true) or false end
-    return (false) or false
+    if math.random()<0.6 then return true end
+    return false
 end
 
 ai_skill_use["@@caiduan"] = function(self, prompt, request)
@@ -364,10 +364,10 @@ ai_skill_invoke["shenni"] = function(self, options, request)
     local move = data:toMoveOneTime()
     for _,card_id in ipairs(move.card_ids) do
         if (known(self:getKnownCardById(card_id),"shenni disclosed moved card")):isKindOf("Peach") then
-            return (true) or false
+            return true
         end
     end
-    return (not self:isWeak()) or false
+    return not self:isWeak()
 end
 
 

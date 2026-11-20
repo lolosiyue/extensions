@@ -233,7 +233,7 @@ ai_skill_invoke.lieqiong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 
@@ -691,7 +691,7 @@ end
 
 ai_skill_invoke.lieji = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_fill_skill.quzhou = function(self, options, request)
@@ -1105,7 +1105,7 @@ end
 
 ai_skill_invoke.chongzhu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 sgs.ai_skill_playerchosen.chongzhu = function(self,players)
@@ -1126,12 +1126,12 @@ ai_skill_invoke.zhenting = function(self, options, request)
 	local dps = data:toStringList()
 	for i,p in sgs.list(self.friends)do
 		if table.contains(dps,p:objectName()) and self:isWeak(p) then
-			return (true) or false
+			return true
 		end
 	end
 	for i,p in sgs.list(self.friends)do
 		if p:getStrategyMark("zhentingDamaged-Clear")>0 and self:canDraw(p) then
-			return (true) or false
+			return true
 		end
 	end
 	return false

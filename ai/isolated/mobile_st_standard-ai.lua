@@ -146,9 +146,9 @@ ai_skill_invoke.mobilefenji = function(self, options, request)
 		local target = self.room:getCurrent()
 		if self:isFriend(target)
 		and self:canDraw(target)
-		then return (true) or false end
+		then return true end
 	end
-	return (false) or false
+	return false
 end
 
 --强袭
@@ -416,25 +416,25 @@ end
 ai_skill_invoke.mobilelieren = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local to = data:toPlayer()
-	if not self:isEnemy(to) then return (false) or false end
+	if not self:isEnemy(to) then return false end
 
 	local max_card = self:getMaxCard()
-	if not max_card then return (false) or false end
+	if not max_card then return false end
 	local point = max_card:getNumber()
 	if self.player:hasSkill("tianbian") and max_card:getSuit()==sgs.Card_Heart then point = 13 end
 
 	if self.player:getHandcardNum()==1 then
 		if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then
 			self:remember("mobilelieren_card",max_card:getKnownEffectiveId())
-			return (true) or false
+			return true
 		end
 		local card  = self.player:getHandcards():first()
-		if card:isKindOf("Jink") or card:isKindOf("Peach") then return (false) or false end
+		if card:isKindOf("Jink") or card:isKindOf("Peach") then return false end
 	end
 
 	if self:doDisCard(to,"he",true) then
 		self:remember("mobilelieren_card",max_card:getKnownEffectiveId())
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -723,8 +723,8 @@ end
 ai_skill_invoke.mobilepojun = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local target = data:toPlayer()
-    if not self:isFriend(target) then return (true) or false end
-    return (false) or false
+    if not self:isFriend(target) then return true end
+    return false
 end
 
 ai_skill_choice.mobilepojun_num = function(self, options, request)
@@ -1041,13 +1041,13 @@ ai_skill_invoke.mobilexuanfeng = function(self, options, request)
 		sgs.ai_skill_playerchosen.mobilexuanfeng_from = from
 		sgs.ai_skill_cardchosen.mobilexuanfeng = card:getId()
 		sgs.ai_skill_playerchosen.mobilexuanfeng_to = to
-		return (true) or false
+		return true
 	end
 	if ai_skill_invoke.xuanfeng(self, options, request) then
 		ai_skill_choice.mobilexuanfeng = "discard"
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.mobilexuanfeng = function(self,targets)
@@ -1132,13 +1132,13 @@ ai_skill_invoke.mobilelihuo = function(self, options, request)
 			if self:isEnemy(player) and self:isGoodTarget(player,self.enemies,slash)
 			then
 				if player:isChained() then return (self:isGoodChainTarget(player, nil, "F")) or false end
-				if player:hasArmorEffect("Vine") then return (true) or false end
+				if player:hasArmorEffect("Vine") then return true end
 			end
 		end
 	else
 		return (ai_skill_invoke.lihuo(self, options, request)) or false
 	end
-	return (false) or false
+	return false
 end
 
 --纵玄
@@ -1633,7 +1633,7 @@ ai_skill_invoke.mobileduodao = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local from = data:toPlayer()
 	if self:isFriend(from) then
-		if from:hasSkills("kofxiaoji|xiaoji") and self:isWeak(damage.from) then return (true) or false
+		if from:hasSkills("kofxiaoji|xiaoji") and self:isWeak(damage.from) then return true
 		else
 			if self:getCardsNum("Slash")==0 or self:willSkipPlayPhase() then return (".") or false end
 			local invoke = false
@@ -1648,7 +1648,7 @@ ai_skill_invoke.mobileduodao = function(self, options, request)
 			end
 			if not invoke and self:evaluateWeapon(from:getWeapon())>8 then invoke = true end
 			if invoke then
-				return (true) or false
+				return true
 			end
 		end
 	else
@@ -1657,10 +1657,10 @@ ai_skill_invoke.mobileduodao = function(self, options, request)
 				if self:isWeak(friend) then return (".") or false end
 			end
 		else
-			return (not (self:needKongcheng(self.player,true) and self.player:isKongcheng())) or false
+			return not (self:needKongcheng(self.player,true) and self.player:isKongcheng())
 		end
 	end
-	return (false) or false
+	return false
 end
 
 --暗箭
@@ -1681,9 +1681,9 @@ end
 --惴恐
 ai_skill_invoke.mobilezhuikong = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:getHandcardNum()<=(self:isWeak() and 2 or 1) then return (false) or false end
+	if self.player:getHandcardNum()<=(self:isWeak() and 2 or 1) then return false end
 	local current = self.room:getCurrent()
-	if not current or self:isFriend(current) then return (false) or false end
+	if not current or self:isFriend(current) then return false end
 
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
@@ -1695,14 +1695,14 @@ ai_skill_invoke.mobilezhuikong = function(self, options, request)
 		if enemy_max_card and current:hasSkill("yingyang") then enemy_max_point = math.min(enemy_max_point+3,13) end
 		if max_point>enemy_max_point or max_point>10 then
 			self:remember("mobilezhuikong_card",max_card:getKnownEffectiveId())
-			return (true) or false
+			return true
 		end
 	end
 	if current:distanceTo(self.player)==1 and not self:isValuableCard(max_card) then
 		self:remember("mobilezhuikong_card",max_card:getKnownEffectiveId())
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 --求援
@@ -1755,7 +1755,7 @@ sgs.ai_use_priority.MobileDingpinCard = 4.8
 
 ai_skill_invoke.mobilezhongyong = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 sgs.ai_skill_playerchosen.mobilezhongyong = function(self,players)
@@ -1832,7 +1832,7 @@ end
 
 ai_skill_invoke.mobileqieting = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
-    return (true) or false
+    return true
 end
 
 ai_skill_choice.mobileqieting = function(self, options, request)
@@ -2170,7 +2170,7 @@ end
 ai_skill_invoke.mobileqingxi = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local to = data:toPlayer()
-	return (not self:isFriend(to)) or false
+	return not self:isFriend(to)
 end
 
 sgs.ai_skill_discard.mobileqingxi = function(self,max,min)

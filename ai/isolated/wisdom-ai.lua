@@ -220,18 +220,18 @@ ai_skill_invoke.tanlan = function(self, options, request)
 	local max_card = self:getMaxCard()
 	if not max_card then return false end
 	if max_card:getNumber()>10 and self:isFriend(from) then
-		if from:getHandcardNum()==1 and self:needKongcheng(from) then return (true) or false end
-		if self:getOverflow(from)>2 then return (true) or false end
-		if not self:hasLoseHandcardEffective(from) then return (true) or false end
+		if from:getHandcardNum()==1 and self:needKongcheng(from) then return true end
+		if self:getOverflow(from)>2 then return true end
+		if not self:hasLoseHandcardEffective(from) then return true end
 	end
-	if self:isFriend(from) then return (false) or false end
+	if self:isFriend(from) then return false end
 	if max_card:getNumber()>10
 		or (self.player:getHp()>2 and self.player:getHandcardNum()>2 and max_card:getNumber()>4)
 		or (self.player:getHp()>1 and self.player:getHandcardNum()>1 and max_card:getNumber()>7)
 		or (from:getHandcardNum()<=2 and max_card:getNumber()>2)
 		or (from:getHandcardNum()==1 and self:hasLoseHandcardEffective(from) and not self:needKongcheng(from))
 		or self:getOverflow()>2 then
-		return (true) or false
+		return true
 	end
 	return false
 
@@ -262,11 +262,11 @@ sgs.ai_cardneed.tanlan = sgs.ai_cardneed.bignumber
 ]]
 ai_skill_invoke.yicai = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self:needBear() then return (false) or false end
+	if self:needBear() then return false end
 	for _,enemy in ipairs(self.enemies)do
 		if self.player:canSlash(enemy, nil, true) then
 			if self:getCardsNum("Slash")>0 then
-				return (true) or false
+				return true
 			end
 		end
 	end
@@ -365,7 +365,7 @@ ai_skill_invoke.bawang = function(self, options, request)
 		return (self:isEnemy(effect.to)) or false
 	end
 	if self:isEnemy(effect.to) then
-		if self:getOverflow()>0 then return (true) or false end
+		if self:getOverflow()>0 then return true end
 	end
 	return false
 
@@ -831,7 +831,7 @@ ai_skill_invoke.shien = function(self, options, request)
 	if target and target:isAlive() then
 		return (self:isFriend(target)) or false
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_choicemade_filter.skillInvoke.shien = function(self,player,promptlist)

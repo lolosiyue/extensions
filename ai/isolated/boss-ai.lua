@@ -139,10 +139,10 @@ end
 
 ai_skill_invoke.bossdanshu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if not self.player:isWounded() then return (false) or false end
+	if not self.player:isWounded() then return false end
 	local zj = self.room:findPlayerBySkillName("guidao")
-	if self.player:getHp()/self.player:getMaxHp()>=0.5 and zj and self:isEnemy(zj) and self:canRetrial(zj) then return (false) or false end
-	return (true) or false
+	if self.player:getHp()/self.player:getMaxHp()>=0.5 and zj and self:isEnemy(zj) and self:canRetrial(zj) then return false end
+	return true
 end
 
 ai_fill_skill.kuangxi=function(self, options, request)
@@ -298,7 +298,7 @@ ai_skill_invoke.god_double_sword = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if target then
-		return (not self:isFriend(target)) or false
+		return not self:isFriend(target)
 	end
 	return false
 

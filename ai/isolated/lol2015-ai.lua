@@ -115,9 +115,9 @@ ai_skill_invoke["lol_jwyh_q"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
 	if self:isEnemy(target) and not self:cantbeHurt(target) and self:damageIsEffective(target) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_cardchosen["lol_jwyh_qCard"] = function(self, who, flags)
@@ -980,19 +980,19 @@ sgs.ai_use_value["lol_xlnw_wCard"] = 3
 ai_skill_invoke.lol_xlnw_e = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if not self:isEnemy(target) then return (false) or false end
+	if not self:isEnemy(target) then return false end
 	local pks
 	for _,pet in sgs.qlist(self.room:getAlivePlayers()) do
 		if is_pet(self,pet) then pks = pet end
 	end
 	if pks then
-		if self:doDisCard(pks, "h") then return (true) or false end
+		if self:doDisCard(pks, "h") then return true end
 		if self:isWeak(pks) then
-			return (false) or false
+			return false
 		end
 	end
-	if not self:isEnemy(target) then return (false) or false end
-	return (true) or false
+	if not self:isEnemy(target) then return false end
+	return true
 end
 
 local lol_xlnw_e_skill = {}
@@ -1873,9 +1873,9 @@ ai_skill_invoke.lol_bzll_e = function(self, options, request)
 	else dest = find_general(self,move.from)
 	end
 	if dest and self:isEnemy(dest) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 

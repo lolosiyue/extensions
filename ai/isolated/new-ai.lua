@@ -593,14 +593,14 @@ sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .. "|luaguidao"
 ai_skill_invoke.luajiejiang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if #self.enemies == 0 then
-		return (false) or false
+		return false
 	end
 	local targets = self.room:getOtherPlayers(self.player)
 	local cardstr = luajiejiang_policy(self, "@luajiejiang")
 	if (invoke_registered_callback("ai_skill_playerchosen", "luajiejiang", self, targets) ~= nil) or (cardstr:match("->")) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 sgs.ai_skill_playerchosen.luajiejiang = function(self, targets)
@@ -906,16 +906,16 @@ sgs.ai_card_intention["luamouce"] = 80
 
 ai_skill_invoke.luaJC = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self.player:isLord() then return (false) or false end
+	if self.player:isLord() then return false end
 	if self:getCardsNum("Peach") > 0 then
-		return (false) or false
+		return false
 	end
 	for _, friend in ipairs(self.friends_noself) do
 		if global_call("getCardsNum","Peach", friend) > 0 then
-			return (false) or false
+			return false
 		end
 	end
-	return (true) or false
+	return true
 end
 
 
@@ -972,9 +972,9 @@ ai_skill_invoke["@luaqibing"] = function(self, options, request)
 	local use = data:toCardUse()
 	local card = use.card
 	if card:isKindOf("EquipCard") then
-		return (false) or false
+		return false
 	end
-	return (true) or false
+	return true
 end
 
 ai_skill_invoke["luaqibing"] = function(self, options, request)
@@ -985,7 +985,7 @@ ai_skill_invoke["luaqibing"] = function(self, options, request)
 	if target:hasArmorEffect("silver_lion") then return (".") or false end
 
 
-	return (true) or false
+	return true
 end
 
 sgs.ai_ajustdamage_from.luaqibing = function(self, from, to, card, nature)
@@ -1007,12 +1007,12 @@ ai_skill_invoke["luazhenshe"] = function(self, options, request)
 	local enemy_max_card = self:getMaxCard(target)
 	local enemy_max_point = enemy_max_card and enemy_max_card:getNumber() or 100
 	if (max_point > enemy_max_point) or target:isKongcheng() then
-		return (true) or false
+		return true
 	end
 	if self.player:getLostHp() + 1 >= 2 or not self.player:faceUp() then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 -- shared immutable alias ai_cardneed.luazhenshe -> ai_cardneed.bignumber
@@ -1078,7 +1078,7 @@ sgs.ai_card_intention["luahuntian"]  = 60
 
 ai_skill_invoke["luajiaodi"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_fill_skill.luafentian = function(self, options, request)
@@ -1160,7 +1160,7 @@ sgs.ai_card_intention["luajice"] = 80
 
 ai_skill_invoke["lualianji"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 ai_skill_use["@@luajiejiang"]=function(self, prompt, request)return terminal(self,luajiejiang_policy(self,prompt))end

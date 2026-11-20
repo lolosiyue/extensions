@@ -82,13 +82,13 @@ do
 
 ai_skill_invoke.baonu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (false) or false end
-	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return (false) or false end
-	if self.player:getLostHp() == 0 and self.player:getHandcardNum() > 4 then return (false) or false end
+	if #self.enemies == 0 then return false end
+	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return false end
+	if self.player:getLostHp() == 0 and self.player:getHandcardNum() > 4 then return false end
 	for _,p in sgs.list(self.room:getOtherPlayers(self.player)) do
-		if self.player:inMyAttackRange(p) and not p:isNude() then return (true) or false end
+		if self.player:inMyAttackRange(p) and not p:isNude() then return true end
 	end
-	return (false) or false
+	return false
 end
 
 
@@ -315,28 +315,28 @@ end
 -- Fixed inovation-ai.lua:521-524
 ai_skill_invoke.FukurouzaTobi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self:isEnemy(self.room:getCurrent()) and not self.room:getCurrent():hasSkills(sgs.immune_skill) then return (true) or false end
-	return (false) or false
+	if self:isEnemy(self.room:getCurrent()) and not self.room:getCurrent():hasSkills(sgs.immune_skill) then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:498-503
 ai_skill_invoke.Takamakuri = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if not damage or not damage.to then return (false) or false end
-	if self:isEnemy(damage.to) and not damage.to:hasSkills(sgs.lose_equip_skill) then return (true) or false end
-	return (false) or false
+	if not damage or not damage.to then return false end
+	if self:isEnemy(damage.to) and not damage.to:hasSkills(sgs.lose_equip_skill) then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:505-512
 ai_skill_invoke.Tobiugachi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if self:isFriend(self.room:getCurrent()) then
-		if self.player:getHandcardNum() - self.player:getHp() + 1 <= 3 and (self:isWeak() or self:getCardsNum("Jink") == 0) then return (true) or false end
-		return (false) or false
+		if self.player:getHandcardNum() - self.player:getHp() + 1 <= 3 and (self:isWeak() or self:getCardsNum("Jink") == 0) then return true end
+		return false
 	end
-	if self.player:getHandcardNum() - self.player:getHp() + 1 <= 5 then return (true) or false end
-	return (false) or false
+	if self.player:getHandcardNum() - self.player:getHp() + 1 <= 5 then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:316-319
@@ -350,41 +350,41 @@ end
 ai_skill_invoke.fushang = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
-	if not damage or not damage.to then return (false) or false end
+	if not damage or not damage.to then return false end
 	if self:isFriend(damage.to) then
 		local num = damage.to:getMark("@fushang")
 		local last = damage.to:getMark("@fushang_time")
 		if last == 1 then
-			if self:isWeak(damage.to) and self:getCardsNum("Peach") == 0 then return (false) or false end
-			if num >= damage.to:getLostHp() - 1 then return (false) or false end
-			return (true) or false
+			if self:isWeak(damage.to) and self:getCardsNum("Peach") == 0 then return false end
+			if num >= damage.to:getLostHp() - 1 then return false end
+			return true
 		else
-			return (true) or false
+			return true
 		end
 	end
-	return (false) or false
+	return false
 end
 
 -- Fixed inovation-ai.lua:56-59
 ai_skill_invoke.guangyu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if self:isFriend(self.room:getCurrent()) then return (true) or false end
-	return (false) or false
+	if self:isFriend(self.room:getCurrent()) then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:413-417
 ai_skill_invoke.inovation_SE_Zhixing = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local source = data:toPlayer()
-	if self:isFriend(source) then return (true) or false end
-	return (false) or false
+	if self:isFriend(source) then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:1066-1069
 ai_skill_invoke.inovation_dianci = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (false) or false end
-	return (true) or false
+	if #self.enemies == 0 then return false end
+	return true
 end
 
 -- Fixed inovation-ai.lua:335-342
@@ -393,43 +393,43 @@ ai_skill_invoke.inovation_haixing = function(self, options, request)
 	local dying_data = data:toDying()
 	local source = dying_data.who
 	if self:isFriend(source) then
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 -- Fixed inovation-ai.lua:306-311
 ai_skill_invoke.inovation_huanxing = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
-	if not use or not use.from then return (false) or false end
-	if self:isEnemy(use.from) then return (true) or false end
-	return (false) or false
+	if not use or not use.from then return false end
+	if self:isEnemy(use.from) then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:930-945
 ai_skill_invoke.inovation_jixian = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (false) or false end
-	if self.player:getLostHp() == 1 then return (true) or false end
+	if #self.enemies == 0 then return false end
+	if self.player:getLostHp() == 1 then return true end
 	if self.player:getLostHp() > 1 then
-		if self.player:getKnownRole() == "rebel" and self:isWeak(self.room:getLord()) then return (true) or false end
-		if self.room:getAlivePlayers():length() == 2 then return (true) or false end
-		if self.player:getHp() <= 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return (true) or false end
+		if self.player:getKnownRole() == "rebel" and self:isWeak(self.room:getLord()) then return true end
+		if self.room:getAlivePlayers():length() == 2 then return true end
+		if self.player:getHp() <= 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return true end
 	end
 	for _,p in ipairs(self.friends) do
-		if p:hasSkills("SE_Shuanglang|SE_Mengfeng")then return (true) or false end
+		if p:hasSkills("SE_Shuanglang|SE_Mengfeng")then return true end
 	end
 	for _,p in ipairs(self.enemies) do
-		if p:getHp() == 1 and self:isWeak(p) and p:getKnownRole() == "rebel" then return (true) or false end
+		if p:getHp() == 1 and self:isWeak(p) and p:getKnownRole() == "rebel" then return true end
 	end
-	return (false) or false
+	return false
 end
 
 -- Fixed inovation-ai.lua:206-208
 ai_skill_invoke.inovation_zhuren = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	return (true) or false
+	return true
 end
 
 -- Fixed inovation-ai.lua:713-730
@@ -437,18 +437,18 @@ ai_skill_invoke.jianjin = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = data:toDamage()
 
-	if not self:isFriend(damage.from) and not self:isFriend(damage.to) then return (false) or false end
+	if not self:isFriend(damage.from) and not self:isFriend(damage.to) then return false end
 	local current = self.room:getCurrent()
 	if current:objectName() == self.player:objectName() or current:getNextAlive():objectName() == self.player:objectName() then
-		if self.player:getMark("@Jianjin_damage_recovery") > 2 then return (true) or false end
-		if self.player:getLostHp() > 0 and self:getCardsNum("Peach") > 0 then return (false) or false end
-		if self.player:hasWeapon("crossbow") and self:getCardsNum("Slash") > 0 then return (false) or false end
-		return (true) or false
+		if self.player:getMark("@Jianjin_damage_recovery") > 2 then return true end
+		if self.player:getLostHp() > 0 and self:getCardsNum("Peach") > 0 then return false end
+		if self.player:hasWeapon("crossbow") and self:getCardsNum("Slash") > 0 then return false end
+		return true
 	else
-		if self.player:getMark("@Jianjin_damage_recovery") > 2 then return (true) or false end
+		if self.player:getMark("@Jianjin_damage_recovery") > 2 then return true end
 		if self.player:getMark("@Jianjin_damage_recovery") == 2 then
-			if self:isFriend(damage.from) and self:isWeak(damage.from) then return (true) or false end
-			if self:isFriend(damage.to) and self:isWeak(damage.to) then return (true) or false end
+			if self:isFriend(damage.from) and self:isWeak(damage.from) then return true end
+			if self:isFriend(damage.to) and self:isWeak(damage.to) then return true end
 		end
 	end
 	return false
@@ -458,45 +458,45 @@ end
 -- Fixed inovation-ai.lua:1017-1032
 ai_skill_invoke.jiguan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (false) or false end
+	if #self.enemies == 0 then return false end
 	local use = data:toCardUse()
-	if use.from:objectName() == self.player:objectName() then return (true) or false end
+	if use.from:objectName() == self.player:objectName() then return true end
 	if self:isEnemy(use.from) then
-		if use.from:getHp() == 1 then return (true) or false end
+		if use.from:getHp() == 1 then return true end
 		local num = 0
 		for _, id in sgs.list(self.player:getPile("jiguan")) do
 			if sgs.Sanguosha:getCard(id):getNumber() == use.card:getNumber() then
 				num = num + 1
 			end
 		end
-		if num > 1 then return (true) or false end
+		if num > 1 then return true end
 	end
-	return (false) or false
+	return false
 end
 
 -- Fixed inovation-ai.lua:636-641
 ai_skill_invoke.kangfen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (false) or false end
-	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return (false) or false end
-	if self.player:getEquips():length() == 0 and self.player:getHp() <= 3 then return (false) or false end
-	return (true) or false
+	if #self.enemies == 0 then return false end
+	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return false end
+	if self.player:getEquips():length() == 0 and self.player:getHp() <= 3 then return false end
+	return true
 end
 
 -- Fixed inovation-ai.lua:529-533
 ai_skill_invoke.kongdi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local move = data:toMoveOneTime()
-	if move.to and not self:isFriend(move.to) then return (true) or false end
-	return (false) or false
+	if move.to and not self:isFriend(move.to) then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:536-540
 ai_skill_invoke.kuisi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local death = death(self)
-	if self:isEnemy(death.damage.from) then return (true) or false end
-	return (false) or false
+	if self:isEnemy(death.damage.from) then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:975-995
@@ -505,62 +505,62 @@ ai_skill_invoke.lunpo = function(self, options, request)
 	local use = data:toCardUse()
 	if self:isEnemy(use.from) then
 		if use.card:isKindOf("SingleTargetTrick") and use.to:length() > 0 and self:isFriend(use.to:at(0)) then
-			if use.card:isKindOf("Snatch") or use.card:isKindOf("Duel") then return (true) or false end
-			if use.card:isKindOf("DelayedTrick") and not use.card:isKindOf("KeyTrick") then return (true) or false end
+			if use.card:isKindOf("Snatch") or use.card:isKindOf("Duel") then return true end
+			if use.card:isKindOf("DelayedTrick") and not use.card:isKindOf("KeyTrick") then return true end
 		end
-		if use.card:isKindOf("Slash") and self:isWeak(use.to:at(0)) and self:isFriend(use.to:at(0)) then return (true) or false end
-		if use.card:isKindOf("Jink") or use.card:isKindOf("Peach") then return (true) or false end
+		if use.card:isKindOf("Slash") and self:isWeak(use.to:at(0)) and self:isFriend(use.to:at(0)) then return true end
+		if use.card:isKindOf("Jink") or use.card:isKindOf("Peach") then return true end
 		if use.card:isKindOf("AOE") or use.card:isKindOf("GlobalEffect") then
 			for _,p in ipairs(self.friends) do
 				if self:isWeak(p) then
-					return (true) or false
+					return true
 				end
 			end
 		end
 	end
 
-	return (false) or false
+	return false
 end
 
 -- Fixed inovation-ai.lua:958-973
 ai_skill_invoke.lunpo_inturn = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.enemies == 0 then return (false) or false end
+	if #self.enemies == 0 then return false end
 	local min = 100
 	for _,p in sgs.list(self.room:getAlivePlayers()) do
 		if p:getHp() < min then min = p:getHp() end
 	end
 	local num = self.player:getPile("Yandan"):length()
-	if min == 1 and num >= 3 then return (true) or false end
+	if min == 1 and num >= 3 then return true end
 	if min <= 2 then
 		local toFight = self:getPriorTarget()
-		if toFight:getHp() <= 1 then return (true) or false end
-		if toFight:hasSkills(sgs.masochism_skill) then return (true) or false end
-		if toFight:hasSkill("Lichang") then return (true) or false end
+		if toFight:getHp() <= 1 then return true end
+		if toFight:hasSkills(sgs.masochism_skill) then return true end
+		if toFight:hasSkill("Lichang") then return true end
 	end
-	return (false) or false
+	return false
 end
 
 -- Fixed inovation-ai.lua:909-927
 ai_skill_invoke.qiyue = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local dying = data:toDying()
-	if not self:isFriend(dying.who) then return (false) or false end
+	if not self:isFriend(dying.who) then return false end
 
-	if self.player:objectName() == dying.who:objectName() then return (true) or false end
+	if self.player:objectName() == dying.who:objectName() then return true end
 	local aggregate_num = 0
 	for i=1, self.player:getMaxHp() do
 		aggregate_num = aggregate_num + (5 - i) * self.room:getAlivePlayers():length()
 	end
-	if aggregate_num >= draw_count(self) then return (true) or false end
+	if aggregate_num >= draw_count(self) then return true end
 
-	if dying.who:isLord() then return (true) or false end
+	if dying.who:isLord() then return true end
 
-	if self.player:getMaxHp() >= 3 then return (true) or false end
-	if self:getCardsNum("Jink") > 0 or self:getCardsNum("Analeptic") > 0 and self.player:getMaxHp() >= 2 then return (true) or false end
+	if self.player:getMaxHp() >= 3 then return true end
+	if self:getCardsNum("Jink") > 0 or self:getCardsNum("Analeptic") > 0 and self.player:getMaxHp() >= 2 then return true end
 
 
-	return (false) or false
+	return false
 end
 
 -- Fixed inovation-ai.lua:344-346
@@ -572,8 +572,8 @@ end
 -- Fixed inovation-ai.lua:62-65
 ai_skill_invoke.xiyuan = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
-	if #self.friends_noself == 0 then return (false) or false end
-	return (true) or false
+	if #self.friends_noself == 0 then return false end
+	return true
 end
 
 -- Fixed inovation-ai.lua:542-551
@@ -582,11 +582,11 @@ ai_skill_invoke.youer = function(self, options, request)
 	local dying = data:toDying()
 	if self:isEnemy(dying.damage.from) then
 		if self:getCardsNum("Peach") > 0 or self:getCardsNum("Analeptic") > 0 then
-			return (false) or false
+			return false
 		end
-		return (true) or false
+		return true
 	end
-	return (false) or false
+	return false
 end
 
 -- Fixed inovation-ai.lua:514-518
@@ -1705,9 +1705,9 @@ ai_skill_invoke.faka = function(self, options, request)
 	local move = data:toMoveOneTime()
 	local value = move.card_ids:length()
 	if move.from then
-		if not self:isEnemy(self.room:getCurrent()) and not self:isEnemy(move.from) then return (false) or false end
+		if not self:isEnemy(self.room:getCurrent()) and not self:isEnemy(move.from) then return false end
 	else
-		if not self:isEnemy(self.room:getCurrent()) then return (false) or false end
+		if not self:isEnemy(self.room:getCurrent()) then return false end
 	end
 
 
@@ -1719,8 +1719,8 @@ ai_skill_invoke.faka = function(self, options, request)
 			value = value - 1.5
 		end
 	end
-	if value >= 1 then return (true) or false end
-	return (false) or false
+	if value >= 1 then return true end
+	return false
 end
 
 -- Fixed inovation-ai.lua:762-771
@@ -1836,14 +1836,14 @@ ai_skill_invoke.xinyang_judge = function(self, options, request)
  local data = request and self:getDecisionData(request) or nil
  local judge=data:toJudge()
  if self:needRetrial(judge)then
-  if self.player:getPile('xinyang'):length()==0 then return (false) or false end
+  if self.player:getPile('xinyang'):length()==0 then return false end
   local cards_ids=sgs.QList2Table(self.player:getPile('xinyang'))
   local newList={}
   for _,id in ipairs(cards_ids)do newList[#newList+1]=self:getKnownCardById(id)end
   local id=self:getRetrialCardId(newList,judge)
-  if id~=-1 then tag(self,'write',id);return (true) or false end
+  if id~=-1 then tag(self,'write',id);return true end
  end
- return (false) or false
+ return false
 end
 sgs.ai_skill_askforag.xinyang=function(self,card_ids)
  local id=tag(self,'take',-1) -- read followed immediately by setTag(-1).
@@ -1944,17 +1944,17 @@ ai_skill_invoke.goutong=function(self, options, request)
  local data = request and self:getDecisionData(request) or nil
  host('write') -- actual data:toMoveOneTime() copy and global source assignment
  if self.player:objectName()==(endpoint(self,'to')):objectName()then
-  if endpoint(self,'from')and not self:isEnemy(endpoint(self,'from'))then return (true) or false end
+  if endpoint(self,'from')and not self:isEnemy(endpoint(self,'from'))then return true end
   if endpoint(self,'from')then
-   if self:isWeak(self.player)and not self:isWeak(endpoint(self,'from'))and (endpoint(self,'from')):getLostHp()==0 then return (true) or false end
+   if self:isWeak(self.player)and not self:isWeak(endpoint(self,'from'))and (endpoint(self,'from')):getLostHp()==0 then return true end
   end
  else
-  if endpoint(self,'to')and not self:isEnemy(endpoint(self,'to'))then return (true) or false end
+  if endpoint(self,'to')and not self:isEnemy(endpoint(self,'to'))then return true end
   if endpoint(self,'to')then
-   if self:isWeak(self.player)and not self:isWeak(endpoint(self,'to'))and (endpoint(self,'to')):getLostHp()==0 then return (true) or false end
+   if self:isWeak(self.player)and not self:isWeak(endpoint(self,'to'))and (endpoint(self,'to')):getLostHp()==0 then return true end
   end
  end
- return (false) or false
+ return false
 end
 end
 
