@@ -2150,6 +2150,7 @@ bu_s2_benxi = sgs.CreateTriggerSkillV2{
 bu_stwo_guicaiVS = sgs.CreateViewAsSkillV2
 {
     name = "bu_stwo_guicai",
+    family = "guicai",
     n = 0,
     can_activate = function(skill, request)
         return request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY

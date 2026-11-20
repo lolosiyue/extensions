@@ -1166,6 +1166,7 @@ qhstandardfankui = sgs.CreateTriggerSkillV2 {
 -- 鬼才
 qhstandardguicaiVS = sgs.CreateViewAsSkillV2 {     -- 鬼才 视为技
     name = "qhstandardguicai",
+    family = "guicai",
     n = 0,                                         -- 不选择卡牌
     create_card = function(skill, request)
         local acard = qhstandardguicaiCARD:clone() -- 创建技能卡

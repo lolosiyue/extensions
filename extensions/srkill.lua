@@ -5021,6 +5021,7 @@ sr_simayi = sgs.General(extension,"sr_simayi","wei",3)
 --鬼才
 sr_guicai = sgs.CreateTriggerSkillV2{
 	name = "sr_guicai",
+	family = "guicai",
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.AskForRetrial},
 	can_trigger = function(skill, event, room, player, data)
