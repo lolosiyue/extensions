@@ -8622,6 +8622,7 @@ nos_sgkgodtongtian = sgs.CreateTriggerSkillV2{
 --反馈（通天）
 tongtian_fankui = sgs.CreateTriggerSkillV2{
     name = "tongtian_fankui",
+    family = "fankui",
 	events = {sgs.Damaged},
 	can_trigger = function(skill, event, room, player, data)
 		local damage = data:toDamage()

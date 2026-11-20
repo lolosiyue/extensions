@@ -18146,6 +18146,7 @@ mobilemou_doublefuck = sgs.General(mobilemouzhi, "mobilemou_doublefuck$", "wei")
 moujianxiong = sgs.CreateTriggerSkillV2 {
 
 	name = "moujianxiong",
+	family = "jianxiong",
 
 	frequency = sgs.Skill_Frequent,
 

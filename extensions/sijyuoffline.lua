@@ -8261,6 +8261,7 @@ sfofl_young_xiahoudun = sgs.General(extension_young, "sfofl_young_xiahoudun", "w
 ]] --
 sfofl_young_ganglie = sgs.CreateTriggerSkillV2{
     name = "sfofl_young_ganglie",
+    family = "ganglie",
     events = {sgs.Damaged},
     can_trigger = function(skill, event, room, player, data)
         if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
@@ -41625,6 +41626,7 @@ sfofl_kc_xiahoudun = sgs.General(extension_e, "sfofl_kc_xiahoudun", "wei", 4)
 ]]
 sfofl_kc_ganglie = sgs.CreateTriggerSkillV2{
 	name = "sfofl_kc_ganglie",
+	family = "ganglie",
 	events = {sgs.Damaged},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:hasSkill(skill:objectName()) and player:isAlive()) then return false end

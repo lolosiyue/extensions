@@ -459,6 +459,7 @@ Rdingyuan:addSkill(luaRsihu)
 Rcaocao = sgs.General(extension, "Rcaocao$", "qun", "3")
 luaRjianxiong = sgs.CreateTriggerSkillV2 {
 	name = "luaRjianxiong",
+	family = "jianxiong",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.CardFinished },
 	can_trigger = function(skill, event, room, player, data)

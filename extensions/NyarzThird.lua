@@ -203,6 +203,7 @@ _nyarz_jianxiong_tianxiafuwo:clone():setParent(extension)
 
 nyarz_jianxiong = sgs.CreateTriggerSkillV2 {
 	name = "nyarz_jianxiong",
+	family = "jianxiong",
 	events = { sgs.Damaged, sgs.DamageInflicted },
 	frequency = sgs.Skill_Compulsory,
 	--waked_skills = "_nyarz_jianxiong_tianxiafuwo",

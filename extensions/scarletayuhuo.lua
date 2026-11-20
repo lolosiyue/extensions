@@ -1386,6 +1386,7 @@ s_w_caocao = sgs.General(extension,"s_w_caocao","wei","4")
 
 s_w_jianxiong = sgs.CreateTriggerSkillV2{
 	name = "s_w_jianxiong" ,
+	family = "jianxiong",
 	events = {sgs.Damaged},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end

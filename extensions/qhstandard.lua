@@ -941,6 +941,7 @@ qhstandardqunguo = sgs.CreateTriggerSkillV2 {
 -- 标准版-强化 曹操-奸雄
 qhstandardjianxiong = sgs.CreateTriggerSkillV2 {
     name = "qhstandardjianxiong",
+    family = "jianxiong",
     frequency = sgs.Skill_Frequent,
     events = { sgs.Damaged, sgs.ConfirmDamage },
     can_trigger = function(skill, event, room, player, data)
@@ -1121,6 +1122,7 @@ qhstandardhujia = sgs.CreateTriggerSkillV2 {
 -- 标准版-强化 司马懿-反馈
 qhstandardfankui = sgs.CreateTriggerSkillV2 {
     name = "qhstandardfankui",
+    family = "fankui",
     frequency = sgs.Skill_Frequent,
     events = { sgs.Damaged },
     can_trigger = function(skill, event, room, player, data)
@@ -1405,6 +1407,7 @@ qhstandardtianmingCARD = sgs.CreateSkillCard {                                 -
 -- 标准版-强化 夏侯惇-刚烈
 qhstandardganglie = sgs.CreateTriggerSkillV2 {
     name = "qhstandardganglie",
+    family = "ganglie",
     frequency = sgs.Skill_Frequent,
     events = { sgs.Damaged },
     can_trigger = function(skill, event, room, player, data)

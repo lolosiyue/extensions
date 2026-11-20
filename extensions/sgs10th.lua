@@ -3951,6 +3951,7 @@ ny_10th_jindiancaocao = sgs.General(extension, "ny_10th_jindiancaocao", "wei", 4
 
 ny_10th_jingdianjianxiong = sgs.CreateTriggerSkillV2{
 		name = "ny_10th_jingdianjianxiong",
+		family = "jianxiong",
 		events = { sgs.Damaged },
 		frequency = sgs.Skill_NotFrequent,
 	can_trigger = function(self, event, room, player, data)

@@ -1377,6 +1377,7 @@ Dragon_simayi = sgs.General(extension, "Dragon_simayi", "wei", "3")
 Dragon_fankui = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_NotFrequent,
 	name = "Dragon_fankui",
+	family = "fankui",
 	events = {sgs.Damaged},
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
@@ -1418,6 +1419,7 @@ Dragon_xiahoudun = sgs.General(extension, "Dragon_xiahoudun", "wei", "4")
 
 Dragon_ganglie = sgs.CreateTriggerSkillV2{
 	name = "Dragon_ganglie",
+	family = "ganglie",
 	events = {sgs.Damaged},
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
@@ -3586,6 +3588,7 @@ Promote_xiahoudun = sgs.General(extensionP, "Promote_xiahoudun", "wei", "4")
 
 Promote_ganglie = sgs.CreateTriggerSkillV2{
 	name = "Promote_ganglie",
+	family = "ganglie",
 	events = {sgs.Damaged},
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) then

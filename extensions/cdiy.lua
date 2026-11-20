@@ -1620,6 +1620,7 @@ end
 
 c_jianxiong = sgs.CreateTriggerSkillV2{
     name="c_jianxiong",events={sgs.Damaged,sgs.Damage},
+    family = "jianxiong",
     can_trigger=function(self,event,room,player,data)
         local damage=data:toDamage()
         if not canObtainDamageCard(damage.card,room) then return "" end

@@ -5807,6 +5807,7 @@ sgs.Sanguosha:addSkills(skills)
 --刚烈
 sr_ganglie = sgs.CreateTriggerSkillV2{
 	name = "sr_ganglie",
+	family = "ganglie",
 	events = {sgs.EventPhaseStart,sgs.DamageCaused,sgs.Damage},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end

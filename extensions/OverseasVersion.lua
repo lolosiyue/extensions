@@ -13504,6 +13504,7 @@ end
 ov_moucaocao = sgs.General(extensionSp, "ov_moucaocao", "wei", 4)
 ov_jianxiong = sgs.CreateTriggerSkill {
 	name = "ov_jianxiong",
+	family = "jianxiong",
 	events = { sgs.GameStart, sgs.Damaged },
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.GameStart then

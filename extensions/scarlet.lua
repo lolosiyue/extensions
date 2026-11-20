@@ -7376,6 +7376,7 @@ s4_weiT_xiahoudun = sgs.General(extension, "s4_weiT_xiahoudun", "wei", 4, true)
 
 s4_weiT_ganglie = sgs.CreateTriggerSkill {
     name = "s4_weiT_ganglie",
+    family = "ganglie",
     events = { sgs.Damage, sgs.Damaged },
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
@@ -9878,6 +9879,7 @@ end
 
 s4_ganglie = sgs.CreateTriggerSkillV2{
     name = "s4_ganglie",
+    family = "ganglie",
     events = {sgs.Damaged, sgs.Death},
     shiming_skill = true,
 	base_amount = 1,

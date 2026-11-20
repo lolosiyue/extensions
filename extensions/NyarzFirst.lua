@@ -70,6 +70,7 @@ Dcaocao = sgs.General(extension, "Dcaocao", "wei", 4, true, false, false)
 
 Djianxiong = sgs.CreateTriggerSkillV2{
     name = "Djianxiong",
+    family = "jianxiong",
     events = {sgs.Damaged, sgs.DamageInflicted},
     frequency = sgs.Skill_Compulsory,
     priority = 0,
