@@ -53,9 +53,9 @@ sgs.ai_armor_value.vine=function(player,self)
         return query(player,"hasSkill","kongcheng") and 5 or 3.8
     end
     if query(player,"hasSkills",sgs.lose_equip_skill) then return 3.8 end
-    if not query(self,"damageIsEffective",player,sgs.DamageStruct_Fire) and not player:getArmor() then return 6 end
+    if not query(self,"damageIsEffective",player,sgs.DamageStruct_Fire) and AIHold.slotFree(player, 1) and AIEffect.serves(player, player, 1) and AIEffect.has(player, "Armor") == false then return 6 end
     if query(self.player,"hasSkill","sizhan") then return 4.9 end
-    if query(player,"getPhase")==sgs.Player_Play and not player:getArmor() then
+    if query(player,"getPhase")==sgs.Player_Play and AIHold.slotFree(player, 1) and AIEffect.serves(player, player, 1) and AIEffect.has(player, "Armor") == false then
         if #query(self,"getFriends",player,true)>0 and query(player,"hasSkill","jujian")
             or query(player,"hasSkill","diyyicong") then return 3 end
     end

@@ -1463,7 +1463,7 @@ ai_skill_cardchosen_default = ai_skill_cardchosen_default or function(self, opti
         end
         if ticket.count==0 then return {kind="pass"} end
         local index=math.random(1,ticket.count)
-        local armor=avoid and target:getArmor()
+        local armor=avoid and target:getArmor(); if armor and AIEffect.serves(target,target)==false then armor=nil end
         if armor and armor:isKindOf("SilverLion") then
             -- Only disclosed armor positions enter policy; hidden identities stay native.
             local positions=ticket.visible_card_indices
@@ -3093,7 +3093,7 @@ amazing_grace_policy = function(self, card_ids, options)
 		and self.player:getKingdom()=="wei"
 		and not self.player:hasSkill("bazhen")
 		and lord and lord:hasLordSkill("hujia")
-		and (lord:objectName()~=NextPlayer:objectName() and NextPlayerisEnemy or lord:getArmor())
+		and (lord:objectName()~=NextPlayer:objectName() and NextPlayerisEnemy or AIEffect.has(lord,"Armor"))
 		then return cid.eight_diagram end
 	end
 	if cid.silver_lion then
@@ -3158,7 +3158,7 @@ amazing_grace_policy = function(self, card_ids, options)
 	end
 	if cid.weapon
 	and (required("getCardsNum","Slash")>0 and required("slashIsAvailable") or not SelfisCurrent) then
-		local current_range = (self.player:getWeapon() and self.player:getWeapon():getRange()) or 1
+		local current_range = self.player:getAttackRange() or 1
 		local slash
         if SelfisCurrent then slash = self:getCard("Slash")
         else
@@ -3247,7 +3247,7 @@ amazing_grace_policy = function(self, card_ids, options)
 		if required("evaluateAcquiredCard",c).card
 		then return c:getEffectiveId() end
 	end
-	if cid.weapon and not self.player:getWeapon() and required("getCardsNum","Slash")>0
+	if cid.weapon and not AIEffect.has(self.player,"Weapon") and AIEffect.serves(self.player,self.player,0) and required("getCardsNum","Slash")>0
 	and (required("slashIsAvailable") or not SelfisCurrent)
 	then
 		local inAttackRange

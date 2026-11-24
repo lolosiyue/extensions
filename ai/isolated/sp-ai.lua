@@ -106,7 +106,7 @@ sgs.ai_skill_discard.yongsi = function(self, discard_num, min_num, optional, inc
         if place == sgs.Player_PlaceEquip then
             if (card:isKindOf("SilverLion")) then
                 for _, player in ipairs((self.room:getOtherPlayers(self.player))) do
-                    local blade = player:getWeapon()
+                    local blade = nil; for _, w in ipairs(AIEffect.cards(player,"GudingBlade") or {}) do blade = w end
                     if blade and (blade:isKindOf("GudingBlade")) then
                         if (player:inMyAttackRange(self.player)) then
                             if (self:isEnemy(player,self.player)) then return 6 end
@@ -298,7 +298,7 @@ ai_fill_skill.xueji = function(self, options, request)
     end
 end
 local function xueji_target(self, card, who)
-    local weapon = self.player:getWeapon()
+    local weapon = self.player:getWeapon(); if weapon and AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId()) == self.player:getAttackRange() then weapon = nil end
     local distance
     if weapon and (weapon:getKnownEffectiveId()) == (card:getKnownEffectiveId()) then
         -- Donor formula: distance with the paid weapon's range as fix, against the current range.
@@ -306,7 +306,7 @@ local function xueji_target(self, card, who)
         local range = known(row and row.weapon_range, "xueji.weapon_distance")
         distance = (self.player:distanceTo(who,range - (self.player:getAttackRange(false))))
     else
-        local horse = self.player:getOffensiveHorse()
+        local horse = self.player:getOffensiveHorse(); if horse and (AIEffect.serves(self.player,self.player)==false or AIEffect.horseRemains(self.player,false,horse:getEffectiveId())) then horse = nil end
         if horse and (horse:getKnownEffectiveId()) == (card:getKnownEffectiveId()) then
             distance = (self.player:distanceTo(who,1))
         else distance = (self.player:distanceTo(who)) end
@@ -500,7 +500,7 @@ local function xingwu_cost(self, include_equip)
     for _,enemy in ipairs(self.enemies)do
         if (enemy:isMale()) and (((self:damageIsEffective(enemy)) and not (self:cantbeHurt(enemy,self.player,2)))
             or (not (self:damageIsEffective(enemy)) and #(enemy:getEquips())>0
-                and not (#(enemy:getEquips())==1 and enemy:getArmor() and (self:needToThrowArmor(enemy)))))then
+                and not (#(enemy:getEquips())==1 and enemy:getArmor() and (self:needToThrowArmor(enemy)) and not self:isFriend(AIEffect.beneficiaryOf(enemy, enemy:getArmor():getEffectiveId()) or enemy))))then
             good_enemies[#good_enemies+1]=enemy
         end
     end
@@ -558,12 +558,12 @@ sgs.ai_skill_playerchosen.xingwu=function(self,targets)
         if #equips>0 then
             if xingwu_skills(self,enemy,known(sgs.lose_equip_skill,"lose_equip_skill"))then value=value-0.6*#equips end
             -- Donor intentionally asks needToThrowArmor() for self here.
-            if enemy:getArmor()and (self:needToThrowArmor())then value=value-1.5 end
+            if enemy:getArmor() and AIEffect.serves(enemy,enemy) and (self:needToThrowArmor())then value=value-1.5 end
             if (enemy:hasArmorEffect("SilverLion"))then value=value-0.5 end
-            if enemy:getWeapon()then value=value+0.8 end
-            if enemy:getArmor()then value=value+1 end
-            if enemy:getDefensiveHorse()then value=value+0.9 end
-            if enemy:getOffensiveHorse()then value=value+0.7 end
+            if enemy:getWeapon() and AIEffect.serves(enemy,enemy) then value=value+0.8 end
+            if enemy:getArmor() and AIEffect.serves(enemy,enemy) then value=value+1 end
+            if enemy:getDefensiveHorse() and AIEffect.serves(enemy,enemy) then value=value+0.9 end
+            if enemy:getOffensiveHorse() and AIEffect.serves(enemy,enemy) then value=value+0.7 end
             if self:getDangerousCard(enemy)then value=value+0.3 end
             if self:getValuableCard(enemy)then value=value+0.15 end
         end
@@ -648,14 +648,14 @@ ai_skill_choice.spzhenwei = function(self, options, request)
     local from = use.from
     if (card:isKindOf("TrickCard")) and (from:hasSkill("jizhi")) then return ai_choice_result(("draw"), options) end
     if (card:isKindOf("Slash")) and ((from:hasSkills("paoxiao|tianyi|xianzhen|jiangchi|fuhun|qiangwu"))
-        or (from:getWeapon() and ((from:getWeapon()):isKindOf("Crossbow"))))
+        or AIEffect.has(from,"Crossbow"))
         and (self:getCardsNum("Jink")) == 0 then return ai_choice_result(("null"), options) end
     if (card:isKindOf("SupplyShortage")) then return ai_choice_result(("null"), options) end
     if (card:isKindOf("Slash")) and (self:getCardsNum("Jink")) == 0
         and (self.player:getLostHp()) > 0 then return ai_choice_result(("null"), options) end
     if (card:isKindOf("Indulgence")) and (self.player:getHandcardNum()) + 1 > (self.player:getHp()) then return ai_choice_result(("null"), options) end
     if (card:isKindOf("Slash")) and (from:hasSkills("tieqi|wushuang|yijue|liegong|mengjin|qianxi"))
-        and not (from:getWeapon() and ((from:getWeapon()):isKindOf("Crossbow"))) then return ai_choice_result(("null"), options) end
+        and not AIEffect.has(from,"Crossbow") then return ai_choice_result(("null"), options) end
     return ai_choice_result(("draw"), options)
 end
 

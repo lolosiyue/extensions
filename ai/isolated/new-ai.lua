@@ -426,7 +426,7 @@ function sgs.ai_slash_prohibit.luafan(self, from, to, card)
 	end
 	if self:getKnownCard(to, from, "Jink", true) >= 1 or (self:hasSuit("spade", true, to) and hcard >= 2) or hcard >= 4 then return true end
 	if self:hasEightDiagramEffect(to) and not self:ignoreArmor(from, to) then return true end
-	if to:getTreasure() and to:getPile("wooden_ox"):length() > 1 then return true end
+	for _, r in ipairs(AIEffect.rows(to,"WoodenOx") or {}) do local h = self.room:findPlayerByObjectName(r.area_owner); if h and h:getPile("wooden_ox"):length() > 1 then return true end end
 end
 
 -- shared immutable alias ai_cardneed.luafan -> ai_cardneed.leiji
@@ -859,7 +859,7 @@ sgs.ai_skill_cardchosen["luajiejiang2_main"] = function(self, who, flags)
 		end
 
 		if who:hasArmorEffect("silver_lion") and who:isWounded() then
-			return who:getArmor()
+			do local a = who:getArmor(); if a and a:isKindOf("SilverLion") and AIEffect.serves(who,who) then return a end end
 		end
 		if who:getEquips():length() > 0 then
 			if who:getHandcardNum() > 2 or (who:getHandcardNum() > 0 and who:getPile("wooden_ox"):length() > 0) then

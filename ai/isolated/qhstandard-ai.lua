@@ -620,7 +620,7 @@ ai_skill_use["@qhwindshensu"] = function(self, prompt, request) --被动技能�
 			if card:isKindOf("Peach") and self.player:isWounded() then --桃
 				shouldUseCard = shouldUseCard + 2
 			end
-			if card:isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse() then range_fix = range_fix - 1 end
+			if card:isKindOf("OffensiveHorse") and (AIEffect.has(self.player, "OffensiveHorse") == false and AIEffect.serves(self.player, self.player, 3)) then range_fix = range_fix - 1 end
 			if card:isKindOf("DefensiveHorse") or card:isKindOf("Armor") and not self:getSameEquip(card) and (self:isWeak() or self:getCardsNum("Jink") == 0) then
 				shouldUseCard =
 					shouldUseCard + 1
@@ -1307,13 +1307,13 @@ end
 sgs.ai_use_revises.qhwindkuanggu = function(self,card,use)
 	if card:isKindOf("Peach")
 	and not self:hasJueqingEffect(self.player)
-	and self.player:getOffensiveHorse()
+	and AIEffect.has(self.player, "OffensiveHorse")
 	and self.player:getLostHp()==1
 	and self:getOverflow()<1
 	then return false end
 end
 function sgs.ai_cardneed.qhwindkuanggu(to,card,self)
-	return card:isKindOf("OffensiveHorse") and not (to:getOffensiveHorse() or getKnownCard(to,self.player,"OffensiveHorse",false)>0)
+	return card:isKindOf("OffensiveHorse") and (AIEffect.has(to, "OffensiveHorse") == false and AIEffect.serves(to, to, 3)) and not (getKnownCard(to,self.player,"OffensiveHorse",false)>0)
 end
 
 
@@ -1562,8 +1562,11 @@ ai_card_use["#qhstandardzhihengCARD"] = function(self, card, use, request) --技
 					table.insert(use_zhiheng_cards, e:getKnownEffectiveId())
 				end
 			end
-			if self.player:getArmor() and self.player:hasArmorEffect("silver_lion") and self.player:isWounded() then
-				table.insert(use_zhiheng_cards, self.player:getArmor():getEffectiveId())
+			local lion = AIHold.kind(self.player, "Armor")
+			local beneficiary, active
+			if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(self.player, lion:getEffectiveId()) end
+			if active and beneficiary:objectName() == self.player:objectName() and self.player:isWounded() then
+				table.insert(use_zhiheng_cards, AIHold.kind(self.player, "Armor"):getEffectiveId())
 			end
 			use.card = policy(self,"#qhstandardzhihengCARD:" .. table.concat(use_zhiheng_cards, "+") .. ":")
 			return
@@ -1586,7 +1589,11 @@ ai_card_use["#qhstandardzhihengCARD"] = function(self, card, use, request) --技
 							for _, p in sgs.qlist(dummy_use.to) do
 								if p:getHp() <= 1 then
 									shouldUse = false
-									if self.player:distanceTo(p) > 1 then keep_weapon = self.player:getWeapon() end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -1639,7 +1646,7 @@ ai_card_use["#qhstandardzhihengCARD"] = function(self, card, use, request) --技
 		end
 
 		local num = self:getCardsNum("Jink") - 1
-		if self.player:getArmor() then num = num + 1 end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num + 1 end
 		if num > 0 then
 			for _, card in ipairs(cards) do
 				if card:isKindOf("Jink") and num > 0 then
@@ -1666,7 +1673,7 @@ ai_card_use["#qhstandardzhihengCARD"] = function(self, card, use, request) --技
 			table.insert(unpreferedCards, self.player:getArmor():getId())
 		end
 
-		if self.player:getOffensiveHorse() and self.player:getWeapon() then
+		if AIHold.kind(self.player, "OffensiveHorse") and AIEffect.has(self.player, "Weapon") then
 			table.insert(unpreferedCards, self.player:getOffensiveHorse():getId())
 		end
 	end
@@ -1901,7 +1908,7 @@ ai_fill_skill["qhstandardguose"] = function(self, options, request)
 			local shouldUse = true
 
 			if acard:isKindOf("Armor") then
-				if not self.player:getArmor() then
+				if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then
 					shouldUse = false
 				elseif self.player:hasEquip(acard) and not has_armor and self:evaluateArmor() > 0 then
 					shouldUse = false
@@ -1909,7 +1916,7 @@ ai_fill_skill["qhstandardguose"] = function(self, options, request)
 			end
 
 			if acard:isKindOf("Weapon") then
-				if not self.player:getWeapon() then
+				if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) then
 					shouldUse = false
 				elseif self.player:hasEquip(acard) and not has_weapon then
 					shouldUse = false

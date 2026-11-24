@@ -1185,10 +1185,18 @@ ai_skill_invoke.y_wenliang = function(self, options, request)
     local friend = self:isFriend(player)
     local enemy = self:isEnemy(player)
     if friend == nil or enemy == nil then return false end
-    local armor = player:getArmor()
+    local equips = AIHold.equips(player)
+    if not equips or #equips == 0 then return false end
     if friend then
-        if armor and armor:objectName() == "silverlion" and player:isWounded() then return true end
-        if not (armor and armor:isKindOf("EightDiagram")) then
+        for _, equip in ipairs(equips) do
+            if equip:isKindOf("SilverLion") then
+                local beneficiary, active = AIEffect.beneficiaryOf(player, equip:getEffectiveId())
+                if active and self:isFriend(beneficiary) and beneficiary:isWounded() then return true end
+            end
+        end
+        local eightDiagram = player:queryArmorEffect("EightDiagram")
+        if eightDiagram == nil then eightDiagram = AIEffect.has(player, "EightDiagram") end
+        if not eightDiagram then
             local hand = number(player:getHandcardNum())
             local hp = number(player:getHp())
             if hand == nil or hp == nil then return false end
@@ -1206,9 +1214,13 @@ ai_skill_invoke.y_wenliang = function(self, options, request)
         local hp = number(player:getHp())
         if hand == nil or hp == nil then return false end
         if hp == 1 or hand <= 1 then return false end
-        if (armor and (armor:isKindOf("EightDiagram") or armor:isKindOf("RenwangShield")))
-            or player:getDefensiveHorse() or player:getWeapon() or player:getOffensiveHorse() then
-            return true
+        for _, equip in ipairs(equips) do
+            local beneficiary, active = AIEffect.beneficiaryOf(player, equip:getEffectiveId())
+            if active and self:isEnemy(beneficiary)
+                and (equip:isKindOf("EightDiagram") or equip:isKindOf("RenwangShield")
+                    or equip:isKindOf("DefensiveHorse") or equip:isKindOf("Weapon") or equip:isKindOf("OffensiveHorse")) then
+                return true
+            end
         end
     end
     return false

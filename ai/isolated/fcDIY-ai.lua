@@ -1746,7 +1746,7 @@ sgs.ai_view_as.fclongming = function(card,player,card_place,class_name)
     local number = source_query(card, "getNumberString")
     local card_id = card:getKnownEffectiveId()
 
-    if #two_diamond_cards==2 and current and not current:isNude() and current:getWeapon() and current:getWeapon():isKindOf("Crossbow") then
+    if #two_diamond_cards==2 and current and not current:isNude() and AIEffect.has(current, "Crossbow") then
         return ("jink:fclongmingBuff[%s:%s]=%d+%d"):format("to_be_decided",0,two_diamond_cards[1],two_diamond_cards[2])
     elseif card:getSuit()==sgs.Card_Club then
         return ("jink:fclongming[%s:%s]=%d"):format(suit,number,card_id)
@@ -3874,7 +3874,7 @@ local function getKangkaiCard(self,target,data)
     end
     if #armor>0 then
         for _,card in ipairs(armor)do
-            if ((not target:getArmor() and not target:hasSkills("bazhen|yizhong"))
+            if AIEffect.serves(target, target, 1) and ((AIHold.slotFree(target, 1) and not target:hasSkills("bazhen|yizhong"))
                 or (target:getArmor() and self:evaluateArmor(card,target)>=self:evaluateArmor(target:getArmor(),target)))
                 and not (card:isKindOf("Vine") and use.card:isKindOf("FireSlash") and source_query(self, "slashIsEffective", use.card, target, use.from)) then
                 return card:getKnownEffectiveId()
@@ -3882,7 +3882,7 @@ local function getKangkaiCard(self,target,data)
         end
     end
     if source_query(self, "needToThrowArmor")
-        and ((not target:getArmor() and not target:hasSkills("bazhen|yizhong"))
+        and AIEffect.serves(target, target, 1) and ((AIHold.slotFree(target, 1) and not target:hasSkills("bazhen|yizhong"))
             or (target:getArmor() and self:evaluateArmor(self.player:getArmor(),target)>=self:evaluateArmor(target:getArmor(),target)))
         and not (self.player:getArmor():isKindOf("Vine") and use.card:isKindOf("FireSlash") and source_query(self, "slashIsEffective", use.card, target, use.from)) then
         return self.player:getArmor():getEffectiveId()
@@ -3890,20 +3890,26 @@ local function getKangkaiCard(self,target,data)
     if #def_horse>0 then return def_horse[1]:getEffectiveId() end
     if #weapon>0 then
         for _,card in ipairs(weapon)do
-            if not target:getWeapon()
+            if AIEffect.serves(target, target, 0) ~= true then break end
+            if AIEffect.has(target, "Weapon") == false
                 or (self:evaluateArmor(card,target)>=self:evaluateArmor(target:getWeapon(),target)) then
                 return card:getKnownEffectiveId()
             end
         end
     end
-    if self.player:getWeapon() and self:evaluateWeapon(self.player:getWeapon())<5
-        and (not target:getArmor()
+    if AIHold.kind(self.player, "Weapon") and (AIEffect.serves(self.player, self.player, 0) == false or self:evaluateWeapon(AIHold.kind(self.player, "Weapon"), AIEffect.areaBeneficiary(self.player)) < 5)
+        and AIEffect.serves(target, target, 0) and (AIEffect.has(target, "Weapon") == false
             or (self:evaluateArmor(self.player:getWeapon(),target)>=self:evaluateArmor(target:getWeapon(),target))) then
         return self.player:getWeapon():getEffectiveId()
     end
     if #off_horse>0 then return off_horse[1]:getEffectiveId() end
     if self.player:getOffensiveHorse()
-        and ((self.player:getWeapon() and not self.player:getWeapon():isKindOf("Crossbow")) or self.player:hasSkills("mashu|tuntian")) then
+        then
+        	local hasOtherWeapon = false
+        	for _, weapon in ipairs(AIEffect.cards(self.player, "Weapon") or {}) do
+        		if not weapon:isKindOf("Crossbow") then hasOtherWeapon = true; break end
+        	end
+        	if not hasOtherWeapon and not self.player:hasSkills("mashu|tuntian") then return end
         return self.player:getOffensiveHorse():getEffectiveId()
     end
 end
@@ -3950,8 +3956,8 @@ ai_skill_invoke["fcj_kangkai_use"] = function(self, options, request)
     local card = scoped_card(self,"fcj_kangkaiGivenCard")
     if not use.card or not card then return false end
     if card:isKindOf("Vine") and use.card:isKindOf("FireSlash") and source_query(self, "slashIsEffective", use.card, self.player, use.from) then return false end
-    if ((card:isKindOf("DefensiveHorse") and self.player:getDefensiveHorse())
-        or (card:isKindOf("OffensiveHorse") and (self.player:getOffensiveHorse() or (self.player:hasSkill("drmashu") and self.player:getDefensiveHorse()))))
+    if ((card:isKindOf("DefensiveHorse") and (AIEffect.has(self.player, "DefensiveHorse") or AIEffect.serves(self.player, self.player, 2) == false))
+        or (card:isKindOf("OffensiveHorse") and (AIEffect.has(self.player, "OffensiveHorse") or AIEffect.serves(self.player, self.player, 3) == false or (self.player:hasSkill("drmashu") and AIEffect.has(self.player, "DefensiveHorse")))))
         and not self.player:hasSkills(sgs.lose_equip_skill) then
         return false
     end
@@ -4496,11 +4502,11 @@ ai_skill_choice.fcj_zhenwei = function(self, options, request)
     if self:isWeak() or self.player:getHandcardNum()<2 then return ai_choice_result(("2"), options) end
     if use.card:isKindOf("TrickCard") and use.from:hasSkill("jizhi") then return ai_choice_result(("1"), options) end
     if use.card:isKindOf("Slash") and (use.from:hasSkills("paoxiao|tianyi|xianzhen|jiangchi|fuhun|qiangwu")
-        or (use.from:getWeapon() and use.from:getWeapon():isKindOf("Crossbow"))) and self:getCardsNum("Jink")==0 then return ai_choice_result(("2"), options) end
+        or (AIEffect.has(use.from, "Crossbow"))) and self:getCardsNum("Jink")==0 then return ai_choice_result(("2"), options) end
     if use.card:isKindOf("SupplyShortage") then return ai_choice_result(("2"), options) end
     if use.card:isKindOf("Slash") and self:getCardsNum("Jink")==0 and self.player:getLostHp()>0 then return ai_choice_result(("2"), options) end
     if use.card:isKindOf("Indulgence") and self.player:getHandcardNum()+1>self.player:getHp() then return ai_choice_result(("2"), options) end
-    if use.card:isKindOf("Slash") and use.from:hasSkills("tieqi|wushuang|yijue|liegong|mengjin|qianxi") and not (use.from:getWeapon() and use.from:getWeapon():isKindOf("Crossbow")) then return ai_choice_result(("2"), options) end
+    if use.card:isKindOf("Slash") and use.from:hasSkills("tieqi|wushuang|yijue|liegong|mengjin|qianxi") and not (AIEffect.has(use.from, "Crossbow")) then return ai_choice_result(("2"), options) end
     return ai_choice_result(("1"), options)
 end
 
@@ -4868,8 +4874,8 @@ sgs.ai_skill_playerchosen.fcbyajiaoequip = function(self,targets)
         end
     end
     for _,friend in ipairs(self.friends_noself)do
-        if ((card:isKindOf("DefensiveHorse") and friend:getDefensiveHorse())
-            or (card:isKindOf("OffensiveHorse") and (friend:getOffensiveHorse() or (friend:hasSkill("drmashu") and friend:getDefensiveHorse()))))
+        if ((card:isKindOf("DefensiveHorse") and (AIEffect.has(friend, "DefensiveHorse") or AIEffect.serves(friend, friend, 2) == false))
+            or (card:isKindOf("OffensiveHorse") and (AIEffect.has(friend, "OffensiveHorse") or AIEffect.serves(friend, friend, 3) == false or (friend:hasSkill("drmashu") and AIEffect.has(friend, "DefensiveHorse")))))
             and not friend:hasSkills(sgs.lose_equip_skill) then
             continue
         end
@@ -5719,7 +5725,7 @@ ai_card_use["#fcmoutiaoxinCard"] = function(self, card, use, request)
     if #targets==0 then return end
 
     self:setPriorityValue("fcmoutiaoxinCard",8,"fcDIY")
-    if not self.player:getArmor() and not self.player:isKongcheng() then
+    if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false and not self.player:isKongcheng() then
         for _,card in sgs.qlist(self.player:getCards("h"))do
             if card:isKindOf("Armor") and self:evaluateArmor(card)>3 then
                 self:setPriorityValue("fcmoutiaoxinCard",5.9,"fcDIY")

@@ -80,7 +80,7 @@ ai_fill_skill.neoluoyi = function(self, options, request)
 				if self.player:canSlash(enemy,card) and self:slashIsEffective(card,enemy) and self:objectiveLevel(enemy)>3 and self:isGoodTarget(enemy,self.enemies,card) then
 					if getCardsNum("Jink",enemy)<1 or (self.player:hasWeapon("Axe") and self.player:getCards("he"):length()>4) then
 						slashtarget = slashtarget+1
-						if offhorse and self.player:distanceTo(enemy, 1)<=self.player:getAttackRange() then
+						if offhorse and self.player:distanceTo(enemy, (AIEffect.serves(self.player,self.player)~=false and not AIEffect.horseRemains(self.player,false,offhorse:getEffectiveId())) and 1 or 0)<=self.player:getAttackRange() then
 							noHorseTargets = noHorseTargets+1
 						end
 					end

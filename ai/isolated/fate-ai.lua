@@ -2071,7 +2071,7 @@ sgs.ai_skill_playerchosen["@fatehuwei"] = function(self, targets)
 	local card = self:getEvaluationCard("savage_assault")
 	
 	for _, target in sgs.qlist(targets) do
-		local armor = target:getArmor()
+		local armor = target:hasArmorEffect("vine", self.player) == true and (AIEffect.cards(target, "Vine") or {})[1]
 		if self:isFriend(target)  and self:hasTrickEffective(card, target, self.player)
 		and not (armor and armor:isKindOf("Vine"))
 		then
@@ -2124,7 +2124,7 @@ sgs.ai_skill_playerchosen["@fatepomo"] = function(self, targets)
 		or enemy:hasSkill("fengying") or enemy:hasSkill("guixin") or enemy:hasSkill("juejing") or enemy:hasSkill("longhun") or enemy:hasSkill("renjie")
 		or ((enemy:hasSkill("fateshenghai") or enemy:hasSkill("fateshilian") or enemy:hasSkill("huilei") or enemy:hasSkill("zhuiyi") or enemy:hasSkill("jijiu")
 		or enemy:hasSkill("buqu") or enemy:hasSkill("duanchang")) and enemy:getHp()<2))
-		or enemy:getArmor()~= nil
+		or (AIEffect.has(enemy, "Armor") or enemy:hasArmorEffect() == true)
 		then
 			return enemy
 		end

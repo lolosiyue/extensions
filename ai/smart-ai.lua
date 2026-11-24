@@ -3209,116 +3209,130 @@ sgs.ai_skill_discard.gamerule = function(self,x,n)
 	return discard
 end
 
+function sgs.aiEffectiveEquipCards(player, kind, source)
+    local cards = {}
+    for _, row in ipairs(player:getEffectiveEquips()) do
+        local card = sgs.Sanguosha:getCard(row.card_id)
+        if card and (not kind or card:isKindOf(kind)) then
+            local name = card:objectName()
+            if card:isKindOf("Armor") and player:hasArmorEffect(name, source)
+                or card:isKindOf("Weapon") and player:hasWeapon(name, source)
+                or card:isKindOf("DefensiveHorse") and player:hasDefensiveHorse(name)
+                or card:isKindOf("OffensiveHorse") and player:hasOffensiveHorse(name)
+                or card:isKindOf("Treasure") and player:hasTreasure(name) then
+                cards[#cards + 1] = card
+            end
+        end
+    end
+    return cards
+end
+
+function sgs.aiEquipBeneficiary(room, area_owner, id)
+    for _, row in ipairs(area_owner:getEffectiveEquips()) do
+        if row.card_id == id and row.area_owner == area_owner:objectName() then return area_owner end
+    end
+    for _, player in sgs.qlist(room:getAlivePlayers()) do
+        if player:objectName() ~= area_owner:objectName() then
+            for _, row in ipairs(player:getEffectiveEquips()) do
+                if row.card_id == id and row.area_owner == area_owner:objectName() then return player end
+            end
+        end
+    end
+end
+
+function sgs.aiRemainingWeaponRange(player, excluded_id)
+    if not excluded_id or player:hasFlag("InfinityAttackRange") or player:hasSkill("benshi") then
+        return player:getAttackRange()
+    end
+    local range, excluded = player:getAttackRange(false), false
+    for _, row in ipairs(player:getEffectiveEquips()) do
+        local card = sgs.Sanguosha:getCard(row.card_id)
+        local weapon = card and card:getRealCard():toWeapon()
+        if weapon then
+            if row.card_id == excluded_id then excluded = true
+            else range = math.max(range, weapon:getRange(player)) end
+        end
+    end
+    return excluded and range or player:getAttackRange()
+end
+
+function SmartAI:weaponRangeAfterEquip(card)
+    local owner = self.player
+    local current = self:getSameEquip(card, owner)
+    local equipment = owner:getEquips()
+    local marker = current or (not equipment:isEmpty() and equipment:first())
+    if marker then
+        local beneficiary = sgs.aiEquipBeneficiary(self.room, owner, marker:getEffectiveId())
+        if beneficiary and beneficiary:objectName() ~= owner:objectName() then
+            return nil
+        end
+    end
+    local remaining = sgs.aiRemainingWeaponRange(owner, current and current:getEffectiveId())
+    local weapon = card:getRealCard():toWeapon()
+    if not weapon or owner:hasSkill("benshi") then return remaining end
+    return math.max(remaining, weapon:getRange(owner))
+end
+
+function sgs.aiCanLiuliAfterPayment(owner, target)
+    local distance = owner:distanceTo(target)
+    if owner:getHandcardNum()>0 and distance<=owner:getAttackRange() then return true end
+    local horses = sgs.aiEffectiveEquipCards(owner, "OffensiveHorse")
+    for _, equip in sgs.qlist(owner:getEquips()) do
+        if not owner:isJilei(equip) then
+            local id = equip:getEffectiveId()
+            local range = equip:isKindOf("Weapon") and sgs.aiRemainingWeaponRange(owner, id)
+                or owner:getAttackRange()
+            local fixed = distance
+            if #horses == 1 and horses[1]:getEffectiveId() == id then
+                fixed = owner:distanceTo(target, -horses[1]:getRealCard():toHorse():getCorrect())
+            end
+            if fixed<=range then return true end
+        end
+    end
+    return false
+end
+
 function aiConnect(owner)
-    if not current_self then
-        global_room:writeToConsole("aiConnect called without current_self, using fallback")
-        local connects = {}
-        local connects_set = {}
-        for _, s in sgs.qlist(owner:getVisibleSkillList(true)) do
-            local sn = s:objectName()
-            if not connects_set[sn] then
-                table.insert(connects, sn)
-                connects_set[sn] = true
-            end
-        end
-        for _, m in ipairs(owner:getMarkNames()) do
-            if owner:getMark(m) > 0 and (string.find(m, "&", 1, true) or string.find(m, "@", 1, true)) then
-                local plus_idx = string.find(m, "+", 1, true)
-                local clean_m = plus_idx and string.sub(m, 1, plus_idx - 1) or m
-                if not connects_set[clean_m] then
-                    table.insert(connects, clean_m)
-                    connects_set[clean_m] = true
-                end
-            end
-        end
-        for _, pn in ipairs(owner:getPileNames()) do
-            if string.sub(pn, 1, 1) ~= "#" and not owner:getPile(pn):isEmpty() then
-                if not connects_set[pn] then
-                    table.insert(connects, pn)
-                    connects_set[pn] = true
-                end
-            end
-        end
-        for _, e in sgs.qlist(owner:getEquips()) do
-            local en = e:objectName()
-            if not connects_set[en] then
-                table.insert(connects, en)
-                connects_set[en] = true
-            end
-        end
-        return connects
-    end
+    local equipment = sgs.aiEffectiveEquipCards(owner)
+    local equipment_ids = {}
+    for _, card in ipairs(equipment) do equipment_ids[#equipment_ids + 1] = card:getEffectiveId() end
+    local equipment_key = table.concat(equipment_ids, "+")
+    local player_name = owner:objectName()
+    local cache = current_self and sgs.ai_connect_cache
+    local entry = cache and cache[player_name]
+    if entry and entry.equipment_key == equipment_key then return entry.connections end
 
-
-    local p_name = owner:objectName()
-    
-    -- 1. O(1) 極速命中：只要在同一個決策週期內，直接回傳快取表
-    -- 不可掛在 SmartAI 類別上: middleclass 會令所有實例共用同一張表, 實例上設 nil 清不掉
-    local cache = sgs.ai_connect_cache
-    if cache and cache[p_name] then
-        return cache[p_name]
-    end
-
-    -- 2. 快取未命中：代表這是本週期第一次查詢該玩家，執行一次完整提取
-    local connects = {}
-    local connects_set = {} 
-
-    -- 技能與虛擬裝備
-    for _, s in sgs.qlist(owner:getVisibleSkillList(true)) do
-        local sn = s:objectName()
-        if not connects_set[sn] then
-            table.insert(connects, sn)
-            connects_set[sn] = true
-        end
-        if s:inherits("ViewAsEquipSkill") then
-            local va_skill = sgs.Sanguosha:getViewAsEquipSkill(sn)
-            if va_skill then
-                local va_str = va_skill:viewAsEquip(owner)
-                if va_str and va_str ~= "" then
-                    for en in string.gmatch(va_str, "[^,]+") do
-                        if not connects_set[en] then
-                            table.insert(connects, en)
-                            connects_set[en] = true
-                        end
-                    end
-                end
-            end
+    local connections, seen = {}, {}
+    local function append(name)
+        if not seen[name] then
+            connections[#connections + 1] = name
+            seen[name] = true
         end
     end
-
-    -- 標記
-    for _, m in ipairs(owner:getMarkNames()) do
-        if owner:getMark(m) > 0 and (string.find(m, "&", 1, true) or string.find(m, "@", 1, true)) then
-            local plus_idx = string.find(m, "+", 1, true)
-            local clean_m = plus_idx and string.sub(m, 1, plus_idx - 1) or m
-            if not connects_set[clean_m] then
-                table.insert(connects, clean_m)
-                connects_set[clean_m] = true
-            end
+    for _, skill in sgs.qlist(owner:getVisibleSkillList(true)) do
+        local name = skill:objectName()
+        append(name)
+        if skill:inherits("ViewAsEquipSkill") then
+            local view_as = sgs.Sanguosha:getViewAsEquipSkill(name)
+            local names = view_as and view_as:viewAsEquip(owner)
+            for equip in (names or ""):gmatch("[^,]+") do append(equip) end
         end
     end
-
-    -- 牌堆與實體裝備
-    for _, pn in ipairs(owner:getPileNames()) do
-        if string.sub(pn, 1, 1) ~= "#" and not owner:getPile(pn):isEmpty() then
-            if not connects_set[pn] then
-                table.insert(connects, pn)
-                connects_set[pn] = true
-            end
+    local granted = owner:property("View_As_Equips_List"):toString()
+    for name in (granted or ""):gmatch("[^+]+") do append(name) end
+    for _, mark in ipairs(owner:getMarkNames()) do
+        if owner:getMark(mark) > 0 and (mark:find("&", 1, true) or mark:find("@", 1, true)) then
+            local plus = mark:find("+", 1, true)
+            append(plus and mark:sub(1, plus - 1) or mark)
         end
     end
-    for _, e in sgs.qlist(owner:getEquips()) do
-        local en = e:objectName()
-        if not connects_set[en] then
-            table.insert(connects, en)
-            connects_set[en] = true
-        end
+    for _, pile in ipairs(owner:getPileNames()) do
+        if pile:sub(1, 1) ~= "#" and not owner:getPile(pile):isEmpty() then append(pile) end
     end
+    for _, card in ipairs(equipment) do append(card:objectName()) end
 
-    -- 3. 寫入該決策週期的快取
-    sgs.ai_connect_cache = sgs.ai_connect_cache or {}
-    sgs.ai_connect_cache[p_name] = connects
-    return connects
+    if cache then cache[player_name] = {connections = connections, equipment_key = equipment_key} end
+    return connections
 end
 
 function dummy(is_dummy,et,ct)
@@ -3479,6 +3493,10 @@ function SmartAI:askForCardChosen(who,flags,reason,method)
 		end
 	end
 	if self:isFriend(who) then
+		if flags:contains("e") and (reason=="snatch" or reason=="dismantlement") then
+			local id = self:getDangerousCard(who)
+			if id and self:doDisCard(who,id,no_dis) then return id end
+		end
 		if flags:contains("j") and not(who:hasSkill("qiaobian") and who:getHandcardNum()>0) then
 			local lightning,indulgence,supply_shortage
 			for _,trick in sgs.list(who:getJudgingArea())do
@@ -3635,6 +3653,11 @@ function SmartAI:doDisCard(to,flags,obtain,n)
 		if not obtain and to:hasSkill("xixiu") and to:getEquips():length()<2 and to:getEquipsId():contains(flags)
 		or self.disabled_ids:contains(flags) then return end
 		if self:isFriend(to) then
+			if to:getEquipsId():contains(flags) then
+				local beneficiary = sgs.aiEquipBeneficiary(self.room,to,flags)
+				if beneficiary and self:isEnemy(beneficiary) and self:getDangerousCard(to)==flags
+					and (not obtain or self.player:canGet(to,flags)) then return true end
+			end
 			if to:getJudgingAreaID():contains(flags) then
 				flags = sgs.Sanguosha:getCard(flags)
 				if flags:isKindOf("Xumou") or to:containsTrick("YanxiaoCard") or to:containsTrick("shuugakulyukou")
@@ -6440,9 +6463,9 @@ end
 
 sgs.ai_weapon_value = {}
 
-function SmartAI:evaluateWeapon(card,owner,target)
+function SmartAI:evaluateWeapon(card,owner,target,range_after_equip)
 	if type(card)~="userdata" or not card:isKindOf("Weapon") then return -1 end
-	local currentRange = sgs.weapon_range[card:getClassName()] or 1
+	local currentRange = range_after_equip or sgs.weapon_range[card:getClassName()] or 1
 	owner = owner or self.player
 	local deltaSelfThreat,inAttackRange = 0,false
 	local w_enemies = target and {target} or self:getEnemies(owner)
@@ -6461,7 +6484,7 @@ function SmartAI:evaluateWeapon(card,owner,target)
 		local w_slash_num = getCardsNum("Slash",owner,self.player)
 		deltaSelfThreat = deltaSelfThreat+w_slash_num*2
 		if owner:hasSkill("kurou") then deltaSelfThreat = deltaSelfThreat+getCardsNum("Peach,Analeptic",owner,self.player)+self.player:getHp() end
-		if w_slash_num>0 and owner:getWeapon() and not self:hasCrossbowEffect(owner) then
+		if w_slash_num>0 and #sgs.aiEffectiveEquipCards(owner, "Weapon") > 0 and not self:hasCrossbowEffect(owner) then
 			for _,enemy in ipairs(w_enemies)do
 				if owner:distanceTo(enemy)<=currentRange
 				and (w_slash_num>1 or getCardsNum("Jink",enemy,self.player)<1)
@@ -6490,7 +6513,7 @@ sgs.ai_armor_value = {}
 function SmartAI:evaluateArmor(card,owner)
 	owner = owner or self.player
 	if type(card)=="number" then card = sgs.Sanguosha:getCard(card)
-	else card = card or owner:getArmor() end
+	else card = card or sgs.aiEffectiveEquipCards(owner, "Armor")[1] end
 	local a_value = 0
 	for _,as in sgs.qlist(owner:getVisibleSkillList(true))do
 		local cb = sgs.ai_armor_value[as:objectName()]
@@ -6821,21 +6844,30 @@ end
 
 function SmartAI:needToThrowArmor(player,reason)
 	player = player or self.player
-	if type(player)~="userdata" or not player:hasArmorEffect(nil) then return false end
-	if player:getArmor() and not player:getArmor():isKindOf("EightDiagram") and player:hasSkills("bazhen|yizhong")
-	or self:evaluateArmor(nil,player)<=-2 then return true end
-	if player:isWounded() and player:hasArmorEffect("SilverLion") then
+	if type(player)~="userdata" then return false end
+	local armor = player:getArmor()
+	if not armor then return false end
+	local beneficiary = sgs.aiEquipBeneficiary(self.room, player, armor:getEffectiveId())
+	if not beneficiary then return false end
+	local active = beneficiary:hasArmorEffect(armor:objectName())
+	if active and beneficiary:objectName() == player:objectName()
+	and (not armor:isKindOf("EightDiagram") and player:hasSkills("bazhen|yizhong")
+	or self:evaluateArmor(armor,player)<=-2) then return true end
+	if active and armor:isKindOf("SilverLion") and beneficiary:isWounded() then
+		if beneficiary:objectName() ~= player:objectName() then return true end
 		if player~=self.player and self:isFriend(player)
 		then return self:isWeak(player) and not player:hasSkills(sgs.use_lion_skill) end
 		return true
 	end
 	--add
-	if player:getArmor() and player:hasSkill("sgkgodxiejia") then
+	if player:hasSkill("sgkgodxiejia") then
 		return true
 	end
-	if player:getArmor() and player:hasSkill("s_nixing") then
+	if player:hasSkill("s_nixing") then
 		return true
 	end
+	if not active or not armor:isKindOf("Vine") then return false end
+	player = beneficiary
 	return reason~="moukui"
 	and self.player:getPhase()==sgs.Player_Play
 	and getCardsNum("Jink",player,self.player)<1
@@ -9660,14 +9692,15 @@ function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, di
 				threat_level = threat_level + 2
 			end
 			-- 关键装备
-			if target:getWeapon() and target:getWeapon():isKindOf("Crossbow") 
-				and getCardsNum("Slash", target, self.player) > 1 then
+			local weapon, armor = target:getWeapon(), target:getArmor()
+			local user = weapon and sgs.aiEquipBeneficiary(self.room,target,weapon:getEffectiveId())
+			if user and weapon:isKindOf("Crossbow") and user:hasWeapon(weapon:objectName())
+				and getCardsNum("Slash", user, self.player) > 1 then
 				threat_level = threat_level + 2
 			end
-			if target:getArmor() then
-				if target:getArmor():isKindOf("EightDiagram") 
-					or target:getArmor():isKindOf("Vine") 
-					or target:getArmor():isKindOf("RenwangShield") then
+			user = armor and sgs.aiEquipBeneficiary(self.room,target,armor:getEffectiveId())
+			if user and user:hasArmorEffect(armor:objectName()) then
+				if armor:isKindOf("EightDiagram") or armor:isKindOf("Vine") or armor:isKindOf("RenwangShield") then
 					threat_level = threat_level + 2
 				else
 					threat_level = threat_level + 1
@@ -11022,6 +11055,7 @@ end
 		card:     卡牌對象 或 技能名字符串（虛擬牌上下文）
 		from:     來源（默認 self.player）
 		fallback: 可選函數 function(self, targets, card, from)，無推薦結果時調用
+		flags:    可選區域標記，傳給 getBestTarget
 	返回值：選中的目標（ServerPlayer），無合適目標且無 fallback 時返回 nil
 	示例：
 		sgs.ai_skill_playerchosen.some_skill = function(self, targets)
@@ -11030,11 +11064,11 @@ end
 			end)
 		end
 ]]
-function SmartAI:getBestTargetOr(targets, card, from, fallback)
+function SmartAI:getBestTargetOr(targets, card, from, fallback, flags)
     if targets and type(targets) ~= "table" then
         targets = sgs.QList2Table(targets)
     end
-    local target = self:getBestTarget(targets, card, from)
+    local target = self:getBestTarget(targets, card, from, flags)
     if target then return target end
     if type(fallback) == "function" then
         return fallback(self, targets, card, from)
@@ -11118,12 +11152,14 @@ function SmartAI:getTargetBaseScore(target, card, from, flags)
 
     -- [4] 棄牌/破壞類評分
     if self:checkIsDecreaseCard(card) then
-		if not from:canDiscard(target, flags) then
+		-- 突襲的候選已由引擎按 canGet("h") 過濾。
+		local isNosTuxi = card == "nostuxi"
+		if not isNosTuxi and not from:canDiscard(target, flags) then
 			return -5  -- 無效目標
 		end
 		
 		-- 判定是拆牌(不獲得)還是順牌(獲得)
-		local isObtain = card and card:isKindOf("Snatch")
+		local isObtain = isNosTuxi or (card and type(card) ~= "string" and card:isKindOf("Snatch"))
 		
 		if isEnemy then
 			if self:doDisCard(target, flags, isObtain) then

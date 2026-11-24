@@ -149,7 +149,7 @@ function sgs.ai_slash_prohibit.MeowDuanchang(self, from, to)
     if meow_rule(self:hasJueqingEffect(from,to),"MeowDuanchang.jueqing") or (from:hasSkill("nosqianxi") and from:distanceTo(to) == 1) then return false end
     if from:hasFlag("NosJiefanUsed") then return false end
     if to:getHp() > 1 or #(self:getEnemies(from)) == 1 then return false end
-    if from:getMaxHp() == 3 and from:getArmor() and from:getDefensiveHorse() then return false end
+    if from:getMaxHp() == 3 and AIEffect.has(from, "Armor") and AIEffect.has(from, "DefensiveHorse") then return false end
     if from:getMaxHp() <= 3 or (from:isLord() and meow_rule(self:isWeak(from),"MeowDuanchang.weak")) then return true end
     if from:getMaxHp() <= 3 or (self.room:getLord() and meow_rule(self:getRoleEstimate(from),"MeowDuanchang.role") == "renegade") then return true end
     return false
@@ -669,7 +669,7 @@ ai_fill_skill.MeowGuose = function(self, options, request)
             local shouldUse = true
 
             if acard:isKindOf("Armor") then
-                if not self.player:getArmor() then
+                if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then
                     shouldUse = false
                 elseif self.player:hasEquip(acard) and not has_armor and self:evaluateArmor() > 0
                 then
@@ -678,7 +678,7 @@ ai_fill_skill.MeowGuose = function(self, options, request)
             end
 
             if acard:isKindOf("Weapon") then
-                if not self.player:getWeapon() then
+                if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) then
                     shouldUse = false
                 elseif self.player:hasEquip(acard) and not has_weapon
                 then

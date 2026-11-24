@@ -372,7 +372,7 @@ function SmartAIView:getUseValue(card)
 		then v = v+6 end
 	elseif core_query(card,"isKindOf","TrickCard") then
 		if core_query(card,"isKindOf","Duel") and not stack_overflow then v = v+core_query(self,"getCardsNum","Slash")*2
-		elseif core_query(card,"isKindOf","Collateral") and self.player:getWeapon()
+		elseif core_query(card,"isKindOf","Collateral") and (self.player:getWeapon() or AIEffect.serves(self.player,self.player,0)==false)
 		and not core_query(self,"loseEquipEffect") then v = 2 end
 	end
 	if core_query(self.player,"isLastHandCard",card)
@@ -1226,10 +1226,10 @@ local function equipment_filter_result(callback,...)
     if AIUnsupported.is(result) then error(result,0) end
     return result
 end
-function SmartAIView:evaluateWeapon(card, owner, target)
+function SmartAIView:evaluateWeapon(card, owner, target, range_after_equip)
     if not card or not (AIValue.isCard(card) or AIValue.isConversion(card)) then return -1 end
     if not equipment_call(card, "isKindOf", "Weapon") then return -1 end
-    local range = sgs.weapon_range[equipment_call(card, "getClassName")] or 1
+    local range = range_after_equip or sgs.weapon_range[equipment_call(card, "getClassName")] or 1
     owner = owner or self.player
     local enemies = target and {target} or equipment_call(self, "getEnemies", owner)
     equipment_call(self,"sort",enemies)
@@ -1249,7 +1249,7 @@ function SmartAIView:evaluateWeapon(card, owner, target)
         if equipment_call(owner, "hasSkill", "kurou") then
             value = value + equipment_count(self, "Peach,Analeptic", owner) + equipment_call(self.player, "getHp")
         end
-        if slashes > 0 and optional_equipment(owner,"getWeapon") and not equipment_call(self, "hasCrossbowEffect", owner) then
+        if slashes > 0 and #equipment_call(owner,"getEffectiveEquipCards","Weapon") > 0 and not equipment_call(self, "hasCrossbowEffect", owner) then
             for _, enemy in ipairs(enemies) do
                 if equipment_call(owner, "distanceTo", enemy) <= range
                     and (slashes > 1 or equipment_count(self, "Jink", enemy) < 1) then value = value + 5 end
@@ -1277,7 +1277,7 @@ function SmartAIView:evaluateArmor(card, owner)
         -- Engine IDs may name any lawfully disclosed current card, not only
         -- the evaluated owner's zones. Unknown foreign/hidden IDs stay unknown.
         card=equipment_known(self:getKnownCardById(card),"armor card identity")
-    else card=card or optional_equipment(owner,"getArmor") end
+    else card=card or equipment_call(owner,"getEffectiveEquipCards","Armor")[1] end
     local value = 0
     for _, skill in ipairs(equipment_call(owner,"getVisibleSkillList",true)) do
         local callback = sgs.ai_armor_value[equipment_call(skill, "objectName")]
@@ -2290,10 +2290,20 @@ function SmartAIView:canLiuli(other,another)
 		return false
 	end
 	if not core_query(self,"needToLoseHp",another,self.player,core_query(self,"getEvaluationCard","slash")) then return false end
-	if core_query(other,"getHandcardNum")>0 and core_query(other,"distanceTo",another)<=core_query(other,"getAttackRange")
-	or other:getWeapon() and other:getOffensiveHorse() and core_query(other,"distanceTo",another)<=core_query(other,"getAttackRange")
-	or (other:getWeapon() or other:getOffensiveHorse()) and core_query(other,"distanceTo",another)<=1
-	then return true end
+	local distance = core_query(self,"getStrategyDistance",other,another)
+	if core_query(other,"getHandcardNum")>0 and distance<=core_query(other,"getAttackRange") then return true end
+	for _, equip in ipairs(core_query(other,"getEquips")) do
+		local id = equip:getEffectiveId()
+		local beneficiary, active = other:getEquipBeneficiary(id)
+		local range = equip:isKindOf("Weapon") and core_query(other,"getRemainingWeaponRange",id)
+			or core_query(other,"getAttackRange")
+		local correction = 0
+		if active and beneficiary:objectName()==other:objectName() and equip:isKindOf("OffensiveHorse") then
+			local horses = core_query(other,"getEffectiveEquipCards","OffensiveHorse")
+			if #horses == 1 then correction = -core_query(other,"getHorseCorrection",false) end
+		end
+		if distance+correction<=range then return true end
+	end
     return false
 end
 
@@ -2600,7 +2610,7 @@ function SmartAIView:poisonCards(flags, owner)
         local poison = rule == true or type(rule) == "function" and rule(self,card,owner)
         if AIUnsupported.is(poison) then error(poison,0) end
         if poison or discard_query(owner,"getEquipsId"):contains(id)
-            and discard_query(self,"evaluateArmor",card,owner) < -5
+            and discard_query(self,"evaluateArmor",card,(AIEffect.beneficiaryOf(owner,id)) or owner) < -5
             or discard_query(owner,"getJudgingAreaID"):contains(id)
             and not (discard_query(owner,"containsTrick","YanxiaoCard") or discard_query(card,"isKindOf","Xumou")) then
             result:append(card)
@@ -2695,6 +2705,11 @@ function SmartAIView:doDisCard(to, flags, obtain, n)
         end
         if table.contains(disabled, flags) then return end
         if allocation_query(self, "isFriend", to) then
+            if contains("getEquipsId", flags) then
+                local beneficiary = to:getEquipBeneficiary(flags)
+                if beneficiary and allocation_query(self, "isEnemy", beneficiary)
+                    and self:getDangerousCard(to) == flags then return true end
+            end
             if contains("getJudgingAreaID", flags) then
                 local card = visible_card("getJudgingArea", flags)
                 if allocation_query(card,"isKindOf","Xumou") or allocation_query(to, "containsTrick", "YanxiaoCard")
@@ -3474,7 +3489,7 @@ function SmartAIView:findPlayerToDiscard(flags,include_self,no_dis,players,reaso
 		for _,enemy in sgs.list(enemies)do
 			source_closures.IsDis(self.player,enemy)
 			if allocation_query(enemy,"hasArmorEffect","EightDiagram")
-			and enemy:getArmor() and not allocation_query(self,"needToThrowArmor",enemy) then
+			and enemy:getArmor() and enemy:getArmor():isKindOf("EightDiagram") and AIEffect.serves(enemy,enemy) and not allocation_query(self,"needToThrowArmor",enemy) then
 				if allocation_query(self,"doDisCard",enemy,enemy:getArmor():getEffectiveId(),no_dis)
 				then table.insert(player_table,enemy) end
 			end
@@ -4453,7 +4468,7 @@ local function plan_strip(self, card, use, obtain)
     local extra = plan_extra(self, card, use)
     local recommend_score = plan_recommend_scorer(self, card, self.player)
     local function add(target, id)
-        if current_target(use, target) or id == nil or player_in(use.to, target) then return end
+        if current_target(use, target) or not id or player_in(use.to, target) then return end
         if not obtain and type(id) ~= "number" and not (type(id)=="table" and id.kind=="hand_discard_sample") then
             id = plan_query(id, "getEffectiveId")
         end
@@ -4483,6 +4498,12 @@ local function plan_strip(self, card, use, obtain)
                 end
             end
         end
+    end
+    for _, holder in ipairs(players) do
+        local beneficiary = holder:getEquipBeneficiary()
+        if beneficiary and beneficiary:objectName() ~= holder:objectName()
+            and plan_query(self, "isEnemy", beneficiary)
+            and add(holder, self:getDangerousCard(holder)) then return end
     end
     local slash = self:getCard("Slash")
     if slash then
@@ -6751,14 +6772,17 @@ function SmartAIView:shouldInvokeCostNullifySkill(use, need_discard, need_losehp
 				threat_level = threat_level + 2
 			end
 			-- 关键装备
-			if nullify_equipment(target, "getWeapon") and damage_call(nullify_equipment(target, "getWeapon"),"isKindOf","Crossbow")
-				and damage_call(self,"estimateCardsNum","Slash",target) > 1 then
+			local weapon = nullify_equipment(target, "getWeapon")
+			local armor = nullify_equipment(target, "getArmor")
+			local user, active
+			if weapon then user, active = target:getEquipBeneficiary(weapon:getEffectiveId()) end
+			if active and weapon:isKindOf("Crossbow") and damage_call(self,"estimateCardsNum","Slash",user) > 1 then
 				threat_level = threat_level + 2
 			end
-			if nullify_equipment(target, "getArmor") then
-				if damage_call(nullify_equipment(target, "getArmor"),"isKindOf","EightDiagram")
-					or damage_call(nullify_equipment(target, "getArmor"),"isKindOf","Vine")
-					or damage_call(nullify_equipment(target, "getArmor"),"isKindOf","RenwangShield") then
+			active = false
+			if armor then user, active = target:getEquipBeneficiary(armor:getEffectiveId()) end
+			if active then
+				if armor:isKindOf("EightDiagram") or armor:isKindOf("Vine") or armor:isKindOf("RenwangShield") then
 					threat_level = threat_level + 2
 				else
 					threat_level = threat_level + 1

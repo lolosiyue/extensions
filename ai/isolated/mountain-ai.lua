@@ -8,6 +8,13 @@ local function skill(self,player,names)
     if player:objectName()==self.player:objectName() then ai_unsupported("owner skill roster is incomplete","mountain.skills") end
     return self:useKnowledgeEstimate({status="estimate",value=false,basis="mountain.undisclosed_skill_uses_visible_roster",target=player:objectName()},"mountain.skills")
 end
+local function family(self,player,name)
+    local value=player:hasSkillFamily(name)
+    -- hasSkillFamily keeps the same three-valued owner/public contract as hasSkills.
+    if value~=nil then return value end
+    if player:objectName()==self.player:objectName() then ai_unsupported("owner skill roster is incomplete","mountain.family") end
+    return self:useKnowledgeEstimate({status="estimate",value=false,basis="mountain.undisclosed_skill_uses_visible_roster",target=player:objectName()},"mountain.family")
+end
 local dummy = AIUsePlan.dummy
 local function reversed(cards)
     local result={};for i=#cards,1,-1 do result[#result+1]=cards[i] end;return AIList.new(result)
@@ -86,7 +93,7 @@ ai_skill_invoke.fangquan = function(self, options, request)
 			local current_range = self.player:getAttackRange()
 			range_fix = math.min(current_range-new_range,0)
 		end
-		if card:isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse() then range_fix = range_fix-1 end
+		if card:isKindOf("OffensiveHorse") and (AIEffect.has(self.player, "OffensiveHorse") == false and AIEffect.serves(self.player, self.player, 3)) then range_fix = range_fix-1 end
 		if card:isKindOf("DefensiveHorse") or card:isKindOf("Armor") and not self:getSameEquip(card) and (self:isWeak() or self:getCardsNum("Jink")==0) then shouldUse = shouldUse+1 end
 		if card:isKindOf("Crossbow") or self:hasCrossbowEffect() then hasCrossbow = true end
 	end
@@ -654,7 +661,7 @@ function sgs.ai_slash_prohibit.duanchang(self,from,to)
 	if self:hasJueqingEffect(from,to) or (skill(self,from,"nosqianxi") and from:distanceTo(to)==1) then return false end
 	if from:hasFlag("NosJiefanUsed") then return false end
 	if to:getHp()>1 or #(self:getEnemies(from))==1 then return false end
-	if from:getMaxHp()==3 and from:getArmor() and from:getDefensiveHorse() then return false end
+	if from:getMaxHp()==3 and AIEffect.has(from, "Armor") and AIEffect.has(from, "DefensiveHorse") then return false end
 	if from:getMaxHp()<=3 or (from:isLord() and self:isWeak(from)) then return true end
 	if from:getMaxHp()<=3 or (self.room:getLord() and role(self,from)=="renegade") then return true end
 	return false
@@ -794,7 +801,7 @@ sgs.ai_view_as.newlonghun=function(card,player,place,class_name)
         if c:getSuit()==sgs.Card_Club and #clubs<2 then clubs[#clubs+1]=c
         elseif c:getSuit()==sgs.Card_Heart and #hearts<2 then hearts[#hearts+1]=c end
     end
-    if #clubs==2 and current and not current:isNude() and current:getWeapon() and current:getWeapon():isKindOf("Crossbow") then
+    if #clubs==2 and current and not current:isNude() and AIEffect.has(current, "Crossbow") then
         return proposal("newlonghun","jink",clubs)
     elseif card:getSuit()==sgs.Card_Club then return proposal("newlonghun","jink",{card}) end
     local dying=room:getCurrentDyingPlayer()
@@ -919,7 +926,7 @@ sgs.ai_skill_discard.qiaobian = function(self,discard_num,min_num,optional,inclu
 	cards = self:sortByUseValue(cards,true)
 	local stealer
 	for _,ap in ipairs(self.room:getOtherPlayers(self.player))do
-		if skill(self,ap,"tuxi|nostuxi") and self:isEnemy(ap) then stealer = ap end
+		if family(self,ap,"tuxi") and self:isEnemy(ap) then stealer = ap end
 	end
 	local card
 	for i=1,#cards,1 do
@@ -965,7 +972,7 @@ sgs.ai_skill_discard.qiaobian = function(self,discard_num,min_num,optional,inclu
 				end
 			end
 		end
-	elseif current_phase==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not skill(self,self.player,"tuxi|nostuxi") then
+	elseif current_phase==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not family(self,self.player,"tuxi") then
 		if #self:selectNosTuxiTargets("@nostuxi")==2 then return to_discard end
 		return {}
 	elseif current_phase==sgs.Player_Play and not self.player:isSkipped(sgs.Player_Play)
@@ -1170,7 +1177,7 @@ ai_card_use.TiaoxinCard = function(self, card, use, request)
 	if #targets==0 then return end
 
 	self:setPriorityValue("TiaoxinCard",8,"tiaoxin")
-	if not self.player:getArmor() and not self.player:isKongcheng() then
+	if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false and not self.player:isKongcheng() then
 		for _,card in ipairs(self.player:getCards("h"))do
 			if card:isKindOf("Armor") and self:evaluateArmor(card)>3 then
 				self:setPriorityValue("TiaoxinCard",5.9,"tiaoxin")
@@ -1778,7 +1785,7 @@ do
         local from, damageNum, role = context.extra[1], context.extra[2], context.extra[3]
         if core_query(to,"hasSkill","duanchang") and not core_query(to,"isLord")
         	and #core_query(self,"getFriends",to,true)>0 and core_query(to,"getHp")<=1 then
-        		if not (core_query(from,"getMaxHp")==3 and from:getArmor() and from:getDefensiveHorse()) then
+        		if not (core_query(from,"getMaxHp")==3 and AIEffect.has(from, "Armor") and AIEffect.has(from, "DefensiveHorse")) then
         			if core_query(from,"getMaxHp")<=3 or core_query(from,"isLord") and core_query(self,"isWeak",from) then return true, true end
         			if core_query(from,"getMaxHp")<=3 or self.room:getLord() and role(self,from)=="renegade" then return true, true end
         		end
@@ -1834,7 +1841,7 @@ do
         local card, damageNum, apn, value_known = context.extra[1], context.extra[2], context.extra[3], context.extra[4]
         if good_query(to, "getHp")<=damageNum and good_query(self.player, "getMaxHp")<6
         	and not good_query(to, "isLord") and #good_query(self, "getFriends", to,true)>0 and good_query(to, "hasSkill", "duanchang") then
-        		if not(good_query(self.player, "getMaxHp")>=3 and self.player:getArmor() and self.player:getDefensiveHorse()) then
+        		if not(good_query(self.player, "getMaxHp")>=3 and AIEffect.has(self.player, "Armor") and AIEffect.has(self.player, "DefensiveHorse")) then
         			if good_query(self.player, "isLord") and good_query(self, "isWeak") or self.room:getLord() and good_query(self.player, "getRole")=="renegade"
         			then return nil, true end
         		end

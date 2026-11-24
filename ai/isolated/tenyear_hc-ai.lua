@@ -3565,12 +3565,26 @@ end
 
 --度断
 sgs.ai_skill_cardask["@duoduan-card"] = function(self,data)
-	if self:needToThrowArmor() then return "$"..self.player:getArmor():getEffectiveId() end
+	local armor = AIHold.kind(self.player, "Armor")
+	if armor and self:needToThrowArmor() then return "$"..armor:getEffectiveId() end
 	local use = data:toCardUse()
-	if __hc_value_call(use.card,"isKindOf","FireSlash") and self:slashIsEffective(use.card,self.player,use.from) and self:damageIsEffective(self.player,sgs.DamageStruct_Fire,use.from)
-	and self.player:hasArmorEffect("Vine") and self.player:getArmor() and self.player:getArmor():objectName()=="vine" and
-		(self:getCardsNum("Jink")==0 or self:canHit(self.player,use.from)) and not use.from:hasSkills("jueqing|gangzhi") then
-		return "$"..self.player:getArmor():getEffectiveId()
+	if armor and armor:isKindOf("Vine") and __hc_value_call(use.card, "isKindOf", "FireSlash") then
+		local id = armor:getEffectiveId()
+		local beneficiary = AIEffect.beneficiaryOf(self.player, id)
+		if beneficiary == nil or AIEffect.serves(self.player, self.player, 1) then
+			local effective = AIEffect.equipEffectiveFor(self.player, id, use.from)
+			local remains = AIEffect.hasArmorFor(self.player, "vine", use.from, id)
+			local helps = effective == true and remains == false
+			if effective == nil or (effective == true and remains == nil) then
+				helps = armor:objectName() == "vine" and self.player:hasArmorEffect("Vine")
+			end
+			if helps and remains ~= true and self:slashIsEffective(use.card, self.player, use.from)
+				and self:damageIsEffective(self.player, sgs.DamageStruct_Fire, use.from)
+				and (self:getCardsNum("Jink") == 0 or self:canHit(self.player, use.from))
+				and not use.from:hasSkills("jueqing|gangzhi") then
+				return "$"..id
+			end
+		end
 	end
 
 	local cards = sgs.QList2Table(self.player:getCards("he"))
@@ -5094,13 +5108,13 @@ ai_card_use.DaojiCard = function(self, card, use, request)
 				local c
 				if p:getTreasure() and p:getTreasure():objectName()=="wooden_ox" and not p:getPile("wooden_ox"):isEmpty() then
 					c = visible(self,p:getTreasure():getEffectiveId())
-				elseif p:getArmor() and not self.player:getArmor() then
+				elseif p:getArmor() and AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) then
 					c = visible(self,p:getArmor():getEffectiveId())
-				elseif p:getDefensiveHorse() and not self.player:getDefensiveHorse() then
+				elseif p:getDefensiveHorse() and AIHold.slotFree(self.player, 2) and AIEffect.serves(self.player, self.player, 2) then
 					c = visible(self,p:getDefensiveHorse():getEffectiveId())
-				elseif p:getOffensiveHorse() and not self.player:getOffensiveHorse() then
+				elseif p:getOffensiveHorse() and AIHold.slotFree(self.player, 3) and AIEffect.serves(self.player, self.player, 3) then
 					c = visible(self,p:getOffensiveHorse():getEffectiveId())
-				elseif p:getTreasure() and not self.player:getTreasure() then
+				elseif p:getTreasure() and AIHold.slotFree(self.player, 4) and AIEffect.serves(self.player, self.player, 4) then
 					c = visible(self,p:getTreasure():getEffectiveId())
 				end
 				if c then
@@ -6106,7 +6120,7 @@ ai_fill_skill["tianjiang"]=function(self, options, request)
 						if ep:hasEquipArea(x) then
 							self:writeCurrentSourceTarget("tj_to",ep)
 							if self:isFriend(ep) then
-								if ep:getEquip(x)==nil
+								if AIHold.slotFree(ep, x) and AIEffect.serves(ep, ep, x)
 								then return policy(self,"@TianjiangCard="..__hc_value_call(e,"getEffectiveId")) end
 							else
 								if ep:getEquip(x)~=nil
@@ -6133,7 +6147,7 @@ ai_fill_skill["tianjiang"]=function(self, options, request)
 						if ep:hasEquipArea(x) then
 							self:writeCurrentSourceTarget("tj_to",ep)
 							if self:isFriend(ep) then
-								if ep:getEquip(x)==nil
+								if AIHold.slotFree(ep, x) and AIEffect.serves(ep, ep, x)
 								then return policy(self,"@TianjiangCard="..__hc_value_call(e,"getEffectiveId")) end
 							else return policy(self,"@TianjiangCard="..__hc_value_call(e,"getEffectiveId")) end
 						end
@@ -6152,7 +6166,7 @@ ai_fill_skill["tianjiang"]=function(self, options, request)
 			if ep:hasEquipArea(x) then
 				self:writeCurrentSourceTarget("tj_to",ep)
 				if self:isFriend(ep) then
-					if ep:getEquip(x)==nil and self:isWeak(ep)
+					if AIHold.slotFree(ep, x) and AIEffect.serves(ep, ep, x) and self:isWeak(ep)
 					then return policy(self,"@TianjiangCard="..__hc_value_call(e,"getEffectiveId")) end
 				else return policy(self,"@TianjiangCard="..__hc_value_call(e,"getEffectiveId")) end
 			end
@@ -6193,7 +6207,7 @@ ai_fill_skill["zhuren"]=function(self, options, request)
 	cards = self:sortByKeepValue(cards)
 	local toids = {}
   	for _,c in sgs.list(cards)do
-		if __hc_value_call(c,"getNumber")>6 and self.player:getWeapon()==nil
+		if __hc_value_call(c,"getNumber")>6 and (AIEffect.has(self.player, "Weapon") == false and AIEffect.serves(self.player, self.player, 0))
 		then return policy(self,"@ZhurenCard="..__hc_value_call(c,"getEffectiveId")) end
 	end
   	for _,c in sgs.list(cards)do
@@ -8437,7 +8451,7 @@ sgs.ai_skill_cardask["@zhuangshu-discard"] = function(self,data,pattern,prompt)
     cards = sgs.QList2Table(cards) -- 将列表转换为表
     cards = self:sortByKeepValue(cards)
     if self:isFriend(target)
-	and target:getTreasure()==nil and #cards>2
+	and AIHold.slotFree(target, 4) and AIEffect.serves(target, target, 4) and #cards>2
 	then return __hc_value_call(cards[1],"getEffectiveId") end
 	return "."
 end

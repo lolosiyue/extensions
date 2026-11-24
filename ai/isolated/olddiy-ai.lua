@@ -603,7 +603,11 @@ end
 
 function sgs.ai_cardneed.LuaChuanyun(to, card, self)
 	local cards = observed_hand(self,to)
-	local has_weapon = to:getWeapon() and not to:getWeapon():isKindOf("Crossbow")
+	if card:isKindOf("Weapon") and AIEffect.serves(to, to, 0) == false then return false end
+	local has_weapon = false
+	for _, weapon in ipairs(AIEffect.cards(to, "Weapon") or {}) do
+		if not weapon:isKindOf("Crossbow") then has_weapon = true; break end
+	end
 	local slash_num = 0
 	for _, c in sgs.qlist(cards) do
 		local flag=string.format("%s_%s_%s","visible",self.room:getCurrent():objectName(),to:objectName())
@@ -634,7 +638,11 @@ sgs.LuaChuanyun_keep_value = {
 
 function sgs.ai_cardneed.LuaPaoxiaoC(to, card, self)
 	local cards = observed_hand(self,to)
-	local has_weapon = to:getWeapon() and not to:getWeapon():isKindOf("Crossbow")
+	if card:isKindOf("Weapon") and AIEffect.serves(to, to, 0) == false then return false end
+	local has_weapon = false
+	for _, weapon in ipairs(AIEffect.cards(to, "Weapon") or {}) do
+		if not weapon:isKindOf("Crossbow") then has_weapon = true; break end
+	end
 	local slash_num = 0
 	for _, c in sgs.qlist(cards) do
 		local flag=string.format("%s_%s_%s","visible",self.room:getCurrent():objectName(),to:objectName())

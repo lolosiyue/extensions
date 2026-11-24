@@ -902,15 +902,12 @@ function SmartAIView:slashIsEffective(slash, to, from, ignore_armor)
     if self:strategyProhibited(from, to, slash) then return false end
     local use = {card = slash, from = from, to = AIList.new({to})}
     ignore_armor = ignore_armor or self:cardFlagKnowledge(slash, "Qinggang", "slashIsEffective.armor") or strategy_call(self, "ignoreArmor", from, to)
-    local armor_names
+    local armor_names = {}
+    if type(self.room.getArmorNames) == "function" then
+        for _, armor in ipairs(strategy_call(self.room, "getArmorNames")) do armor_names[armor] = true end
+    else armor_names = strategy_known(sgs.armorName, "public armor names") end
     for _, name in ipairs(self:getConnections(to)) do
-        if ignore_armor and armor_names == nil then
-            armor_names = {}
-            if type(self.room.getArmorNames) == "function" then
-                for _, armor in ipairs(strategy_call(self.room, "getArmorNames")) do armor_names[armor] = true end
-            else armor_names = strategy_known(sgs.armorName, "public armor names") end
-        end
-        if not (ignore_armor and armor_names[name]) then
+        if not armor_names[name] or not ignore_armor and to:queryArmorEffect(name, from) ~= false then
             local hook = (sgs.ai_target_revises or {})[name]
             if type(hook) == "function" and hook(to, slash, self, use) then return false end
         end
@@ -992,9 +989,9 @@ function SmartAIView:canHit(to, from, conservative)
                     if strategy_call(self, "canUseJieyuanDecrease", from, to) then return false end
                     if not strategy_call(self, "willSkipPlayPhase") then
                         if count("Peach", to) > 0 or count("Analeptic", to) > 0 then return true end
-                        if not strategy_call(self, "isWeak", to) and to:getArmor()
+                        if not strategy_call(self, "isWeak", to) and to:getArmor() and AIEffect.serves(to,to)
                             and not strategy_call(self, "needToThrowArmor") then return true end
-                        if not strategy_call(self, "isWeak", to) and to:getDefensiveHorse() then return true end
+                        if not strategy_call(self, "isWeak", to) and AIEffect.has(to,"DefensiveHorse") then return true end
                     end
                 end
             end
@@ -1100,18 +1097,25 @@ end
 -- [S04] Loss benefits, turnover and play-phase prediction
 function SmartAIView:needToThrowArmor(player,reason)
     player=player or self.player
-    if not AIValue.isPlayer(player) or not strategy_call(player,"hasArmorEffect",nil) then return false end
-    if optional_armor(player) and not strategy_call(optional_armor(player),"isKindOf","EightDiagram")
+    if not AIValue.isPlayer(player) then return false end
+    local armor = optional_armor(player)
+    if not armor then return false end
+    local beneficiary, active = player:getEquipBeneficiary(armor:getEffectiveId())
+    if not beneficiary then return false end
+    if active and beneficiary:objectName() == player:objectName()
+        and (not strategy_call(armor,"isKindOf","EightDiagram")
         and strategy_call(player,"hasSkills","bazhen|yizhong")
-        or strategy_call(self,"evaluateArmor",nil,player)<=-2 then return true end
-    if strategy_call(player,"isWounded") and strategy_call(player,"hasArmorEffect","SilverLion") then
+        or strategy_call(self,"evaluateArmor",armor,player)<=-2) then return true end
+    if active and armor:isKindOf("SilverLion") and strategy_call(beneficiary,"isWounded") then
+        if beneficiary:objectName() ~= player:objectName() then return true end
         if player~=self.player and strategy_call(self,"isFriend",player) then
             return strategy_call(self,"isWeak",player) and not strategy_call(player,"hasSkills",strategy_known(sgs.use_lion_skill,"use_lion_skill"))
         end
         return true
     end
-    if optional_armor(player) and strategy_call(player,"hasSkill","sgkgodxiejia") then return true end
-    if optional_armor(player) and strategy_call(player,"hasSkill","s_nixing") then return true end
+    if strategy_call(player,"hasSkill","sgkgodxiejia") or strategy_call(player,"hasSkill","s_nixing") then return true end
+    if not active or not armor:isKindOf("Vine") then return false end
+    player = beneficiary
     return reason~="moukui"
         and strategy_call(self.player,"getPhase")==sgs.Player_Play
         and strategy_known(getCardsNum("Jink",player,self.player),"Jink estimate")<1
@@ -3352,8 +3356,8 @@ function SmartAIView:getStrategyDistance(from, to)
     if source_index == target_index then return 0 end
     local steps = math.abs(source_index - target_index)
     local value = math.min(steps, #alive - steps)
-    if from:getOffensiveHorse() then value = value - 1 end
-    if to:getDefensiveHorse() then value = value + 1 end
+    value = value + strategy_known(from:getHorseCorrection(false), "offensive mount correction")
+        + strategy_known(to:getHorseCorrection(true), "defensive mount correction")
     return self:useKnowledgeEstimate({value = math.max(1, value), status = "estimate",
         viewer = self.player:objectName(), source = from:objectName(), target = to:objectName(),
         basis = "foreign_distance_public_alive_seat_ring_and_mounts_unprojected_modifiers_unobserved"}, "getStrategyDistance")
@@ -3370,13 +3374,33 @@ end
 function SmartAIView:getDangerousCard(who)
     local call = strategy_call
     local friends = strategy_known(self.friends, "friends")
+    local area_owner = who
     local weapon = who:getWeapon()
+    local armor = who:getArmor()
+    local equip = weapon or armor
+    if not equip then return false end
+    who = area_owner:getEquipBeneficiary(equip:getEffectiveId()) or area_owner
+    if who:objectName() ~= area_owner:objectName()
+        and (not self:isEnemy(who) or self:isFriend(area_owner) and self:loseEquipEffect(area_owner)) then return false end
+    if weapon then
+        local _, active = area_owner:getEquipBeneficiary(weapon:getEffectiveId())
+        if not active then weapon = nil end
+    end
+    if armor then
+        local _, active = area_owner:getEquipBeneficiary(armor:getEffectiveId())
+        if not active then armor = nil end
+    end
     if weapon then
         if call(weapon, "isKindOf", "Crossbow") or call(weapon, "isKindOf", "GudingBlade") then
+            local borrowed = who:objectName() ~= area_owner:objectName()
             for _, friend in ipairs(friends) do
-                if call(weapon, "isKindOf", "Crossbow") and call(who, "canSlash", friend)
-                    and strategy_known(getKnownCard(who, self.player, "Slash", true, "he"), "Crossbow Slash") > 0 then return call(weapon, "getEffectiveId") end
-                if call(weapon, "isKindOf", "GudingBlade") and call(who, "canSlash", friend) and call(friend, "isKongcheng") then
+                local reaches = borrowed and self:getStrategyDistance(who, friend) <= who:getAttackRange()
+                    or not borrowed and call(who, "canSlash", friend)
+                if reaches and call(weapon, "isKindOf", "Crossbow")
+                    and strategy_known(getKnownCard(who, self.player, "Slash", true, "he"), "Crossbow Slash") > 0 then
+                    return call(weapon, "getEffectiveId")
+                end
+                if reaches and call(weapon, "isKindOf", "GudingBlade") and call(friend, "isKongcheng") then
                     local observer = self.room:getCurrent() or self.player
                     if self:useKnowledgeEstimate(self:estimateKnownCards(who, "Slash", observer, true, "he"), "getDangerousCard:GudingBlade") > 0 then return call(weapon, "getEffectiveId") end
                 end
@@ -3386,7 +3410,6 @@ function SmartAIView:getDangerousCard(who)
         elseif call(weapon, "isKindOf", "Axe") and (call(who, "hasSkills", "luoyi|pojun|jiushi|jiuchi|jie|wenjiu|shenli|jieyuan")
             or call(self, "getOverflow", who) > 0 or call(who, "getHandcardNum") + #call(who, "getEquips") >= 4) then return call(weapon, "getEffectiveId") end
     end
-    local armor = who:getArmor()
     if armor and call(armor, "isKindOf", "EightDiagram") then
         local lord = self.room:getLord()
         if lord and call(lord, "hasLordSkill", "hujia") and call(who, "getKingdom") == "wei"
@@ -3401,12 +3424,14 @@ function SmartAIView:getDangerousCard(who)
         if call(who, "hasSkill", "liegong|anjian") then return call(weapon, "getEffectiveId") end
         if call(weapon, "isKindOf", "SPMoonSpear") and call(who, "hasSkills", "guidao|longdan|guicai|jilve|huanshi|qingguo|kanpo") then return call(weapon, "getEffectiveId") end
         for _, friend in ipairs(friends) do
-            if call(who, "distanceTo", friend) <= call(who, "getAttackRange")
-                and call(who, "distanceTo", friend) > call(who, "getAttackRange", false) and call(self, "isWeak", friend) then return call(weapon, "getEffectiveId") end
+            local distance = self:getStrategyDistance(who, friend)
+            if distance <= call(who, "getAttackRange")
+                and distance > who:getRemainingWeaponRange(weapon:getEffectiveId()) and call(self, "isWeak", friend) then return call(weapon, "getEffectiveId") end
         end
         for _, friend in ipairs(friends) do
-            if call(who, "distanceTo", friend) <= call(who, "getAttackRange")
-                and call(who, "distanceTo", friend) > call(who, "getAttackRange", false) then return call(weapon, "getEffectiveId") end
+            local distance = self:getStrategyDistance(who, friend)
+            if distance <= call(who, "getAttackRange")
+                and distance > who:getRemainingWeaponRange(weapon:getEffectiveId()) then return call(weapon, "getEffectiveId") end
         end
     end
     return false
@@ -3414,7 +3439,22 @@ end
 
 function SmartAIView:getValuableCard(who)
     local call = strategy_call
+    local area_owner = who
     local weapon, offhorse = who:getWeapon(), who:getOffensiveHorse()
+    local defhorse, armor, treasure = who:getDefensiveHorse(), who:getArmor(), who:getTreasure()
+    local equip = weapon or offhorse or defhorse or armor or treasure
+    if not equip then return false end
+    who = area_owner:getEquipBeneficiary(equip:getEffectiveId()) or area_owner
+    local effects_worth_stripping = who:objectName() == area_owner:objectName()
+        or self:isEnemy(who) and not (self:isFriend(area_owner) and self:loseEquipEffect(area_owner))
+    local function active_card(card)
+        if card and effects_worth_stripping then
+            local _, active = area_owner:getEquipBeneficiary(card:getEffectiveId())
+            if active then return card end
+        end
+    end
+    weapon, offhorse = active_card(weapon), active_card(offhorse)
+    defhorse, armor, treasure = active_card(defhorse), active_card(armor), active_card(treasure)
     local sorted = call(self, "sort", strategy_known(self.friends, "friends"), "hp")
     -- Isolated sort returns a copy; the source mutates self.friends.
     for i, player in ipairs(sorted) do self.friends[i] = player end
@@ -3423,11 +3463,12 @@ function SmartAIView:getValuableCard(who)
         if weapon and call(who, "distanceTo", friend) > 1 then return call(weapon, "getEffectiveId") end
         if offhorse and call(who, "distanceTo", friend) > 1 then return call(offhorse, "getEffectiveId") end
     end
-    local defhorse = who:getDefensiveHorse()
     if defhorse and call(self.player, "distanceTo", who) == 2 then return call(defhorse, "getEffectiveId") end
-    if weapon and (call(weapon, "isKindOf", "MoonSpear") and call(who, "hasSkill", "keji") and call(who, "getHandcardNum") > 5
-        or call(who, "hasSkills", "qiangxi|zhulou|taichen")) then return call(weapon, "getEffectiveId") end
-    for _, equip in ipairs(call(who, "getEquips")) do
+    if weapon and call(weapon, "isKindOf", "MoonSpear") and call(who, "hasSkill", "keji") and call(who, "getHandcardNum") > 5 then return call(weapon, "getEffectiveId") end
+    for _, equip in ipairs(call(area_owner, "getEquips")) do
+        if self:isFriend(area_owner) and who:objectName() ~= area_owner:objectName() then break end
+        local who = area_owner
+        if equip:isKindOf("Weapon") and call(who, "hasSkills", "qiangxi|zhulou|taichen") then return equip:getEffectiveId() end
         if call(who, "getHp") <= 2 and call(who, "hasSkill", "baobian") then return call(equip, "getEffectiveId") end
         if call(equip, "getSuit") ~= strategy_known(sgs.Card_Diamond, "Diamond") and call(who, "hasSkill", "longhun") then return call(equip, "getEffectiveId") end
         if call(equip, "isRed") and call(who, "hasSkills", "wusheng|jijiu|xueji|nosfuhun") then return call(equip, "getEffectiveId") end
@@ -3436,13 +3477,12 @@ function SmartAIView:getValuableCard(who)
         if call(who, "hasSkills", strategy_known(sgs.need_equip_skill, "need_equip_skill"))
             and not call(who, "hasSkills", strategy_known(sgs.lose_equip_skill, "lose_equip_skill")) then return call(equip, "getEffectiveId") end
     end
-    local armor = who:getArmor()
-    if armor and call(self, "evaluateArmor", armor, who) > 3 and not call(self, "needToThrowArmor", who) then return call(armor, "getEffectiveId") end
+    if armor and call(self, "evaluateArmor", armor, who) > 3 and not call(self, "needToThrowArmor", area_owner) then return call(armor, "getEffectiveId") end
     if offhorse and call(who, "hasSkills", "nosqianxi|kuanggu|duanbing|qianxi") then return call(offhorse, "getEffectiveId") end
     if defhorse and strategy_known(getKnownCard(who, self.player, "Jink", true, "he"), "valuable Jink") < 1
         and not (call(self.player, "hasWeapon", "kylin_bow") and call(self.player, "canSlash", who)
             and call(self, "slashIsEffective", self:classProbe("Slash"), who, self.player)) then return call(defhorse, "getEffectiveId") end
-    if armor and not call(self, "needToThrowArmor", who) then return call(armor, "getEffectiveId") end
+    if armor and not call(self, "needToThrowArmor", area_owner) then return call(armor, "getEffectiveId") end
     if offhorse and call(who, "getHandcardNum") > 1 then
         for _, other in ipairs(self.friends) do
             if call(who, "distanceTo", other) == call(who, "getAttackRange") and call(who, "getAttackRange") > 1 then return call(offhorse, "getEffectiveId") end
@@ -3453,8 +3493,7 @@ function SmartAIView:getValuableCard(who)
             if call(who, "distanceTo", other) <= call(who, "getAttackRange") and call(who, "distanceTo", other) > 1 then return call(weapon, "getEffectiveId") end
         end
     end
-    local treasure = who:getTreasure()
-    if treasure and call(treasure, "isKindOf", "WoodenOx") and call(who, "getPileCount", "wooden_ox") > 1 then return call(treasure, "getEffectiveId") end
+    if treasure and call(treasure, "isKindOf", "WoodenOx") and call(area_owner, "getPileCount", "wooden_ox") > 1 then return call(treasure, "getEffectiveId") end
     return false
 end
 
@@ -3722,7 +3761,8 @@ function SmartAIView:getConnections(player)
     for _,pile in ipairs(q(player,'getPileNames'))do
         if pile:sub(1,1)~='#'and q(player,'getPileCount',pile)>0 then append(pile)end
     end
-    for _,equip in sgs.qlist(q(player,'getEquips'))do append(q(equip,'objectName'))end
+    for _,equip in sgs.qlist(q(player,'getEffectiveEquipCards'))do append(q(equip,'objectName'))end
+    for _,armor in ipairs(player:getKnownArmorEffectNames() or {}) do append(armor) end
     state.by_player[name]={names=copy(names),estimates=estimates(self,before)}
     views.by_player[name]=names;save(self,state)
     return names
@@ -8103,6 +8143,10 @@ function SmartAIView:askForCardChosen(who,flags,reason,method)
 		end
 	end
 	if card_choice_query(self,"isFriend",who) then
+		if flags:contains("e") and (reason=="snatch" or reason=="dismantlement") then
+			local id = self:getDangerousCard(who)
+			if id and card_choice_query(self,"doDisCard",who,id,no_dis) then return id end
+		end
 		if flags:contains("j") and not(card_choice_query(who,"hasSkill","qiaobian") and card_choice_query(who,"getHandcardNum")>0) then
 			local lightning,indulgence,supply_shortage
 			for _,trick in sgs.list(card_choice_query(who,"getJudgingArea"))do

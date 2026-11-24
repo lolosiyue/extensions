@@ -1978,12 +1978,12 @@ sfofl_boss_wusheng_skill.getTurnUseCard = function(self, options, request)
 			if package_known(card,"isBlack") and ((package_known(self,"getUseValue",card)<sgs.ai_use_value.Dismantlement) or inclusive or package_known(self,"getOverflow")>0) then
 				local shouldUse = true
 				if package_known(card,"isKindOf","Armor") then
-					if not package_call(self.player,"getArmor") then shouldUse = false
+					if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then shouldUse = false
 					elseif package_known(self.player,"hasEquip",card) and not package_known(self,"needToThrowArmor") then shouldUse = false
 					end
 				end
 				if package_known(card,"isKindOf","Weapon") then
-					if not package_call(self.player,"getWeapon") then shouldUse = false
+					if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) then shouldUse = false
 					elseif package_known(self.player,"hasEquip",card) and not has_weapon then shouldUse = false
 					end
 				end
@@ -3933,7 +3933,10 @@ sfofl_tuwei_skill.getTurnUseCard          = function(self, options, request)
 	end
 	if package_known(ids,"isEmpty") then return end
 	for _, p in ipairs(self.friends) do
-		if (package_call(p,"getArmor") and package_call(p,"getArmor"):isKindOf("SilverLion") and package_known(p,"isWounded")) or (package_known(p,"getHp") == 1 and package_known(self.player,"getHandcardNum") > 1) and package_known(p,"getStrategyMark","&sfofl_tuwei+to+#"..package_known(self.player,"objectName")) == 0 then
+		local lion = AIHold.kind(p, "Armor")
+		local beneficiary, active
+		if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(p, lion:getEffectiveId()) end
+		if (active and self:isFriend(beneficiary) and beneficiary:isWounded()) or (package_known(p,"getHp") == 1 and package_known(self.player,"getHandcardNum") > 1) and package_known(p,"getStrategyMark","&sfofl_tuwei+to+#"..package_known(self.player,"objectName")) == 0 then
 			return source_construct(self,"#sfofl_tuwei:.:")
 		end
 	end
@@ -3957,7 +3960,10 @@ ai_card_use["#sfofl_tuwei"] = function(self, card, use, request)
 
 	if not target then
 		for _, p in ipairs(self.friends) do
-			if (package_call(p,"getArmor") and package_call(p,"getArmor"):isKindOf("SilverLion")) and package_known(p,"getStrategyMark","&sfofl_tuwei+to+#"..package_known(self.player,"objectName")) == 0 then
+			local lion = AIHold.kind(p, "Armor")
+			local beneficiary, active
+			if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(p, lion:getEffectiveId()) end
+			if (active and self:isFriend(beneficiary) and beneficiary:isWounded()) and package_known(p,"getStrategyMark","&sfofl_tuwei+to+#"..package_known(self.player,"objectName")) == 0 then
 				target = p
 				break
 			end
@@ -5479,7 +5485,11 @@ ai_card_use["#sfofl_weizhu"] = function(self, card, use, request)
 							for _,p in sgs.list(dummy_use.to)do
 								if package_known(p,"getHp")<=1 then
 									shouldUse = false
-									if package_known(self.player,"distanceTo",p)>1 then keep_weapon = package_call(self.player,"getWeapon") end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -5528,7 +5538,7 @@ ai_card_use["#sfofl_weizhu"] = function(self, card, use, request)
 			end
 		end
 		local num = package_known(self,"getCardsNum","Jink")-1
-		if package_call(self.player,"getArmor") then num = num+1 end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num+1 end
 		if num>0 then
 			for _,card in ipairs(cards)do
 				if package_known(card,"isKindOf","Jink") and num>0 then
@@ -5655,7 +5665,11 @@ ai_card_use["#sfofl_cheji"] = function(self, card, use, request)
 							for _,p in sgs.list(dummy_use.to)do
 								if package_known(p,"getHp")<=1 then
 									shouldUse = false
-									if package_known(self.player,"distanceTo",p)>1 then keep_weapon = package_call(self.player,"getWeapon") end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -5704,7 +5718,7 @@ ai_card_use["#sfofl_cheji"] = function(self, card, use, request)
 			end
 		end
 		local num = package_known(self,"getCardsNum","Jink")-1
-		if package_call(self.player,"getArmor") then num = num+1 end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num+1 end
 		if num>0 then
 			for _,card in ipairs(cards)do
 				if package_known(card,"isKindOf","Jink") and num>0 then
@@ -7716,7 +7730,11 @@ ai_card_use["#sfofl_juezhi"] = function(self, card, use, request)
 							for _,p in sgs.qlist(dummy_use.to)do
 								if package_known(p,"getHp")<=1 then
 									shouldUse = false
-									if package_known(self.player,"distanceTo",p)>1 then keep_weapon = package_call(self.player,"getWeapon") end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -8746,7 +8764,11 @@ ai_card_use["#sfofl_shenglv"] = function(self, card, use, request)
 							for _,p in sgs.list(dummy_use.to)do
 								if package_known(p,"getHp")<=1 then
 									shouldUse = false
-									if package_known(self.player,"distanceTo",p)>1 then keep_weapon = package_call(self.player,"getWeapon") end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -8800,7 +8822,7 @@ ai_card_use["#sfofl_shenglv"] = function(self, card, use, request)
 		end
 
 		local num = package_known(self,"getCardsNum","Jink")-1
-		if package_call(self.player,"getArmor") then num = num+1 end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num+1 end
 		if num>0 then
 			for _,card in ipairs(cards)do
 				if package_known(card,"isKindOf","Jink") and num>0 then
@@ -9915,7 +9937,7 @@ package_add("sfofl_zhuren").getTurnUseCard = function(self,inclusive,request)
 	package_call(self,"sortByKeepValue",cards)
 	local toids = {}
   	for _,c in sgs.list(cards)do
-		if package_known(c,"getNumber")>6 and package_call(self.player,"getWeapon")==nil
+		if package_known(c,"getNumber")>6 and (AIEffect.has(self.player, "Weapon") == false and AIEffect.serves(self.player, self.player, 0))
 		then return source_construct(self,"#sfofl_zhuren:"..package_known(c,"getEffectiveId")..":") end
 	end
   	for _,c in sgs.list(cards)do
@@ -10111,7 +10133,7 @@ sfofl_n_linzhen_skill.getTurnUseCard=function(self, options, request)
 		return source_construct(self,"#sfofl_n_linzhen:.:")
 	end
 	local slash = clone(self)
-	if package_call(self.player,"getWeapon") and package_call(self.player,"getWeapon"):isKindOf("Crossbow")
+	if AIEffect.has(self.player, "Crossbow")
 	or package_known(self.player,"hasSkill","paoxiao") then
 		for _,enemy in ipairs(self.enemies)do
 			if package_known(self.player,"canSlash",enemy,slash,true) and package_known(self,"slashIsEffective",slash,enemy)
@@ -11196,7 +11218,7 @@ sfofl_n_yuanlue_skill.getTurnUseCard=function(self, options, request)
 		return source_construct(self,"#sfofl_n_yuanlue:.:")
 	end
 	local slash = clone(self)
-	if package_call(self.player,"getWeapon") and package_call(self.player,"getWeapon"):isKindOf("Crossbow")
+	if AIEffect.has(self.player, "Crossbow")
 	or package_known(self.player,"hasSkill","paoxiao") then
 		for _,enemy in ipairs(self.enemies)do
 			if package_known(self.player,"canSlash",enemy,slash,true) and package_known(self,"slashIsEffective",slash,enemy)

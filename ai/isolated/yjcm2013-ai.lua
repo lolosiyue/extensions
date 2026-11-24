@@ -159,7 +159,7 @@ ai_card_use.JunxingCard = function(self, card, use, request)
 		end
 	end
 	local num = self:getCardsNum("Jink")-1
-	if self.player:getArmor() then num = num+1 end
+	if AIEffect.has(self.player,"Armor") then num = num+1 end
 	if num>0 then
 		for _,card in ipairs(cards)do
 			if card:isKindOf("Jink") and num>0 then
@@ -520,7 +520,7 @@ sgs.ai_skill_cardask["@longyin"] = function(self,data)
 		local offhorse_avail,weapon_avail
 		for _,enemy in ipairs(self.enemies)do
 			if self:canAttack(enemy,self.player) then
-				if not offhorse_avail and self.player:getOffensiveHorse() and self.player:distanceTo(enemy,1)<=self.player:getAttackRange() then
+				if not offhorse_avail and self.player:getOffensiveHorse() and self.player:distanceTo(enemy,(AIEffect.serves(self.player,self.player)~=false and not AIEffect.horseRemains(self.player,false,self.player:getOffensiveHorse():getEffectiveId())) and 1 or 0)<=self.player:getAttackRange() then
 					offhorse_avail = true
 				end
 				if not weapon_avail and self.player:getWeapon() and self.player:distanceTo(enemy)==1 then
@@ -743,7 +743,7 @@ sgs.ai_skill_cardask["@duodao-get"] = function(self,data)
 		local offhorse_avail,weapon_avail
 		for _,enemy in ipairs(self.enemies)do
 			if self:canAttack(enemy,self.player) then
-				if not offhorse_avail and self.player:getOffensiveHorse() and self.player:distanceTo(enemy,1)<=self.player:getAttackRange() then
+				if not offhorse_avail and self.player:getOffensiveHorse() and self.player:distanceTo(enemy,(AIEffect.serves(self.player,self.player)~=false and not AIEffect.horseRemains(self.player,false,self.player:getOffensiveHorse():getEffectiveId())) and 1 or 0)<=self.player:getAttackRange() then
 					offhorse_avail = true
 				end
 				if not weapon_avail and self.player:getWeapon() and self.player:distanceTo(enemy)==1 then
@@ -772,7 +772,7 @@ sgs.ai_skill_cardask["@duodao-get"] = function(self,data)
 			else
 				if self:getCardsNum("Slash")==0 or self:willSkipPlayPhase() then return "." end
 				local invoke = false
-				local range = sgs.weapon_range[damage.from:getWeapon():getClassName()] or 0
+				local range = (AIEffect.serves(self.player,self.player,0) ~= false) and (sgs.weapon_range[damage.from:getWeapon():getClassName()] or 0) or 0
 				if skill(self,self.player,"anjian|mobileanjian") then
 					for _,enemy in ipairs(self.enemies)do
 						if not enemy:inMyAttackRange(self.player) and not self.player:inMyAttackRange(enemy) and self.player:distanceTo(enemy)<=range then
@@ -781,7 +781,7 @@ sgs.ai_skill_cardask["@duodao-get"] = function(self,data)
 						end
 					end
 				end
-				if not invoke and self:evaluateWeapon(damage.from:getWeapon())>8 then invoke = true end
+				if not invoke and AIEffect.serves(self.player,self.player,0) ~= false and self:evaluateWeapon(damage.from:getWeapon())>8 then invoke = true end
 				if invoke then
 					local str = getLeastValueCard(damage.from)
 					if str then return str end
@@ -839,12 +839,12 @@ ai_card_use.DanshouCard = function(self, card, use, request)
 		if self.player:canDiscard(self.player,card:getEffectiveId()) and ((self:getUseValue(card)<sgs.ai_use_value.Dismantlement+1) or self:getOverflow()>0) then
 			local shouldUse = true
 			if card:isKindOf("Armor") then
-				if not self.player:getArmor() then shouldUse = false
+				if AIHold.slotFree(self.player,1) and AIEffect.serves(self.player,self.player,1) then shouldUse = false
 				elseif self.player:hasEquip(card) and not (card:isKindOf("SilverLion") and self.player:isWounded()) then shouldUse = false
 				end
 			end
 			if card:isKindOf("Weapon") and self.player:getHandcardNum()>2 then
-				if not self.player:getWeapon() then shouldUse = false
+				if AIHold.slotFree(self.player,0) and AIEffect.serves(self.player,self.player,0) then shouldUse = false
 				elseif self.player:hasEquip(card) and not has_weapon then shouldUse = false
 				else DisWeapon = true
 				end
@@ -944,7 +944,7 @@ sgs.ai_skill_playerchosen.zhiyan = function(self,targets)
 				end
 			end
 			if not (card:isKindOf("Armor") and (skill(self,self.player,"bazhen|yizhong") or self:evaluateArmor(card)<0))
-				and not (card:isKindOf("Weapon") and self.player:getWeapon() and self:evaluateWeapon(card)<self:evaluateWeapon(self.player:getWeapon())-1) then
+				and not (card:isKindOf("Weapon") and self.player:getWeapon() and self:evaluateWeapon(card)<(AIEffect.serves(self.player,self.player)==false and 0 or self:evaluateWeapon(self.player:getWeapon()))-1) then
 				return self.player
 			end
 		else

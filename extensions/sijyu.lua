@@ -1838,13 +1838,13 @@ sijyu_lijian = sgs.CreateTriggerSkillV2 {
             if player:getPhase() == sgs.Player_Start then
                 for _, p in sgs.qlist(room:getOtherPlayers(player)) do
                     room:addPlayerMark(p, "&" .. skill:objectName() .. "-Clear")
-                    p:addEquipsNullified("EquipCard")
+                    p:addEquipsNullified("Armor")
                 end
             end
         elseif (event == sgs.EventPhaseChanging) then
             for _, p in sgs.qlist(room:getOtherPlayers(player)) do
                 room:setPlayerMark(p, "&" .. skill:objectName() .. "-Clear", 0)
-                p:removeEquipsNullified("EquipCard")
+                p:removeEquipsNullified("Armor")
             end
         end
         return false

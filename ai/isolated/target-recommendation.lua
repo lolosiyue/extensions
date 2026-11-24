@@ -229,12 +229,14 @@ function SmartAIView:getTargetBaseScore(target, card, from, flags)
 
     -- [4] 棄牌/破壞類評分
     if self:checkIsDecreaseCard(card) then
-		if not from:canDiscard(target, flags) then
+		-- 突襲的候選已由引擎按 canGet("h") 過濾。
+		local isNosTuxi = card == "nostuxi"
+		if not isNosTuxi and not from:canDiscard(target, flags) then
 			return -5  -- 無效目標
 		end
 
 		-- 判定是拆牌(不獲得)還是順牌(獲得)
-		local isObtain = card and card:isKindOf("Snatch")
+		local isObtain = isNosTuxi or (card and type(card) ~= "string" and card:isKindOf("Snatch"))
 
 		if isEnemy then
 			if self:doDisCard(target, flags, isObtain) then
@@ -381,7 +383,7 @@ function SmartAIView:getBestTargetOr(targets, card, from, fallback, opts)
     if targets and type(targets) ~= "table" then
         targets = sgs.QList2Table(targets)
     end
-    local target = self:getBestTarget(targets, card, from, nil, opts)
+    local target = self:getBestTarget(targets, card, from, opts and opts.flags, opts)
     if target then return target end
     if type(fallback) == "function" then
         return fallback(self, targets, card, from)
@@ -673,7 +675,7 @@ sgs.registerTargetRecommend("duanchang", function(self, from, to, card, skill_ow
 	end
 	local damageNum = self:ajustDamage(from, to, 1, card)
 	if to:getHp() <= damageNum and from:getMaxHp() < 6 and not to:isLord() and #self:getFriends(to, true) > 0 then
-		if not (from:getMaxHp() >= 3 and from:getArmor() and from:getDefensiveHorse()) then
+		if not (from:getMaxHp() >= 3 and AIEffect.has(from, "Armor") and AIEffect.has(from, "DefensiveHorse")) then
 			if from:isLord() and self:isWeak() or (self.room:getLord() and target_known(from:getRole(), "recommend:duanchang source role") == "renegade") then
 				return -5
 			end

@@ -405,12 +405,12 @@ ai_fill_skill.diy_k_qixi=function(self, options, request)
 		if card:isBlack() and ((self:getUseValue(card)<sgs.ai_use_value.Dismantlement) or inclusive or self:getOverflow()>0) then
 			local shouldUse = true
 			if card:isKindOf("Armor") then
-				if not self.player:getArmor() then shouldUse = false
+				if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then shouldUse = false
 				elseif self.player:hasEquip(card) and not self:needToThrowArmor() then shouldUse = false
 				end
 			end
 			if card:isKindOf("Weapon") then
-				if not self.player:getWeapon() then shouldUse = false
+				if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) then shouldUse = false
 				elseif self.player:hasEquip(card) and not has_weapon then shouldUse = false
 				end
 			end
@@ -436,12 +436,12 @@ ai_fill_skill.diy_k_qixi=function(self, options, request)
 		if (card:isRed() and card:isKindOf("EquipCard")) and ((self:getUseValue(card)<sgs.ai_use_value.Dismantlement) or inclusive or self:getOverflow()>0) then
 			local shouldUse = true
 			if card:isKindOf("Armor") then
-				if not self.player:getArmor() then shouldUse = false
+				if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then shouldUse = false
 				elseif self.player:hasEquip(card) and not self:needToThrowArmor() then shouldUse = false
 				end
 			end
 			if card:isKindOf("Weapon") then
-				if not self.player:getWeapon() then shouldUse = false
+				if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) then shouldUse = false
 				elseif self.player:hasEquip(card) and not has_weapon then shouldUse = false
 				end
 			end
@@ -1632,7 +1632,7 @@ ai_card_use["#rushB_baobian_tiaoxin"] = function(self, card, use, request)
 	if #targets==0 then return end
 
 	sgs.ai_use_priority.rushB_baobian_tiaoxin = 8
-	if not self.player:getArmor() and not self.player:isKongcheng() then
+	if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false and not self.player:isKongcheng() then
 		for _,c in sgs.qlist(self.player:getCards("h"))do
 			if c:isKindOf("Armor") and self:evaluateArmor(c)>3 then
 				sgs.ai_use_priority.rushB_baobian_tiaoxin = 5.9

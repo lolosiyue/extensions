@@ -36,7 +36,7 @@ ai_skill_invoke.sk_leiji = true
 sgs.ai_skill_playerchosen.sk_leiji = function(self, targets)
     local lightning_targets = {}
 	for _, e in ipairs(self.enemies) do
-	    if not e:hasSkill("hongyan|wuyan") and e:getArmor() ~= "SilverLion" then
+	    if not e:hasSkill("hongyan|wuyan") and not AIEffect.has(e,"SilverLion") then
 		    table.insert(lightning_targets, e)
 		end
 	end
@@ -1078,7 +1078,7 @@ ai_skill_invoke.sk_fenwei = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
     local damage = data:toDamage()
 	local nature = damage.nature
-	if not damage.to:getArmor() ~= "SilverLion" and self:isEnemy(damage.to) and self:damageIsEffective(damage.to, nature) then
+	if not AIEffect.has(damage.to,"SilverLion") and self:isEnemy(damage.to) and self:damageIsEffective(damage.to, nature) then
 	    return true
 	end
 	return false
@@ -2060,7 +2060,7 @@ ai_skill_invoke.sk_manyi = function(self, options, request)
 	local is_self = from:objectName() == self.player:objectName()
 	if card:isKindOf("SavageAssault") then return (is_self) or false end
 	if is_self then return (#self.enemies >= #self.friends_noself) or false end
-	return (self.player:getArmor() == "Vine" or #self.enemies > #self.friends) or false
+	return (AIEffect.has(self.player,"Vine") or #self.enemies > #self.friends) or false
 end
 
 sgs.ai_skill_playerchosen.sk_souying_dmg = function(self, targets)

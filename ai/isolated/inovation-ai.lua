@@ -479,7 +479,8 @@ ai_skill_invoke.kangfen = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	if #self.enemies == 0 then return false end
 	if self.player:getHp() == 1 and self:getCardsNum("Peach") == 0 and self:getCardsNum("Analeptic") == 0 then return false end
-	if self.player:getEquips():length() == 0 and self.player:getHp() <= 3 then return false end
+	local effectiveEquipment = AIEffect.rows(self.player)
+	if effectiveEquipment and #effectiveEquipment == 0 and self.player:getHp() <= 3 and self.player:getAttackRange() <= 1 then return false end
 	return true
 end
 
@@ -1523,7 +1524,7 @@ providers.shouldUseRende = function(self)
 		self:sort(self.enemies,"defense")
 		for _, enemy in ipairs(self.enemies) do
 			local inAttackRange = self.player:distanceTo(enemy) == 1 or self.player:distanceTo(enemy) == 2
-									and self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse()
+									and self:getCardsNum("OffensiveHorse") > 0 and (AIEffect.has(self.player, "OffensiveHorse") == false and AIEffect.serves(self.player, self.player, 3))
 			if inAttackRange and self:isGoodTarget(enemy,self.enemies) then
 				local slashs = self:getCards("Slash")
 				local slash_count = 0

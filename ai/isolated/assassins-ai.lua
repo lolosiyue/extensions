@@ -69,7 +69,7 @@ ai_skill_invoke.tianming = function(self, options, request)
 	end
 
 	local num = self:getCardsNum("Jink")-1
-	if self.player:getArmor() then num = num+1 end
+	if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num+1 end
 	if num>0 then
 		for _,card in ipairs(cards)do
 			if card:isKindOf("Jink") and num>0 then
@@ -94,7 +94,13 @@ ai_skill_invoke.tianming = function(self, options, request)
 		table.insert(unpreferedCards,self.player:getArmor():getId())
 	end
 
-	if self.player:getOffensiveHorse() and self.player:getWeapon() then
+	local mounted = AIHold.kind(self.player, "OffensiveHorse")
+	local canSpareHorse = mounted and (AIEffect.serves(self.player, self.player, 3) == false
+		or AIEffect.horseRemains(self.player, false, mounted:getEffectiveId()) == true)
+	for _, row in ipairs(AIEffect.rows(self.player, "Weapon") or {}) do
+		if not table.contains(unpreferedCards, row.id) then canSpareHorse = true; break end
+	end
+	if mounted and canSpareHorse then
 		table.insert(unpreferedCards,self.player:getOffensiveHorse():getId())
 	end
 

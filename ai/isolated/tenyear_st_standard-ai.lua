@@ -1426,7 +1426,7 @@ sgs.ai_skill_cardask["@tenyearjushou"] = function(self,data)
 		for _,c in ipairs(equips)do
 			if self.player:canUse(c,sp) then
 				local index = known(c:getEquipSlot(),"equipment location")
-				if self.player:getEquip(index) then continue end
+				if self.player:getEquip(index) or AIEffect.serves(self.player,self.player,index)==false then continue end
 				return "$"..c:getKnownEffectiveId()
 			end
 		end
@@ -2592,7 +2592,7 @@ sgs.ai_skill_cardask["@tenyearduodao"] = function(self,data)
 		local offhorse_avail,weapon_avail
 		for _,enemy in ipairs(self.enemies)do
 			if self:canAttack(enemy,self.player) then
-				if not offhorse_avail and self.player:getOffensiveHorse() and self.player:distanceTo(enemy, 1)<=self.player:getAttackRange() then
+				if not offhorse_avail and self.player:getOffensiveHorse() and self.player:distanceTo(enemy, (AIEffect.serves(self.player,self.player)~=false and not AIEffect.horseRemains(self.player,false,self.player:getOffensiveHorse():getEffectiveId())) and 1 or 0)<=self.player:getAttackRange() then
 					offhorse_avail = true
 				end
 				if not weapon_avail and self.player:getWeapon() and self.player:distanceTo(enemy)==1 then
@@ -2613,7 +2613,7 @@ sgs.ai_skill_cardask["@tenyearduodao"] = function(self,data)
 		else
 			if self:getCardsNum("Slash")==0 or self:willSkipPlayPhase() then return "." end
 			local invoke = false
-			local range = sgs.weapon_range[use.from:getWeapon():getClassName()] or 0
+			local range = (AIEffect.serves(self.player,self.player,0) ~= false) and (sgs.weapon_range[use.from:getWeapon():getClassName()] or 0) or 0
 			if self.player:hasSkill("anjian") then
 				for _,enemy in ipairs(self.enemies)do
 					if not enemy:inMyAttackRange(self.player) and not self.player:inMyAttackRange(enemy) and self.player:distanceTo(enemy)<=range then
@@ -2622,7 +2622,7 @@ sgs.ai_skill_cardask["@tenyearduodao"] = function(self,data)
 					end
 				end
 			end
-			if not invoke and self:evaluateWeapon(use.from:getWeapon())>8 then invoke = true end
+			if not invoke and AIEffect.serves(self.player,self.player,0) ~= false and self:evaluateWeapon(use.from:getWeapon())>8 then invoke = true end
 			if invoke then
 				local str = getLeastValueCard(use.from)
 				if str then return str end
@@ -2899,7 +2899,7 @@ ai_card_use.TenyearDuwuCard = function(self, card, use, request)
 		table.insert(card_ids,self.player:getOffensiveHorse():getEffectiveId())
 		eq_num = eq_num+1
 	end
-	if self.player:getWeapon() and self:evaluateWeapon(self.player:getWeapon())<5 then
+	if self.player:getWeapon() and (AIEffect.serves(self.player,self.player)==false or self:evaluateWeapon(self.player:getWeapon())<5) then
 		table.insert(card_ids,self.player:getWeapon():getEffectiveId())
 		eq_num = eq_num+2
 	end
@@ -2908,12 +2908,12 @@ ai_card_use.TenyearDuwuCard = function(self, card, use, request)
 		if index<=hc_num then return 0
 		elseif index==hc_num+1 then
 			if eq_num==2 then
-				return sgs.weapon_range[self.player:getWeapon():getClassName()]-self.player:getAttackRange(false)
+				return self.player:getAttackRange() - (AIEffect.rangeAfterLeaving(self.player, self.player:getWeapon():getEffectiveId()) or self.player:getAttackRange(false))
 			else
 				return 1
 			end
 		elseif index==hc_num+2 then
-			return sgs.weapon_range[self.player:getWeapon():getClassName()]
+			return self.player:getAttackRange() - (AIEffect.rangeAfterLeaving(self.player, self.player:getWeapon():getEffectiveId()) or self.player:getAttackRange(false)) + self.player:getAttackRange(false)
 		end
 	end
 

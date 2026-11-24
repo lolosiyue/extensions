@@ -996,16 +996,31 @@ ai_card_use.ZhigeCard = function(self, card, use, request)
 	for _,target in ipairs(targets)do
 		if self:isFriend(target) then continue end
 		if getCardsNum("Slash",target,self.player)<1 then
-			if target:getDefensiveHorse() and not self.player:getDefensiveHorse() then
-			elseif target:getOffensiveHorse() and not self.player:getOffensiveHorse() then
+			if AIHold.kind(target, "DefensiveHorse") and AIHold.slotFree(self.player, 2) and AIEffect.serves(self.player, self.player, 2) and self.player:getHorseCorrection(true) == 0 then
+			elseif AIHold.kind(target, "OffensiveHorse") and AIHold.slotFree(self.player, 3) and AIEffect.serves(self.player, self.player, 3) and self.player:getHorseCorrection(false) == 0 then
 			elseif target:getArmor() then
-				if self.player:getArmor() and self:evaluateArmor(target:getArmor())>=self:evaluateArmor(self.player:getArmor()) then
+				if AIEffect.serves(self.player, self.player, 1) ~= true then continue end
+				local incoming = AIHold.kind(target, "Armor")
+				local currentArmor = AIValue.requireKnown(AIEffect.cards(self.player, "Armor"), "Zhige armor effects")
+				local incomingValue = self:evaluateArmor(incoming, self.player)
+				local improves = true
+				for _, activeArmor in ipairs(currentArmor) do
+					if self:evaluateArmor(activeArmor, self.player) > incomingValue then improves = false; break end
+				end
+				if not improves then continue end
+				if #currentArmor > 0 and AIHold.kind(self.player, "Armor") then
 				elseif not self.player:getArmor() then
 					if skill(self,self.player,"bazhen|yizhong|linglong|fuyin") or hasYinshiEffect(self.player) then return end
 				else return end
 			elseif target:getWeapon() then
-				if self.player:getWeapon() and self:evaluateArmor(target:getWeapon())>=self:evaluateArmor(self.player:getWeapon()) then
-				elseif not self.player:getWeapon() then
+				if AIEffect.serves(self.player, self.player, 0) ~= true then continue end
+				local oldWeapon = AIHold.kind(self.player, "Weapon")
+				local incoming = AIHold.kind(target, "Weapon")
+				local remaining = AIEffect.rangeAfterLeaving(self.player, oldWeapon and oldWeapon:getEffectiveId())
+				local improves = remaining and self:evaluateWeapon(incoming, self.player, nil, math.max(remaining, incoming:getRange() or 1))
+					>= self:evaluateWeapon(oldWeapon, self.player, nil, self.player:getAttackRange())
+				if oldWeapon and improves then
+				elseif remaining and AIHold.slotFree(self.player, 0) and improves then
 				else return end
 			elseif target:getTreasure() and target:getPile("wooden_ox"):length()>0 then
 			else continue end

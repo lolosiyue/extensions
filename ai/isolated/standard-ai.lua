@@ -956,14 +956,38 @@ ai_skill_playerschosen.nostuxi=function(self,options)
     if type(options)~="table" or not AIValue.isList(options.players)then
         return ai_unsupported("nostuxi candidates are missing","nostuxi")
     end
-    local offered={}
-    for _,name in ipairs(options.players)do offered[name]=true end
     local max_count=type(options.max_count)=="number"and options.max_count or #options.players
+    -- The original selection is the fallback; it also sets the nostuxi_isfriend_ flags.
+    local original={}
+    for _,view in ipairs(self:selectNosTuxiTargets("@nostuxi-card"))do original[#original+1]=view:objectName() end
+    -- Same filters as add_player: has hand cards, not self, no unread lord while rebels remain.
+    local pool=AIList.new({})
+    for _,name in ipairs(options.players)do
+        local p=self.room:findPlayerByObjectName(name,true)
+        if p and p:getHandcardNum()>0 and p:objectName()~=self.player:objectName()
+            and not (self:objectiveLevel(p)==0 and p:isLord() and self:getRoleCounts()["rebel"]>1) then
+            pool[#pool+1]=p
+        end
+    end
+    local function original_next(_,candidates)
+        for _,name in ipairs(original)do
+            for _,p in ipairs(candidates)do
+                if p:objectName()==name then return p end
+            end
+        end
+    end
+    -- Recommendation picks first; each empty pick falls back to the original order.
     local result={}
-    for _,view in ipairs(self:selectNosTuxiTargets("@nostuxi-card"))do
-        if #result>=max_count then break end
-        local name=view:objectName()
-        if offered[name]then result[#result+1]=name end
+    while #result<max_count and #pool>0 do
+        local p=self:getBestTargetOr(pool,"nostuxi",self.player,original_next,{flags="h"})
+        if not p then break end
+        if self:isFriend(p) then self:setStrategyPlayerFlag(self.player,"nostuxi_isfriend_"..p:objectName(),true) end
+        result[#result+1]=p:objectName()
+        local rest=AIList.new({})
+        for _,q in ipairs(pool)do
+            if q:objectName()~=p:objectName() then rest[#rest+1]=q end
+        end
+        pool=rest
     end
     return result
 end
@@ -1736,7 +1760,7 @@ end
 
 function sgs.ai_cardneed.paoxiao(to,card,self)
     local cards = strategy_cards(self,to,"h")
-    local has_weapon = to:getWeapon() and not to:getWeapon():isKindOf("Crossbow")
+    local has_weapon = false; for _, w in ipairs(AIEffect.cards(to,"Weapon") or {}) do if not w:isKindOf("Crossbow") then has_weapon = true end end
     local slash_num = 0
     for _,c in sgs.list(cards)do
         local flag=string.format("%s_%s_%s","visible",self.room:getCurrent():objectName(),to:objectName())
@@ -1838,7 +1862,7 @@ ai_skill_choice.yajiao = function(self, options, request)
 
     if self:isFriend(nextAlive) and not self:willSkipDrawPhase(nextAlive) and not self:willSkipPlayPhase(nextAlive)
         and not nextAlive:hasSkill("luoshen")
-        and not nextAlive:hasSkills("tuxi|nostuxi") and not (nextAlive:hasSkill("qiaobian") and nextAlive:getHandcardNum()>0) then
+        and not nextAlive:hasSkillFamily("tuxi") and not (nextAlive:hasSkill("qiaobian") and nextAlive:getHandcardNum()>0) then
         if self:isValuableCard(card,nextAlive) then
             return ai_choice_result(("cancel"), options)
         end
@@ -2593,7 +2617,7 @@ function SmartAIView:selectZhihengCosts()
                             for _,p in sgs.list(dummy_use.to)do
                                 if p:getHp()<=1 then
                                     shouldUse = false
-                                    if self.player:distanceTo(p)>1 then keep_weapon = self.player:getWeapon() end
+                                    do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and self.player:distanceTo(p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
                                     break
                                 end
                             end
@@ -2644,7 +2668,7 @@ function SmartAIView:selectZhihengCosts()
         end
 
         local num = self:getCardsNum("Jink")-1
-        if self.player:getArmor() then num = num+1 end
+        if AIEffect.has(self.player,"Armor") then num = num+1 end
         if num>0 then
             for _,card in ipairs(cards)do
                 if card:isKindOf("Jink") and num>0 then
@@ -2672,7 +2696,7 @@ function SmartAIView:selectZhihengCosts()
             table.insert(unpreferedCards,self.player:getArmor():getId())
         end
 
-        if self.player:getOffensiveHorse() and self.player:getWeapon() then
+        if self.player:getOffensiveHorse() and AIEffect.has(self.player,"Weapon") then
             table.insert(unpreferedCards,self.player:getOffensiveHorse():getId())
         end
     end
@@ -2851,7 +2875,7 @@ function SmartAIView:shouldUseRende()
         self.enemies = self:sort(self.enemies,"defense")
         for _,enemy in ipairs(self.enemies)do
             if self.player:distanceTo(enemy)==1 or self.player:distanceTo(enemy)==2
-            and self:getCardsNum("OffensiveHorse")>0 and not self.player:getOffensiveHorse()
+            and self:getCardsNum("OffensiveHorse")>0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3)
             and self:isGoodTarget(enemy,self.enemies) then
                 local slash_count = 0
                 for _,slash in ipairs(self:getCards("Slash"))do
@@ -4427,7 +4451,7 @@ getNosFenchengValue=function(self,player)
     if player:getOffensiveHorse() then table.insert(equip_table,3) end
     if player:getWeapon() then table.insert(equip_table,0) end
     if player:getDefensiveHorse() then table.insert(equip_table,2) end
-    if player:getArmor() and not needToTA then table.insert(equip_table,1) end
+    if player:getArmor() and not needToTA and AIEffect.serves(player,player) ~= false then table.insert(equip_table,1) end
 
     local value = 0
     for i = 1,num,1 do
@@ -4475,9 +4499,9 @@ getKurouCard=function(self,not_slash)
         if self.player:getOffensiveHorse() then
             card_id=self:useKnowledgeEstimate({value=(self.player:getOffensiveHorse()):getKnownId(),status="estimate",
                 basis="donor_error_repair:getKurouCard_undefined_player_offensive_horse"},"standard.kurou")
-        elseif self.player:getWeapon() and self:evaluateWeapon(self.player:getWeapon())<3
+        elseif self.player:getWeapon() and (AIEffect.serves(self.player,self.player)==false or self:evaluateWeapon(self.player:getWeapon())<3)
                 and not (self.player:getWeapon():isKindOf("Crossbow") and hold_crossbow) then card_id = self.player:getWeapon():getId()
-        elseif self.player:getArmor() and self:evaluateArmor(self.player:getArmor())<2 then card_id = self.player:getArmor():getId()
+        elseif self.player:getArmor() and (AIEffect.serves(self.player,self.player)==false or self:evaluateArmor(self.player:getArmor())<2) then card_id = self.player:getArmor():getId()
         end
     end
     if not card_id then
@@ -4555,7 +4579,7 @@ ai_fill_skill.noskurou=function(self, options, request)
         return skill_seed(self,"noskurou","NosKurouCard",request)
     end
     local slash = self:getEvaluationCard("slash")
-    if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow")
+    if AIEffect.has(self.player,"Crossbow")
     or self:hasUnlimitedSlash() then
         for _,enemy in ipairs(self.enemies)do
             if self.player:canSlash(enemy, slash, true) and self:slashIsEffective(slash,enemy)
@@ -4746,13 +4770,13 @@ ai_fill_skill.guose=function(self, options, request)
             local shouldUse = true
 
             if acard:isKindOf("Armor") then
-                if not self.player:getArmor() then shouldUse = false
+                if AIHold.slotFree(self.player,1) and AIEffect.serves(self.player,self.player,1) then shouldUse = false
                 elseif self.player:hasEquip(acard) and not has_armor and self:evaluateArmor()>0
                 then shouldUse = false end
             end
 
             if acard:isKindOf("Weapon") then
-                if not self.player:getWeapon() then shouldUse = false
+                if AIHold.slotFree(self.player,0) and AIEffect.serves(self.player,self.player,0) then shouldUse = false
                 elseif self.player:hasEquip(acard) and not has_weapon
                 then shouldUse = false end
             end
@@ -5759,12 +5783,12 @@ ai_fill_skill.nosguose=function(self, options, request)
         if (acard:getSuit()==sgs.Card_Diamond) and ((self:getUseValue(acard)<sgs.ai_use_value.Indulgence) or inclusive) then
             local shouldUse=true
             if acard:isKindOf("Armor") then
-                if not self.player:getArmor() then shouldUse = false
+                if AIHold.slotFree(self.player,1) and AIEffect.serves(self.player,self.player,1) then shouldUse = false
                 elseif self.player:hasEquip(acard) and not has_armor and self:evaluateArmor()>0 then shouldUse = false
                 end
             end
             if acard:isKindOf("Weapon") then
-                if not self.player:getWeapon() then shouldUse = false
+                if AIHold.slotFree(self.player,0) and AIEffect.serves(self.player,self.player,0) then shouldUse = false
                 elseif self.player:hasEquip(acard) and not has_weapon then shouldUse = false
                 end
             end
@@ -5830,12 +5854,12 @@ ai_fill_skill.qixi=function(self, options, request)
         if card:isBlack() and ((self:getUseValue(card)<sgs.ai_use_value.Dismantlement) or inclusive or self:getOverflow()>0) then
             local shouldUse = true
             if card:isKindOf("Armor") then
-                if not self.player:getArmor() then shouldUse = false
+                if AIHold.slotFree(self.player,1) and AIEffect.serves(self.player,self.player,1) then shouldUse = false
                 elseif self.player:hasEquip(card) and not self:needToThrowArmor() then shouldUse = false
                 end
             end
             if card:isKindOf("Weapon") then
-                if not self.player:getWeapon() then shouldUse = false
+                if AIHold.slotFree(self.player,0) and AIEffect.serves(self.player,self.player,0) then shouldUse = false
                 elseif self.player:hasEquip(card) and not has_weapon then shouldUse = false
                 end
             end
@@ -6238,6 +6262,8 @@ end)
 sgs.registerSkillCardType("rende", "draw")
 sgs.registerSkillCardType("nosrende", "draw")
 sgs.registerSkillCardType("qingnang", "recover")
+sgs.registerSkillCardType("nostuxi", "debuff")
+sgs.registerSkillCardType("nostuxi", "decrease")
 sgs.registerTargetRecommend("nosrende", function(self, from, to, card, skill_owner, ctx)
     if not ctx.isDraw or not self:isFriend(to,from)
     or skill_owner and skill_owner:objectName()~=to:objectName() then return 0 end

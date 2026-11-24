@@ -416,9 +416,13 @@ function SmartAIView:useCardGaleShell(card,use)
                 value = value+2
             end
             local armor = target:getArmor()
+            -- 狂風甲裝進 target 的實體區：防具效果（狂風甲的弱點、被頂掉舊防具的損失、獅子回血）歸該區受益席
+            local holder = AIEffect.areaBeneficiary(target) or target
+            if not self:isEnemy(holder) then return -10 end
             if armor then
                 value = value+10
-                if target:hasArmorEffect("SilverLion") and target:isWounded() then
+                local _, lion_active = AIEffect.beneficiaryOf(target, armor:getEffectiveId())
+                if armor:isKindOf("SilverLion") and lion_active ~= false and holder:isWounded() then
                     value = value-4
                 end
                 if self:hasSkills(sgs.lose_equip_skill,target) then
@@ -486,29 +490,29 @@ function SmartAIView:useCardEarthquake(card,use)
     local function getEquipsValue(player)
         local v = 0
         local danID = self:getDangerousCard(player)
-        local weapon = player:getWeapon()
+        local weapon = AIEffect.serves(player,player) ~= false and player:getWeapon() or nil
         if weapon then
             v = v+5
             if danID and weapon:getKnownEffectiveId()==danID then
                 value = value+2
             end
         end
-        local armor = player:getArmor()
+        local armor = AIEffect.serves(player,player) ~= false and player:getArmor() or nil
         if armor then
             v = v+8
             if danID and armor:getKnownEffectiveId()==danID then
                 value = value+2
             end
         end
-        local dhorse = player:getDefensiveHorse()
+        local dhorse = AIEffect.serves(player,player) ~= false and player:getDefensiveHorse() or nil
         if dhorse then
             v = v+7
         end
-        local ohorse = player:getOffensiveHorse()
+        local ohorse = AIEffect.serves(player,player) ~= false and player:getOffensiveHorse() or nil
         if ohorse then
             v = v+4
         end
-        local treasure = player:getTreasure()
+        local treasure = AIEffect.serves(player,player) ~= false and player:getTreasure() or nil
         if treasure then
             v = v+2
         end
@@ -531,7 +535,7 @@ function SmartAIView:useCardEarthquake(card,use)
                 if self:hasSkills(sgs.lose_equip_skill,enemy) then
                     value = value-equips:length()*2
                 end
-                if enemy:getArmor() and self:needToThrowArmor(enemy) then
+                if enemy:getArmor() and self:needToThrowArmor(enemy) and self:isEnemy(AIEffect.beneficiaryOf(enemy, enemy:getArmor():getEffectiveId()) or enemy) then
                     value = value-1.5
                 end
                 if enemy:hasSkill("tuntian") then
@@ -557,7 +561,7 @@ function SmartAIView:useCardEarthquake(card,use)
                 if self:hasSkills(sgs.lose_equip_skill,friend) then
                     value = value+equips:length()*2
                 end
-                if friend:getArmor() and self:needToThrowArmor(friend) then
+                if friend:getArmor() and self:needToThrowArmor(friend) and self:isFriend(AIEffect.beneficiaryOf(friend, friend:getArmor():getEffectiveId()) or friend) then
                     value = value+1.5
                 end
                 if friend:hasSkill("tuntian") then
@@ -921,14 +925,14 @@ function SmartAIView:useCardMudslide(card,use)
                     if self:hasSkills(sgs.lose_equip_skill,target) then
                         v = v+e_num*2
                     end
-                    if target:getArmor() and self:needToThrowArmor(target) then
+                    if target:getArmor() and self:needToThrowArmor(target) and self:isFriend(AIEffect.beneficiaryOf(target, target:getArmor():getEffectiveId()) or target) then
                         v = v+1.5
                     end
                 else
                     if self:hasSkills(sgs.lose_equip_skill,target) then
                         v = v-e_num*2
                     end
-                    if target:getArmor() and self:needToThrowArmor(target) then
+                    if target:getArmor() and self:needToThrowArmor(target) and self:isEnemy(AIEffect.beneficiaryOf(target, target:getArmor():getEffectiveId()) or target) then
                         v = v-1.5
                     end
                 end

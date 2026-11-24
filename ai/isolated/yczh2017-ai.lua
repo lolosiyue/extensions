@@ -550,7 +550,7 @@ function SmartAIView:qingxianRecover(to,from)
 		local can = has_hand_equip(self,to)
 		if not can and to:hasTreasure("wooden_ox") and not (to:getPileCount("wooden_ox")==0) and to:getCards("e"):length()==1 then return false end
 		if self:isWeak(to) then return true end
-		if not can and to:getCards("e"):length()>0 and not to:getWeapon() and not to:getOffensiveHorse() and not (to:hasTreasure("wooden_ox") and (to:getPileCount("wooden_ox")==0)) then
+		if not can and to:getCards("e"):length()>0 and (not to:getWeapon() or AIEffect.serves(to,to)==false) and not to:getOffensiveHorse() and not (to:hasTreasure("wooden_ox") and (to:getPileCount("wooden_ox")==0)) then
 			return false
 		end
 		return true

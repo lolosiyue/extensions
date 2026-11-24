@@ -1336,7 +1336,11 @@ ai_fill_skill["s2_longhun"] = function(self, options, request)
 	local non_basic_cards = {}
 	local use_cards = {}
 
-	if self.player:getArmor() and self.player:hasArmorEffect("silver_lion") and __scarletayuhuo_value_call(self.player,"isWounded") and __scarletayuhuo_value_call(self.player,"getLostHp") >= 2 then
+	local lion = AIHold.kind(self.player, "Armor")
+	local beneficiary, active
+	if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(self.player, lion:getEffectiveId()) end
+	if active and beneficiary:objectName() == self.player:objectName()
+		and __scarletayuhuo_value_call(self.player,"isWounded") and __scarletayuhuo_value_call(self.player,"getLostHp") >= 2 then
 		table.insert(non_basic_cards, self.player:getArmor():getEffectiveId())
 	end
 
@@ -1439,8 +1443,12 @@ sgs.ai_view_as["s2_longhun"] = function(card, player, card_place, class_name)
 	local non_basic_cards = {}
 	local use_cards = {}
 
-	if player:getArmor() and player:hasArmorEffect("silver_lion") and __scarletayuhuo_value_call(player,"isWounded") and __scarletayuhuo_value_call(player,"getLostHp") >= 2 then
-		table.insert(non_basic_cards, player:getArmor():getEffectiveId())
+	local lion = AIHold.kind(player, "Armor")
+	local beneficiary, active
+	if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(player, lion:getEffectiveId()) end
+	if active and beneficiary:objectName() == player:objectName()
+		and __scarletayuhuo_value_call(player,"isWounded") and __scarletayuhuo_value_call(player,"getLostHp") >= 2 then
+		table.insert(non_basic_cards, AIHold.kind(player, "Armor"):getEffectiveId())
 	end
 
 	for _, c in ipairs(handcards) do
@@ -1867,7 +1875,7 @@ ai_fill_skill["s2_gn_nixi"] = function(self, options, request)
 			local shouldUse = true
 
 			if __scarletayuhuo_value_call(card,"isKindOf","Armor") then
-				if not self.player:getArmor() then
+				if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then
 					shouldUse = false
 				elseif self.player:hasEquip(card) and not self:needToThrowArmor() then
 					shouldUse = false
@@ -1875,7 +1883,7 @@ ai_fill_skill["s2_gn_nixi"] = function(self, options, request)
 			end
 
 			if __scarletayuhuo_value_call(card,"isKindOf","Weapon") then
-				if not self.player:getWeapon() then
+				if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) then
 					shouldUse = false
 				elseif self.player:hasEquip(card) and not has_weapon then
 					shouldUse = false
@@ -2258,7 +2266,7 @@ function sgs.ai_slash_prohibit.s2_hungui(self, from, to)
 	if __scarletayuhuo_value_call(from,"hasSkill","jueqing") or (__scarletayuhuo_value_call(from,"hasSkill","nosqianxi") and __scarletayuhuo_value_call(from,"distanceTo",to) == 1) then return false end
 	if __scarletayuhuo_value_call(from,"hasFlag","NosJiefanUsed") then return false end
 	if __scarletayuhuo_value_call(to,"getHp") > 1 or #(self:getEnemies(from)) == 1 then return false end
-	if __scarletayuhuo_value_call(from,"getMaxHp") == 3 and from:getArmor() and from:getDefensiveHorse() then return false end
+	if __scarletayuhuo_value_call(from,"getMaxHp") == 3 and AIEffect.has(from, "Armor") and AIEffect.has(from, "DefensiveHorse") then return false end
 	if __scarletayuhuo_value_call(from,"getMaxHp") <= 3 or (__scarletayuhuo_value_call(from,"isLord") and self:isWeak(from)) then return true end
 	if __scarletayuhuo_value_call(from,"getMaxHp") <= 3 or (self.room:getLord() and viewer_role(self,from) == "renegade") then return true end
 	return false
@@ -4253,7 +4261,7 @@ sgs.ai_skill_discard.s2_duanjia = function(self, discard_num, min_num, optional,
 	cards = self:sortByUseValue(cards, true)
 	local stealer
 	for _, ap in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-		if ap:hasSkills("tuxi|nostuxi") and self:isEnemy(ap) then stealer = ap end
+		if ap:hasSkillFamily("tuxi") and self:isEnemy(ap) then stealer = ap end
 	end
 	local card
 	for i = 1, #cards, 1 do
@@ -7737,14 +7745,19 @@ sgs.ai_playerchosen_intention.gzj_leishen = sgs.ai_playerchosen_intention.leiji
 
 
 sgs.ai_slash_prohibit.gzj_leishen = function(self, from, to, card)
-	local has_black_card = false
-	for _, c in ipairs(sgs.QList2Table(to:getCards("he"))) do
-		if __scarletayuhuo_value_call(c,"getSuit") == sgs.Card_Spade then
-			has_black_card = true
+	local has_spade = false
+	local hand = to == self.player and to:getHandcards() or to:getKnownCards()
+	for _, zone in ipairs({hand, AIHold.equips(to) or {}}) do
+		for _, c in ipairs(zone) do
+			if __scarletayuhuo_value_call(c,"getSuit") == sgs.Card_Spade then
+				has_spade = true
+				break
+			end
 		end
+		if has_spade then break end
 	end
 	local hcard = __scarletayuhuo_value_call(to,"getHandcardNum")
-	if self:isFriend(to, from) and has_black_card then return false end
+	if self:isFriend(to, from) and has_spade then return false end
 	if __scarletayuhuo_value_call(to,"hasFlag","QianxiTarget") and (not self:hasEightDiagramEffect(to) or self.player:hasWeapon("qinggang_sword")) then return false end
 
 
@@ -7761,8 +7774,10 @@ sgs.ai_slash_prohibit.gzj_leishen = function(self, from, to, card)
 		end
 	end
 
-	if (self:hasSuit("spade", true, to) and hcard >= 2) or hcard >= 4 then return true end
-	if to:getTreasure() and to:getPile("wooden_ox"):length() > 1 then return true end
+	if (has_spade and hcard >= 2) or hcard >= 4 then return true end
+	local stored = AIEffect.usableWoodenOxCount(to)
+	if stored == nil and AIHold.kind(to, "WoodenOx") then stored = to:getPileCount("wooden_ox") end
+	if stored and stored > 1 then return true end
 end
 
 ai_skill_invoke.gzj_jiazi = function(self, options, request)

@@ -178,8 +178,8 @@ local function card_need_player(self, players, cards)
     for _, friend in ipairs(friends) do
         if friend:getHp() <= 2 and friend:faceUp() then
             for _, hcard in ipairs(cards) do
-                if (hcard:isKindOf("Armor") and not friend:getArmor() and not self:hasSkills("yizhong|bazhen", friend))
-                    or (hcard:isKindOf("DefensiveHorse") and not friend:getDefensiveHorse()) then
+                if (hcard:isKindOf("Armor") and not friend:getArmor() and not AIEffect.has(friend,"Armor") and AIEffect.serves(friend,friend,1) and not self:hasSkills("yizhong|bazhen", friend))
+                    or (hcard:isKindOf("DefensiveHorse") and not AIEffect.has(friend,"DefensiveHorse") and AIEffect.serves(friend,friend,2)) then
                     return hcard, friend
                 end
             end
@@ -236,11 +236,11 @@ local function card_need_player(self, players, cards)
                     if self:isEnemy(p) and self:isGoodTarget(p, self.enemies, nil) and friend:distanceTo(p) > friend:getAttackRange() then
                         for _, hcard in ipairs(cardtogive) do
                             if hcard:isKindOf("Weapon")
-                                and friend:distanceTo(p) <= friend:getAttackRange() + (sgs.weapon_range[hcard:getClassName()] or 0) and not friend:getWeapon() then
+                                and friend:distanceTo(p) <= friend:getAttackRange() + (sgs.weapon_range[hcard:getClassName()] or 0) and not AIEffect.has(friend,"Weapon") and AIEffect.serves(friend,friend,0) then
                                 return hcard, friend
                             end
                             if hcard:isKindOf("OffensiveHorse")
-                                and friend:distanceTo(p) <= friend:getAttackRange() + 1 and not friend:getOffensiveHorse() then
+                                and friend:distanceTo(p) <= friend:getAttackRange() + 1 and not AIEffect.has(friend,"OffensiveHorse") and AIEffect.serves(friend,friend,3) then
                                 return hcard, friend
                             end
                         end
@@ -1066,8 +1066,8 @@ ai_skill_use["@@luashushenmr"] = function(self, prompt, request)
     if not ai_skill_invoke.nosjushou(self,{},nil) then return "." end
     local card_ids = {}
     for _,c in ipairs(equips) do
-        if not self.player:getArmor() or self.player:getArmor():objectName() ~= c:objectName() or (c:objectName() == "silver_lion" and self.player:getLostHp() > 0)
-            and (not self.player:getDefensiveHorse() or self.player:getDefensiveHorse():objectName() ~= c:objectName()) then
+        if not self.player:getArmor() or self.player:getArmor():objectName() ~= c:objectName() or (c:objectName() == "silver_lion" and AIEffect.serves(self.player,self.player) and self.player:getLostHp() > 0)
+            and (not self.player:getDefensiveHorse() or AIEffect.serves(self.player,self.player)==false or self.player:getDefensiveHorse():objectName() ~= c:objectName()) then
             table.insert(card_ids, c:getKnownEffectiveId())
         end
     end

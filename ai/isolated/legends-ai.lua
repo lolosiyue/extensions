@@ -640,7 +640,7 @@ ai_card_use["#lol_lirenCard"] = function(self, card, use, request)
 		local dummy_use = package_known(self,"aiUseCard",slash, dummy())
 		if dummy_use.card then
 			for _, p in sgs.qlist(dummy_use.to) do
-				if not package_known(p,"isKongcheng") or package_call(p,"getArmor") or package_known(self,"getOverflow") > 0 then
+				if not package_known(p,"isKongcheng") or AIEffect.has(p,"Armor") or package_known(self,"getOverflow") > 0 then
 					target = p
 					break
 				end
@@ -2430,7 +2430,7 @@ ai_skill_invoke.jingang = function(self, options, request)
 	if package_known(self,"hasSkills",sgs.lose_equip_skill, damage.to) then
 		return (package_known(self,"isFriend",damage.to) and not package_known(self,"isWeak",damage.to)) or false
 	end
-	local benefit = (package_call(damage.to,"getArmor") and package_known(self,"needToThrowArmor",damage.to))
+	local benefit = (package_call(damage.to,"getArmor") and AIEffect.serves(damage.to,damage.to) and package_known(self,"needToThrowArmor",damage.to))
 	if package_known(self,"isFriend",damage.to) then return (benefit) or false end
 	return not benefit
 end

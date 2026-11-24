@@ -633,20 +633,20 @@ ai_skill_invoke["#W_recast"] = function(self, options, request)
     local card_use = data:toCardUse()
     local card = card_use.card
     if card and card:isKindOf("DefensiveHorse") then
-        if not self.player:getDefensiveHorse() then
+        if not self.player:getDefensiveHorse() and AIEffect.serves(self.player,self.player,2) and not AIEffect.has(self.player,"DefensiveHorse") then
             return false
         else
             if math.random(1, 100) <= 50 then return true else return false end
         end
     end
     if card and card:isKindOf("OffensiveHorse") then
-        if not self.player:getOffensiveHorse() then
+        if not self.player:getOffensiveHorse() and AIEffect.serves(self.player,self.player,3) and not AIEffect.has(self.player,"OffensiveHorse") then
             return false
         else
             if math.random(1, 100) <= 50 then return true else return false end
         end
     end
-    if not self.player:getWeapon() then
+    if not self.player:getWeapon() and AIEffect.serves(self.player,self.player,0) then
         if canShenji(self.player) then
             if not card:isKindOf("Crossbow") then
                 return true
@@ -769,7 +769,7 @@ ai_card_use["#sy_zhiheng"] = function(self, card, use, request)
                             for _, p in sgs.qlist(dummy_use.to) do
                                 if p:getHp() <= 1 then
                                     shouldUse = false
-                                    if self.player:distanceTo(p) > 1 then keep_weapon = self.player:getWeapon() end
+                                    do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and self.player:distanceTo(p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
                                     break
                                 end
                             end
@@ -825,7 +825,7 @@ ai_card_use["#sy_zhiheng"] = function(self, card, use, request)
         end
 
         local num = self:getCardsNum("Jink") - 1
-        if self.player:getArmor() then num = num + 1 end
+        if AIEffect.has(self.player,"Armor") then num = num + 1 end
         if num > 0 then
             for _, card in ipairs(cards) do
                 if card:isKindOf("Jink") and num > 0 then
@@ -853,7 +853,7 @@ ai_card_use["#sy_zhiheng"] = function(self, card, use, request)
             table.insert(unpreferedCards, self.player:getArmor():getId())
         end
 
-        if self.player:getOffensiveHorse() and self.player:getWeapon() then
+        if self.player:getOffensiveHorse() and AIEffect.has(self.player,"Weapon") then
             table.insert(unpreferedCards, self.player:getOffensiveHorse():getId())
         end
     end
@@ -1329,7 +1329,7 @@ ai_card_use["#sy_juwuCard"] = function(self, card, use, request)
     local danger = false
     if self.player:getHandcardNum() == 1 then
         for _, enemy in ipairs(self.enemies) do
-            if enemy:getWeapon() == "guding_blade" and enemy:canSlash(self.player, true) then
+            if AIEffect.has(enemy,"GudingBlade") and enemy:canSlash(self.player, true) then
                 danger = true
                 break
             end

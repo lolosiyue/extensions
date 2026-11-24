@@ -1583,13 +1583,35 @@ sgs.ai_skill_use["@@nostuxi"] = function(self,prompt)
 end
 
 sgs.ai_skill_playerschosen.nostuxi = function(self,targets,max_num,min_num)
-	local result = {}
+	-- The original selection is the fallback; it also sets the nostuxi_isfriend_ flags.
+	local original = {}
 	local cardstr = sgs.ai_skill_use["@@nostuxi"](self,"@nostuxi-card")
 	local names = type(cardstr)=="string" and cardstr:match("%->(.+)$")
-	if not names then return result end
-	for _,name in ipairs(names:split("+"))do
-		for _,p in sgs.list(targets)do
-			if p:objectName()==name then table.insert(result,p) end
+	if names then original = names:split("+") end
+	-- Same filters as add_player: has hand cards, not self, no unread lord while rebels remain.
+	local pool = {}
+	for _,p in sgs.list(targets)do
+		if p:getHandcardNum()>0 and p:objectName()~=self.player:objectName()
+		and not (self:objectiveLevel(p)==0 and p:isLord() and sgs.playerRoles["rebel"]>1) then
+			table.insert(pool,p)
+		end
+	end
+	local function original_next(_,candidates)
+		for _,name in ipairs(original)do
+			for _,p in ipairs(candidates)do
+				if p:objectName()==name then return p end
+			end
+		end
+	end
+	-- Recommendation picks first; each empty pick falls back to the original order.
+	local result = {}
+	while #result<(max_num or 2) and #pool>0 do
+		local p = self:getBestTargetOr(pool,"nostuxi",self.player,original_next,"h")
+		if not p then break end
+		if self:isFriend(p) then self.player:setFlags("nostuxi_isfriend_"..p:objectName()) end
+		table.insert(result,p)
+		for i,q in ipairs(pool)do
+			if q:objectName()==p:objectName() then table.remove(pool,i) break end
 		end
 	end
 	return result
@@ -3069,6 +3091,8 @@ sgs.registerTargetRecommend("rende", function(self, from, to, card, skill_owner,
 end)
 
 sgs.registerSkillCardType("nosrende", "draw")
+sgs.registerSkillCardType("nostuxi", "debuff")
+sgs.registerSkillCardType("nostuxi", "decrease")
 sgs.registerTargetRecommend("nosrende", function(self, from, to, card, skill_owner, ctx)
 	-- This bonus belongs to the receiving holder, not every NosRende holder in the room.
 	if not ctx.isDraw or not self:isFriend(to,from)
@@ -3660,7 +3684,7 @@ sgs.ai_skill_choice.yajiao = function(self,choices,data)
 
 	if self:isFriend(nextAlive) and not self:willSkipDrawPhase(nextAlive) and not self:willSkipPlayPhase(nextAlive)
 		and not nextAlive:hasSkill("luoshen")
-		and not nextAlive:hasSkills("tuxi|nostuxi") and not (nextAlive:hasSkill("qiaobian") and nextAlive:getHandcardNum()>0) then
+		and not nextAlive:hasSkillFamily("tuxi") and not (nextAlive:hasSkill("qiaobian") and nextAlive:getHandcardNum()>0) then
 		if self:isValuableCard(card,nextAlive) then
 			return "cancel"
 		end

@@ -239,7 +239,7 @@ function sgs.ai_cardneed.poi_paoxiao(to, card, self)
     if current:objectName()~=self.player:objectName() and #cards<to:getHandcardNum() then
         ai_unsupported("source current-player visibility inventory is not disclosed to this viewer","poi_paoxiao")
     end
-	local has_weapon = to:getWeapon() and not to:getWeapon():isKindOf("Crossbow")
+	local has_weapon = false; for _, w in ipairs(AIEffect.cards(to,"Weapon") or {}) do if not w:isKindOf("Crossbow") then has_weapon = true end end
 	local slash_num = 0
 	for _, c in sgs.qlist(cards) do
 		local flag = string.format("%s_%s_%s", "visible", self.room:getCurrent():objectName(), to:objectName())

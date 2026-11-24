@@ -67,7 +67,7 @@ ai_skill_invoke.jgzhinang = true
 sgs.ai_skill_playerchosen.jgzhinang = function(self,targets)
 	for _,friend in ipairs(self.friends_noself)do
 		if friend:faceUp() and not self:isWeak(friend) then
-			if not friend:getWeapon() or friend:hasSkills("rende|jizhi") then
+			if (AIEffect.has(friend, "Weapon") == false and AIEffect.serves(friend, friend, 0)) or friend:hasSkills("rende|jizhi") then
 				return friend
 			end
 		end

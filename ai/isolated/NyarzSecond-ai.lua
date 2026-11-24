@@ -3608,7 +3608,11 @@ ai_card_use["#nyarz_tongwei"] = function(self, card, use, request)
 							for _,p in sgs.list(dummy_use.to)do
 								if p:getHp()<=1 then
 									shouldUse = false
-									if self.player:distanceTo(p)>1 then keep_weapon = self.player:getWeapon() end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -3667,7 +3671,7 @@ ai_card_use["#nyarz_tongwei"] = function(self, card, use, request)
 		end
 
 		local num = self:getCardsNum("Jink")-1
-		if self.player:getArmor() then num = num+1 end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num+1 end
 		if num>0 then
 			for _,card in ipairs(cards)do
 				if card:isKindOf("Jink") and num>0 then
@@ -3697,7 +3701,7 @@ ai_card_use["#nyarz_tongwei"] = function(self, card, use, request)
 			table.insert(unpreferedCards,self.player:getArmor():getId())
 		end
 
-		if self.player:getOffensiveHorse() and self.player:getWeapon() then
+		if AIHold.kind(self.player, "OffensiveHorse") and AIEffect.has(self.player, "Weapon") then
 			table.insert(unpreferedCards,self.player:getOffensiveHorse():getId())
 		end
 	end

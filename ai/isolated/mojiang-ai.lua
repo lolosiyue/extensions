@@ -209,8 +209,10 @@ end
 
 local function canQuanqingSlashHit(slash, from, to)
 	if (from:hasWeapon("QinggangSword")) then return true end
-	if (slash:isKindOf("NormalSlash")) and to:getArmor() == "vine" then
-		if (from:hasWeapon("Fan")) then return true else return false end
+	if slash:isKindOf("NormalSlash") or slash:objectName() == "slash" then
+		local vine = AIEffect.hasArmorFor(to, "vine", from)
+		if vine == false then return true end
+		if vine == true then return from:hasWeapon("Fan") end
 	end
 	if (slash:isKindOf("FireSlash")) or (slash:isKindOf("ThunderSlash")) or (slash:isKindOf("IceSlash")) then return true end
 end
@@ -218,20 +220,21 @@ end
 sgs.ai_skill_askforag.sy_quanqing = function(self, card_ids)
 	local result_id = -1
 	local from = quanqing_target(self)
+	if not from then return end
 	if (self:isEnemy(from)) then
+		local allowed = known(request_context(self).mojiang_quanqing_allowed_against_self, "sy_quanqing.allowed_against_self")
 		for _,id in sgs.list(card_ids)do
 			local qq_card = visible_card(self,id)
-			if not (from:isProhibited(self.player,qq_card)) then
-				if (qq_card:isKindOf("Duel")) then
-					result_id = id
-					break
-				end
+			if allowed[tostring(id)] == true and qq_card:isKindOf("Duel") then
+				result_id = id
+				break
 			end
 		end
 		if result_id == -1 then
 			for _,id in sgs.list(card_ids)do
-				if qq_card:isKindOf("Slash") then
-					if canQuanqingSlashHit(card, from, self.player) then
+				local qq_card = visible_card(self, id)
+				if allowed[tostring(id)] == true and qq_card:isKindOf("Slash") then
+					if canQuanqingSlashHit(qq_card, from, self.player) then
 						result_id = id
 						break
 					end
@@ -284,6 +287,7 @@ end
 
 sgs.ai_skill_playerchosen.sy_quanqing = function(self, targets)
 	local qq_from = quanqing_target(self)
+	if not qq_from then return end
 	local to = nil
 	if (self:isEnemy(qq_from)) then
 		for _, t in sgs.qlist(targets) do
@@ -306,8 +310,9 @@ sgs.ai_need_damaged.sy_quanqing = function(self, attacker, player)
 		if (not (self:isWeak(player))) or (getCardsNum("Peach", player, self.player) + getCardsNum("Analeptic", player, self.player)) > 0 then
 			return true
 		end
-		if (attacker:hasSkill("sgkgodxiejia")) and attacker:getArmor() == nil and player:getArmor() ~= "silver_lion" then return false end
-		if (attacker:hasSkill("luoyi")) and (attacker:getMark("&luoyi")) > 0 and player:getArmor() ~= "silver_lion" then return false end
+		local boosted = (attacker:hasSkill("sgkgodxiejia") and not AIHold.kind(attacker, "Armor"))
+			or (attacker:hasSkill("luoyi") and attacker:getMark("&luoyi") > 0)
+		if boosted and AIEffect.hasArmorFor(player, "silver_lion", attacker) ~= true then return false end
 		if (attacker:hasSkill("mobilepojun|mouliegong")) then return false end
 	end
 	if (self:isEnemy(attacker,player)) and not ((self:needToLoseHp(attacker)) and not (self:hasSkills(sgs.masochism_skill,attacker))) then return true end

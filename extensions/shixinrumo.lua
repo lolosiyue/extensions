@@ -1,4 +1,8 @@
-﻿local shixinrumo_yi = sgs.Package("shixinrumo_yi",sgs.Package_GeneralPack)
+﻿local linkedCardProbe = sgs.Sanguosha:getEngineCard(0)
+assert(linkedCardProbe and type(linkedCardProbe.isLinkedCard) == "function",
+	"shixinrumo requires linked-card engine API (Card:isLinkedCard, Room:setCardLinked, Room:toggleCardLinked)")
+
+local shixinrumo_yi = sgs.Package("shixinrumo_yi",sgs.Package_GeneralPack)
 
 
 require("lua.config")
@@ -1904,14 +1908,14 @@ mansuwu = sgs.CreateTriggerSkillV2{
 				end
 				tps = room:askForPlayersChosen(invoker,tps,skill:objectName(),0,4,"mansuwu0",true,true)
 				for _,p in sgs.qlist(tps)do
-					linkCard(room,room:askForCardChosen(invoker,p,"h",skill:objectName()))
+					room:toggleCardLinked(room:askForCardChosen(invoker,p,"h",skill:objectName()))
 				end
 			end
 		elseif event==sgs.PreCardUsed then
 			local use = data:toCardUse()
 			if use.card:isDamageCard() and invoker:getMark("mansuwuUse-Clear")<1 then
 				for _,h in sgs.qlist(invoker:getHandcards())do
-					if h:hasFlag("link_card") then
+					if h:isLinkedCard() then
 						room:setCardFlag(use.card,"mansuwuBf")
 						invoker:addMark("mansuwuUse-Clear")
 						break
@@ -1924,7 +1928,7 @@ mansuwu = sgs.CreateTriggerSkillV2{
 				for _,p in sgs.qlist(room:getAllPlayers())do
 					if p:hasSkill(skill) then
 						for _,h in sgs.qlist(p:getHandcards())do
-							if h:hasFlag("link_card") then
+							if h:isLinkedCard() then
 								room:sendCompulsoryTriggerLog(p,skill:objectName())
 								room:setCardFlag(use.card,"mansuwuUse")
 								local list = use.no_respond_list
@@ -1968,7 +1972,7 @@ manrenwangvs = sgs.CreateViewAsSkillV2{
 		return false
 	end,
 	can_select_card = function(skill, request, candidate)
-		return candidate and candidate:hasFlag("link_card")
+		return candidate and candidate:isLinkedCard()
 			and request:getSelectedCardIds():isEmpty()
 	end,
 	create_card = function(skill, request)
@@ -2003,20 +2007,20 @@ manyinmou = sgs.CreateTriggerSkillV2{
 					if p:hasSkill(skill) then
 						local pids = {}
 						for _,h in sgs.qlist(invoker:getHandcards())do
-							if h:hasFlag("link_card") then continue end
+							if h:isLinkedCard() then continue end
 							table.insert(pids,h:getId())
 						end
 						local tids = sgs.IntList()
 						for _,h in sgs.qlist(p:getHandcards())do
-							if h:hasFlag("link_card") then tids:append(h:getId()) end
+							if h:isLinkedCard() then tids:append(h:getId()) end
 						end
 						if #pids>0 and p:getHandcardNum()>tids:length() then
 							local c = room:askForCard(invoker,table.concat(pids,","),"manyinmou0:"..p:objectName(),ToData(p),sgs.Card_MethodNone)
 							if c then
 								invoker:skillInvoked(skill,-1,p)
 								local id = room:askForCardChosen(invoker,p,"h",skill:objectName(),false,sgs.Card_MethodNone,ids)
-								linkCard(room,c:getId())
-								linkCard(room,id)
+								room:toggleCardLinked(c:getId())
+								room:toggleCardLinked(id)
 							end
 						end
 					end
@@ -2053,8 +2057,8 @@ manquchiCard = sgs.CreateSkillCard{
 		for _,to in sgs.list(targets)do
 			local x = 1
 			for _,h in sgs.qlist(to:getHandcards())do
-				if h:hasFlag("link_card") then
-					linkCard(room,h:getId())
+				if h:isLinkedCard() then
+					room:setCardLinked(h:getId(),false)
 					x = 2
 				end
 			end
@@ -2080,86 +2084,6 @@ man_guanyinping:addSkill(manquchi)
 
 
 
-
--- DEFER-ADJACENT: 全局联动弃牌规则技。V2 需要持有者实例，故改名隐藏技能并挂到所有武将。
-shixinrumo_global = sgs.CreateTriggerSkillV2{
-	name = "#shixinrumo_global",
-	global = true,
-	events = {sgs.CardsMoveOneTime},
-	frequency = sgs.Skill_Compulsory,
-	can_trigger = function(skill, event, room, player, data)
-		if event~=sgs.CardsMoveOneTime then return false end
-     	local move = data:toMoveOneTime()
-		if move.from_places:contains(sgs.Player_PlaceHand) and move.from then
-			return skill:objectName(), move.from:objectName()
-		end
-		return false
-	end,
-	on_effect = function(skill,event,room,player,ctx)
-		-- V2 觸發需要持有者實例：為缺少實例的角色補掛（晚於本擴展載入的武將/換將）
-		for _,p in sgs.qlist(room:getAllPlayers())do
-			if p:getSkillInstanceIds(skill:objectName()):isEmpty() then
-				room:attachSkillToPlayer(p,skill:objectName())
-			end
-		end
-		local data = ctx.original_data
-		if event==sgs.CardsMoveOneTime then
-	     	local move = data:toMoveOneTime()
-			if move.from_places:contains(sgs.Player_PlaceHand)
-			and move.from:objectName()==player:objectName() and move.reason.m_skillName~="link_card" then
-				if bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD
-				or move.reason.m_reason==sgs.CardMoveReason_S_REASON_RESPONSE or move.reason.m_reason==sgs.CardMoveReason_S_REASON_USE then
-					local lids = {}
-					for _,id in sgs.qlist(move.card_ids)do
-						if sgs.Sanguosha:getCard(id):hasFlag("link_card")
-						then table.insert(lids,id) end
-					end
-					if #lids<1 then return end
-					local plc = {"link_card_dis"}
-					table.insert(plc,player:objectName().."="..table.concat(lids,"+"))
-					local moves = sgs.CardsMoveList()
-					local log = sgs.LogMessage()
-					log.type = "$link_card_dis"
-					for _,p in sgs.qlist(room:getAllPlayers())do
-						local ids = sgs.IntList()
-						for _,h in sgs.qlist(p:getHandcards())do
-							if h:hasFlag("link_card") and p:canDiscard(p,h:getId())
-							then ids:append(h:getId()) end
-						end
-						if ids:isEmpty() then continue end
-						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DISCARD,p:objectName(),"link_card","")
-						moves:append(sgs.CardsMoveStruct(ids,nil,sgs.Player_Discard,reason))
-						log.card_str = table.concat(sgs.QList2Table(ids),"+")
-						table.insert(plc,p:objectName().."="..log.card_str)
-						log.from = p
-						room:sendLog(log)
-					end
-					room:moveCardsAtomic(moves,true)
-					plc = ToData(table.concat(plc,":"))
-					room:getThread():trigger(sgs.EventForDiy,room,player,plc)
-				end
-			end
-		end
-		return false
-	end,
-}
-addToSkills(shixinrumo_global)
--- V2 全局規則技：挂到所有武將作 bootstrap（隱藏 # 名不顯示）
-for _,gen in sgs.qlist(sgs.Sanguosha:getAllGenerals())do
-	gen:addSkill("#shixinrumo_global")
-end
-
-function linkCard(room,id)
-	if sgs.Sanguosha:getCard(id):hasFlag("link_card") then
-		room:setCardFlag(id,"-link_card")
-		room:setCardFlag(id,"-visible")
-		room:setCardTip(id,"-link_card")
-	else
-		room:setCardFlag(id,"link_card")
-		room:setCardFlag(id,"visible")
-		room:setCardTip(id,"link_card")
-	end
-end
 
 sgs.LoadTranslationTable {
 	["shixinrumo_man"] = "蚀心入魔·慢",

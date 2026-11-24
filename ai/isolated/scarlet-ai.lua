@@ -1726,7 +1726,7 @@ end
 sgs.ai_cardneed.s4_paoxiao = function(to, card)
     local cards = to:getHandcards()
     if not cards then return nil end
-    local weapon = to:getWeapon()
+    local weapon = nil; for _, w in ipairs(AIEffect.cards(to,"Weapon") or {}) do if not w:isKindOf("Crossbow") then weapon = w end end
     local has_weapon = weapon and not weapon:isKindOf("Crossbow")
     local slash_num = 0
     for _, owned in ipairs(cards) do

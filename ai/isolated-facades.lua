@@ -803,6 +803,317 @@ function PlayerView:getEquips()
     return snapshot_cards(self,"e",type(view) == "table" and view.equips or nil)
 end
 
+-- Join by public card ID. The card view keeps the physical holder's identity.
+function PlayerView:getEffectiveEquipCards(kind)
+    local rows = self._view.effective_equips
+    if not AIValue.isList(rows) or not self._room then return nil end
+    local cards = AIList.new({})
+    for _, row in ipairs(rows) do
+        if row.active then
+            local holder = self._room._players[row.area_owner]
+            local equips = holder and holder:getEquips()
+            if not equips then return nil end
+            for _, card in ipairs(equips) do
+                if card:getEffectiveId() == row.card_id and (not kind or card:isKindOf(kind)) then
+                    cards:append(card)
+                    break
+                end
+            end
+        end
+    end
+    return cards
+end
+
+function PlayerView:getEquipBeneficiary(id)
+    local name = self._view.equip_area_beneficiary
+    local beneficiary = name and self._room and self._room._players[name]
+    if not beneficiary then return nil end
+    if id == nil then return beneficiary end
+    for _, row in ipairs(beneficiary._view.effective_equips or {}) do
+        if row.card_id == id and row.area_owner == self:objectName() then
+            return beneficiary, row.active
+        end
+    end
+end
+
+function PlayerView:getRemainingWeaponRange(excluded_id)
+    if not excluded_id then return self:getAttackRange() end
+    local range = self:getAttackRange(false)
+    if type(range) ~= "number" or not AIValue.isList(self._view.effective_equips) then return nil end
+    local excluded = false
+    for _, row in ipairs(self._view.effective_equips) do
+        if row.weapon_range >= 0 then
+            if row.card_id == excluded_id then excluded = true
+            else range = math.max(range, row.weapon_range) end
+        end
+    end
+    return excluded and range or self:getAttackRange()
+end
+
+function PlayerView:getHorseCorrection(defensive)
+    if defensive then return self._view.defensive_horse_correction end
+    return self._view.offensive_horse_correction
+end
+
+AIEffect = {}
+AIHold = {}
+
+do
+    -- The legacy-compatible facade wrapper raises on unknown equipment.
+    -- These queries keep the underlying projection nullable.
+    local physicalEquips = PlayerView.getEquips
+
+    local function effectiveRows(player)
+        if not AIValue.isPlayer(player) then return nil end
+        local rows = player._view.effective_equips
+        if AIValue.isList(rows) then return rows end
+    end
+
+    local function hasEquipArea(player, slot)
+        if AIValue.isList(player._view.equip_areas) then return player:hasEquipArea(slot) end
+    end
+
+    local function matchesEquipKind(card, kind)
+        if type(card._view.kind_of) == "table" then return card:isKindOf(kind) end
+    end
+
+    -- Join IDs against the physical holder's public equipment zone.
+    local function physicalEquipById(holder, id)
+        local equips = holder and physicalEquips(holder)
+        if not equips then return nil, false end
+        local complete = true
+        for _, card in ipairs(equips) do
+            local cardId = card:getEffectiveId()
+            if cardId == id then return card, true end
+            if type(cardId) ~= "number" then complete = false end
+        end
+        return nil, complete
+    end
+
+    function AIEffect.rows(player, kind, opts)
+        local rows = effectiveRows(player)
+        if not rows or not player._room then return nil end
+        local result = AIList.new({})
+        for _, row in ipairs(rows) do
+            if type(row) ~= "table" or type(row.active) ~= "boolean" then return nil end
+            if row.active or (opts and opts.inactive == true) then
+                local holder = player._room._players[row.area_owner]
+                if type(row.card_id) ~= "number" or type(row.weapon_range) ~= "number" then return nil end
+                local card = physicalEquipById(holder, row.card_id)
+                if not card then return nil end
+                local matches = true
+                if kind ~= nil then matches = matchesEquipKind(card, kind) end
+                if matches == nil then return nil end
+                if matches then
+                    local slot = card:getEquipSlot()
+                    if type(slot) ~= "number" then return nil end
+                    result:append({
+                        id = row.card_id, card = card, area_owner = row.area_owner,
+                        slot = slot, active = row.active, weapon_range = row.weapon_range,
+                    })
+                end
+            end
+        end
+        return result
+    end
+
+    function AIEffect.cards(player, kind)
+        local rows = AIEffect.rows(player, kind)
+        if not rows then return nil end
+        local cards = AIList.new({})
+        for _, row in ipairs(rows) do cards:append(row.card) end
+        return cards
+    end
+
+    function AIEffect.has(player, kindOrName)
+        if type(kindOrName) ~= "string" or kindOrName == "" then return nil end
+        local cards = AIEffect.cards(player)
+        if not cards then return nil end
+        local unknown = false
+        for _, card in ipairs(cards) do
+            local name = card._view.name
+            if name == kindOrName then return true end
+            local matches = matchesEquipKind(card, kindOrName)
+            if matches then return true end
+            if matches == nil or name == nil then unknown = true end
+        end
+        if unknown then return nil end
+        return false
+    end
+
+    function AIEffect.areaBeneficiary(holder)
+        if AIValue.isPlayer(holder) then return holder:getEquipBeneficiary() end
+    end
+
+    function AIEffect.beneficiaryOf(holder, id)
+        if not AIValue.isPlayer(holder) or type(id) ~= "number" then return nil end
+        local beneficiary, active = holder:getEquipBeneficiary(id)
+        if type(active) == "boolean" then return beneficiary, active end
+    end
+
+    function AIEffect.serves(holder, who, slot)
+        local beneficiary = AIEffect.areaBeneficiary(holder)
+        if not beneficiary or not AIValue.isPlayer(who) then return nil end
+        if slot ~= nil then
+            local hasArea = hasEquipArea(holder, slot)
+            if hasArea ~= true then return hasArea end
+        end
+        return beneficiary:objectName() == who:objectName()
+    end
+
+    function AIEffect.rangeAfterLeaving(player, id)
+        local rows = effectiveRows(player)
+        if not rows then return nil end
+        local remaining = player:getAttackRange(false)
+        local excluded = false
+        for _, row in ipairs(rows) do
+            if type(row) ~= "table" or type(row.active) ~= "boolean" then return nil end
+            if row.active then
+                if type(row.weapon_range) ~= "number" then return nil end
+                if row.weapon_range >= 0 then
+                    if type(row.card_id) ~= "number" then return nil end
+                    if row.card_id == id then excluded = true
+                    elseif type(remaining) == "number" then remaining = math.max(remaining, row.weapon_range) end
+                end
+            end
+        end
+        if excluded then return remaining end
+        return player:getAttackRange()
+    end
+
+    function AIEffect.horseRemains(player, defensive, id)
+        local rows = AIEffect.rows(player, defensive and "DefensiveHorse" or "OffensiveHorse")
+        if not rows then return nil end
+        for _, row in ipairs(rows) do
+            if row.id ~= id then return true end
+        end
+        return false
+    end
+
+    function AIEffect.equipEffectiveFor(holder, id, source)
+        local beneficiary = AIEffect.areaBeneficiary(holder)
+        local rows = beneficiary and effectiveRows(beneficiary)
+        if not rows or type(id) ~= "number" then return nil end
+        for _, row in ipairs(rows) do
+            if row.card_id == id and row.area_owner == holder:objectName() then
+                if source == nil or row.active == false then return row.active end
+                if row.active ~= true or not AIValue.isPlayer(source) or source._room ~= beneficiary._room
+                    or source._view.alive ~= true or not AIValue.isList(row.nullified_for) then return nil end
+                for _, attacker in ipairs(row.nullified_for) do
+                    if attacker == source:objectName() then return false end
+                end
+                if beneficiary._view.equip_source_effects_known == true then return true end
+                return nil
+            end
+        end
+    end
+
+    function AIEffect.hasArmorFor(player, name, source, excludedId)
+        if not AIValue.isPlayer(player) or type(name) ~= "string" or name == "" then return nil end
+        if source ~= nil and (not AIValue.isPlayer(source) or source._room ~= player._room
+            or source._view.alive ~= true) then return nil end
+        local function normalize(value)
+            return value:gsub("_", ""):lower()
+        end
+        local key = normalize(name)
+        local function includes(effects)
+            for _, effect in ipairs(effects) do
+                if normalize(effect) == key then return true end
+            end
+            return false
+        end
+
+        local names = player:getKnownArmorEffectNames()
+        local bySource = player._view.armor_effects_by_source
+        local exact = source and type(bySource) == "table" and bySource[source:objectName()] or nil
+        if AIValue.isList(exact) then
+            local present = includes(exact)
+            if excludedId == nil or not present then return present end
+        end
+        if AIValue.isList(names) then
+            local present = includes(names)
+            if not present or (source == nil and excludedId == nil) then return present end
+        end
+
+        local rows = AIEffect.rows(player, "Armor", {inactive = true})
+        if not rows then return nil end
+        local unknown = false
+        for _, row in ipairs(rows) do
+            if row.id ~= excludedId and normalize(row.card:objectName()) == key then
+                local holder = player._room._players[row.area_owner]
+                local effect = AIEffect.equipEffectiveFor(holder, row.id, source)
+                if effect == true then return true end
+                if effect == nil then unknown = true end
+            end
+        end
+        -- An exact empty remainder needs a complete physical-only basis.
+        if not unknown and type(player._view.active_armor_name) == "string" then return false end
+    end
+
+    function AIEffect.usableWoodenOxCount(player)
+        if not AIValue.isPlayer(player) then return nil end
+        local count = player._view.usable_wooden_ox_count
+        if type(count) == "number" and count >= 0 and count % 1 == 0 then return count end
+    end
+
+    function AIHold.equips(player, kind)
+        if not AIValue.isPlayer(player) then return nil end
+        local equips = physicalEquips(player)
+        if not equips or kind == nil then return equips end
+        local result = AIList.new({})
+        for _, card in ipairs(equips) do
+            local matches = matchesEquipKind(card, kind)
+            if matches == nil then return nil end
+            if matches then result:append(card) end
+        end
+        return result
+    end
+
+    function AIHold.at(player, slot)
+        if not AIValue.isPlayer(player) then return nil end
+        local id = player:getEquip(slot)
+        if id == nil then return nil end
+        local card = physicalEquipById(player, id)
+        return card
+    end
+
+    function AIHold.kind(player, kind)
+        local equips = AIHold.equips(player, kind)
+        return equips and equips[1]
+    end
+
+    function AIHold.ids(player, kind)
+        local equips = AIHold.equips(player, kind)
+        if not equips then return nil end
+        local ids = AIList.new({})
+        for _, card in ipairs(equips) do
+            local id = card:getEffectiveId()
+            if type(id) ~= "number" then return nil end
+            ids:append(id)
+        end
+        return ids
+    end
+
+    function AIHold.holds(player, cardOrId)
+        if not AIValue.isPlayer(player) then return nil end
+        if AIValue.isCard(cardOrId) then
+            if not AIValue.isList(player._view.equips) then return nil end
+            return player:hasEquip(cardOrId)
+        end
+        if type(cardOrId) ~= "number" then return nil end
+        local card, complete = physicalEquipById(player, cardOrId)
+        if complete then return card ~= nil end
+    end
+
+    function AIHold.slotFree(player, slot)
+        if not AIValue.isPlayer(player) or type(slot) ~= "number" then return nil end
+        local hasArea = hasEquipArea(player, slot)
+        if hasArea ~= true then return hasArea end
+        if type(player._view.equip_slots) ~= "table" then return nil end
+        return player:getEquip(slot) == nil
+    end
+end
+
 function PlayerView:getJudgingArea()
     local view = rawget(self, "_view")
     return snapshot_cards(self,"j",type(view) == "table" and view.judging_area or nil)
@@ -939,9 +1250,12 @@ function PlayerView:getDefensiveHorse() return equipped_kind(self, "DefensiveHor
 function PlayerView:getOffensiveHorse() return equipped_kind(self, "OffensiveHorse") end
 function PlayerView:getTreasure() return equipped_kind(self, "Treasure") end
 function PlayerView:hasWeapon(name)
-    if not self:getEquips() then return nil end
-    local card = self:getWeapon()
-    return card ~= nil and (name == nil or card:objectName() == name or card:isKindOf(name))
+    local cards = self:getEffectiveEquipCards("Weapon")
+    if not cards then return nil end
+    for _, card in ipairs(cards) do
+        if name == nil or card:objectName() == name or card:isKindOf(name) then return true end
+    end
+    return false
 end
 
 function PlayerView:hasArmorEffect(name, source, need_area)
@@ -964,10 +1278,13 @@ function PlayerView:hasArmorEffect(name, source, need_area)
             -- A disclosed exact effect name needs no physical-card lookup.
             -- Class-name queries still resolve the current physical armor.
             if not active and #effects > 0 then
-                local physical = self:getArmor()
-                if physical and physical:isKindOf(name) then
-                    for _, effect in ipairs(effects) do
-                        if physical:objectName() == effect then active = true; break end
+                local armors = self:getEffectiveEquipCards("Armor")
+                if not armors then return nil end
+                for _, physical in ipairs(armors) do
+                    if physical:isKindOf(name) then
+                        for _, effect in ipairs(effects) do
+                            if physical:objectName() == effect then active = true; break end
+                        end
                     end
                 end
             end
@@ -981,8 +1298,7 @@ function PlayerView:hasArmorEffect(name, source, need_area)
     end
     local matches = active ~= ""
     if name ~= nil and name ~= "" then
-        local armor = self:getArmor()
-        matches = matches and (active == name or armor ~= nil and armor:isKindOf(name))
+        matches = matches and active == name
     end
     if matches and source ~= nil then return nil end
     return matches
@@ -991,6 +1307,11 @@ end
 -- Nullable fact query, captured before the strategy wrapper may estimate from
 -- public equipment. It never manufactures a fact or records an estimate.
 PlayerView.queryArmorEffect = PlayerView.hasArmorEffect
+
+function PlayerView:getKnownArmorEffectNames()
+    local names = self._view.armor_effect_names
+    return AIValue.isList(names) and AIList.new(names) or nil
+end
 
 function PlayerView:hasFlag(name)
     local ai = self._room and self._room._ai
@@ -1182,11 +1503,18 @@ end
 
 function PlayerView:getHandPile()
     local view = rawget(self, "_view")
+    if self._room and self:objectName() == self._room._world.self.object_name then
+        local cards = self:getHandPileCards()
+        if not cards then return nil end
+        local ids = AIList.new({})
+        for _, card in ipairs(cards) do ids:append(card:getEffectiveId()) end
+        return ids
+    end
     local piles = type(view) == "table" and view.piles or nil
     if not AIValue.isList(piles) then return nil end
     local result = AIList.new({})
     for _, pile in ipairs(piles) do
-        if pile.hand_pile then
+        if pile.hand_pile and pile.name ~= "wooden_ox" then
             if not AIValue.isList(pile.card_ids) then return nil end
             for _, id in ipairs(pile.card_ids) do result[#result + 1] = id end
         end
@@ -1197,11 +1525,14 @@ end
 -- Failure boundaries: closed pile, missing metadata, or mismatched ids are unknown.
 -- A known empty pile remains empty; no Engine lookup is allowed from this VM.
 function PlayerView:getHandPileCards()
+    if self._room and self:objectName() == self._room._world.self.object_name then
+        return snapshot_cards(self, "usable_hand_pile", self._view.usable_hand_pile)
+    end
     local piles = self._view.piles
     if not AIValue.isList(piles) then return nil end
     local result = AIList.new({})
     for _, pile in ipairs(piles) do
-        if pile.hand_pile then
+        if pile.hand_pile and pile.name ~= "wooden_ox" then
             if not AIValue.isList(pile.card_ids) then return nil end
             if #pile.card_ids > 0 then
                 local cards = wrap_values(pile.cards, CardView.new)
@@ -3335,7 +3666,7 @@ function SmartAIView:getKnownCardById(id)
             if row.effective_id == id or row.id == id then return CardView.new(copy_value(row)) end
         end
     end
-    local card = find(self.world.hand_cards) or find(self.world.discard_pile)
+    local card = find(self.world.hand_cards) or find(self.world.self.usable_hand_pile) or find(self.world.discard_pile)
     if card then return card end
     for _, name in ipairs(self.room._player_order or {}) do
         local player = self.room._players[name]
@@ -5150,9 +5481,12 @@ function PlayerView:hasEquipArea(index)
     return false
 end
 function PlayerView:hasTreasure(name)
-    if not self:getEquips() then return nil end
-    local card = self:getTreasure()
-    return card ~= nil and (name == nil or card:objectName() == name or card:isKindOf(name))
+    local cards = self:getEffectiveEquipCards("Treasure")
+    if not cards then return nil end
+    for _, card in ipairs(cards) do
+        if name == nil or card:objectName() == name or card:isKindOf(name) then return true end
+    end
+    return false
 end
 
 -- Engine::getPlayerCount(mode) is the size of this room's roster.
@@ -9182,9 +9516,8 @@ local function install_required_raw_method(facade, method_name)
                         include_lose=include_lose == true, basis="unobserved_skill_presence_not_proven"}, method_name)
                 end
                 local name, source, need_area = ...
-                local equips = AIValue.requireKnown(self:getEquips(), "public equipment projection")
+                local equips = AIValue.requireKnown(self:getEffectiveEquipCards("Armor"), "public equipment projection")
                 local alive = AIValue.requireKnown(self:isAlive(), "public alive state")
-                local area = need_area == false or AIValue.requireKnown(self:hasEquipArea(1), "public armor area")
                 local matches, visible = false, {}
                 for _, armor in ipairs(equips) do
                     if armor:isKindOf("Armor") then
@@ -9197,7 +9530,7 @@ local function install_required_raw_method(facade, method_name)
                 -- This is a strategy estimate, never a completed fact projection.
                 -- queryArmorEffect retains the original nullable provider above.
                 ai_coverage.notCovered(ai.request.kind, "armor strategy uses public equipment only", method_name)
-                return ai:useKnowledgeEstimate({status="estimate", value=alive and area and matches,
+                return ai:useKnowledgeEstimate({status="estimate", value=alive and matches,
                     viewer=ai.player:objectName(), target=self:objectName(), armor=name or "",
                     source=source and source:objectName() or "", visible_equipment=table.concat(visible, "+"),
                     basis="public_physical_armor; virtual_armor_and_private_equipment_effect_rules_unresolved"}, method_name)

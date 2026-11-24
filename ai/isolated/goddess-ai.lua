@@ -241,7 +241,7 @@ ai_skill_invoke.GodManwu = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local card = tag_card(self,"GodManwu")
 	if self:isWeak() and (card:isKindOf("Peach") or card:isKindOf("Analeptic")) then return true end
-	if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow") and card:isKindOf("Slash") then return true end
+	if AIEffect.has(self.player,"Crossbow") and card:isKindOf("Slash") then return true end
 	if not self:isWeak() and (card:isKindOf("Snatch") or card:isKindOf("ExNihilo") or card:isKindOf("Dismantlement")) then return true end
 	return false
 end

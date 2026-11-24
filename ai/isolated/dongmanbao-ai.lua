@@ -1703,22 +1703,22 @@ ai_card_use["#se_shunshancard"] = function(self, card, use, request)
 	if #self.enemies < 1 then return end
 	self:sortInPlace(self.enemies, "defense")
 	for _, enemy in ipairs(self.enemies) do
-		if enemy:isAlive() and enemy:getDefensiveHorse() and self.player:getOffensiveHorse() and enemy:getMark("@Stop") > 0 then
+		if enemy:isAlive() and AIEffect.has(enemy,"DefensiveHorse") and AIEffect.has(self.player,"OffensiveHorse") and enemy:getMark("@Stop") > 0 then
 			target = enemy
 		end
 	end
 	for _, enemy in ipairs(self.enemies) do
-		if enemy:isAlive() and enemy:getDefensiveHorse() and self.player:getOffensiveHorse() and enemy:getMark("@Stop") == 0 then
+		if enemy:isAlive() and AIEffect.has(enemy,"DefensiveHorse") and AIEffect.has(self.player,"OffensiveHorse") and enemy:getMark("@Stop") == 0 then
 			target = enemy
 		end
 	end
 	for _, enemy in ipairs(self.enemies) do
-		if enemy:isAlive() and not enemy:getDefensiveHorse() and enemy:getMark("@Stop") > 0 then
+		if enemy:isAlive() and not AIEffect.has(enemy,"DefensiveHorse") and enemy:getMark("@Stop") > 0 then
 			target = enemy
 		end
 	end
 	for _, enemy in ipairs(self.enemies) do
-		if enemy:isAlive() and not enemy:getDefensiveHorse() and enemy:getMark("@Stop") == 0 then
+		if enemy:isAlive() and not AIEffect.has(enemy,"DefensiveHorse") and enemy:getMark("@Stop") == 0 then
 			target = enemy
 		end
 	end
@@ -3635,7 +3635,7 @@ ai_skill_invoke.SE_Mengfeng = function(self, options, request)
 			local current_range = self.player:getAttackRange()
 			range_fix = math.min(current_range - new_range, 0)
 		end
-		if card:isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse() then range_fix = range_fix - 1 end
+		if card:isKindOf("OffensiveHorse") and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3) then range_fix = range_fix - 1 end
 		if card:isKindOf("DefensiveHorse") or card:isKindOf("Armor") and not self:getSameEquip(card) and (self:isWeak() or self:getCardsNum("Jink") == 0) then
 			shouldUse =
 				shouldUse + 1
@@ -5928,7 +5928,7 @@ se_mipa_skill.getTurnUseCard=function(self, options, request)
 			if p:getMark("@mipa_basic") > 0 or p:getMark("@mipa_notbasic") > 0 then tf = tf - 5 end
 			if p:getHp() <= 1 then tf = tf + 10 end
 			if p:getHandcardNum() > 5 then tf = tf + 1 end
-			if p:getWeapon() and p:getWeapon():isKindOf("Crossbow") and p:getHandcardNum() > 3 then tf = tf + 11 end
+			if AIEffect.has(p,"Crossbow") and p:getHandcardNum() > 3 then tf = tf + 11 end
 		end
 	elseif Fr == 2 then
 		for _, p in ipairs(self.enemies) do
@@ -5937,7 +5937,7 @@ se_mipa_skill.getTurnUseCard=function(self, options, request)
 			if p:getHandcardNum() > 3 then tf = tf + 1 end
 			if p:getHandcardNum() > 6 then tf = tf + 4 end
 			if p:getHandcardNum() > 8 then tf = tf + 10 end
-			if p:getWeapon() and p:getWeapon():isKindOf("Crossbow") and p:getHandcardNum() > 3 then tf = tf + 11 end
+			if AIEffect.has(p,"Crossbow") and p:getHandcardNum() > 3 then tf = tf + 11 end
 		end
 	elseif Fr >= 3 then
 		for _, p in ipairs(self.enemies) do
@@ -5949,7 +5949,7 @@ se_mipa_skill.getTurnUseCard=function(self, options, request)
 				tf =
 					tf + 11
 			end
-			if p:getWeapon() and p:getWeapon():isKindOf("Crossbow") and p:getHandcardNum() > 3 then tf = tf + 11 end
+			if AIEffect.has(p,"Crossbow") and p:getHandcardNum() > 3 then tf = tf + 11 end
 		end
 	end
 	if #self.enemies == 1 then tf = 100 end
@@ -5960,7 +5960,7 @@ ai_card_use["#se_mipacard"] = function(self, card, use, request)
 	local target
 	local Fr = self.player:getPile("Fragments"):length()
 	for _, p in ipairs(self.enemies) do
-		if p:getWeapon() and p:getWeapon():isKindOf("Crossbow") and p:getHandcardNum() > 3 and (p:getMark("@mipa_basic") == 0 or p:getMark("@mipa_notbasic") == 0) then
+		if AIEffect.has(p,"Crossbow") and p:getHandcardNum() > 3 and (p:getMark("@mipa_basic") == 0 or p:getMark("@mipa_notbasic") == 0) then
 			target = p
 			break
 		end
@@ -6037,7 +6037,7 @@ ai_card_use["#se_chenyan"] = function(self, card, use, request)
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByUseValueInPlace(handcards, true)
 	local useable_cards = {}
-	if self.player:getArmor() and self.player:hasArmorEffect("silver_lion") and self.player:isWounded() then
+	if self.player:getArmor() and self.player:getArmor():isKindOf("SilverLion") and AIEffect.serves(self.player,self.player) and self.player:isWounded() then
 		table.insert(useable_cards, self.player:getArmor())
 	end
 	if self.player:getPile("wooden_ox"):length() > 0 then
@@ -6583,7 +6583,7 @@ ai_skill_choice["SE_Jiawu"] = function(self, options, request)
     local data = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
 
 	if self.player:hasFlag("SE_Jiawu_EquipCard") then
-		if not self.player:getWeapon() then return ai_choice_result(("SE_Jiawu_use"), options) end
+		if not self.player:getWeapon() and AIEffect.serves(self.player,self.player,0) then return ai_choice_result(("SE_Jiawu_use"), options) end
 		return ai_choice_result(("SE_Jiawu_give"), options)
 	else
 		if self.player:getHp() <= 2 and self.player:isWounded() then return ai_choice_result(("SE_Jiawu_use"), options) end
@@ -6677,8 +6677,8 @@ ai_skill_choice["SE_Lingshang"] = function(self, options, request)
  
 	local choice_table = choices:split("+")
 	if self.player:getPhase() == sgs.Player_Play and #self.enemies > 0 then
-		if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow") then
-			if not self.player:getOffensiveHorse() and self.player:getHandcardNum() > self.player:getHp() + 1 then
+		if AIEffect.has(self.player,"Crossbow") then
+			if not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3) and self.player:getHandcardNum() > self.player:getHp() + 1 then
 				if table.contains(choice_table, "ChiTu") then return ai_choice_result(("ChiTu"), options) end
 				if table.contains(choice_table, "DaYuan") then return ai_choice_result(("DaYuan"), options) end
 				if table.contains(choice_table, "ZiXing") then return ai_choice_result(("ZiXing"), options) end
@@ -7279,7 +7279,7 @@ ai_skill_invoke["se_linmo"] = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local use = data:toCardUse()
 	if self:isWeak() and (use.card:isKindOf("Peach") or use.card:isKindOf("Analeptic")) then return true end
-	if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow") and use.card:isKindOf("Slash") then return true end
+	if AIEffect.has(self.player,"Crossbow") and use.card:isKindOf("Slash") then return true end
 	if not self:isWeak() and (use.card:isKindOf("Snatch") or use.card:isKindOf("ExNihilo") or use.card:isKindOf("Dismantlement") or use.card:isKindOf("reijyuu")) then return true end
 	return false
 end

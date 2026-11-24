@@ -1035,13 +1035,13 @@ FourQixi_skill.getTurnUseCard=function(self, options, request)
 			local shouldUse = true
 
 			if card:isKindOf("Armor") then
-				if not self.player:getArmor() then shouldUse = false
+				if AIHold.slotFree(self.player,1) and AIEffect.serves(self.player,self.player,1) then shouldUse = false
 				elseif self.player:hasEquip(card) and not self:needToThrowArmor() then shouldUse = false
 				end
 			end
 
 			if card:isKindOf("Weapon") then
-				if not self.player:getWeapon() then shouldUse = false
+				if AIHold.slotFree(self.player,0) and AIEffect.serves(self.player,self.player,0) then shouldUse = false
 				elseif self.player:hasEquip(card) and not has_weapon then shouldUse = false
 				end
 			end

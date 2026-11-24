@@ -33,7 +33,10 @@ local function fact(self,key,index)
   if not to or type(to._view.active_armor_name)~="string" then
    ai_unsupported("Yongjian Zhanxiang basis is not projected",tostring(index))
   end
-  local horse=to:getDefensiveHorse()
+  local horse
+  for _, activeHorse in ipairs(AIValue.requireKnown(AIEffect.cards(to, "DefensiveHorse"), "Yongjian Zhanxiang effects")) do
+  	if activeHorse:objectName() == "yj_zhanxiang" then horse = activeHorse; break end
+  end
   return horse~=nil and horse:objectName()=="yj_zhanxiang"
  end
  ai_unsupported("Yongjian fact is not projected: "..key,"yongjian")
@@ -416,7 +419,16 @@ sgs.ai_nullification.Tuixinzhifu = function(self,trick,from,to,positive)
             and self:isEnemy(from)
         end
     elseif to:getCardCount(true, true)>0
-    and (to:getArmor() or to:getDefensiveHorse() or to:getHandcardNum()<2 or to:getJudgingArea():length()>0) then
+    and (to:getHandcardNum()<2 or to:getJudgingArea():length()>0
+    	or (function()
+    		for _, equip in ipairs(AIHold.equips(to) or {}) do
+    			if equip:isKindOf("Armor") or equip:isKindOf("DefensiveHorse") then
+    				local beneficiary, active = AIEffect.beneficiaryOf(to, equip:getEffectiveId())
+    				if beneficiary and active and self:isFriend(beneficiary) == self:isFriend(to) then return true end
+    			end
+    		end
+    		return false
+    	end)()) then
         if positive then
             return self:isFriend(to)
             and self:isEnemy(from)
@@ -560,7 +572,9 @@ function SmartAIView:useCardJiejiaguitian(card,use)
     local function equipValue(p)
         local x = p:getEquips():length()
         local pc = self:poisonCards("e",p)
-        for _,e in sgs.list(p:getEquips())do
+        for _, e in ipairs(AIValue.requireKnown(AIHold.equips(p), "equipment targets")) do
+        	local beneficiary, active = AIEffect.beneficiaryOf(p, e:getEffectiveId())
+        	if not table.contains(pc, e) and (not active or not beneficiary or beneficiary:objectName() ~= p:objectName()) then continue end
             if table.contains(pc,e)
             then x = x-2 continue end
             if e:isKindOf("Weapon")
@@ -1265,8 +1279,8 @@ function SmartAIView:AlPresentCardTo(c,enemie)
         and to:getEquips():length()<2
         then continue end
         if c:isKindOf("Poison") then
-            if enemie and to:getTreasure()
-            and to:getTreasure():isKindOf("Xinge") then continue end
+            if enemie
+            and AIEffect.has(to, "Xinge") then continue end
         end
         if c:isKindOf("Nvzhuang") then
             if to:isMale() then else continue end
@@ -1299,8 +1313,8 @@ function SmartAIView:AlPresentCardTo(c,enemie)
             and to:getEquips():length()<2
             then continue end
             if c:isKindOf("Poison") then
-                if enemie and to:getTreasure()
-                and to:getTreasure():isKindOf("Xinge") then continue end
+                if enemie
+                and AIEffect.has(to, "Xinge") then continue end
             end
             if c:isKindOf("Nvzhuang") then
                 if to:isMale() then else continue end

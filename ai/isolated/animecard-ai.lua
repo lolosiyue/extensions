@@ -24,7 +24,10 @@ sgs.ai_weapon_value.GreenRose = function(self, enemy, player)
     return 6
 end
 sgs.ai_slash_weaponfilter.GreenRose = function(self, to)
-    return to:getArmor() and not to:hasArmorEffect("SilverLion")
+    local armor = AIHold.kind(to, "Armor")
+    if not armor then return false end
+    local beneficiary, active = AIEffect.beneficiaryOf(to, armor:getEffectiveId())
+    return beneficiary ~= nil and active == true and self:isEnemy(beneficiary) and not armor:isKindOf("SilverLion")
 end
 sgs.weapon_range.Elucidator = 2
 sgs.ai_weapon_value.Elucidator = function(self, enemy, player)

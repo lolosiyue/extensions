@@ -3795,14 +3795,14 @@ end
 
 sgs.ai_weapon_value = {}
 
-function SmartAI:evaluateWeapon(card, player, target)
+function SmartAI:evaluateWeapon(card, player, target, range_after_equip)
 	player = player or self.player
 	local deltaSelfThreat, inAttackRange = 0
 	local currentRange
 	local enemies = target and { target } or self:getEnemies(player)
 	if not card then self.room:writeToConsole(debug.traceback()) return -1
 	else
-		currentRange = sgs.weapon_range[card:getClassName()] or 0
+		currentRange = range_after_equip or sgs.weapon_range[card:getClassName()] or 0
 	end
 
 	local callback = sgs.ai_weapon_value[card:objectName()]
@@ -3830,7 +3830,8 @@ function SmartAI:evaluateWeapon(card, player, target)
 
 		deltaSelfThreat = deltaSelfThreat + slash_num * 3 - 2
 		if player:hasShownSkill("heg_kurou") then deltaSelfThreat = deltaSelfThreat + peach_num + analeptic_num + self.player:getHp() end
-		if player:getWeapon() and not self:hasCrossbowEffect(player) and not player:canSlashWithoutCrossbow() and slash_num > 0 then
+		if #sgs.aiEffectiveEquipCards(player, "Weapon") > 0 and not self:hasCrossbowEffect(player)
+			and not player:canSlashWithoutCrossbow() and slash_num > 0 then
 			for _, enemy in ipairs(enemies) do
 				if player:distanceTo(enemy) <= currentRange
 					and (sgs.card_lack[enemy:objectName()]["Jink"] == 1 or slash_num >= enemy:getHp()) then
@@ -3850,7 +3851,7 @@ sgs.ai_armor_value = {}
 
 function SmartAI:evaluateArmor(card, player)
 	player = player or self.player
-	local ecard = card or player:getArmor()
+	local ecard = card or sgs.aiEffectiveEquipCards(player, "Armor")[1]
 	if not ecard then return 0 end
 
 	local value = 0
@@ -4063,6 +4064,10 @@ end
 
 function IgnoreArmor(from, to)
 	if not from or not to then global_room:writeToConsole(debug.traceback()) return end
+	if to:hasArmorEffect(nil, from) then
+		if from:hasWeapon("QinggangSword") then return true end
+		return
+	end
 	if not to:getArmor() then return true end
 	if not to:hasArmorEffect(to:getArmor():objectName()) or from:hasWeapon("QinggangSword") then
 		return true
@@ -4072,10 +4077,16 @@ end
 
 function SmartAI:needToThrowArmor(player)
 	player = player or self.player
-	if not player:getArmor() or not player:hasArmorEffect(player:getArmor():objectName()) then return false end
-	if player:hasShownSkill("bazhen") and not player:getArmor():isKindOf("EightDiagram") then return true end
-	if self:evaluateArmor(player:getArmor(), player) <= -2 then return true end
-	if player:hasArmorEffect("SilverLion") and player:isWounded() then
+	local armor = player:getArmor()
+	if not armor then return false end
+	local beneficiary = sgs.aiEquipBeneficiary(self.room, player, armor:getEffectiveId())
+	if not beneficiary or not beneficiary:hasArmorEffect(armor:objectName()) then return false end
+	if beneficiary:objectName() == player:objectName() then
+		if player:hasShownSkill("bazhen") and not armor:isKindOf("EightDiagram") then return true end
+		if self:evaluateArmor(armor, player) <= -2 then return true end
+	end
+	if armor:isKindOf("SilverLion") and beneficiary:isWounded() then
+		if beneficiary:objectName() ~= player:objectName() then return true end
 		if self:isFriend(player) then
 			if player:objectName() == self.player:objectName() then
 				return true
@@ -4086,9 +4097,10 @@ function SmartAI:needToThrowArmor(player)
 			return true
 		end
 	end
+	if not armor:isKindOf("Vine") then return false end
 	local damage = self.room:getTag("CurrentDamageStruct")
 	if damage.damage and not damage.chain and not damage.prevented and damage.nature == sgs.DamageStruct_Fire
-		and damage.to:isChained() and player:isChained() and player:hasArmorEffect("Vine") then
+		and damage.to:isChained() and beneficiary:isChained() then
 		return true
 	end
 	return false

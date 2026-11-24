@@ -273,10 +273,10 @@ sgs.ai_view_as.kofqingguo = function(card,player,card_place)
 end
 
 function sgs.ai_cardneed.kofqingguo(to,card)
-	if card:isKindOf("Weapon") then return not to:getWeapon()
+	if card:isKindOf("Weapon") then return not AIEffect.has(to,"Weapon") and AIEffect.serves(to,to,0)
 	elseif card:isKindOf("Armor") then return not to:getArmor()
-	elseif card:isKindOf("OffensiveHorse") then return not to:getOffensiveHorse()
-	elseif card:isKindOf("DefensiveHorse") then return not to:getDefensiveHorse()
+	elseif card:isKindOf("OffensiveHorse") then return not AIEffect.has(to,"OffensiveHorse") and AIEffect.serves(to,to,3)
+	elseif card:isKindOf("DefensiveHorse") then return not AIEffect.has(to,"DefensiveHorse") and AIEffect.serves(to,to,2)
 	end
 	return false
 end

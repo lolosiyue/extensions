@@ -538,7 +538,7 @@ function OlRendeArrange(self,cards,friends,enemies,unknowns,arrange,recover_only
             if friend:getHp()<=2 and friend:faceUp() then
                 for _,card in ipairs(cards)do
                     if card:isKindOf("Armor") then
-                        if not friend:getArmor() and not self:hasSkills("yizhong|bazhen|bossmanjia", friend) then
+                        if not friend:getArmor() and not AIEffect.has(friend,"Armor") and AIEffect.serves(friend,friend,1) and not self:hasSkills("yizhong|bazhen|bossmanjia", friend) then
                             local given = false
                             for _,c in ipairs(arranged)do
                                 if c:isKindOf("Armor") then
@@ -551,7 +551,7 @@ function OlRendeArrange(self,cards,friends,enemies,unknowns,arrange,recover_only
                             end
                         end
                     elseif card:isKindOf("DefensiveHorse") then
-                        if not friend:getDefensiveHorse() then
+                        if not AIEffect.has(friend,"DefensiveHorse") and AIEffect.serves(friend,friend,2) then
                             local given = false
                             for _,c in ipairs(arranged)do
                                 if c:isKindOf("DefensiveHorse") then
@@ -653,14 +653,14 @@ function OlRendeArrange(self,cards,friends,enemies,unknowns,arrange,recover_only
                             if distance>range then
                                 for _,card in ipairs(cards)do
                                     if card:isKindOf("Weapon") then
-                                        if not friend:getWeapon() then
+                                        if not AIEffect.has(friend,"Weapon") and AIEffect.serves(friend,friend,0) then
                                             if distance<=range+(sgs.weapon_range[card:getClassName()] or 0) then
                                                 self:setStrategyPlayerFlag(friend, flag, true)
                                                 return friend,card,"friend"
                                             end
                                         end
                                     elseif card:isKindOf("OffensiveHorse") then
-                                        if not friend:getOffensiveHorse() then
+                                        if not AIEffect.has(friend,"OffensiveHorse") and AIEffect.serves(friend,friend,3) then
                                             if distance<=range+1 then
                                                 self:setStrategyPlayerFlag(friend, flag, true)
                                                 return friend,card,"friend"

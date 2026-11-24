@@ -2827,7 +2827,7 @@ ai_skill_invoke["sr_ganglie"] = function(self, options, request)
 			elseif sget(c,"isKindOf","FireAttack") then
 				for _, p in ipairs(self.enemies) do
 					if not self.player:isProhibited(p,c) then
-						if (self:isWeak(p) or p:getArmor() and p:getArmor():isKindOf("Vine"))
+						if (self:isWeak(p) or AIEffect.has(p, "Vine"))
 							and not p:isKongcheng() and sget(self.player,"getHandcardNum"):length()>=4 then
 							return true
 						end

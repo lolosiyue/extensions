@@ -536,7 +536,7 @@ ai_fill_skill.keguose=function(self, options, request)
 				local shouldUse = true
 
 				if acard:isKindOf("Armor") then
-					if not self.player:getArmor() then
+					if AIHold.slotFree(self.player,1) and AIEffect.serves(self.player,self.player,1) then
 						shouldUse = false
 					elseif self.player:hasEquip(acard) and not has_armor and self:evaluateArmor() > 0 then
 						shouldUse = false
@@ -544,7 +544,7 @@ ai_fill_skill.keguose=function(self, options, request)
 				end
 
 				if acard:isKindOf("Weapon") then
-					if not self.player:getWeapon() then
+					if AIHold.slotFree(self.player,0) and AIEffect.serves(self.player,self.player,0) then
 						shouldUse = false
 					elseif self.player:hasEquip(acard) and not has_weapon then
 						shouldUse = false

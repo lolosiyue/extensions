@@ -299,7 +299,7 @@ end
 sgs.ai_skill_discard.xiantu = function(self,discard_num,min_num,optional,include_equip)
 	local to_exchange = {}
 	local current = self.room:getCurrent()
-	if self.player:isWounded() and self.player:hasArmorEffect("SilverLion") then table.insert(to_exchange,self.player:getArmor():getEffectiveId()) end
+	do local a = self.player:getArmor(); if self.player:isWounded() and self.player:hasArmorEffect("SilverLion") and a and a:isKindOf("SilverLion") and AIEffect.serves(self.player,self.player) then table.insert(to_exchange,a:getEffectiveId()) end end
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	self:sortByUseValue(cards)
 	if getCardsNum("Slash",current,self.player)<1 then
@@ -378,7 +378,7 @@ ai_card_use.ShenxingCard = function(self, card, use, request)
 							for _,p in sgs.qlist(dummy_use.to)do
 								if p:getHp()<=1 then
 									shouldUse = false
-									if self.player:distanceTo(p)>1 then keep_weapon = self.player:getWeapon() end
+									do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and self.player:distanceTo(p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
 									break
 								end
 							end

@@ -1583,52 +1583,64 @@ sgs.ai_card_intention.kechenglunshiCard = 80
 
 sgs.ai_skill_playerschosen.kechengguitu = function(self, targets)
 	targets = sgs.QList2Table(targets)
-	package_call(self,"sort",targets)
-	local tos = {}
-	for _, p in ipairs(targets) do
-		if package_known(self,"isFriend",p) and package_known(p,"isWounded") then
-			local pw = package_call(p,"getWeapon"):getRealCard():toWeapon():getRange()
-			for _, p2 in ipairs(targets) do
-				if not package_known(self,"isFriend",p2) then
-					local p2w = package_call(p2,"getWeapon"):getRealCard():toWeapon():getRange()
-					if p2w>pw then
-						table.insert(tos, p)
-						table.insert(tos, p2)
-						return tos
+	package_call(self, "sort", targets)
+
+	local function weaponSide(holder)
+		local weapon = AIHold.at(holder, 0)
+		local beneficiary = AIEffect.areaBeneficiary(holder)
+		if not weapon or not beneficiary or not AIEffect.serves(holder, beneficiary, 0) then return end
+		local id = weapon:getEffectiveId()
+		local base, current = beneficiary:getAttackRange(false), beneficiary:getAttackRange()
+		local rows = AIEffect.rows(beneficiary, "Weapon", {inactive = true})
+		if not rows or not base or not current then return end
+		local remaining, outgoing = base, nil
+		for _, row in ipairs(rows) do
+			if row.id == id then
+				outgoing = row.weapon_range
+			else
+				remaining = math.max(remaining, row.weapon_range)
+			end
+		end
+		-- Derived ranges are only usable if they reproduce the current range.
+		if not outgoing or outgoing < 0 or math.max(remaining, outgoing) ~= current then return end
+		local sign = self:isFriend(beneficiary) and 1 or self:isEnemy(beneficiary) and -1 or 0
+		return {holder = holder, beneficiary = beneficiary, weapon = weapon, range = current,
+			remaining = remaining, sign = sign}
+	end
+
+	local function change(side, incoming)
+		local printed = incoming:getRange()
+		if not printed then return end
+		local after = math.max(side.remaining, printed)
+		local heals = after < side.range and side.beneficiary:isWounded()
+		-- The choice projection has ranges but may omit inter-seat distances.
+		return heals and side.sign or 0, side.sign * (after - side.range)
+	end
+
+	local sides = {}
+	for _, holder in ipairs(targets) do
+		local side = weaponSide(holder)
+		if side then sides[#sides + 1] = side end
+	end
+	local best, bestHeal, bestValue = {}, 0, 0
+	for i, first in ipairs(sides) do
+		for j = i + 1, #sides do
+			local second = sides[j]
+			if first.beneficiary:objectName() ~= second.beneficiary:objectName() then
+				local firstHeal, firstValue = change(first, second.weapon)
+				local secondHeal, secondValue = change(second, first.weapon)
+				if firstHeal ~= nil and secondHeal ~= nil then
+					local heal = firstHeal + secondHeal
+					local value = firstValue + secondValue
+					if heal > bestHeal or (heal == bestHeal and value > bestValue
+						and firstHeal >= 0 and secondHeal >= 0) then
+						best, bestHeal, bestValue = {first.holder, second.holder}, heal, value
 					end
 				end
 			end
 		end
 	end
-	for _, p in ipairs(targets) do
-		if package_known(self,"isFriend",p) and package_known(p,"isWounded") then
-			local pw = package_call(p,"getWeapon"):getRealCard():toWeapon():getRange()
-			for _, p2 in ipairs(targets) do
-				local p2w = package_call(p2,"getWeapon"):getRealCard():toWeapon():getRange()
-				if p2w>pw then
-					table.insert(tos, p)
-					table.insert(tos, p2)
-					return tos
-				end
-			end
-		end
-	end
-	for _, p in ipairs(targets) do
-		if package_known(self,"isFriend",p) then
-			local w = package_call(p,"getWeapon")
-			for _, p2 in ipairs(targets) do
-				if not package_known(self,"isFriend",p2) and not package_known(p2,"isWounded") then
-					local w2 = package_call(p2,"getWeapon")
-					if package_known(self,"evaluateWeapon",w,p)<package_known(self,"evaluateWeapon",w2,p) then
-						table.insert(tos, p)
-						table.insert(tos, p2)
-						return tos
-					end
-				end
-			end
-		end
-	end
-	return tos
+	return best
 end
 
 
@@ -2657,7 +2669,16 @@ sgs.ai_nullification.KCTuixinzhifu = function(self,trick,from,to,positive)
 			and package_known(self,"isEnemy",from)
 		end
 	elseif package_known(to,"getCardCount",true,true)>0
-	and (package_call(to,"getArmor") or package_known(to,"getDefensiveHorse") or package_known(to,"getHandcardNum")<2 or package_known(to,"getJudgingArea"):length()>0)
+	and (package_known(to,"getHandcardNum")<2 or package_known(to,"getJudgingArea"):length()>0
+		or (function()
+			for _, equip in ipairs(AIHold.equips(to) or {}) do
+				if equip:isKindOf("Armor") or equip:isKindOf("DefensiveHorse") then
+					local beneficiary, active = AIEffect.beneficiaryOf(to, equip:getEffectiveId())
+					if beneficiary and active and self:isFriend(beneficiary) == self:isFriend(to) then return true end
+				end
+			end
+			return false
+		end)())
 	then
 		if positive
 		then
@@ -4317,12 +4338,12 @@ kehezhaotu_skill.getTurnUseCard=function(self, options, request)
 	for _,acard in ipairs(cards)  do do
 		if package_known(acard,"isRed") and package_known(acard,"getTypeId")~=2 and (inclusive or package_known(self,"getUseValue",acard)<sgs.ai_use_value.Indulgence) then
 			if package_known(acard,"isKindOf","Armor") then
-				if not package_call(self.player,"getArmor") then goto package_continue_33
+				if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then goto package_continue_33
 				elseif package_known(self.player,"hasEquip",acard) and not has_armor and package_known(self,"evaluateArmor")>0
 				then goto package_continue_33 end
 			end
 			if package_known(acard,"isKindOf","Weapon") then
-				if not package_call(self.player,"getWeapon") then goto package_continue_33
+				if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) then goto package_continue_33
 				elseif package_known(self.player,"hasEquip",acard) and not has_weapon
 				then goto package_continue_33 end
 			end

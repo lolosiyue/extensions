@@ -75,7 +75,7 @@ function SmartAIView:AtomDamageCount(target,source,nature,card)
 		end
 	end
 	if source then --如果有伤害来源
-		local weapon = imagine_call(source,"getWeapon")
+		local weapon = (AIEffect.cards(source, "GudingBlade") or {})[1]
 		if weapon then
 			if imagine_call(weapon,"isKindOf","GudingBlade") then --如果来源有古锭刀
 				if isSlash and imagine_call(target,"isKongcheng") then --如果卡牌为杀且目标空城
@@ -563,10 +563,11 @@ function SmartAIView:DamageResult(target,source,nature,card,chained)
 		if not nature then
 			nature = sgs.DamageStruct_Normal
 		end
-		local shrink = false --伤害缩水标志
-		local armor = imagine_call(target,"getArmor")
-		if armor and imagine_call(armor,"isKindOf","SilverLion") then --目标装备有白银狮子
-			shrink = true
+		local shrink = AIEffect.hasArmorFor(target, "silver_lion", source)
+		if shrink == nil then
+			-- Some other seats' source-specific limits are not public.
+			local armor = AIHold.kind(target, "Armor")
+			shrink = armor and armor:isKindOf("SilverLion")
 		end
 		--直接伤害
 		local count = imagine_call(self,"AtomDamageCount",target,source,nature,card)

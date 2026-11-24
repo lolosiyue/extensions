@@ -4003,7 +4003,7 @@ sgs.ai_skill_discard.s2_duanjia = function(self, discard_num, min_num, optional,
 	self:sortByUseValue(cards, true)
 	local stealer
 	for _, ap in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-		if ap:hasSkills("tuxi|nostuxi") and self:isEnemy(ap) then stealer = ap end
+		if ap:hasSkillFamily("tuxi") and self:isEnemy(ap) then stealer = ap end
 	end
 	local card
 	for i = 1, #cards, 1 do

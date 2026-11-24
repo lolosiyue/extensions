@@ -55,7 +55,7 @@ local function mobile_costs(self)
                             for _,p in sgs.qlist(dummy_use.to)do
                                 if p:getHp()<=1 then
                                     shouldUse = false
-                                    if self.player:distanceTo(p)>1 then keep_weapon = self.player:getWeapon() end
+                                    do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and self.player:distanceTo(p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
                                     break
                                 end
                             end
@@ -111,7 +111,7 @@ local function mobile_costs(self)
         end
 
         local num = self:getCardsNum("Jink")-1
-        if self.player:getArmor() then num = num+1 end
+        if AIEffect.has(self.player,"Armor") then num = num+1 end
         if num>0 then
             for _,card in ipairs(cards)do
                 if card:isKindOf("Jink") and num>0 then
@@ -139,7 +139,7 @@ local function mobile_costs(self)
             table.insert(unpreferedCards,self.player:getArmor():getId())
         end
 
-        if self.player:getOffensiveHorse() and self.player:getWeapon() then
+        if self.player:getOffensiveHorse() and AIEffect.has(self.player,"Weapon") then
             table.insert(unpreferedCards,self.player:getOffensiveHorse():getId())
         end
     end

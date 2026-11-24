@@ -112,7 +112,7 @@ sgs.ai_skill_discard.qiaobian = function(self,discard_num,min_num,optional,inclu
 	self:sortByUseValue(cards,true)
 	local stealer
 	for _,ap in sgs.qlist(self.room:getOtherPlayers(self.player))do
-		if ap:hasSkills("tuxi|nostuxi") and self:isEnemy(ap) then stealer = ap end
+		if ap:hasSkillFamily("tuxi") and self:isEnemy(ap) then stealer = ap end
 	end
 	local card
 	for i=1,#cards,1 do
@@ -165,7 +165,7 @@ sgs.ai_skill_discard.qiaobian = function(self,discard_num,min_num,optional,inclu
 				end
 			end
 		end
-	elseif current_phase==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not self.player:hasSkills("tuxi|nostuxi") then
+	elseif current_phase==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not self.player:hasSkillFamily("tuxi") then
 		local cardstr = sgs.ai_skill_use["@@nostuxi"](self,"@nostuxi")
 		if cardstr:match("->") then
 			local targetstr = cardstr:split("->")[2]

@@ -414,10 +414,15 @@ ai_fill_skill["clearthemeridians"] = function(self, options, request)
 	cards = self:sortByKeepValue(cards)
 	for _, c in ipairs(cards) do
 		if __yuri_value_call(c,"isKindOf","EquipCard") then
-			if __yuri_value_call(c,"isKindOf","SilverLion") and self.player:getArmor() and self.player:getArmor():isKindOf("SilverLion") and __yuri_value_call(self.player,"isWounded") then
+			local lion = AIHold.kind(self.player, "Armor")
+			local beneficiary, active
+			if lion and lion:isKindOf("SilverLion") and lion:getEffectiveId() == c:getEffectiveId() then
+				beneficiary, active = AIEffect.beneficiaryOf(self.player, lion:getEffectiveId())
+			end
+			if active and beneficiary:objectName() == self.player:objectName() and self.player:isWounded() then
 				return policy(self,"#clearthemeridians:" .. c:getId().. ":")
 			elseif not __yuri_value_call(c,"isKindOf","SilverLion") then
-				if not (self:isWeak(self.player) and self.player:getArmor() == nil and (__yuri_value_call(c,"isKindOf","RenwangShield") or __yuri_value_call(c,"isKindOf","EightDiagram") or __yuri_value_call(c,"isKindOf","Vine"))) then
+				if not (self:isWeak(self.player) and AIEffect.has(self.player, "Armor") == false and AIEffect.serves(self.player, self.player, 1) and (__yuri_value_call(c,"isKindOf","RenwangShield") or __yuri_value_call(c,"isKindOf","EightDiagram") or __yuri_value_call(c,"isKindOf","Vine"))) then
 					return policy(self,"#clearthemeridians:" .. c:getId().. ":")
 				end
 			end
@@ -528,7 +533,12 @@ end
 ai_skill_invoke.semeruki = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local effect = data:toCardEffect()
-	if self:isFriend(effect.to) and (effect.to:getArmor() and (effect.to:getArmor():isKindOf("GaleShell") or (__yuri_value_call(effect.to,"isWounded") and effect.to:getArmor():isKindOf("SilverLion")))) then
+	local armor = AIHold.kind(effect.to, "Armor")
+	local beneficiary, active
+	if armor then beneficiary, active = AIEffect.beneficiaryOf(effect.to, armor:getEffectiveId()) end
+	local helpsTarget = beneficiary and active and beneficiary:objectName() == effect.to:objectName()
+		and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+	if self:isFriend(effect.to) and helpsTarget then
 		return true
 	end
 	if self:isEnemy(effect.to) then return true end
@@ -562,7 +572,8 @@ end
 sgs.ai_choicemade_filter.skillInvoke.semeruki = function(self, player, promptlist)
 	if promptlist[#promptlist] == "yes" then
 		local target = self.room:findPlayerByObjectName(promptlist[#promptlist - 1])
-		if target and not (__yuri_value_call(target,"isWounded") and target:getArmor() and target:getArmor():isKindOf("SilverLion")) then self:updateIntention(player, target, 50) end
+		if target and not (AIHold.kind(target, "Armor") and AIHold.kind(target, "Armor"):isKindOf("SilverLion") and AIEffect.serves(target, target, 1)
+			and select(2, AIEffect.beneficiaryOf(target, AIHold.kind(target, "Armor"):getEffectiveId())) == true and target:isWounded()) then self:updateIntention(player, target, 50) end
 	end
 end
 
@@ -765,7 +776,15 @@ end
 ai_card_use["#goodatwep"] = function(self, card, use, request)
 	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
 		if __yuri_value_call(self.player,"inMyAttackRange",p) and __yuri_value_call(p,"getMark","GoodatwepMark") == 0 then
-			if self.player:objectName() ~= p:objectName() and self:isFriend(p) and (p:getCards("j"):length() > 0 or (p:getArmor() and (p:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(p,"isWounded") and p:getArmor():getClassName() == "SilverLion"))) or (p:getTreasure() and __yuri_value_call(p,"getHandcardNum") < 4 and p:getTreasure():isKindOf("Tianjitu")))then
+			local armor = AIHold.kind(p, "Armor")
+			local beneficiary, active
+			if armor then beneficiary, active = AIEffect.beneficiaryOf(p, armor:getEffectiveId()) end
+			local helpsTarget = beneficiary and active and beneficiary:objectName() == p:objectName()
+				and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+			local replenishes = AIHold.kind(p, "Treasure") and AIHold.kind(p, "Treasure"):isKindOf("Tianjitu")
+				and AIEffect.serves(p, p, 4) and select(2, AIEffect.beneficiaryOf(p, AIHold.kind(p, "Treasure"):getEffectiveId())) == true and p:getHandcardNum() < 4
+			if self.player:objectName() ~= p:objectName() and self:isFriend(p)
+				and (p:getCards("j"):length() > 0 or helpsTarget or replenishes) then
 				use.card = policy(self,"#goodatwep:.:")
 				if use.to then use.to:append(p) end
 				return
@@ -823,8 +842,11 @@ sgs.ai_use_priority["goodatwep"] = sgs.ai_use_priority.Slash + 1
 sgs.ai_card_intention["goodatwep"] = function(self,card,from,tos)
 	for _,to in ipairs(tos) do
 		if to:getCards("j"):length() > 0
-		or (to:getArmor() and (to:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(to,"isWounded") and to:getArmor():getClassName() == "SilverLion")))
-		or (to:getTreasure() and __yuri_value_call(to,"getHandcardNum") < 5 and to:getTreasure():getClassName() == "Tianjitu") then
+		or (AIHold.kind(to, "Armor") and AIHold.kind(to, "Armor"):isKindOf("GaleShell") and AIEffect.serves(to, to, 1)
+			and select(2, AIEffect.beneficiaryOf(to, AIHold.kind(to, "Armor"):getEffectiveId())) == true) or (AIHold.kind(to, "Armor") and AIHold.kind(to, "Armor"):isKindOf("SilverLion") and AIEffect.serves(to, to, 1)
+			and select(2, AIEffect.beneficiaryOf(to, AIHold.kind(to, "Armor"):getEffectiveId())) == true and to:isWounded())
+		or (AIHold.kind(to, "Treasure") and AIHold.kind(to, "Treasure"):isKindOf("Tianjitu")
+			and AIEffect.serves(to, to, 4) and select(2, AIEffect.beneficiaryOf(to, AIHold.kind(to, "Treasure"):getEffectiveId())) == true and to:getHandcardNum() < 5) then
 			self:updateIntention(from, to, 0)
 		else
 			self:updateIntention(from, to, 15)
@@ -1340,29 +1362,35 @@ ai_skill_invoke.strangeguy = function(self, options, request)
 		end
 	end
 	if weaponcount > 0 or ohorsecount > 0 then
-		if not self.player:getWeapon() or (self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow")) then
+		local hasLongWeapon = false
+		for _, weapon in ipairs(AIEffect.cards(self.player, "Weapon") or {}) do
+			if not weapon:isKindOf("Crossbow") then hasLongWeapon = true; break end
+		end
+		if AIEffect.serves(self.player, self.player, 0) and not hasLongWeapon then
 			needweapon = true
 			if __yuri_value_call(self.player,"getHp") > 2 then feedback = feedback - 1 end
 		end
-		if not self.player:getOffensiveHorse() then
+		if (AIEffect.has(self.player, "OffensiveHorse") == false and AIEffect.serves(self.player, self.player, 3)) then
 			needweapon = true
 			if __yuri_value_call(self.player,"getHp") > 2 then feedback = feedback - 1 end
 		end
 	end
 	if armorcount > 0 then
-		if self.player:getArmor() and self.player:getArmor():getClassName() == "GaleShell" then
+		if (AIHold.kind(self.player, "Armor") and AIHold.kind(self.player, "Armor"):isKindOf("GaleShell") and AIEffect.serves(self.player, self.player, 1)
+			and select(2, AIEffect.beneficiaryOf(self.player, AIHold.kind(self.player, "Armor"):getEffectiveId())) == true) then
 			feedback = feedback - 3
 		end
 		if not (armorcount == 1 and self:getCardsNum("GaleShell") == 1) then
-			if self.player:getArmor() == nil then
+			if (AIEffect.has(self.player, "Armor") == false and AIEffect.serves(self.player, self.player, 1)) then
 				feedback = feedback - 1
 			end
-			if __yuri_value_call(self.player,"isWounded") and self.player:getArmor() and self.player:getArmor():getClassName() == "SilverLion" then
+			if (AIHold.kind(self.player, "Armor") and AIHold.kind(self.player, "Armor"):isKindOf("SilverLion") and AIEffect.serves(self.player, self.player, 1)
+				and select(2, AIEffect.beneficiaryOf(self.player, AIHold.kind(self.player, "Armor"):getEffectiveId())) == true and self.player:isWounded()) then
 				return false
 			end
 		end
 	end
-	if dhorsecount > 0 and not self.player:getDefensiveHorse() then
+	if dhorsecount > 0 and (AIEffect.has(self.player, "DefensiveHorse") == false and AIEffect.serves(self.player, self.player, 2)) then
 		feedback = feedback - 1
 	end
 	for _,enemy in ipairs(self.enemies) do
@@ -1600,7 +1628,12 @@ ai_skill_invoke.loyalm = function(self, options, request)
 	if damage.from:isNude() then
 		return true
 	end
-	if self:isFriend(damage.from) and damage.from:objectName() ~= self.player:objectName() and (damage.from:getArmor() and (damage.from:getArmor():isKindOf("GaleShell") or (__yuri_value_call(damage.from,"isWounded") and damage.from:getArmor():isKindOf("SilverLion")))) then
+	local armor = AIHold.kind(damage.from, "Armor")
+	local beneficiary, active
+	if armor then beneficiary, active = AIEffect.beneficiaryOf(damage.from, armor:getEffectiveId()) end
+	local helpsSource = beneficiary and active and beneficiary:objectName() == damage.from:objectName()
+		and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+	if self:isFriend(damage.from) and damage.from:objectName() ~= self.player:objectName() and helpsSource then
 		return true
 	end
 	if self:isEnemy(damage.from) then
@@ -1749,7 +1782,10 @@ ai_card_use["#wannawin"] = function(self, card, use, request)
 	end
 	for _, friend in ipairs(self.friends) do
 		if self.player:objectName() ~= friend:objectName() and not friend:isKongcheng() and __yuri_value_call(friend,"getMark","Wannawinmark") == 0 and __yuri_value_call(self.player,"canPindian",friend)
-		and (friend:getCards("j"):length() > 0 or (friend:getArmor() and (friend:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(friend,"isWounded") and friend:getArmor():getClassName() == "SilverLion")))) then
+		and (friend:getCards("j"):length() > 0 or (AIHold.kind(friend, "Armor") and AIHold.kind(friend, "Armor"):isKindOf("GaleShell") and AIEffect.serves(friend, friend, 1)
+			and select(2, AIEffect.beneficiaryOf(friend, AIHold.kind(friend, "Armor"):getEffectiveId())) == true)
+			or (AIHold.kind(friend, "Armor") and AIHold.kind(friend, "Armor"):isKindOf("SilverLion") and AIEffect.serves(friend, friend, 1)
+			and select(2, AIEffect.beneficiaryOf(friend, AIHold.kind(friend, "Armor"):getEffectiveId())) == true and friend:isWounded())) then
 			use.card = policy(self,"#wannawin:"..max_card:getId()..":")
 			if use.to then use.to:append(friend) end
 			return
@@ -1796,7 +1832,12 @@ sgs.ai_card_intention.wannawin = function(self, card, from, tos)
 	if self:needKongcheng(to) and __yuri_value_call(to,"getHandcardNum") == 1 then
 		intention = 0
 	end
-	if to:getCards("j"):length() > 0 or (to:getArmor() and (to:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(to,"isWounded") and to:getArmor():getClassName() == "SilverLion"))) then
+	local armor = AIHold.kind(to, "Armor")
+	local beneficiary, active
+	if armor then beneficiary, active = AIEffect.beneficiaryOf(to, armor:getEffectiveId()) end
+	local helpsTarget = beneficiary and active and beneficiary:objectName() == to:objectName()
+		and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+	if to:getCards("j"):length() > 0 or helpsTarget then
 		intention = 0
 	end
 	self:updateIntention(from, tos[1], intention)
@@ -1882,7 +1923,12 @@ end
 sgs.ai_card_intention.dressing = function(self, card, from, tos)
 	local intention = 20
 	local to = tos[1]
-	if (to:getArmor() and (to:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(to,"isWounded") and to:getArmor():getClassName() == "SilverLion"))) then
+	local armor = AIHold.kind(to, "Armor")
+	local beneficiary, active
+	if armor then beneficiary, active = AIEffect.beneficiaryOf(to, armor:getEffectiveId()) end
+	local helpsTarget = beneficiary and active and beneficiary:objectName() == to:objectName()
+		and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+	if helpsTarget then
 		intention = 0
 	end
 	self:updateIntention(from, tos[1], intention)
@@ -2093,7 +2139,12 @@ sgs.ai_playerchosen_intention.newmember = function(self, from, to)
 	if __yuri_value_call(from,"getMark","discard") > 0 then
 		clear_source_mark(self,from,"discard")
 		intention = 15
-		if (to:getArmor() and (to:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(to,"isWounded") and to:getArmor():getClassName() == "SilverLion"))) then
+		local armor = AIHold.kind(to, "Armor")
+		local beneficiary, active
+		if armor then beneficiary, active = AIEffect.beneficiaryOf(to, armor:getEffectiveId()) end
+		local helpsTarget = beneficiary and active and beneficiary:objectName() == to:objectName()
+			and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+		if helpsTarget then
 			intention = 0
 		end
 		if to:getCards("j"):length() > 0 and not to:containsTrick("YanxiaoCard") then
@@ -2150,10 +2201,13 @@ ai_skill_invoke.introvert = function(self, options, request)
 		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","Duel") and (self:getCardsNum("Slash") <= sn or self:getCardsNum("Slash") < ssc) then return true end
 		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","SavageAssault") and self:getCardsNum("Slash") == 0 then return true end
 		if self:isWeak() and __yuri_value_call(use.card,"isKindOf","ArcheryAttack") and self:getCardsNum("Jink") == 0 then return true end
-		if gotslash and gotanaleptic and use.from:canSlash(self.player) and (self:getCardsNum("Jink") < 1 or (use.from:getWeapon() and use.from:getWeapon():getClassName() == "Axe" and (__yuri_value_call(use.from,"getHandcardNum")+use.from:getEquips():length()) > 3)) then
+		if gotslash and gotanaleptic and use.from:canSlash(self.player) and (self:getCardsNum("Jink") < 1 or (AIEffect.has(use.from, "Axe") and (__yuri_value_call(use.from,"getHandcardNum")+use.from:getEquips():length()) > 3)) then
 			return false
 		else
-			if (__yuri_value_call(use.card,"isKindOf","Dismantlement") or __yuri_value_call(use.card,"isKindOf","Snatch")) and (self.player:getArmor() and self.player:getArmor():getClassName() ~= "GaleShell") or self.player:getDefensiveHorse() or self.player:getOffensiveHorse() or self.player:getWeapon() or (__yuri_value_call(self.player,"getHandcardNum") == 1 and self:isWeak()) then
+			local armor = AIHold.kind(self.player, "Armor")
+			local beneficiary, active
+			if armor then beneficiary, active = AIEffect.beneficiaryOf(self.player, armor:getEffectiveId()) end
+			if (__yuri_value_call(use.card,"isKindOf","Dismantlement") or __yuri_value_call(use.card,"isKindOf","Snatch")) and (armor and active and self:isFriend(beneficiary) and not armor:isKindOf("GaleShell")) or self.player:getDefensiveHorse() or self.player:getOffensiveHorse() or self.player:getWeapon() or (__yuri_value_call(self.player,"getHandcardNum") == 1 and self:isWeak()) then
 				return true
 			end
 			if __yuri_value_call(use.card,"isKindOf","Duel") and (self:getCardsNum("Slash") <= sn or self:getCardsNum("Slash") < ssc) then return true end
@@ -2337,7 +2391,11 @@ sgs.ai_skill_cardask["@luajtieji-discard"] = function(self, data, pattern)
 		if __yuri_value_call(card,"isKindOf","Analeptic") or __yuri_value_call(card,"isKindOf","Peach") then continue end
 		if not self:isWeak() and (self:getKeepValue(card) > 8 or self:isValuableCard(card)) then continue end
 		if __yuri_value_call(card,"isKindOf","Jink") and jink - 1 < need then continue end
-		if self.player:getArmor() and self:evaluateArmor() > 3 and __yuri_value_call(card,"getEffectiveId") == self.player:getArmor():getEffectiveId() then continue end
+		local armor = AIHold.kind(self.player, "Armor")
+		if armor and card:getEffectiveId() == armor:getEffectiveId() then
+			local beneficiary, active = AIEffect.beneficiaryOf(self.player, armor:getEffectiveId())
+			if beneficiary and active and self:isFriend(beneficiary) and self:evaluateArmor(armor, beneficiary) > 3 then continue end
+		end
 		if __yuri_value_call(card,"isKindOf","WoodenOx") and self.player:getPile("wooden_ox"):length() > 0 then continue end
 		return "$" .. __yuri_value_call(card,"getEffectiveId")
 	end
@@ -2358,7 +2416,12 @@ ai_skill_use["@@thedolls"] = function(self, prompt, request)
 	self.enemies = self:sort(self.enemies, "defense")
     for _, f in ipairs(self.friends) do
 		if (not f:isAllNude()) and __yuri_value_call(f,"getMark","@thedollsmark") > 0 then
-			if self:isFriend(f) and (f:getCards("j"):length() > 0 or (f:getArmor() and (f:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(f,"isWounded") and f:getArmor():getClassName() == "SilverLion"))))then
+			local armor = AIHold.kind(f, "Armor")
+			local beneficiary, active
+			if armor then beneficiary, active = AIEffect.beneficiaryOf(f, armor:getEffectiveId()) end
+			local helpsTarget = beneficiary and active and beneficiary:objectName() == f:objectName()
+				and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+			if self:isFriend(f) and (f:getCards("j"):length() > 0 or helpsTarget) then
 				table.insert(targets, f:objectName())
 			end
 		end
@@ -2367,7 +2430,8 @@ ai_skill_use["@@thedolls"] = function(self, prompt, request)
 	if #targets < 3 then
 		for _, p in ipairs(self.enemies) do
 			if (not p:isAllNude()) and __yuri_value_call(p,"getMark","@thedollsmark") > 0 then
-				if p:getEquips():length() > 0 and not (p:getEquips():length() == 1 and p:getArmor() and (p:getArmor():getClassName() == "GaleShell")) then
+				if #AIHold.equips(p) > 0 and not (#AIHold.equips(p) == 1 and (AIHold.kind(p, "Armor") and AIHold.kind(p, "Armor"):isKindOf("GaleShell") and AIEffect.serves(p, p, 1)
+					and select(2, AIEffect.beneficiaryOf(p, AIHold.kind(p, "Armor"):getEffectiveId())) == true)) then
 					table.insert(targets, p:objectName())
 				end
 			end
@@ -2406,7 +2470,12 @@ end
 
 sgs.ai_card_intention["thedolls"] = function(self,card,from,tos)
 	for _,to in ipairs(tos) do
-		if to:getCards("j"):length() > 0 or (to:getArmor() and (to:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(to,"isWounded") and to:getArmor():getClassName() == "SilverLion"))) then
+		local armor = AIHold.kind(to, "Armor")
+		local beneficiary, active
+		if armor then beneficiary, active = AIEffect.beneficiaryOf(to, armor:getEffectiveId()) end
+		local helpsTarget = beneficiary and active and beneficiary:objectName() == to:objectName()
+			and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+		if to:getCards("j"):length() > 0 or helpsTarget then
 			self:updateIntention(from, to, 0)
 		else
 			self:updateIntention(from, to, 15)
@@ -2700,13 +2769,26 @@ sgs.ai_skill_discard["likebooks"] = function(self, discard_num, min_num, optiona
 			end
 		else
 			if not self:hasSkills(sgs.lose_equip_skill) then
-				if __yuri_value_call(card,"isKindOf","OffensiveHorse") and self.player:getOffensiveHorse() then
+				if __yuri_value_call(card,"isKindOf","OffensiveHorse") and (AIHold.kind(self.player, "OffensiveHorse") or AIEffect.serves(self.player, self.player, 3) == false or AIEffect.has(self.player, "OffensiveHorse")) then
 					table.insert(to_discard, card:getId())
-				elseif __yuri_value_call(card,"isKindOf","DefensiveHorse") and self.player:getDefensiveHorse() then
+				elseif __yuri_value_call(card,"isKindOf","DefensiveHorse") and (AIHold.kind(self.player, "DefensiveHorse") or AIEffect.serves(self.player, self.player, 2) == false or AIEffect.has(self.player, "DefensiveHorse")) then
 					table.insert(to_discard, card:getId())
 				elseif __yuri_value_call(card,"isKindOf","Armor") and self:evaluateArmor(card) <= self:evaluateArmor() then
 					table.insert(to_discard, card:getId())
-				elseif __yuri_value_call(card,"isKindOf","Weapon") and self:evaluateWeapon(card) <= self:evaluateWeapon(self.player:getWeapon()) then
+				elseif __yuri_value_call(card,"isKindOf","Weapon") then
+					local beneficiary = AIEffect.areaBeneficiary(self.player)
+					if not beneficiary then continue end
+					if beneficiary:objectName() == self.player:objectName() then
+						local old = AIHold.kind(self.player, "Weapon")
+						local remaining = AIEffect.rangeAfterLeaving(beneficiary, old and old:getEffectiveId())
+						if not remaining then continue end
+						local incoming = self:evaluateWeapon(card, beneficiary, nil, math.max(remaining, card:getRange() or 1))
+						local current = -1
+						for _, activeWeapon in ipairs(AIEffect.cards(beneficiary, "Weapon") or {}) do
+							current = math.max(current, self:evaluateWeapon(activeWeapon, beneficiary, nil, beneficiary:getAttackRange()))
+						end
+						if incoming > current then continue end
+					end
 					table.insert(to_discard, card:getId())
 				end
 			end
@@ -2878,7 +2960,7 @@ ai_skill_use["@yuri_kongsheng"] = function(self, prompt, request)	--yun
 			if dummy_use.to:isEmpty() then
 				table.insert(to_discard, card:getId())
 			end
-		elseif __yuri_value_call(card,"isKindOf","OffensiveHorse") and self.player:getOffensiveHorse() then
+		elseif __yuri_value_call(card,"isKindOf","OffensiveHorse") and (AIHold.kind(self.player, "OffensiveHorse") or AIEffect.serves(self.player, self.player, 3) == false or AIEffect.has(self.player, "OffensiveHorse")) then
 			table.insert(to_discard, card:getId())
 		elseif __yuri_value_call(card,"isKindOf","Peach") then
 			local dummy_use = self:aiUseCard(card, dummy_plan())
@@ -3106,7 +3188,12 @@ ai_card_use["#weareidle"] = function(self, card, use, request)
 	local targetB
 
 	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
-		if self.player:objectName() ~= p:objectName() and self:isFriend(p) and (p:getCards("j"):length() > 0 or (p:getArmor() and (p:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(p,"isWounded") and p:getArmor():getClassName() == "SilverLion"))))then
+		local armor = AIHold.kind(p, "Armor")
+		local beneficiary, active
+		if armor then beneficiary, active = AIEffect.beneficiaryOf(p, armor:getEffectiveId()) end
+		local helpsTarget = beneficiary and active and beneficiary:objectName() == p:objectName()
+			and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+		if self.player:objectName() ~= p:objectName() and self:isFriend(p) and (p:getCards("j"):length() > 0 or helpsTarget) then
 			if not targetA then
 				targetA = p
 			elseif not targetB then
@@ -3239,7 +3326,12 @@ sgs.ai_skill_cardask["@imwatching"] = function(self)
 		if not choice and card:isBlack() and not (self:isWeak(self.player) and __yuri_value_call(self.player,"isLord") and __yuri_value_call(card,"isKindOf","Analeptic")) then
 			choice = card
 		end
-		if __yuri_value_call(self.player,"isWounded") and self.player:getArmor():getClassName() == "SilverLion" and __yuri_value_call(card,"isKindOf","SilverLion") then
+		local lion = AIHold.kind(self.player, "Armor")
+		local beneficiary, active
+		if lion and lion:isKindOf("SilverLion") and lion:getEffectiveId() == card:getEffectiveId() then
+			beneficiary, active = AIEffect.beneficiaryOf(self.player, lion:getEffectiveId())
+		end
+		if active and beneficiary:objectName() == self.player:objectName() and self.player:isWounded() then
 			choice = card
 			break
 		end
@@ -3287,7 +3379,12 @@ sgs.ai_skill_cardask["@bougairensha"] = function(self, data)
 		if not choice and card:isBlack() and not (self:isWeak(self.player) and __yuri_value_call(self.player,"isLord") and __yuri_value_call(card,"isKindOf","Analeptic")) then
 			choice = card
 		end
-		if __yuri_value_call(self.player,"isWounded") and self.player:getArmor() and self.player:getArmor():getClassName() == "SilverLion" and __yuri_value_call(card,"isKindOf","SilverLion") then
+		local lion = AIHold.kind(self.player, "Armor")
+		local beneficiary, active
+		if lion and lion:isKindOf("SilverLion") and lion:getEffectiveId() == card:getEffectiveId() then
+			beneficiary, active = AIEffect.beneficiaryOf(self.player, lion:getEffectiveId())
+		end
+		if active and beneficiary:objectName() == self.player:objectName() and self.player:isWounded() then
 			choice = card
 			break
 		end
@@ -3721,7 +3818,12 @@ ai_skill_invoke.kanshi_dis = function(self, options, request)
 	local useto = data:toPlayer()
 	if self:isFriend(useto) then
 		if self:needKongcheng(useto, false) and __yuri_value_call(useto,"getHandcardNum") == 1 then return true end
-		if useto:getCards("j"):length() > 0 or (useto:getArmor() and (useto:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(useto,"isWounded") and useto:getArmor():getClassName() == "SilverLion"))) then return true end
+		local armor = AIHold.kind(useto, "Armor")
+		local beneficiary, active
+		if armor then beneficiary, active = AIEffect.beneficiaryOf(useto, armor:getEffectiveId()) end
+		local helpsTarget = beneficiary and active and beneficiary:objectName() == useto:objectName()
+			and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+		if useto:getCards("j"):length() > 0 or helpsTarget then return true end
 		return false
 	else
 		if self:isEnemy(useto) and self:needKongcheng(useto, false) and (__yuri_value_call(useto,"getHandcardNum")+useto:getEquips():length()) == 1 and __yuri_value_call(useto,"getHandcardNum") == 1 then return false end
@@ -4150,7 +4252,8 @@ sgs.ai_skill_playerchosen["haigu"] = function(self, targets)
 					end
 				end
 			end
-			if __yuri_value_call(target,"isWounded") and target:getArmor() and target:getArmor():getClassName() == "SilverLion" then count = count + 2 end
+			if (AIHold.kind(target, "Armor") and AIHold.kind(target, "Armor"):isKindOf("SilverLion") and AIEffect.serves(target, target, 1)
+				and select(2, AIEffect.beneficiaryOf(target, AIHold.kind(target, "Armor"):getEffectiveId())) == true and target:isWounded()) then count = count + 2 end
 
 			if self.player:getPile("haigu_pile"):length() <= count then tar = target end
 		end
@@ -4203,7 +4306,14 @@ sgs.ai_choicemade_filter.cardChosen.haigu = sgs.ai_choicemade_filter.cardChosen.
 ai_skill_invoke.kirisou = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local current = data:toPlayer()
-	if self:isEnemy(current) or (self:isFriend(current) and ((current:getArmor() and (current:getArmor():getClassName() == "GaleShell" or (__yuri_value_call(current,"isWounded") and current:getArmor():getClassName() == "SilverLion"))) or (current:getTreasure() and __yuri_value_call(current,"getHandcardNum") < 4 and current:getTreasure():isKindOf("Tianjitu")))) then
+	local armor = AIHold.kind(current, "Armor")
+	local beneficiary, active
+	if armor then beneficiary, active = AIEffect.beneficiaryOf(current, armor:getEffectiveId()) end
+	local helpsTarget = beneficiary and active and beneficiary:objectName() == current:objectName()
+		and (armor:isKindOf("GaleShell") or (armor:isKindOf("SilverLion") and beneficiary:isWounded()))
+	local replenishes = AIHold.kind(current, "Treasure") and AIHold.kind(current, "Treasure"):isKindOf("Tianjitu")
+		and AIEffect.serves(current, current, 4) and select(2, AIEffect.beneficiaryOf(current, AIHold.kind(current, "Treasure"):getEffectiveId())) == true and current:getHandcardNum() < 4
+	if self:isEnemy(current) or (self:isFriend(current) and (helpsTarget or replenishes)) then
 		return true
 	end
 	return false
@@ -4279,11 +4389,11 @@ ai_fill_skill["gopugu"] = function(self, options, request)
 				end
 				return policy(self,card_str)
 			end
-			if __yuri_value_call(card,"isKindOf","Weapon") and self.player:getWeapon() then return policy(self,card_str) end
-			if __yuri_value_call(card,"isKindOf","Armor") and self.player:getArmor() then return policy(self,card_str) end
-			if __yuri_value_call(card,"isKindOf","OffensiveHorse") and self.player:getOffensiveHorse() then return policy(self,card_str) end
-			if __yuri_value_call(card,"isKindOf","DefensiveHorse") and self.player:getDefensiveHorse() then return policy(self,card_str) end
-			if __yuri_value_call(card,"isKindOf","Treasure") and self.player:getTreasure() then return policy(self,card_str) end
+			if __yuri_value_call(card,"isKindOf","Weapon") and (AIHold.kind(self.player, "Weapon") or AIEffect.serves(self.player, self.player, 0) == false) then return policy(self,card_str) end
+			if __yuri_value_call(card,"isKindOf","Armor") and (AIHold.kind(self.player, "Armor") or AIEffect.serves(self.player, self.player, 1) == false) then return policy(self,card_str) end
+			if __yuri_value_call(card,"isKindOf","OffensiveHorse") and (AIHold.kind(self.player, "OffensiveHorse") or AIEffect.serves(self.player, self.player, 3) == false or AIEffect.has(self.player, "OffensiveHorse")) then return policy(self,card_str) end
+			if __yuri_value_call(card,"isKindOf","DefensiveHorse") and (AIHold.kind(self.player, "DefensiveHorse") or AIEffect.serves(self.player, self.player, 2) == false or AIEffect.has(self.player, "DefensiveHorse")) then return policy(self,card_str) end
+			if __yuri_value_call(card,"isKindOf","Treasure") and (AIHold.kind(self.player, "Treasure") or AIEffect.serves(self.player, self.player, 4) == false) then return policy(self,card_str) end
 		end
 	end
 end
@@ -4414,9 +4524,13 @@ ai_skill_choice.tennsainohojyou = function(self, options, request)
 
 	local n = jcn
 	if ecn > 0 then
-		if self.player:getArmor() and self.player:getArmor():getClassName() == "GaleShell" then n=n+1 end
-		if __yuri_value_call(self.player,"isWounded") and self.player:getArmor() and self.player:getArmor():getClassName() == "SilverLion" then n=n+1 end
-		if self.player:getTreasure() and self.player:getTreasure():getClassName() == "Tianjitu" and __yuri_value_call(self.player,"getHandcardNum") < 4 then n=n+1 end
+		local armor = AIHold.kind(self.player, "Armor")
+		local beneficiary, active
+		if armor then beneficiary, active = AIEffect.beneficiaryOf(self.player, armor:getEffectiveId()) end
+		if beneficiary and active and self:isFriend(beneficiary) and armor:isKindOf("GaleShell") then n=n+1 end
+		if beneficiary and active and self:isFriend(beneficiary) and armor:isKindOf("SilverLion") and beneficiary:isWounded() then n=n+1 end
+		if AIHold.kind(self.player, "Treasure") and AIHold.kind(self.player, "Treasure"):isKindOf("Tianjitu")
+			and AIEffect.serves(self.player, self.player, 4) and select(2, AIEffect.beneficiaryOf(self.player, AIHold.kind(self.player, "Treasure"):getEffectiveId())) == true and self.player:getHandcardNum() < 4 then n=n+1 end
 	end
 	if hcn > 0 then
 		local needpeach = false

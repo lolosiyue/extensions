@@ -78,7 +78,7 @@ ai_fill_skill.se_zhifu = function(self, options, request)
 
 	if self.player:isKongcheng() then return end
 	for _, p in ipairs(self.friends) do
-		if (p:getArmor() and p:getArmor():isKindOf("SilverLion") and p:isWounded()) or (p:getHp() == 1 and self.player:getHandcardNum() > 1) then
+		if (p:getArmor() and p:getArmor():isKindOf("SilverLion") and AIEffect.serves(p,p) and p:isWounded()) or (p:getHp() == 1 and self.player:getHandcardNum() > 1) then
 			return self:legacySkillSeed("se_zhifu", "#se_zhifucard", request)
 		end
 	end
@@ -103,7 +103,7 @@ ai_card_use["#se_zhifucard"] = function(self, card, use, request)
 
 	if not target then
 		for _, p in ipairs(self.friends) do
-			if (p:getArmor() and p:getArmor():isKindOf("SilverLion")) then
+			if (p:getArmor() and p:getArmor():isKindOf("SilverLion") and AIEffect.serves(p,p)) then
 				target = p
 				break
 			end

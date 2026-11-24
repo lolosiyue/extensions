@@ -493,14 +493,17 @@ sgs.ai_skill_cardask["@jiefan-discard"] = function(self,data)
 	if not self.player:getWeapon() then return "." end
 	local count = 0
 	-- This VM's sgs.weapon_range registry stands in for the donor's; SWIG truncates the fix to int.
-	local range_fix = ( sgs.weapon_range[(self.player:getWeapon():getClassName())] or 1 )-(self.player:getAttackRange(false))
+	local weapon = AIHold.kind(self.player, "Weapon")
+	local remaining = AIEffect.rangeAfterLeaving(self.player, weapon and weapon:getEffectiveId())
+	if remaining == nil then return "." end
+	local range_fix = self.player:getAttackRange() - remaining
 	range_fix = range_fix<0 and math.ceil(range_fix) or math.floor(range_fix)
 
 	for _,p in sgs.qlist(self.room:getAllPlayers())do
 		if self:isEnemy(p) and known(self.player:distanceTo(p,range_fix),"Jiefan target distance")>(self.player:getAttackRange()) then count = count+1 end
 	end
 
-	if count<=2 then return self.player:getWeapon():getEffectiveId() end
+	if count<=2 and AIHold.kind(self.player, "Weapon") then return weapon:getEffectiveId() end
 	return "."
 end
 

@@ -796,7 +796,11 @@ sgs.ai_nullification.Binglinchengxia = function(self,trick,from,to,positive)
 	then
 		if self:isFriend(to)
 		then
-			if null_num>1 then return not to:getArmor()
+			if null_num>1 then
+				local protects = to:hasArmorEffect(nil, from)
+				if protects == true then return false end
+				if protects == false and AIEffect.has(to, "Armor") == false then return true end
+				return nil
 			else return self:isWeak(to) end
 		end
 	else

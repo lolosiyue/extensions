@@ -780,7 +780,7 @@ ai_card_use["#kejieguizhashiCard"] = function(self, card, use, request)
 	if #targets==0 then return end
 
 	self:setPriorityValue("#kejieguizhashiCard",8,"keguibao")
-	if not self.player:getArmor() and not self.player:isKongcheng() then
+	if not AIEffect.has(self.player,"Armor") and AIEffect.serves(self.player,self.player,1) and not self.player:isKongcheng() then
 		for _,card in sgs.qlist(self.player:getCards("h"))do
 			if card:isKindOf("Armor") and self:evaluateArmor(card)>3 then
 				self:setPriorityValue("#kejieguizhashiCard",5.9,"keguibao")

@@ -383,7 +383,7 @@ ai_fill_skill.Dragon_kurou = function(self, options, request)
         return seed(self,"Dragon_kurou","#Dragon_kurouCard",request)
     end
     local slash = self:getEvaluationCard("slash")
-    if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow")
+    if AIEffect.has(self.player, "Crossbow")
     or self.player:hasSkill("paoxiao") then
         for _,enemy in ipairs(self.enemies)do
             if self.player:canSlash(enemy,slash,true) and self:slashIsEffective(slash,enemy)
@@ -469,12 +469,12 @@ ai_fill_skill.Dragon_guose = function(self, options, request)
         if (acard:getSuit()==sgs.Card_Diamond) and ((self:getUseValue(acard)<sgs.ai_use_value.Indulgence) or inclusive) then
             local shouldUse=true
             if acard:isKindOf("Armor") then
-                if not self.player:getArmor() then shouldUse = false
+                if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then shouldUse = false
                 elseif self.player:hasEquip(acard) and not has_armor and self:evaluateArmor()>0 then shouldUse = false
                 end
             end
             if acard:isKindOf("Weapon") then
-                if not self.player:getWeapon() then shouldUse = false
+                if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) and AIEffect.has(self.player, "Weapon") == false then shouldUse = false
                 elseif self.player:hasEquip(acard) and not has_weapon then shouldUse = false
                 end
             end
@@ -812,7 +812,11 @@ ai_card_use["#Promote_zhihengCard"] = function(self, card, use, request)
                             for _,p in sgs.list(dummy_use.to)do
                                 if p:getHp()<=1 then
                                     shouldUse = false
-                                    if self.player:distanceTo(p)>1 then keep_weapon = self.player:getWeapon() end
+                                    local weapon = AIHold.kind(self.player, "Weapon")
+                                    if weapon then
+                                    	local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+                                    	if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+                                    end
                                     break
                                 end
                             end
@@ -863,7 +867,7 @@ ai_card_use["#Promote_zhihengCard"] = function(self, card, use, request)
         end
 
         local num = self:getCardsNum("Jink")-1
-        if self.player:getArmor() then num = num+1 end
+        if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num+1 end
         if num>0 then
             for _,card in ipairs(cards)do
                 if card:isKindOf("Jink") and num>0 then
@@ -891,7 +895,7 @@ ai_card_use["#Promote_zhihengCard"] = function(self, card, use, request)
             table.insert(unpreferedCards,self.player:getArmor():getId())
         end
 
-        if self.player:getOffensiveHorse() and self.player:getWeapon() then
+        if AIHold.kind(self.player, "OffensiveHorse") and AIEffect.has(self.player, "Weapon") then
             table.insert(unpreferedCards,self.player:getOffensiveHorse():getId())
         end
     end

@@ -567,8 +567,8 @@ ai_card_use.GanluCard = function(self, card, use, request)
 			if not self:hasSkills(sgs.lose_equip_skill,enemy) and not self:hasTuntianEffect(enemy,true) then
 				local ee = enemy:getEquips():length()
 				local fe = friend:getEquips():length()
-				local value = self:evaluateArmor(enemy:getArmor(),friend)-self:evaluateArmor(friend:getArmor(),enemy)
-					- self:evaluateArmor(friend:getArmor(),friend)+self:evaluateArmor(enemy:getArmor(),enemy)
+				local value = self:evaluateArmor(enemy:getArmor(),AIEffect.areaBeneficiary(friend) or friend)-self:evaluateArmor(friend:getArmor(),AIEffect.areaBeneficiary(enemy) or enemy)
+					- self:evaluateArmor(friend:getArmor(),AIEffect.areaBeneficiary(friend) or friend)+self:evaluateArmor(enemy:getArmor(),AIEffect.areaBeneficiary(enemy) or enemy)
 				if math.abs(ee-fe)<=self.player:getLostHp() and ee>0 and (ee>fe or ee==fe and value>0) then
 					if self:hasSkills(sgs.lose_equip_skill,friend) then
 						use.card = policy_card(self,"ganlu","GanluCard",{},request)
@@ -954,7 +954,7 @@ ai_skill_use["@@jujian"]=function(self,prompt,request)
 	end
 	for _,friend in ipairs(self.friends_noself)do
 		if self:isWeak(friend) or friend:getHandcardNum()<2 or not friend:faceUp() or self:getOverflow()>0
-		or (friend:getArmor() and friend:getArmor():objectName()=="Vine" and (friend:isChained() and not self:isGoodChainPartner(friend))) then
+		or (AIEffect.has(friend,"Vine") and (friend:isChained() and not self:isGoodChainPartner(friend))) then
 			needfriend = needfriend+1
 		end
 	end
@@ -966,7 +966,7 @@ ai_skill_use["@@jujian"]=function(self,prompt,request)
 		end
 	end
 	for _,friend in ipairs(self.friends_noself)do
-		if friend:getArmor() and friend:getArmor():objectName()=="Vine" and (friend:isChained() and not self:isGoodChainPartner(friend)) then
+		if AIEffect.has(friend,"Vine") and (friend:isChained() and not self:isGoodChainPartner(friend)) then
 			return action(self,"jujian",{nobasiccard},{friend},request)
 		end
 	end
@@ -1106,7 +1106,7 @@ ai_skill_use["@@nospaiyi"]=function(self,prompt,request)
 					if #self:poisonCards({c},p)<1 then continue end
 					ai_unsupported("fixed donor dereferences undefined seif before prohibition","nospaiyi.donor_undefined_seif")
 					local n = c:getRealCard():toEquipCard():location()
-					if p:hasEquip(n) then continue end
+					if p:hasEquip(n) or AIEffect.serves(p,p,n)==false then continue end
 					self:setStrategyMemory("choice_override:nospaiyi","equip_area")
 					return action(self,"nospaiyi",{c:getId()},{p},request)
 				end
@@ -1117,7 +1117,7 @@ ai_skill_use["@@nospaiyi"]=function(self,prompt,request)
 					if #self:poisonCards({c},p)>0 then continue end
 					ai_unsupported("fixed donor dereferences undefined seif before prohibition","nospaiyi.donor_undefined_seif")
 					local n = c:getRealCard():toEquipCard():location()
-					if p:hasEquip(n) then continue end
+					if p:hasEquip(n) or AIEffect.serves(p,p,n)==false then continue end
 					self:setStrategyMemory("choice_override:nospaiyi","equip_area")
 					return action(self,"nospaiyi",{c:getId()},{p},request)
 				end

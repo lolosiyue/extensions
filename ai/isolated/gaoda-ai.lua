@@ -535,10 +535,10 @@ ai_skill_choice.shensheng = function(self, options, request)
     local data = request and self:getDecisionData(request) or nil
 
 	local id = package_known(data,"toString")
-	if (disclosed_card(self,id):isKindOf("Weapon") and not package_call(self.player,"getWeapon")) or
-	   (disclosed_card(self,id):isKindOf("Armor") and not package_call(self.player,"getArmor")) or
-	   (disclosed_card(self,id):isKindOf("DefensiveHorse") and not package_known(self.player,"getDefensiveHorse")) or
-	   (disclosed_card(self,id):isKindOf("OffensiveHorse") and not package_known(self.player,"getOffensiveHorse")) then
+	if (disclosed_card(self,id):isKindOf("Weapon") and AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) and AIEffect.has(self.player, "Weapon") == false) or
+	   (disclosed_card(self,id):isKindOf("Armor") and AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false) or
+	   (disclosed_card(self,id):isKindOf("DefensiveHorse") and AIHold.slotFree(self.player, 2) and AIEffect.serves(self.player, self.player, 2) and AIEffect.has(self.player, "DefensiveHorse") == false) or
+	   (disclosed_card(self,id):isKindOf("OffensiveHorse") and AIHold.slotFree(self.player, 3) and AIEffect.serves(self.player, self.player, 3) and AIEffect.has(self.player, "OffensiveHorse") == false) then
 		return ai_choice_result(("ssuse"), options)
 	else
 		return ai_choice_result(("ssobtain"), options)
@@ -1080,7 +1080,7 @@ bianxing_skill.getTurnUseCard = function(self, options, request)
 		end
 		table.sort(self.enemies, f)
 		if not package_known(self,"slashProhibit",clone_native(self,"slash"), self.enemies[1]) and package_known(self.player,"distanceTo",self.enemies[1]) - package_known(self.player,"getAttackRange") <= 1
-			and (package_known(self.player,"distanceTo",self.enemies[1]) - package_known(self.player,"getAttackRange") == 1 or package_known(self,"getCardsNum","Slash") > 1 or package_call(self.enemies[1],"getArmor")) then
+			and (package_known(self.player,"distanceTo",self.enemies[1]) - package_known(self.player,"getAttackRange") == 1 or package_known(self,"getCardsNum","Slash") > 1 or (AIEffect.has(self.enemies[1], "Armor") or self.enemies[1]:hasArmorEffect() == true)) then
 			return source_construct(self,"#bianxing:.:")
 		end
 	elseif package_known(self.player,"hasSkill","tuci") then
@@ -1161,7 +1161,11 @@ ai_skill_choice.chonglang = function(self, options, request)
 	choices = package_known(choices,"split","+")
 	local use = package_known(data,"toCardUse")
 	if table.contains(choices, "chonglangB") then
-		if package_known(use.to,"first"):getArmor() then
+		local holder = package_known(use.to, "first")
+		local armor = AIHold.kind(holder, "Armor")
+		local beneficiary, active
+		if armor then beneficiary, active = AIEffect.beneficiaryOf(holder, armor:getEffectiveId()) end
+		if armor and beneficiary and active and self:isEnemy(beneficiary) and not self:needToThrowArmor(holder) then
 			return ai_choice_result(("chonglangB"), options)
 		end
 	end
@@ -1723,22 +1727,37 @@ ai_card_use["#xiezhan"] = function(self, card, use, request)
 	local cards = sgs.QList2Table(package_known(self.player,"getCards","he"))
 	package_call(self,"sortByUseValue",cards, true)
 	for _,card in ipairs(cards) do
+		if not package_known(card, "isKindOf", "EquipCard") then continue end
 		for _,friend in ipairs(self.friends_noself) do
 			local card_id = package_known(card,"getId")
 			local range_fix = 0
-			if package_call(self.player,"getWeapon") and package_call(self.player,"getWeapon"):getId() == card_id then
-				local weapon = package_call(self.player,"getWeapon"):getRealCard():toWeapon()
-				range_fix = range_fix + package_known(weapon,"getRange") - 1
-			elseif package_known(self.player,"getOffensiveHorse") and package_known(self.player,"getOffensiveHorse"):getId() == card_id then
+			local remaining_range = self.player:getAttackRange()
+			if package_known(card, "isKindOf", "Weapon") and AIHold.holds(self.player, card_id) then
+				remaining_range = AIEffect.rangeAfterLeaving(self.player, card_id) or remaining_range
+				local slot_weapon = AIHold.at(self.player, 0)
+				if slot_weapon and slot_weapon:getEffectiveId() == card_id then
+					-- The skill card's target filter still applies its printed-weapon offset.
+					range_fix = math.max(0, package_known(slot_weapon, "getRange") - 1)
+				end
+			elseif AIHold.kind(self.player, "OffensiveHorse")
+				and AIHold.kind(self.player, "OffensiveHorse"):getId() == card_id
+				and select(2, AIEffect.beneficiaryOf(self.player, card_id)) == true
+				and AIEffect.serves(self.player, self.player, 3)
+				and AIEffect.horseRemains(self.player, false, card_id) == false then
 				range_fix = range_fix + 1
 			end
-			local i = package_known(card,"getRealCard"):toEquipCard():location()
-			if ((package_known(card,"isKindOf","Weapon") and package_call(friend,"getWeapon") == nil) or
+			local i = package_known(card, "getEquipSlot")
+			-- Adding a nonnegative offset to the visible distance bounds the
+			-- native result even when its distance was clamped or fixed.
+			local distance = self.room:distanceTo(self.player, friend)
+			if ((package_known(card,"isKindOf","Weapon") and AIHold.slotFree(friend, 0) and AIEffect.serves(friend, friend, 0)) or
 				(package_known(card,"isKindOf","Armor") and package_call(friend,"getArmor") == nil) or
-				(package_known(card,"isKindOf","DefensiveHorse") and package_known(friend,"getDefensiveHorse") == nil) or
-				(package_known(card,"isKindOf","OffensiveHorse") and package_known(friend,"getOffensiveHorse") == nil) or
-				(package_known(card,"isKindOf","Treasure") and package_known(friend,"getTreasure") == nil)) and
-				package_known(self.player,"distanceTo",friend, range_fix) <= package_known(self.player,"getAttackRange") and sgs.Slash_IsAvailable(friend) and package_known(friend,"hasEquipArea",i) then
+				(package_known(card,"isKindOf","DefensiveHorse") and AIHold.slotFree(friend, 2) and AIEffect.serves(friend, friend, 2)) or
+				(package_known(card,"isKindOf","OffensiveHorse") and AIHold.slotFree(friend, 3) and AIEffect.serves(friend, friend, 3)) or
+				(package_known(card,"isKindOf","Treasure") and AIHold.slotFree(friend, 4) and AIEffect.serves(friend, friend, 4))) and
+				distance and distance + range_fix <= self.player:getAttackRange()
+				and distance <= remaining_range
+				and sgs.Slash_IsAvailable(friend) and package_known(friend,"hasEquipArea",i) then
 				use.card = source_construct(self,"#xiezhan:"..card_id..":")
 				if use.to then package_call(use.to,"append",friend) end
 				return
@@ -1954,28 +1973,30 @@ ai_skill_invoke.mengshi = function(self, options, request)
 	local use = package_known(data,"toCardUse")
 	for _,p in sgs.qlist(use.to) do
 		if package_known(self,"isEnemy",p) then
-			return not (package_known(p,"isWounded") and package_call(p,"getArmor") and package_known(p,"getEquips"):length() == 1 and package_call(p,"getArmor"):getClassName() == "SilverLion")
+			local lion = AIHold.kind(p, "Armor")
+			local beneficiary, active
+			if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(p, lion:getEffectiveId()) end
+			return not (active and self:isEnemy(beneficiary) and beneficiary:isWounded() and #AIHold.equips(p) == 1)
 		elseif package_known(self,"isFriend",p) then
-			return ((package_known(p,"isWounded") and package_call(p,"getArmor") and package_call(p,"getArmor"):getClassName() == "SilverLion")) or false
+			local lion = AIHold.kind(p, "Armor")
+			local beneficiary, active
+			if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(p, lion:getEffectiveId()) end
+			return active == true and self:isFriend(beneficiary) and beneficiary:isWounded()
 		end
 	end
 	return false
 end
 
 sgs.ai_skill_cardchosen["mengshi"] = function(self, who, flags)
-	local cards = sgs.QList2Table(package_known(who,"getEquips"))
-	for i=1, #cards, 1 do
-		if package_known(self,"isEnemy",who) then
-			if not (package_known(who,"isWounded") and package_known(cards[i],"getClassName") == "SilverLion") then
-				return cards[i]
-			end
-		elseif package_known(self,"isFriend",who) then
-			if (package_known(who,"isWounded") and package_known(cards[i],"getClassName") == "SilverLion") then
-				return cards[i]
-			end
+	for _, equip in ipairs(AIHold.equips(who) or {}) do
+		local heals
+		if equip:isKindOf("SilverLion") then
+			local beneficiary, active = AIEffect.beneficiaryOf(who, equip:getEffectiveId())
+			if active and beneficiary:isWounded() then heals = beneficiary end
 		end
+		if self:isEnemy(who) and (not heals or not self:isEnemy(heals)) then return equip end
+		if self:isFriend(who) and heals and self:isFriend(heals) then return equip end
 	end
-	return nil
 end
 
 local NTD2_skill = {}
@@ -2320,7 +2341,7 @@ shenniao_skill.getTurnUseCard = function(self, options, request)
 		for _, enemy in ipairs(self.enemies) do
 			if guard_num > 0 or package_known(enemy,"getStrategyMark","Equips_Nullified_to_Yourself") == 0
 				and (hasOffensiveWeapon(enemy) or hasDefensiveArmor(enemy)
-				or (package_known(enemy,"getDefensiveHorse") and package_known(self.player,"inMyAttackRange",enemy, -1))) then
+				or (AIEffect.has(enemy, "DefensiveHorse") and package_known(self.player,"inMyAttackRange",enemy, -1))) then
 				table.insert(targets, package_known(enemy,"objectName"))
 				if #targets == 2 then break end
 			end
@@ -2402,7 +2423,7 @@ ai_card_use["#shenniao"] = function(self, card, use, request)
 				for _, enemy in ipairs(self.enemies) do
 					if guard_num > 0 or package_known(enemy,"getStrategyMark","Equips_Nullified_to_Yourself") == 0
 						and (hasOffensiveWeapon(enemy) or hasDefensiveArmor(enemy)
-						or (package_known(enemy,"getDefensiveHorse") and package_known(self.player,"inMyAttackRange",enemy, -1))) then
+						or (AIEffect.has(enemy, "DefensiveHorse") and package_known(self.player,"inMyAttackRange",enemy, -1))) then
 						table.insert(targets, enemy)
 						if #targets == 2 then break end
 					end
@@ -2863,12 +2884,19 @@ ai_card_use["#shanguang"] = function(self, card, use, request)
 				if package_known(card,"isKindOf","Jink") then
 					table.insert(ids, id)
 				elseif package_known(self.player,"getStrategyMark","@supermode") > 0 and package_known(card,"isKindOf","Weapon") then
-					local rangefix = 0
-					if package_call(self.player,"getWeapon") and package_call(self.player,"getWeapon"):getId() == id then
-						local weapon = package_call(self.player,"getWeapon"):getRealCard():toWeapon()
-						rangefix = rangefix + package_known(weapon,"getRange") - package_known(self.player,"getAttackRange",false)
+					local current_range = self.player:getAttackRange()
+					local remaining_range = current_range
+					local source_offset = 0
+					if AIHold.holds(self.player, id) then
+						remaining_range = AIEffect.rangeAfterLeaving(self.player, id) or remaining_range
+						local slot_weapon = AIHold.at(self.player, 0)
+						if slot_weapon and slot_weapon:getEffectiveId() == id then
+							-- Also respect the extension's target filter for this payment.
+							source_offset = math.max(0, package_known(slot_weapon, "getRange") - self.player:getAttackRange(false))
+						end
 					end
-					if package_known(self.player,"inMyAttackRange",enemy, rangefix) then
+					local distance = self.room:distanceTo(self.player, enemy)
+					if distance and distance <= remaining_range and distance + source_offset <= current_range then
 						table.insert(ids, id)
 					end
 				end
@@ -3939,27 +3967,29 @@ ai_skill_invoke.baopo = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = package_known(data,"toDamage")
 	if package_known(self,"isEnemy",damage.to) then
-		return not (package_known(damage.to,"isWounded") and package_call(damage.to,"getArmor") and package_known(damage.to,"getEquips"):length() == 1 and package_call(damage.to,"getArmor"):getClassName() == "SilverLion")
+		local lion = AIHold.kind(damage.to, "Armor")
+		local beneficiary, active
+		if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(damage.to, lion:getEffectiveId()) end
+		return not (active and self:isEnemy(beneficiary) and beneficiary:isWounded() and #AIHold.equips(damage.to) == 1)
 	elseif package_known(self,"isFriend",damage.to) then
-		return ((package_known(damage.to,"isWounded") and package_call(damage.to,"getArmor") and package_call(damage.to,"getArmor"):getClassName() == "SilverLion")) or false
+		local lion = AIHold.kind(damage.to, "Armor")
+		local beneficiary, active
+		if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(damage.to, lion:getEffectiveId()) end
+		return active == true and self:isFriend(beneficiary) and beneficiary:isWounded()
 	end
 	return false
 end
 
 sgs.ai_skill_cardchosen["baopo"] = function(self, who, flags)
-	local cards = sgs.QList2Table(package_known(who,"getEquips"))
-	for i=1,#cards,1 do
-		if package_known(self,"isEnemy",who) then
-			if not (package_known(who,"isWounded") and package_known(cards[i],"getClassName") == "SilverLion") then
-				return cards[i]
-			end
-		elseif package_known(self,"isFriend",who) then
-			if (package_known(who,"isWounded") and package_known(cards[i],"getClassName") == "SilverLion") then
-				return cards[i]
-			end
+	for _, equip in ipairs(AIHold.equips(who) or {}) do
+		local heals
+		if equip:isKindOf("SilverLion") then
+			local beneficiary, active = AIEffect.beneficiaryOf(who, equip:getEffectiveId())
+			if active and beneficiary:isWounded() then heals = beneficiary end
 		end
+		if self:isEnemy(who) and (not heals or not self:isEnemy(heals)) then return equip end
+		if self:isFriend(who) and heals and self:isFriend(heals) then return equip end
 	end
-	return nil
 end
 
 
@@ -4672,7 +4702,10 @@ ai_skill_invoke.zhongcheng = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local damage = package_known(data,"toDamage")
 	return (package_known(self,"isEnemy",damage.from) and
-	not (package_known(damage.from,"getEquips"):length() == 1 and package_call(damage.from,"getArmor") and package_call(damage.from,"getArmor"):getClassName() == "SilverLion")) or false
+	not (#AIHold.equips(damage.from) == 1 and AIHold.kind(damage.from, "Armor")
+		and AIHold.kind(damage.from, "Armor"):isKindOf("SilverLion")
+		and select(2, AIEffect.beneficiaryOf(damage.from, AIHold.kind(damage.from, "Armor"):getEffectiveId())) == true
+		and self:isEnemy(AIEffect.areaBeneficiary(damage.from)) and AIEffect.areaBeneficiary(damage.from):isWounded())) or false
 end
 sgs.ai_suppress_intention["huohai"] = true
 
@@ -5853,7 +5886,11 @@ ai_card_use["#zaisheng"] = function(self, card, use, request)
 							for _, p in sgs.qlist(dummy_use.to) do
 								if package_known(p,"getHp") <= 1 then
 									shouldUse = false
-									if package_known(self.player,"distanceTo",p) > 1 then keep_weapon = package_call(self.player,"getWeapon") end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -5906,7 +5943,7 @@ ai_card_use["#zaisheng"] = function(self, card, use, request)
 		end
 
 		local num = package_known(self,"getCardsNum","Jink") - 1
-		if package_call(self.player,"getArmor") then num = num + 1 end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num + 1 end
 		if num > 0 then
 			for _, card in ipairs(cards) do
 				if package_known(card,"isKindOf","Jink") and num > 0 then
@@ -5933,7 +5970,7 @@ ai_card_use["#zaisheng"] = function(self, card, use, request)
 			table.insert(unpreferedCards, package_call(self.player,"getArmor"):getId())
 		end
 
-		if package_known(self.player,"getOffensiveHorse") and package_call(self.player,"getWeapon") then
+		if AIHold.kind(self.player, "OffensiveHorse") and AIEffect.has(self.player, "Weapon") then
 			table.insert(unpreferedCards, package_known(self.player,"getOffensiveHorse"):getId())
 		end
 	end
@@ -6422,14 +6459,14 @@ dm_transam_skill.getTurnUseCard = function(self, options, request)
 
 	local equips = package_known(self.player,"getEquips")
 	local installed, unlimited = true, false
-	if (package_known(self,"getCardsNum","Weapon") > 0 and package_call(self.player,"getWeapon") == nil)
+	if (package_known(self,"getCardsNum","Weapon") > 0 and AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0))
 		or (package_known(self,"getCardsNum","Armor") > 0 and package_call(self.player,"getArmor") == nil)
-		or (package_known(self,"getCardsNum","DefensiveHorse") > 0 and package_known(self.player,"getDefensiveHorse") == nil)
-		or (package_known(self,"getCardsNum","OffensiveHorse") > 0 and package_known(self.player,"getOffensiveHorse") == nil)
-		or (package_known(self,"getCardsNum","Treasure") > 0 and package_known(self.player,"getTreasure") == nil) then
+		or (package_known(self,"getCardsNum","DefensiveHorse") > 0 and AIHold.slotFree(self.player, 2) and AIEffect.serves(self.player, self.player, 2))
+		or (package_known(self,"getCardsNum","OffensiveHorse") > 0 and AIHold.slotFree(self.player, 3) and AIEffect.serves(self.player, self.player, 3))
+		or (package_known(self,"getCardsNum","Treasure") > 0 and AIHold.slotFree(self.player, 4) and AIEffect.serves(self.player, self.player, 4)) then
 		installed = false
 	end
-	if package_call(self.player,"getWeapon") and package_call(self.player,"getWeapon"):getClassName() == "Crossbow" then
+	if AIEffect.has(self.player, "Crossbow") then
 		unlimited = true
 	end
 	local cards = sgs.QList2Table(package_known(self.player,"getCards","h"))
@@ -6913,7 +6950,11 @@ ai_card_use["#yingxin"] = function(self, card, use, request)
 							for _, p in sgs.qlist(dummy_use.to) do
 								if package_known(p,"getHp") <= 1 then
 									shouldUse = false
-									if package_known(self.player,"distanceTo",p) > 1 then keep_weapon = package_call(self.player,"getWeapon") end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -6966,7 +7007,7 @@ ai_card_use["#yingxin"] = function(self, card, use, request)
 		end
 
 		local num = package_known(self,"getCardsNum","Jink") - 1
-		if package_call(self.player,"getArmor") then num = num + 1 end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num + 1 end
 		if num > 0 then
 			for _, card in ipairs(cards) do
 				if package_known(card,"isKindOf","Jink") and num > 0 then
@@ -6993,7 +7034,7 @@ ai_card_use["#yingxin"] = function(self, card, use, request)
 			table.insert(unpreferedCards, package_call(self.player,"getArmor"):getId())
 		end
 
-		if package_known(self.player,"getOffensiveHorse") and package_call(self.player,"getWeapon") then
+		if AIHold.kind(self.player, "OffensiveHorse") and AIEffect.has(self.player, "Weapon") then
 			table.insert(unpreferedCards, package_known(self.player,"getOffensiveHorse"):getId())
 		end
 	end

@@ -16,7 +16,7 @@ sgs.ai_skill_choice["sgkgodzhiming"] = function(self, choices, data)
 	if current:getHandcardNum() >= current:getHp() then
 	    return "sgkgodzhimingplay"
 	end
-	if (current:hasSkills("yongsi|haoshi|juejing|yingzi|nosyingzi|tuxi|nostuxi") and current:getHandcardNum() <= 2) or current:isKongcheng() 
+	if ((current:hasSkills("yongsi|haoshi|juejing|yingzi|nosyingzi") or current:hasSkillFamily("tuxi")) and current:getHandcardNum() <= 2) or current:isKongcheng() 
 	        or current:getHp() > current:getHandcardNum() then
 		return "sgkgodzhimingdraw"
 	end

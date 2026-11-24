@@ -296,10 +296,7 @@ function SmartAI:canLiuli(other,another)
 		return
 	end
 	if not self:needToLoseHp(another,self.player,dummyCard()) then return end
-	if other:getHandcardNum()>0 and other:distanceTo(another)<=other:getAttackRange()
-	or other:getWeapon() and other:getOffensiveHorse() and other:distanceTo(another)<=other:getAttackRange()
-	or (other:getWeapon() or other:getOffensiveHorse()) and other:distanceTo(another)<=1
-	then return true end
+	return sgs.aiCanLiuliAfterPayment(other, another)
 end
 
 sgs.ai_target_revises.yizhong = function(to,card,self)
@@ -325,7 +322,7 @@ function SmartAI:slashIsEffective(slash,to,from,ignore_armor)
 	use.to:append(to)
 	ignore_armor = ignore_armor or slash:hasFlag("Qinggang") or IgnoreArmor(from, to)
 	for _,sk in ipairs(aiConnect(to))do
-		if ignore_armor and sgs.armorName[sk] then continue end
+		if sgs.armorName[sk] and (ignore_armor or not to:hasArmorEffect(sk,from)) then continue end
 		local tr = sgs.ai_target_revises[sk]
        	if type(tr)=="function" and tr(to,slash,self,use)
 		then return end
@@ -348,19 +345,20 @@ function sgs.isJinkAvailable(from,to,slash,judge_considered)
 end
 
 function SmartAI:findWeaponToUse(enemy)
-	local wv,w = {},self.player:getWeapon()
+	local best, value = nil, -math.huge
+	for _, weapon in ipairs(sgs.aiEffectiveEquipCards(self.player, "Weapon")) do
+		value = math.max(value, self:evaluateWeapon(weapon,self.player,enemy,self.player:getAttackRange()))
+	end
 	for _,c in sgs.list(self:addHandPile())do
-		if c:isKindOf("Weapon") and self:aiUseCard(c).card
-		then wv[c] = self:evaluateWeapon(c,self.player,enemy) end
+		if c:isKindOf("Weapon") and self:aiUseCard(c).card then
+			local range = self:weaponRangeAfterEquip(c)
+			if range then
+				local estimate = self:evaluateWeapon(c,self.player,enemy,range)
+				if estimate>value then best,value = c,estimate end
+			end
+		end
 	end
-	if #wv<1 then return end
-	if w then wv[w] = self:evaluateWeapon(w,self.player,enemy) end
-	local max_value,max_card = -100,nil
-	for c,v in pairs(wv)do
-		if v>max_value then max_card = c max_value = v end
-	end
-	if w and w:getId()==max_card:getId()
-	then else return max_card end
+	return best
 end
 
 function SmartAI:isPriorFriendOfSlash(friend,card,source)
@@ -1894,7 +1892,16 @@ sgs.ai_use_priority.ExNihilo = 9.3
 sgs.dynamic_value.benefit.ExNihilo = true
 
 function SmartAI:getDangerousCard(who)
+	local area_owner = who
 	local weapon = who:getWeapon()
+	local armor = who:getArmor()
+	local equip = weapon or armor or who:getTreasure()
+	if not equip then return end
+	who = sgs.aiEquipBeneficiary(self.room, area_owner, equip:getEffectiveId()) or area_owner
+	if who:objectName() ~= area_owner:objectName()
+	and (not self:isEnemy(who) or self:isFriend(area_owner) and self:loseEquipEffect(area_owner)) then return end
+	if weapon and not who:hasWeapon(weapon:objectName()) then weapon = nil end
+	if armor and not who:hasArmorEffect(armor:objectName()) then armor = nil end
 	if weapon then
 		if weapon:isKindOf("Crossbow")
 		or weapon:isKindOf("GudingBlade") then
@@ -1912,7 +1919,6 @@ function SmartAI:getDangerousCard(who)
 		and (who:hasSkills("luoyi|pojun|jiushi|jiuchi|jie|wenjiu|shenli|jieyuan") or self:getOverflow(who)>0 or who:getCardCount()>=4)
 		then return weapon:getEffectiveId() end
 	end
-	local armor = who:getArmor()
 	if armor then
 		if armor:isKindOf("EightDiagram") then
 			local lord = self.room:getLord()
@@ -1934,20 +1940,35 @@ function SmartAI:getDangerousCard(who)
 		then return weapon:getEffectiveId() end
 		for _,friend in sgs.list(self.friends)do
 			if who:distanceTo(friend)<=who:getAttackRange()
-			and who:distanceTo(friend)>who:getAttackRange(false)
+			and who:distanceTo(friend)>sgs.aiRemainingWeaponRange(who,weapon:getEffectiveId())
 			and self:isWeak(friend) then return weapon:getEffectiveId() end
 		end
 		for _,friend in sgs.list(self.friends)do
 			if who:distanceTo(friend)<=who:getAttackRange()
-			and who:distanceTo(friend)>who:getAttackRange(false)
+			and who:distanceTo(friend)>sgs.aiRemainingWeaponRange(who,weapon:getEffectiveId())
 			then return weapon:getEffectiveId() end
 		end
 	end
 end
 
 function SmartAI:getValuableCard(who)
+	local area_owner = who
 	local weapon = who:getWeapon()
 	local offhorse = who:getOffensiveHorse()
+	local defhorse = who:getDefensiveHorse()
+	local armor = who:getArmor()
+	local treasure = who:getTreasure()
+	local equip = weapon or armor or offhorse or defhorse or treasure
+	if not equip then return end
+	who = sgs.aiEquipBeneficiary(self.room, area_owner, equip:getEffectiveId()) or area_owner
+	local effects_worth_stripping = who:objectName() == area_owner:objectName()
+		or self:isEnemy(who) and not (self:isFriend(area_owner) and self:loseEquipEffect(area_owner))
+	if not effects_worth_stripping then weapon,armor,offhorse,defhorse,treasure = nil,nil,nil,nil,nil end
+	if weapon and not who:hasWeapon(weapon:objectName()) then weapon = nil end
+	if armor and not who:hasArmorEffect(armor:objectName()) then armor = nil end
+	if offhorse and not who:hasOffensiveHorse(offhorse:objectName()) then offhorse = nil end
+	if defhorse and not who:hasDefensiveHorse(defhorse:objectName()) then defhorse = nil end
+	if treasure and not who:hasTreasure(treasure:objectName()) then treasure = nil end
 	self:sort(self.friends,"hp")
 	local friend = #self.friends>0 and self.friends[1]
 	if friend and self:isWeak(friend)
@@ -1957,29 +1978,28 @@ function SmartAI:getValuableCard(who)
 		if offhorse and who:distanceTo(friend)>1
 		then return offhorse:getEffectiveId() end
 	end
-	local defhorse = who:getDefensiveHorse()
 	if defhorse and self.player:distanceTo(who)==2
 	then return defhorse:getEffectiveId() end
-	if weapon and (weapon:isKindOf("MoonSpear") and who:hasSkill("keji") and who:getHandcardNum()>5
-	or who:hasSkills("qiangxi|zhulou|taichen"))
+	if weapon and weapon:isKindOf("MoonSpear") and who:hasSkill("keji") and who:getHandcardNum()>5
 	then return weapon:getEffectiveId() end
-	for _,equip in sgs.list(who:getEquips())do
-		if who:getHp()<=2 and who:hasSkill("baobian") then return equip:getEffectiveId() end
-		if equip:getSuit()~=sgs.Card_Diamond and who:hasSkill("longhun") then return equip:getEffectiveId() end
-		if equip:isRed() and who:hasSkills("wusheng|jijiu|xueji|nosfuhun") then return equip:getEffectiveId() end
-		if equip:isBlack() and who:hasSkills("qixi|duanliang|yinling|guidao") then return equip:getEffectiveId() end
-		if equip:getSuit()==sgs.Card_Diamond and who:hasSkills("guose|yanxiao") then return equip:getEffectiveId() end
-		if who:hasSkills(sgs.need_equip_skill) and not who:hasSkills(sgs.lose_equip_skill) then return equip:getEffectiveId() end
+	for _,equip in sgs.list(area_owner:getEquips())do
+		if self:isFriend(area_owner) and who:objectName() ~= area_owner:objectName() then break end
+		if equip:isKindOf("Weapon") and area_owner:hasSkills("qiangxi|zhulou|taichen") then return equip:getEffectiveId() end
+		if area_owner:getHp()<=2 and area_owner:hasSkill("baobian") then return equip:getEffectiveId() end
+		if equip:getSuit()~=sgs.Card_Diamond and area_owner:hasSkill("longhun") then return equip:getEffectiveId() end
+		if equip:isRed() and area_owner:hasSkills("wusheng|jijiu|xueji|nosfuhun") then return equip:getEffectiveId() end
+		if equip:isBlack() and area_owner:hasSkills("qixi|duanliang|yinling|guidao") then return equip:getEffectiveId() end
+		if equip:getSuit()==sgs.Card_Diamond and area_owner:hasSkills("guose|yanxiao") then return equip:getEffectiveId() end
+		if area_owner:hasSkills(sgs.need_equip_skill) and not area_owner:hasSkills(sgs.lose_equip_skill) then return equip:getEffectiveId() end
 	end
-	local armor = who:getArmor()
-	if armor and self:evaluateArmor(armor,who)>3 and not self:needToThrowArmor(who)
+	if armor and self:evaluateArmor(armor,who)>3 and not self:needToThrowArmor(area_owner)
 	then return armor:getEffectiveId() end
 	if offhorse and who:hasSkills("nosqianxi|kuanggu|duanbing|qianxi")
 	then return offhorse:getEffectiveId() end
 	if defhorse and (getCardsNum("Jink",who,self.player)<1
 	and not(self.player:hasWeapon("kylin_bow") and self.player:canSlash(who) and self:slashIsEffective(dummyCard(),who,self.player)))
 	then return defhorse:getEffectiveId() end
-	if armor and not self:needToThrowArmor(who)
+	if armor and not self:needToThrowArmor(area_owner)
 	then return armor:getEffectiveId() end
 	if offhorse and who:getHandcardNum()>1 then
 		for _,friend in sgs.list(self.friends)do
@@ -1993,8 +2013,7 @@ function SmartAI:getValuableCard(who)
 			then return weapon:getEffectiveId() end
 		end
 	end
-	local treasure = who:getTreasure()
-	if treasure and treasure:isKindOf("WoodenOx") and who:getPile("wooden_ox"):length()>1
+	if treasure and treasure:isKindOf("WoodenOx") and area_owner:getPile("wooden_ox"):length()>1
 	then return treasure:getEffectiveId() end
 end
 
@@ -2889,7 +2908,7 @@ sgs.ai_skill_askforag.amazing_grace = function(self,card_ids)
 	end
 	if cid.weapon
 	and (self:getCardsNum("Slash")>0 and self:slashIsAvailable() or not SelfisCurrent) then
-		local current_range = (self.player:getWeapon() and sgs.weapon_range[self.player:getWeapon():getClassName()]) or 1
+		local current_range = self.player:getAttackRange()
 		local slash = SelfisCurrent and self:getCard("Slash") or dummyCard()
 		self:sort(self.enemies,"defense")
 		if cid.crossbow then

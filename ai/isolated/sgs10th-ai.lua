@@ -1562,7 +1562,7 @@ ai_card_use["#ny_10th_jingdianzhiheng"] = function(self, card, use, request)
 							for _,p in sgs.list(dummy_use.to)do
 								if package_known(p,"getHp")<=1 then
 									shouldUse = false
-									if package_known(self.player,"distanceTo",p)>1 then keep_weapon = package_call(self.player,"getWeapon") end
+									do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and package_known(self.player,"distanceTo",p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
 									break
 								end
 							end
@@ -1621,7 +1621,7 @@ ai_card_use["#ny_10th_jingdianzhiheng"] = function(self, card, use, request)
 		end
 
 		local num = package_known(self,"getCardsNum","Jink")-1
-		if package_call(self.player,"getArmor") then num = num+1 end
+		if AIEffect.has(self.player,"Armor") then num = num+1 end
 		if num>0 then
 			for _,card in ipairs(cards)do
 				if package_known(card,"isKindOf","Jink") and num>0 then
@@ -1651,7 +1651,7 @@ ai_card_use["#ny_10th_jingdianzhiheng"] = function(self, card, use, request)
 			table.insert(unpreferedCards,package_call(self.player,"getArmor"):getId())
 		end
 
-		if package_known(self.player,"getOffensiveHorse") and package_call(self.player,"getWeapon") then
+		if package_known(self.player,"getOffensiveHorse") and AIEffect.has(self.player,"Weapon") then
 			table.insert(unpreferedCards,package_known(self.player,"getOffensiveHorse"):getId())
 		end
 	end

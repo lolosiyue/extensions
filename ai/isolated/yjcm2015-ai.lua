@@ -1310,9 +1310,12 @@ ai_card_use.AnguoCard = function(self, card, use, request)
     local l = {}
     local function calculateMinus(player,range)
         if range<=0 then return 0 end
+        local current = player:getAttackRange()
+        if not current then return 0 end
         local n = 0
-        for _,p in sgs.qlist(self.room:getAlivePlayers())do
-            if public_range(self,player,p,0) and not public_range(self,player,p,range) then n = n+1 end
+        for _,p in ipairs(self.room:getOtherPlayers(player)) do
+            local distance = self.room:distanceTo(player, p)
+            if distance and distance > 1 and distance <= current and distance + range > current then n = n + 1 end
         end
         return n
     end
@@ -1323,21 +1326,44 @@ ai_card_use.AnguoCard = function(self, card, use, request)
         self:setStrategyMemory("yjcm2015.anguoid",id)
     end
 
-    for _,p in ipairs(self.enemies)do
-        if (p:getWeapon()) then
-            local weaponrange = known(p:getWeapon():getRange(),"weapon range")
-            local n = calculateMinus(p,weaponrange-1)
-            table.insert(l,{player = p,id = p:getWeapon():getEffectiveId(),minus = n})
+    for _,p in ipairs(self.room:getOtherPlayers(self.player)) do
+        for _, weapon in ipairs(AIHold.equips(p, "Weapon") or {}) do
+            local id = weapon:getEffectiveId()
+            local beneficiary = AIEffect.beneficiaryOf(p, id)
+            if beneficiary and self:isEnemy(beneficiary) then
+                local remaining = AIEffect.rangeAfterLeaving(beneficiary, id)
+                local current = beneficiary:getAttackRange()
+                local lost = 0
+                if remaining and current and remaining < current then
+                    for _, other in ipairs(self.room:getOtherPlayers(beneficiary)) do
+                        local distance = self.room:distanceTo(beneficiary, other)
+                        if distance and distance <= current and distance > remaining then lost = lost + 1 end
+                    end
+                end
+                if lost > 0 then
+                    -- Anguo draws only if the selected area owner's range shrinks.
+                    local draw = beneficiary:objectName() == p:objectName() and 1 or 0
+                    table.insert(l, {player = p, id = id, minus = lost, draw = draw})
+                end
+            end
         end
-        if (p:getOffensiveHorse()) then
-            local n = calculateMinus(p,1)
-            table.insert(l,{player = p,id = p:getOffensiveHorse():getEffectiveId(),minus = n})
+        if self:isEnemy(p) and AIHold.kind(p, "OffensiveHorse") then
+            local horse = AIHold.kind(p, "OffensiveHorse")
+            local beneficiary, active
+            if horse then beneficiary, active = AIEffect.beneficiaryOf(p, horse:getEffectiveId()) end
+            if beneficiary and active and self:isEnemy(beneficiary) and AIEffect.horseRemains(beneficiary, false, horse:getEffectiveId()) == false then
+            	local correction = beneficiary:getHorseCorrection(false)
+            	if correction and correction < 0 then
+            		table.insert(l, {player = p, id = horse:getEffectiveId(), minus = calculateMinus(beneficiary, -correction)})
+            	end
+            end
         end
     end
 
     if #l>0 then
         local function sortByMinus(a,b)
-            return a.minus>b.minus
+            if a.minus == b.minus then return (a.draw or 0) > (b.draw or 0) end
+            return a.minus > b.minus
         end
 
         table.sort(l,sortByMinus)
@@ -1363,7 +1389,11 @@ ai_card_use.AnguoCard = function(self, card, use, request)
 
     self:sortInPlace(self.enemies, "threat")
     for _,p in ipairs(self.enemies)do
-        if (p:getArmor() and not p:getArmor():isKindOf("GaleShell")) then
+        local armor = AIHold.kind(p, "Armor")
+        local beneficiary, active
+        if armor then beneficiary, active = AIEffect.beneficiaryOf(p, armor:getEffectiveId()) end
+        if armor and beneficiary and active and self:isEnemy(beneficiary) and not armor:isKindOf("GaleShell")
+        	and not (armor:isKindOf("SilverLion") and beneficiary:isWounded()) then
             filluse(p,p:getArmor():getEffectiveId())
             return
         end

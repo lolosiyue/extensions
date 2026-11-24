@@ -8,7 +8,16 @@ ai_skill_invoke["weapon_recast"] = function(self, options, request)
 		local card_use = data:toCardUse()
 		if card_use.card:objectName()~="Crossbow" then return true end
 	else
-		if self.player:getWeapon() then return true end
+		if AIEffect.serves(self.player, self.player, 0) == false then return true end
+		local oldWeapon = AIHold.kind(self.player, "Weapon")
+		local newWeapon = data:toCardUse().card
+		if oldWeapon and newWeapon and AIEffect.serves(self.player, self.player, 0) then
+			local remaining = AIEffect.rangeAfterLeaving(self.player, oldWeapon:getEffectiveId())
+			if remaining then
+				return self:evaluateWeapon(newWeapon, self.player, nil, math.max(remaining, newWeapon:getRange() or 1))
+					<= self:evaluateWeapon(oldWeapon, self.player, nil, self.player:getAttackRange())
+			end
+		end
 	end
 	return false
 

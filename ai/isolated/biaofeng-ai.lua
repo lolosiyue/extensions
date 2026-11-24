@@ -1010,7 +1010,15 @@ ai_skill_use["@PlusShensu1"] = function(self, prompt, request)
 
 	local effectslash, best_target, target, throw_weapon
 	local defense = 6
-	local weapon = self.player:getWeapon()
+	local weapon, anotherSource
+	for _, row in ipairs(AIEffect.rows(self.player, "Weapon") or {}) do
+		if row.id == eCard:getKnownEffectiveId() then
+			weapon = row.card
+		elseif row.card:isKindOf("QinggangSword") or row.card:objectName() == "fan" then
+			anotherSource = true
+		end
+	end
+	if anotherSource then weapon = nil end
 	if weapon and eCard:getKnownId() == weapon:getKnownId() and (eCard:isKindOf("fan") or eCard:isKindOf("QinggangSword")) then throw_weapon = true end
 
 	for _, enemy in ipairs(self.enemies) do
@@ -1268,7 +1276,7 @@ end
 
 function sgs.ai_cardneed.PlusYizhong(to, card)
 	return (not card:isKindOf("BasicCard") and to:getHandcardNum() < 2) or
-		(isCard("OffensiveHorse", card, to) and not (to:getOffensiveHorse() or getKnownCard(to, "OffensiveHorse", false) > 0))
+		(isCard("OffensiveHorse", card, to) and (AIEffect.has(to, "OffensiveHorse") == false and AIEffect.serves(to, to, 3)) and not (getKnownCard(to, "OffensiveHorse", false) > 0))
 end
 
 sgs.ai_card_intention["#PlusYizhong_Card"] = function(self, card, from, tos)
@@ -2141,7 +2149,7 @@ end
 
 function sgs.ai_cardneed.PlusYongyi(to, card)
 	return (isCard("Slash", card, to) and getKnownCard(to, "Slash", true) == 0) or
-		(card:isKindOf("Weapon") and not (to:getWeapon() or getKnownCard(to, "Weapon", false) > 0))
+		(card:isKindOf("Weapon") and (AIEffect.has(to, "Weapon") == false and AIEffect.serves(to, to, 0)) and not (getKnownCard(to, "Weapon", false) > 0))
 end
 
 ai_skill_invoke.PlusYongyi = function(self, options, request)
@@ -2386,8 +2394,8 @@ end
 ai_skill_invoke.PlusChenggui = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local card = tag(self,"PlusChenggui_card"):toCard()
-	if ((card:isKindOf("DefensiveHorse") and self.player:getDefensiveHorse())
-			or (card:isKindOf("OffensiveHorse") and (self.player:getOffensiveHorse() or (self.player:hasSkill("drmashu") and self.player:getDefensiveHorse()))))
+	if ((card:isKindOf("DefensiveHorse") and (AIEffect.has(self.player, "DefensiveHorse") or AIEffect.serves(self.player, self.player, 2) == false))
+			or (card:isKindOf("OffensiveHorse") and (AIEffect.has(self.player, "OffensiveHorse") or AIEffect.serves(self.player, self.player, 3) == false or (self.player:hasSkill("drmashu") and AIEffect.has(self.player, "DefensiveHorse")))))
 		and not self.player:hasSkills(sgs.lose_equip_skill) then
 		return false
 	end
@@ -2530,7 +2538,11 @@ ai_card_use["#PlusZhiheng_Card"] = function(self, card, use, request)
 							for _, p in sgs.qlist(dummy_use.to) do
 								if p:getHp() <= 1 then
 									shouldUse = false
-									if self.player:distanceTo(p) > 1 then keep_weapon = self.player:getWeapon() end
+									local weapon = AIHold.kind(self.player, "Weapon")
+									if weapon then
+										local after = AIEffect.rangeAfterLeaving(self.player, weapon:getEffectiveId())
+										if after and self.player:distanceTo(p) <= self.player:getAttackRange() and self.player:distanceTo(p) > after then keep_weapon = weapon end
+									end
 									break
 								end
 							end
@@ -2582,7 +2594,7 @@ ai_card_use["#PlusZhiheng_Card"] = function(self, card, use, request)
 		end
 
 		local num = self:getCardsNum("Jink") - 1
-		if self.player:getArmor() then num = num + 1 end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) then num = num + 1 end
 		if num > 0 then
 			for _, card in ipairs(cards) do
 				if card:isKindOf("Jink") and num > 0 then
@@ -2609,7 +2621,7 @@ ai_card_use["#PlusZhiheng_Card"] = function(self, card, use, request)
 			table.insert(unpreferedCards, self.player:getArmor():getId())
 		end
 
-		if self.player:getOffensiveHorse() and self.player:getWeapon() then
+		if AIHold.kind(self.player, "OffensiveHorse") and AIEffect.has(self.player, "Weapon") then
 			table.insert(unpreferedCards, self.player:getOffensiveHorse():getId())
 		end
 	end
@@ -2913,7 +2925,7 @@ PlusQixi_skill.getTurnUseCard=function(self, options, request)
 			local shouldUse = true
 
 			if card:isKindOf("Armor") then
-				if not self.player:getArmor() then
+				if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and AIEffect.has(self.player, "Armor") == false then
 					shouldUse = false
 				elseif self.player:hasEquip(card) and not self:needToThrowArmor() then
 					shouldUse = false
@@ -2921,7 +2933,7 @@ PlusQixi_skill.getTurnUseCard=function(self, options, request)
 			end
 
 			if card:isKindOf("Weapon") then
-				if not self.player:getWeapon() then
+				if AIHold.slotFree(self.player, 0) and AIEffect.serves(self.player, self.player, 0) then
 					shouldUse = false
 				elseif self.player:hasEquip(card) and not has_weapon then
 					shouldUse = false
@@ -3025,7 +3037,7 @@ PlusKurou_skill.getTurnUseCard=function(self, options, request)
 	end
 	local slash = self:cloneEvaluationCard("slash")
 	
-	if (self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow")) or self.player:hasSkill("paoxiao") then
+	if AIEffect.has(self.player, "Crossbow") or self.player:hasSkill("paoxiao") then
 		for _, enemy in ipairs(self.enemies) do
 			if self.player:canSlash(enemy, nil, true) and self:slashIsEffective(slash, enemy)
 				and not (enemy:hasSkill("kongcheng") and enemy:isKongcheng())
@@ -5212,8 +5224,8 @@ ai_skill_use["@@SixMingduan"] = function(self, prompt, request)
 		if target:hasSkills("guose|qixi|duanliang|ol_duanliang|luanji") and target:getHandcardNum() > 1 then can_invoke = true end
 		if target:hasSkills("shuangxiong") and not self:isWeak(target) then can_invoke = true end
 		if not self:slashIsEffective(slash2, self.player, target) and not self:isWeak() then can_invoke = true end
-		if self.player:getArmor() and self.player:getArmor():isKindOf("Vine") and not self:isWeak() then can_invoke = true end
-		if self.player:getArmor() and not self:isWeak() and self:getCardsNum("Jink") > 0 then can_invoke = true end
+		if AIEffect.has(self.player, "Vine") and not self:isWeak() then can_invoke = true end
+		if (AIEffect.has(self.player, "Armor") or self.player:hasArmorEffect() == true) and not self:isWeak() and self:getCardsNum("Jink") > 0 then can_invoke = true end
 	end
 
 	local use_card
@@ -5390,23 +5402,41 @@ ai_skill_choice["SixChouzuan"] = function(self, options, request)
 end
 
 sgs.ai_skill_playerchosen.SixWeiyuan = function(self, targets)
-	local target, min_friend, max_enemy
+	local function armorValue(armor, holder, moving)
+		if not armor then return 0 end
+		local beneficiary, active
+		if moving then
+			beneficiary = AIEffect.areaBeneficiary(holder)
+			active = beneficiary and AIEffect.serves(holder, beneficiary, armor:getEquipSlot())
+		else
+			beneficiary, active = AIEffect.beneficiaryOf(holder, armor:getEffectiveId())
+		end
+		if not active then return 0 end
+		local sign = self:isFriend(beneficiary) and 1 or self:isEnemy(beneficiary) and -1 or 0
+		return sign * self:evaluateArmor(armor, beneficiary)
+	end
+
+	local target
 	for _, enemy in ipairs(self.enemies) do
-		if not self:hasSkills(sgs.lose_equip_skill, enemy) and not hasTuntianEffect(enemy, true) and self.player:getPile("wooden_ox"):length() == 0 then
-			local ee = enemy:getEquips():length()
-			local fe = self.player:getEquips():length()
-			local value = self:evaluateArmor(enemy:getArmor(), self.player) -
-				self:evaluateArmor(self.player:getArmor(), enemy)
-				- self:evaluateArmor(self.player:getArmor(), self.player) + self:evaluateArmor(enemy:getArmor(), enemy)
-			if ee > 0 and (ee > fe or ee == fe and value > 0) then
-				return enemy
+		if not self:hasSkills(sgs.lose_equip_skill, enemy) and not self:hasTuntianEffect(enemy, true) and self.player:getPile("wooden_ox"):length() == 0 then
+			local enemyEquips = AIHold.equips(enemy)
+			local ownEquips = AIHold.equips(self.player)
+			if enemyEquips and ownEquips and #enemyEquips > 0 then
+				if #enemyEquips > #ownEquips then return enemy end
+				if #enemyEquips == #ownEquips then
+					local enemyArmor = AIHold.at(enemy, 1)
+					local ownArmor = AIHold.at(self.player, 1)
+					local before = armorValue(ownArmor, self.player, false) + armorValue(enemyArmor, enemy, false)
+					local after = armorValue(enemyArmor, self.player, true) + armorValue(ownArmor, enemy, true)
+					if after > before then return enemy end
+				end
 			end
 		end
 	end
 	if self.player:getEquips():length() > 2 then
 		for _, friend in ipairs(self.friends_noself) do
 			if (self:hasSkills(sgs.lose_equip_skill, friend)
-				or (hasTuntianEffect(friend, true)) or self:hasSkills(sgs.need_equip_skill, friend)) and friend:getEquips():length() < self.player:getEquips():length() then
+				or (self:hasTuntianEffect(friend, true)) or self:hasSkills(sgs.need_equip_skill, friend)) and friend:getEquips():length() < self.player:getEquips():length() then
 				return friend
 			end
 		end
@@ -5414,14 +5444,14 @@ sgs.ai_skill_playerchosen.SixWeiyuan = function(self, targets)
 
 	target = nil
 	if self:needToThrowArmor(self.player) or ((self:hasSkills(sgs.lose_equip_skill, self.player)
-				or (hasTuntianEffect(self.player, true)))
+				or (self:hasTuntianEffect(self.player, true)))
 			and not self.player:getEquips():isEmpty()) then
 		target = self.player
 	end
 	if not target then return end
 	for _, friend in ipairs(self.friends_noself) do
 		if (self:hasSkills(sgs.lose_equip_skill, friend)
-			or (hasTuntianEffect(friend, true)) or self:hasSkills(sgs.need_equip_skill, friend)) then
+			or (self:hasTuntianEffect(friend, true)) or self:hasSkills(sgs.need_equip_skill, friend)) then
 			return friend
 		end
 	end
@@ -7403,7 +7433,10 @@ ai_card_use["#SevenZhengBian"] = function(self, card, use, request)
 					break
 				end
 				if not target then
-					if enemy:getArmor() and not self:needToThrowArmor(enemy) then
+					local armor = AIHold.kind(enemy, "Armor")
+					local beneficiary, active
+					if armor then beneficiary, active = AIEffect.beneficiaryOf(enemy, armor:getEffectiveId()) end
+					if armor and beneficiary and active and self:isEnemy(beneficiary) and not self:needToThrowArmor(enemy) then
 						target = enemy
 						break
 					end

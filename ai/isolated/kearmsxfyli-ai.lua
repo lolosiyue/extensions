@@ -691,11 +691,32 @@ end
 ai_skill_invoke.sxchengshi = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local target = data:toPlayer()
-	if target then
-		return (package_known(target,"getEquips"):length()-#package_known(self,"poisonCards","e",target)>package_known(self.player,"getEquips"):length()-#package_known(self,"poisonCards","e")) or false
-	end
-	return false
+	if not target or target:isAlive() then return false end
+	-- The Death event has already released occupation involving the victim.
+	local beneficiary = AIEffect.areaBeneficiary(self.player)
+	local incoming, outgoing = AIHold.equips(target), AIHold.equips(self.player)
+	if not beneficiary or not incoming or not outgoing then return false end
+	local sign = self:isFriend(beneficiary) and 1 or self:isEnemy(beneficiary) and -1 or 0
+	if sign == 0 then return false end
 
+	local function equipmentValue(cards, moving)
+		local count = 0
+		for _, equip in ipairs(cards) do
+			local active
+			if moving then
+				active = AIEffect.serves(self.player, beneficiary, equip:getEquipSlot())
+			else
+				active = select(2, AIEffect.beneficiaryOf(self.player, equip:getEffectiveId()))
+			end
+			if active and #self:poisonCards({equip}, beneficiary) == 0
+				and (not equip:isKindOf("Armor") or self:evaluateArmor(equip, beneficiary) >= -5) then
+				count = count + 1
+			end
+		end
+		return count
+	end
+
+	return sign * (equipmentValue(incoming, true) - equipmentValue(outgoing, false)) > 0
 end
 
 ai_fill_skill.sxxiemuvs = function(self, options, request)

@@ -542,7 +542,7 @@ sgs.ai_nullification.AwaitExhausted = function(self, card, from, to, positive)
 		if self:isEnemy(to) and (not heg_enabled(self) or heg_kingdom(self,to) ~= "unknown") then
 			if hegemony_source_query(self,'getOverflow') > 0 or self:getCardsNum("Nullification") > 1 then return true end
 			if self:hasSkills(sgs.lose_equip_skill,to) and to:getEquips():length() > 0 then return true end
-			if to:getArmor() and hegemony_source_query(self,'needToThrowArmor',to) then return true end
+			if to:getArmor() and hegemony_source_query(self,'needToThrowArmor',to) and self:isEnemy(AIEffect.beneficiaryOf(to, to:getArmor():getEffectiveId()) or to) then return true end
 		end
 	else
 		if self:isFriend(to) and (hegemony_source_query(self,'getOverflow') > 0 or self:getCardsNum("Nullification") > 1) then return true end
@@ -593,7 +593,7 @@ ai_fill_skill.heg_duoshi = function(self,options,request)
 		self:sortInPlace(self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do
 			local inAttackRange = self.player:distanceTo(enemy) == 1 or self.player:distanceTo(enemy) == 2
-									and self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse()
+									and self:getCardsNum("OffensiveHorse") > 0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3)
 			if inAttackRange  and original_duoshi_good_target(self,enemy,self.enemies) then
 				local slashes = self:getCards("Slash")
 				local slash_count = 0
@@ -903,7 +903,7 @@ ai_skill_invoke.kuangfu = function(self,options,request)
 	if self:hasSkills(sgs.lose_equip_skill,damage.to) then
 		return (self:isFriend(damage.to) and not hegemony_source_query(self,'isWeak',damage.to)) or false 
 	end
-	local benefit = (damage.to:getCards("e"):length()==1 and damage.to:getArmor() and hegemony_source_query(self,'needToThrowArmor',damage.to))
+	local benefit = (damage.to:getCards("e"):length()==1 and damage.to:getArmor() and hegemony_source_query(self,'needToThrowArmor',damage.to) and self:isFriend(AIEffect.beneficiaryOf(damage.to, damage.to:getArmor():getEffectiveId()) or damage.to) == self:isFriend(damage.to))
 	if self:isFriend(damage.to) then return (benefit) or false  end
 	return not benefit 
 end
@@ -917,7 +917,7 @@ ai_skill_choice.kuangfu_equip = function(self,options,request)
 	local who = data:toPlayer()
 	if self:isFriend(who) then
 		if choices:match("1") and hegemony_source_query(self,'needToThrowArmor',who) then return  ai_choice_result(("1"),options) end
-		if choices:match("1") and self:evaluateArmor(who:getArmor(),who)<-5 then return  ai_choice_result(("1"),options) end
+		if choices:match("1") and who:getArmor() and self:evaluateArmor(who:getArmor(),(AIEffect.beneficiaryOf(who, who:getArmor():getEffectiveId())) or who)<-5 then return  ai_choice_result(("1"),options) end
 		if self:hasSkills(sgs.lose_equip_skill,who) and hegemony_source_query(self,'isWeak',who) then
 			if choices:match("0") then return  ai_choice_result(("0"),options) end
 			if choices:match("3") then return  ai_choice_result(("3"),options) end
@@ -1269,7 +1269,7 @@ end
 -- Narrow dependencies of the Xiaoguo override, without replacing ordinary
 -- damage/HP policy or exposing another player's hidden Slash.
 local function original_ignore_armor(from,to)
-    local armor=to:getArmor()
+    local armor=AIEffect.cards(to,"Armor"); if armor then armor=armor[1] else armor=to:getArmor() end
     if not armor then return true end
     if not AIValue.callKnown(to,"hasArmorEffect",armor:objectName()) or from:hasWeapon("QinggangSword")then return true end
 end
@@ -1557,9 +1557,9 @@ local function original_equipment(player,method)
 end
 function SmartAIView:originalHegemonyNeedToThrowArmor(player)
     player=player or self.player
-    if not original_equipment(player,"getArmor") or not AIValue.callKnown(player,"hasArmorEffect",(original_equipment(player,"getArmor")):objectName())then return false end
+    local heg_armor, heg_armor_active = original_equipment(player,"getArmor"), nil; if heg_armor then heg_armor_active = select(2, AIEffect.beneficiaryOf(player, heg_armor:getEffectiveId())) end; if not heg_armor or heg_armor_active == false or heg_armor_active == nil and not AIValue.callKnown(player,"hasArmorEffect",heg_armor:objectName()) then return false end
     if shown(self,player,"bazhen") and not (original_equipment(player,"getArmor")):isKindOf("EightDiagram")then return true end
-    if self:evaluateArmor(original_equipment(player,"getArmor"),player)<=-2 then return true end
+    if self:evaluateArmor(original_equipment(player,"getArmor"),(AIEffect.beneficiaryOf(player, (original_equipment(player,"getArmor")):getEffectiveId())) or player)<=-2 then return true end
     if AIValue.callKnown(player,"hasArmorEffect","SilverLion") and player:isWounded()then
         if self:isFriend(player)then
             if player:objectName()==self.player:objectName()then return true end
@@ -1608,7 +1608,7 @@ function SmartAIView:originalHegemonyShouldUseRende()
         self:sortInPlace(self.enemies, "defense")
         for _,enemy in ipairs(self.enemies)do
             local inAttackRange=self.player:distanceTo(enemy)==1 or self.player:distanceTo(enemy)==2
-                and self:getCardsNum("OffensiveHorse")>0 and not original_equipment(self.player,"getOffensiveHorse")
+                and self:getCardsNum("OffensiveHorse")>0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3)
             local inPaoxiaoAttackRange=self.player:distanceTo(enemy)<=self.player:getAttackRange() and AIValue.callKnown(self.player,"hasSkill","heg_paoxiao")
             if (inAttackRange or inPaoxiaoAttackRange) and self:originalHegemonyIsGoodTarget(enemy,self.enemies)then
                 local slashes=self:getCards("Slash")
@@ -1698,7 +1698,7 @@ end
 -- substituted for absent lower-case keys. First skill callback returns early.
 function SmartAIView:originalHegemonyEvaluateArmor(card,player)
     player=player or self.player
-    local ecard=card or original_equipment(player,"getArmor")
+    local ecard=card or (AIEffect.cards(player,"Armor") or AIList.new({original_equipment(player,"getArmor")}))[1]
     if not ecard then return 0 end
     local value=0
     if shown(self,player,"jijiu") and ecard:isRed()then value=value+0.5 end
@@ -1833,7 +1833,7 @@ function SmartAIView:originalHegemonyCantbeHurt(player,from,damageNum)
     from=from or self.player;damageNum=damageNum or 1
     if not player then return nil end
     if shown(self,player,"heg_duanchang") and not player:isLord() and #self:originalHegemonyFriendsNoself(player)>0 and player:getHp()<=1 then
-        if not(from:getMaxHp()==3 and from:getArmor() and from:getDefensiveHorse())then
+        if not(from:getMaxHp()==3 and AIEffect.has(from,"Armor") and AIEffect.has(from,"DefensiveHorse"))then
             if from:getMaxHp()<=3 or(from:isLord() and hegemony_source_query(self,'isWeak',from))then return true end
         end
     end
@@ -2104,7 +2104,7 @@ local function hs_skill(self,name)
 end
 local function hs_ignore_armor(self,from,to)
     if not from or not to then return end
-    local armor=to:getArmor()
+    local armor=AIEffect.cards(to,"Armor"); if armor then armor=armor[1] else armor=to:getArmor() end
     if not armor then return true end
     if not AIValue.callKnown(to,"hasArmorEffect",armor:objectName())or from:hasWeapon('QinggangSword')then return true end
 end
@@ -2297,7 +2297,7 @@ function SmartAIView:originalHegemonyFindWeaponToUse(enemy)
 		end
 	end
 	if not hasweapon then return end
-	if self.player:getWeapon() then weaponvalue[self.player:getWeapon()] = self:originalHegemonyEvaluateWeapon(self.player:getWeapon(),self.player,enemy) end
+	if self.player:getWeapon() then weaponvalue[self.player:getWeapon()] = AIEffect.serves(self.player,self.player)==false and 0 or self:originalHegemonyEvaluateWeapon(self.player:getWeapon(),self.player,enemy) end
 	local max_value, max_card = -1000, nil
 	for c, v in pairs(weaponvalue) do
 		if v > max_value then
@@ -2346,10 +2346,10 @@ function SmartAIView:originalHegemonyUseCardSlash(card, use)
 	if card:isVirtualCard() then
 		if self.player:getWeapon() and card:getSubcards():contains(self.player:getWeapon():getEffectiveId()) then
 			if self.player:getWeapon():getClassName() ~= "Weapon" then
-				rangefix = hs_known(self:originalHegemonyWeaponRange(self.player:getWeapon():getClassName()),"Original weapon range") - self.player:getAttackRange(false)
+				do local rest = AIEffect.rangeAfterLeaving(self.player, self.player:getWeapon():getEffectiveId()); rangefix = rest and (self.player:getAttackRange() - rest) or (hs_known(self:originalHegemonyWeaponRange(self.player:getWeapon():getClassName()),"Original weapon range") - self.player:getAttackRange(false)) end
 			end
 		end
-		if self.player:getOffensiveHorse() and card:getSubcards():contains(self.player:getOffensiveHorse():getEffectiveId()) then
+		if self.player:getOffensiveHorse() and card:getSubcards():contains(self.player:getOffensiveHorse():getEffectiveId()) and AIEffect.serves(self.player,self.player)~=false and AIEffect.horseRemains(self.player,false,self.player:getOffensiveHorse():getEffectiveId())~=true then
 			rangefix = rangefix + 1
 		end
 	end
@@ -2907,8 +2907,8 @@ function SmartAIView:originalHegemonyGetDefense(player)
 		hasEightDiagram = true
 	end
 
-	if player:getArmor() and AIValue.callKnown(player,"hasArmorEffect",player:getArmor():objectName()) then defense = defense + 2 end
-	if player:getDefensiveHorse() then defense = defense + 0.5 end
+	if AIEffect.has(player,"Armor") then defense = defense + 2 end
+	if AIEffect.has(player,"DefensiveHorse") then defense = defense + 0.5 end
 
 	if player:hasTreasure("JadeSeal") then defense = defense + 2 end
 	if player:hasTreasure("WoodenOx") then defense = defense + AIValue.callKnown(player,"getPileCount","wooden_ox") end
@@ -3162,7 +3162,7 @@ function SmartAIView:originalHegemonyEvaluateWeapon(card,player,target)
         local slash,wine,peach=count("Slash"),count("Analeptic"),count("Peach")
         score=score+slash*3-2
         if shown(self,player,"heg_kurou")then score=score+peach+wine+self.player:getHp()end
-        if original_equipment(player,"getWeapon")and not hegemony_source_query(self,'hasCrossbowEffect',player)then
+        if AIEffect.has(player,"Weapon")and not hegemony_source_query(self,'hasCrossbowEffect',player)then
             local without
             if player:objectName()==self.player:objectName()then without=self:originalHegemonyOwnerFact("owner_can_slash_without_crossbow")
             else without=self:useKnowledgeEstimate({value=true,status="estimate",viewer=self.player:objectName(),target=player:objectName(),
@@ -3569,7 +3569,7 @@ hooks_pending.ht_skill = function(self,name)
 end
 hooks_pending.ht_ignore_armor = function(self,from,to)
     if not from or not to then return end
-    local armor=to:getArmor()
+    local armor=AIEffect.cards(to,"Armor"); if armor then armor=armor[1] else armor=to:getArmor() end
     if not armor then return true end
     if not AIValue.callKnown(to,"hasArmorEffect",armor:objectName())or from:hasWeapon('QinggangSword')then return true end
 end
@@ -3730,7 +3730,14 @@ function SmartAIView:originalHegemonyUseEquipCard(card, use)
 		if not self:needKongcheng() and not AIValue.callKnown(self.player,"hasSkills",ht_fact(self,"lose_equip_skill")) and self:getOverflow() <= 0 and not canUseSlash then return end
 		if AIValue.callKnown(self.player,"hasSkill","heg_zhiheng") and not self.player:hasUsed("HZhihengCard") and original_equipment(self.player,"getWeapon") and not card:isKindOf("Crossbow") then return end
 		if not self:needKongcheng() and self.player:getHandcardNum() <= self.player:getHp() - 2 then return end
-		if not original_equipment(self.player,"getWeapon") or self:evaluateWeapon(card) > self:evaluateWeapon(original_equipment(self.player,"getWeapon")) then
+		local old_weapon = original_equipment(self.player,"getWeapon")
+		local weapon_holder = AIEffect.areaBeneficiary(self.player) or self.player
+		if weapon_holder:objectName() ~= self.player:objectName() then
+			-- 自己的區被佔：新武器裝上去是替佔有者裝，只替隊友換更好的
+			if self:isFriend(weapon_holder) and (not old_weapon or self:evaluateWeapon(card, weapon_holder) > self:evaluateWeapon(old_weapon, weapon_holder)) then
+				use.card = card
+			end
+		elseif not old_weapon or self:evaluateWeapon(card) > self:evaluateWeapon(old_weapon) then
 			use.card = card
 		end
 	elseif card:isKindOf("Armor") then
@@ -3933,7 +3940,7 @@ function SmartAIView:originalHegemonyDoNotDiscard(to, flags, conservative, n, ca
 	else
 		if flags:match("e") then
 			if ht_shown_skills(self,to, "jieyin+heg_xiaoji") and to:getDefensiveHorse() then return false end
-			if ht_shown_skills(self,to, "jieyin+heg_xiaoji") and to:getArmor() and not to:getArmor():isKindOf("SilverLion") then return false end
+			if ht_shown_skills(self,to, "jieyin+heg_xiaoji") and to:getArmor() and not (to:getArmor():isKindOf("SilverLion") and (function() local b, act = AIEffect.beneficiaryOf(to, to:getArmor():getEffectiveId()); return act ~= false and (b or to):isWounded() end)()) then return false end
 		end
 		if flags == "h" or (flags == "he" and not to:hasEquip()) then
 			if to:isKongcheng() or not self.player:canDiscard(to,"h") then return true end
@@ -4085,6 +4092,13 @@ end
 function SmartAIView:originalHegemonyGetDangerousCard(who)
 	local weapon = who:getWeapon()
 	local armor = who:getArmor()
+	-- 防具效果歸這張牌的受益席：沒生效、或敵人區裡這件其實替我方隊友生效時，不算危險／價值牌
+	local armor_holder = who
+	if armor then
+		local b, act = AIEffect.beneficiaryOf(who, armor:getEffectiveId())
+		armor_holder = b or who
+		if act == false or (self:isFriend(armor_holder) and not self:isFriend(who)) then armor = nil end
+	end
 	local treasure = who:getTreasure()
 --有优先顺序
 	if weapon and (weapon:isKindOf("Crossbow") or weapon:isKindOf("GudingBlade")) and self:isEnemy(who) then
@@ -4121,13 +4135,13 @@ function SmartAIView:originalHegemonyGetDangerousCard(who)
 		return weapon:getEffectiveId()
 	end
 
-	if armor and armor:isKindOf("EightDiagram") and ht_shown_skills(self,who, ht_fact(self,"wizard_skill")) then
+	if armor and armor:isKindOf("EightDiagram") and ht_shown_skills(self,armor_holder, ht_fact(self,"wizard_skill")) then
 		return armor:getEffectiveId()
 	end
-	if armor and armor:isKindOf("RenwangShield") and ht_shown(self,who,"heg_jiang") then
+	if armor and armor:isKindOf("RenwangShield") and ht_shown(self,armor_holder,"heg_jiang") then
 		return armor:getEffectiveId()
 	end
-	if armor and armor:isKindOf("HPeaceSpell") and ht_same_kingdom(self,who) > 2
+	if armor and armor:isKindOf("HPeaceSpell") and ht_same_kingdom(self,armor_holder) > 2
 	and not ht_find_shown(self,"heg_wendao") then
 		return armor:getEffectiveId()
 	end
@@ -4144,6 +4158,13 @@ end
 function SmartAIView:originalHegemonyGetValuableCard(who)
 	local weapon = who:getWeapon()
 	local armor = who:getArmor()
+	-- 防具效果歸這張牌的受益席：沒生效、或敵人區裡這件其實替我方隊友生效時，不算危險／價值牌
+	local armor_holder = who
+	if armor then
+		local b, act = AIEffect.beneficiaryOf(who, armor:getEffectiveId())
+		armor_holder = b or who
+		if act == false or (self:isFriend(armor_holder) and not self:isFriend(who)) then armor = nil end
+	end
 	local offhorse = who:getOffensiveHorse()
 	local defhorse = who:getDefensiveHorse()
 	local treasure = who:getTreasure()
@@ -4169,7 +4190,7 @@ function SmartAIView:originalHegemonyGetValuableCard(who)
 		return defhorse:getEffectiveId()
 	end
 
-	if armor and self:evaluateArmor(armor,who) > 3  and not self:needToThrowArmor(who)  and not self:originalHegemonyDoNotDiscard(who,"e")
+	if armor and self:evaluateArmor(armor,armor_holder) > 3  and not self:needToThrowArmor(who)  and not self:originalHegemonyDoNotDiscard(who,"e")
 	and (not armor:isKindOf("HPeaceSpell") or not ht_find_shown(self,"heg_wendao")) then
 		return armor:getEffectiveId()
 	end
@@ -4655,7 +4676,7 @@ hooks_pending.hv_skill = function(self,name)
 end
 hooks_pending.hv_ignore_armor = function(self,from,to)
     if not from or not to then return end
-    local armor=to:getArmor()
+    local armor=AIEffect.cards(to,"Armor"); if armor then armor=armor[1] else armor=to:getArmor() end
     if not armor then return true end
     if not AIValue.callKnown(to,"hasArmorEffect",armor:objectName())or from:hasWeapon('QinggangSword')then return true end
 end
@@ -4742,7 +4763,7 @@ function SmartAIView:originalHegemonyGetUseValue(card)
 		end
 	elseif card:getTypeId() == sgs.Card_TypeTrick then
 		if self.player:getPhase() == sgs.Player_Play and not card:isAvailable(self.player) then v = 0 end
-		if original_equipment(self.player,"getWeapon") and not AIValue.callKnown(self.player,"hasSkills",hv_fact(self,"lose_equip_skill")) and card:isKindOf("Collateral") then v = 2 end
+		if (original_equipment(self.player,"getWeapon") or AIEffect.serves(self.player,self.player,0)==false) and not AIValue.callKnown(self.player,"hasSkills",hv_fact(self,"lose_equip_skill")) and card:isKindOf("Collateral") then v = 2 end
 		if card:getSkillName() == "shuangxiong" then v = 6 end
 		if card:isKindOf("Duel") then v = v + self:getCardsNum("Slash") * 2 end
 		if AIValue.callKnown(self.player,"hasSkill","heg_jizhi") then v = v + 4 end
@@ -4767,11 +4788,11 @@ function SmartAIView:originalHegemonyGetUsePriority(card)
 	local v = 0
 	if card:isKindOf("EquipCard") then
 		if AIValue.callKnown(self.player,"hasSkills",hv_fact(self,"lose_equip_skill")) then return 15 end
-		if card:isKindOf("Armor") and not original_equipment(self.player,"getArmor") then v = (self:originalHegemonyPrintedValue("ai_use_priority",class_name,card) or 0) + 5.2
-		elseif card:isKindOf("Weapon") and not original_equipment(self.player,"getWeapon") then v = (self:originalHegemonyPrintedValue("ai_use_priority",class_name,card) or 0) + 3
-		elseif card:isKindOf("DefensiveHorse") and not original_equipment(self.player,"getDefensiveHorse") then v = 5.8
-		elseif card:isKindOf("OffensiveHorse") and not original_equipment(self.player,"getOffensiveHorse") then v = 5.5
-		elseif card:isKindOf("Treasure") and not original_equipment(self.player,"getTreasure") then
+		if card:isKindOf("Armor") and not original_equipment(self.player,"getArmor") and AIEffect.serves(self.player,self.player,1) and not AIEffect.has(self.player,"Armor") then v = (self:originalHegemonyPrintedValue("ai_use_priority",class_name,card) or 0) + 5.2
+		elseif card:isKindOf("Weapon") and not original_equipment(self.player,"getWeapon") and AIEffect.serves(self.player,self.player,0) then v = (self:originalHegemonyPrintedValue("ai_use_priority",class_name,card) or 0) + 3
+		elseif card:isKindOf("DefensiveHorse") and not original_equipment(self.player,"getDefensiveHorse") and AIEffect.serves(self.player,self.player,2) then v = 5.8
+		elseif card:isKindOf("OffensiveHorse") and not original_equipment(self.player,"getOffensiveHorse") and AIEffect.serves(self.player,self.player,3) then v = 5.5
+		elseif card:isKindOf("Treasure") and not original_equipment(self.player,"getTreasure") and AIEffect.serves(self.player,self.player,4) then
 			v = 5.6
 			if card:isKindOf("JadeSeal") then v = v + 0.1 end
 		end
@@ -5788,12 +5809,12 @@ sgs.ai_nullification.HAwaitExhausted = function(self, card, from, to, positive, 
         if self:isEnemy(to) and #targets > 1 and hegnull then
             for _, p in ipairs(targets) do
                 if (hs_shown_skills(self, p, sgs.lose_equip_skill) and #p:getEquips() > 0)
-                    or (p:getArmor() and hegemony_source_query(self,'needToThrowArmor',p)) then return true, false end
+                    or (p:getArmor() and hegemony_source_query(self,'needToThrowArmor',p) and self:isEnemy(AIEffect.beneficiaryOf(p, p:getArmor():getEffectiveId()) or p)) then return true, false end
             end
         else
             if self:isEnemy(to) and self:originalHegemonyEvaluateKingdom(to) ~= "unknown" then
                 if hs_shown_skills(self, to, sgs.lose_equip_skill) and #to:getEquips() > 0 then return true, true end
-                if to:getArmor() and hegemony_source_query(self,'needToThrowArmor',to) then return true, true end
+                if to:getArmor() and hegemony_source_query(self,'needToThrowArmor',to) and self:isEnemy(AIEffect.beneficiaryOf(to, to:getArmor():getEffectiveId()) or to) then return true, true end
             end
         end
     else
@@ -5960,7 +5981,7 @@ sgs.ai_skill_discard.heg_yicheng=function(self,discard_num,min_num,optional,incl
         table.remove(unwanted,1)
     end
     local num=self:getCardsNum("Jink")-1
-    if self.player:getArmor()then num=num+1 end
+    if AIEffect.has(self.player,"Armor")then num=num+1 end
     if num>0 then
         for _,card in ipairs(cards)do
             if card:isKindOf("Jink")and num>0 then unwanted[#unwanted+1]=card:getKnownId();num=num-1 end
@@ -5973,7 +5994,7 @@ sgs.ai_skill_discard.heg_yicheng=function(self,discard_num,min_num,optional,incl
         end
     end
     if self.player:getWeapon()and self.player:getHandcardNum()<3 then unwanted[#unwanted+1]=(self.player:getWeapon()):getKnownId()end
-    if self.player:getOffensiveHorse()and self.player:getWeapon()then unwanted[#unwanted+1]=(self.player:getOffensiveHorse()):getKnownId()end
+    if self.player:getOffensiveHorse()and AIEffect.has(self.player,"Weapon")then unwanted[#unwanted+1]=(self.player:getOffensiveHorse()):getKnownId()end
     for i=#unwanted,1,-1 do
         local card=known(self:getKnownCardById(unwanted[i]),"heg_yicheng owner cost")
         if not self.player:isJilei(card)then return{unwanted[i]}end
@@ -6650,7 +6671,7 @@ original_policy(ai_skill_invoke,'heg_chuanxin',function(self,options,request)
     local damage=known(data:toDamage(),'chuanxin damage');local target=damage.to
     local niepan=shown(self,target,'heg_niepan')and shown_general_source(self,target,'heg_niepan',2)
     if niepan and hegemony_source_query(target,'getMark','@nirvana')>0 then return true  end
-    return not self:isFriend(target)and not self:hasHeavySlashDamage(self.player,damage.card,target)and not(target:getHp()==1 and not target:getArmor()) 
+    return not self:isFriend(target)and not self:hasHeavySlashDamage(self.player,damage.card,target)and not(target:getHp()==1 and not AIEffect.has(target,"Armor")) 
 end)
 original_policy(ai_skill_choice,'heg_chuanxin',function(self,options,request)
     local choices
@@ -7142,7 +7163,7 @@ local function heg_skill_source_zhiheng_body(card,use,self)
 							for _, p in sgs.qlist(dummy_use.to) do
 								if p:getHp() <= 1 then
 									shouldUse = false
-									if self.player:distanceTo(p) > 1 then keep_weapon = self.player:getWeapon() end
+									do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and self.player:distanceTo(p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
 									break
 								end
 							end
@@ -7197,7 +7218,7 @@ local function heg_skill_source_zhiheng_body(card,use,self)
 		end
 
 		local num = self:getCardsNum("Jink") - 1
-		if self.player:getArmor() then num = num + 1 end
+		if AIEffect.has(self.player,"Armor") then num = num + 1 end
 		if num > 0 then
 			for _, card in ipairs(cards) do
 				if card:isKindOf("Jink") and num > 0 then
@@ -7231,7 +7252,7 @@ local function heg_skill_source_zhiheng_body(card,use,self)
 			insertEquipNum = insertEquipNum + 1
 		end
 
-		if self.player:getOffensiveHorse() and self.player:getWeapon() and insertEquipNum < maxEquipNum then
+		if self.player:getOffensiveHorse() and AIEffect.has(self.player,"Weapon") and insertEquipNum < maxEquipNum then
 			table.insert(unpreferedCards, self.player:getOffensiveHorse():getId())
 			insertEquipNum = insertEquipNum + 1
 		end
@@ -7431,7 +7452,7 @@ local function heg_skill_source_random_hand(self,player,flags)
         local index=math.random(0,row.count-1)+1
         if AIValue.callKnown(player,'hasArmorEffect','SilverLion') then
             if self:isEnemy(player)and player:isWounded()then
-                local armor=player:getArmor()
+                local armor=player:getArmor(); if armor and AIEffect.serves(player,player)==false then armor=nil end
                 if armor and armor:isKindOf('SilverLion') then
                     local visible=known(row.visible_card_indices,'Original visible random indices')
                     if visible[tostring(armor:getKnownEffectiveId())]==index then
@@ -7446,7 +7467,7 @@ local function heg_skill_source_random_hand(self,player,flags)
     if #cards==0 then return nil end
     local index=math.random(0,#cards-1)+1;local card=cards[index]
     if AIValue.callKnown(player,'hasArmorEffect','SilverLion')then
-        if self:isEnemy(player)and player:isWounded()and AIValue.sameLegacyIdentity(card,player:getArmor())then
+        if self:isEnemy(player)and player:isWounded()and AIValue.sameLegacyIdentity(card,player:getArmor()) and AIEffect.serves(player,player)~=false then
             if index~=#cards then card=cards[index+1]elseif index>1 then card=cards[index-1]end
         end
     end
@@ -10288,7 +10309,7 @@ ai_card_use.HYongjinCard = function(self,card,use)
 		end
 	end
 	for _, player in sgs.qlist(self.room:getAlivePlayers()) do
-		if player:getArmor() and player:getArmor():isKindOf("SilverLion") then
+		if player:getArmor() and player:getArmor():isKindOf("SilverLion") and (function() local b, act = AIEffect.beneficiaryOf(player, player:getArmor():getEffectiveId()); return act ~= false and (b or player):isWounded() and self:isFriend(b or player) end)() then
 			hasSilverLion = true
 		end
 	end
@@ -10607,7 +10628,7 @@ ai_card_use.HFlameMapCard = function(self,card,use)
 				use.card = heg_skill_source_parse_card(self,"@HFlameMapCard=" .. self.player:getArmor():getEffectiveId() .. "&showforviewhas")
 				return
 			end
-			if self.player:getArmor() and self:evaluateArmor(self.player:getArmor()) < -5 then
+			if self.player:getArmor() and self:evaluateArmor(self.player:getArmor(), (AIEffect.beneficiaryOf(self.player, self.player:getArmor():getEffectiveId())) or self.player) < -5 and not self:isEnemy((AIEffect.beneficiaryOf(self.player, self.player:getArmor():getEffectiveId())) or self.player) then
 				self:setPriorityValue("HFlameMapCard",20,"original.transformation")
 				
 				use.card = heg_skill_source_parse_card(self,"@HFlameMapCard=" .. self.player:getArmor():getEffectiveId() .. "&showforviewhas")
@@ -10891,7 +10912,7 @@ ai_fill_skill.heg_duoshi_flamemap = function(self,options,request)
 	if (hegemony_source_query(self,'hasCrossbowEffect') or self:getCardsNum("Crossbow") > 0) and self:getCardsNum("Slash") > 0 then
 		self:sortInPlace(self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do
-			local inAttackRange = self.player:distanceTo(enemy) == 1 or self.player:distanceTo(enemy) == 2 and self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse()
+			local inAttackRange = self.player:distanceTo(enemy) == 1 or self.player:distanceTo(enemy) == 2 and self:getCardsNum("OffensiveHorse") > 0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3)
 			if inAttackRange  and self:originalHegemonyIsGoodTarget(enemy, self.enemies) then
 				local slashes = self:getCards("Slash")
 				local slash_count = 0
@@ -11555,7 +11576,7 @@ local function getSlashtarget(self)
       max_range = sgs.weapon_range[card:getClassName()]
     end
   end
-  if self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse() then
+  if self:getCardsNum("OffensiveHorse") > 0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3) then
     horse_range = 1
   end
   
@@ -11817,7 +11838,7 @@ ai_skill_choice.heg_xuanhuo = function(self,options,request)
     can_liegong = true
   end
   if not has_kuanggu and table.contains(choices,"tenyearkuanggu") and (original_shown_skills(self,self.player, "mashu_machao|mashu_madai") or self.player:distanceTo(target) < 2
-  or (self.player:distanceTo(target) == 2 and self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse())) then
+  or (self.player:distanceTo(target) == 2 and self:getCardsNum("OffensiveHorse") > 0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3))) then
 
     can_kuanggu = true
   end
@@ -11943,7 +11964,7 @@ ai_skill_choice.heg_xuanhuo = function(self,options,request)
   end
   if has_kuanggu then
     if has_Crossbow and (self.player:distanceTo(target) < 2
-    or (self.player:distanceTo(target) == 2 and self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse())) then
+    or (self.player:distanceTo(target) == 2 and self:getCardsNum("OffensiveHorse") > 0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3))) then
       if can_wusheng then
         return  ai_choice_result(("tenyearwusheng"),options)
       elseif lord_longdan then
@@ -12204,8 +12225,13 @@ ai_card_use.HGanluCard = function(self,card,use)
 			if not original_shown_skills(self,enemy, sgs.lose_equip_skill) then
 				local ee = enemy:getEquips():length()
 				local fe = friend:getEquips():length()
-				local value = self:evaluateArmor(enemy:getArmor(),friend) - self:evaluateArmor(friend:getArmor(),enemy)
-					- self:evaluateArmor(friend:getArmor(),friend) + self:evaluateArmor(enemy:getArmor(),enemy)
+				-- 交換後敵方那件進友方區、歸友方區受益席；友方那件進敵方區、歸敵方區受益席。受益席是我方記正、敵方記負
+				local fb = AIEffect.areaBeneficiary(friend) or friend
+				local eb = AIEffect.areaBeneficiary(enemy) or enemy
+				local fs = self:isFriend(fb) and 1 or -1
+				local es = self:isFriend(eb) and 1 or -1
+				local value = fs * (self:evaluateArmor(enemy:getArmor(),fb) - self:evaluateArmor(friend:getArmor(),fb))
+					+ es * (self:evaluateArmor(friend:getArmor(),eb) - self:evaluateArmor(enemy:getArmor(),eb))
 				if math.abs(ee - fe) <= lost_hp and ee > 0 and (ee > fe or ee == fe and value>0) then
 					if original_shown_skills(self,friend, sgs.lose_equip_skill) then
 						use.card = card
@@ -15142,7 +15168,7 @@ ai_skill_invoke.heg_sidi = function(self,options,request)
     if hegemony_source_query(self,'needToThrowArmor',target) then
         num = num + 1
     end
-    if target:getWeapon() and target:getOffensiveHorse() then
+    if target:getOffensiveHorse() and (AIEffect.has(target,"Weapon") or AIEffect.serves(target,target)==false or AIEffect.horseRemains(target,false,target:getOffensiveHorse():getEffectiveId())==true) then
         num = num + 1
     end
     if num == 0 then
@@ -16640,11 +16666,17 @@ end
 sgs.ai_skill_cardchosen.heg_tanfeng = function(self, who, flags, method, disable_list)
 	
 	local armor = who:getArmor()
+	-- 貪豐的火傷落在 who 身上：太平要術免火傷只在這件對 who 生效時才相關
+	local armor_serves_who = false
+	if armor then
+		local b, act = AIEffect.beneficiaryOf(who, armor:getEffectiveId())
+		armor_serves_who = act ~= false and (b == nil or b:objectName() == who:objectName())
+	end
 	if self:isFriend(who) then
 		if armor and armor:objectName() == "Vine" then return armor:getKnownEffectiveId() end
 	else
 		
-		if armor and armor:objectName() == "PeaceSpell" then return armor:getKnownEffectiveId() end
+		if armor and armor_serves_who and armor:objectName() == "PeaceSpell" then return armor:getKnownEffectiveId() end
 	end
 	return self:askForCardChosen(who, flags, "tanfeng_dismantlement", method, disable_list)
 end
@@ -17606,7 +17638,7 @@ ai_skill_invoke.heg_zhidao = function(self,options,request)
       max_range = sgs.weapon_range[card:getClassName()]
     end
   end
-  if self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse() then
+  if self:getCardsNum("OffensiveHorse") > 0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3) then
     horse_range = 1
   end
   local range_fix = math.min(current_range - max_range, 0) - horse_range
@@ -17798,7 +17830,7 @@ ai_skill_invoke.heg_fankui_simazhao = function(self,options,request)
 		if hegemony_source_query(self,'getOverflow',target) > 2 then return true  end
 		if self:doNotDiscard(target) then return true  end
 		return ((original_shown_skills(self,target, sgs.lose_equip_skill) and not target:getEquips():isEmpty())
-		  or (hegemony_source_query(self,'needToThrowArmor',target) and target:getArmor()) or self:doNotDiscard(target)) or false 
+		  or (hegemony_source_query(self,'needToThrowArmor',target) and target:getArmor() and self:isFriend(AIEffect.beneficiaryOf(target, target:getArmor():getEffectiveId()) or target)) or self:doNotDiscard(target)) or false 
 	end
 	if self:isEnemy(target) then
 		if self:doNotDiscard(target) then return false  end
@@ -17964,7 +17996,7 @@ sgs.ai_skill_cardask["@heg_shilu"] = function(self, data, pattern, target, targe
 							for _, p in sgs.qlist(dummy_use.to) do
 								if p:getHp() <= 1 then
 									shouldUse = false
-									if self.player:distanceTo(p) > 1 then keep_weapon = self.player:getWeapon() end
+									do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and self.player:distanceTo(p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
 									break
 								end
 							end
@@ -18020,7 +18052,7 @@ sgs.ai_skill_cardask["@heg_shilu"] = function(self, data, pattern, target, targe
 		end
 
 		local jink_num = self:getCardsNum("Jink") - 1
-		if self.player:getArmor() then jink_num = jink_num + 1 end
+		if AIEffect.has(self.player,"Armor") then jink_num = jink_num + 1 end
 		if jink_num > 0 then
 			for _, card in ipairs(hcards) do
 				if card:isKindOf("Jink") and jink_num > 0 then
@@ -18044,7 +18076,7 @@ sgs.ai_skill_cardask["@heg_shilu"] = function(self, data, pattern, target, targe
   if self.player:getWeapon() and self.player:getHandcardNum() < 3 then
     addcard(self.player:getWeapon())
   end
-  if self.player:getOffensiveHorse() and self.player:getWeapon() then
+  if self.player:getOffensiveHorse() and AIEffect.has(self.player,"Weapon") then
     addcard(self.player:getOffensiveHorse())
   end
 
@@ -18761,7 +18793,7 @@ ai_card_use.HDuwuCard= function(self,card,use)
       end
     end
   end
-  if ((self.player:getWeapon() and sgs.weapon_range[self.player:getWeapon():getClassName()] > 2) or num_enermy > 2)
+  if (self.player:getAttackRange() > 2 or num_enermy > 2)
   and (hegemony_source_query(self.player,'getMark',"Global_TurnCount") > 1 or string.find(heg_process(self), ">>>")) then
     use.card = card
   end
@@ -20773,7 +20805,7 @@ ai_skill_invoke.heg_fangquan = function(self,options,request)
 			local current_range = self.player:getAttackRange()
 			range_fix = math.min(current_range - new_range, 0)
 		end
-		if card:isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse() then range_fix = range_fix - 1 end
+		if card:isKindOf("OffensiveHorse") and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3) then range_fix = range_fix - 1 end
 		if card:isKindOf("DefensiveHorse") or card:isKindOf("Armor") and not self:getSameEquip(card) and (hegemony_source_query(self,'isWeak') or self:getCardsNum("Jink") == 0) then shouldUse = shouldUse + 1 end
 		if card:isKindOf("Crossbow") or hegemony_source_query(self,'hasCrossbowEffect') then hasCrossbow = true end
 	end
@@ -22198,7 +22230,7 @@ local function heg_cardneed_query(object,method,...)
     return value
 end
 local function heg_cardneed_weapon(player)
-    local value=heg_cardneed_query(player,'getWeapon')
+    local value=(AIEffect.has(player,"Weapon") or AIEffect.serves(player,player,0)==false) or (AIEffect.has(player,"Weapon")==nil and heg_cardneed_query(player,'getWeapon')) or nil
     if value==nil then
         local row=type(player)=='table' and rawget(player,'_view')
         if type(row)=='table' and not AIValue.isList(row.equips) then ai_unsupported('Original equipment zone is not disclosed','getWeapon') end
@@ -22382,7 +22414,7 @@ end)() end
         return heg_aoe_known(value, method)
     end
     local function heg_aoe_offensive_horse(player)
-        local value = player:getOffensiveHorse()
+        local value = player:getOffensiveHorse(); if value and (AIEffect.serves(player,player)==false or AIEffect.horseRemains(player,false,value:getEffectiveId())==true) then return false end
         if value == nil and AIValue.isPlayer(player) then
             local row = rawget(player, '_view')
             if type(row) ~= 'table' or not AIValue.isList(row.equips) then
@@ -22553,8 +22585,8 @@ end
 local function heg_damage_ignore_armor(self,from,to)
  -- Source diagnostics are not gameplay; malformed missing players return nil.
  if not from or not to then return nil end
- if not heg_damage_query(to,'getArmor')then return true end
- if not AIValue.callKnown(to,"hasArmorEffect",(heg_damage_query(to,'getArmor')):objectName())or from:hasWeapon('QinggangSword')then return true end
+ if AIEffect.has(to,"Armor")==false or AIEffect.has(to,"Armor")==nil and not heg_damage_query(to,'getArmor')then return true end
+ if (AIEffect.has(to,"Armor")==nil and not AIValue.callKnown(to,"hasArmorEffect",(heg_damage_query(to,'getArmor')):objectName()))or from:hasWeapon('QinggangSword')then return true end
  return nil
 end
 
@@ -22952,8 +22984,8 @@ function SmartAIView:originalHegemonyGetCardNeedPlayer(cards, friends_table, ski
 	for _, friend in ipairs(friends) do
 		if friend:getHp() <= 2 and friend:faceUp() then
 			for _, hcard in ipairs(cards) do
-				if (hcard:isKindOf("Armor") and not original_equipment(friend,"getArmor") and not original_shown_skills(self,friend, "bazhen|jgyizhong"))
-					or (hcard:isKindOf("DefensiveHorse") and not original_equipment(friend,"getDefensiveHorse")) then
+				if (hcard:isKindOf("Armor") and not original_equipment(friend,"getArmor") and AIEffect.serves(friend,friend,1) and not AIEffect.has(friend,"Armor") and not original_shown_skills(self,friend, "bazhen|jgyizhong"))
+					or (hcard:isKindOf("DefensiveHorse") and not AIEffect.has(friend,"DefensiveHorse") and AIEffect.serves(friend,friend,2)) then
 					return hcard, friend
 				end
 			end
@@ -23033,12 +23065,12 @@ function SmartAIView:originalHegemonyGetCardNeedPlayer(cards, friends_table, ski
 					if self:isEnemy(p) and self:originalHegemonyIsGoodTarget(p, self.enemies) and friend:distanceTo(p) > friend:getAttackRange() then
 						for _, hcard in ipairs(cardtogive) do
 							if hcard:isKindOf("Weapon") and friend:distanceTo(p) <= friend:getAttackRange() + (sgs.weapon_range[hcard:getClassName()] or 0)
-									and not original_equipment(friend,"getWeapon") and not hegemony_source_query(friend,'hasFlag',flag) then
+									and not AIEffect.has(friend,"Weapon") and AIEffect.serves(friend,friend,0) and not hegemony_source_query(friend,'hasFlag',flag) then
 								self:setStrategyPlayerFlag(friend,flag,true)
 								return hcard, friend
 							end
 							if hcard:isKindOf("OffensiveHorse") and friend:distanceTo(p) <= friend:getAttackRange() + 1
-									and not original_equipment(friend,"getOffensiveHorse") and not hegemony_source_query(friend,'hasFlag',flag) then
+									and not AIEffect.has(friend,"OffensiveHorse") and AIEffect.serves(friend,friend,3) and not hegemony_source_query(friend,'hasFlag',flag) then
 								self:setStrategyPlayerFlag(friend,flag,true)
 								return hcard, friend
 							end
@@ -24989,7 +25021,7 @@ function SmartAI:getValuableCardForGuanxing(cards, up_cards)
 		if qinggang then
 			local range_fix = current_range - 2
 			for _, enemy in ipairs(self.enemies) do
-				if self.player:canSlash(enemy,slash,true,range_fix) and self:slashIsEffective(slash, enemy, self.player, true) and enemy:getArmor() then
+				if self.player:canSlash(enemy,slash,true,range_fix) and self:slashIsEffective(slash, enemy, self.player, true) and AIEffect.has(enemy,"Armor") then
 					return qinggang
 				end
 			end
@@ -25025,7 +25057,7 @@ function SmartAI:getValuableCardForGuanxing(cards, up_cards)
 		end
 	end
 
-	if weapon and not self.player:getWeapon() and self:getCardsNum("Slash") > 0 and self:slashIsAvailable() then
+	if weapon and not AIEffect.has(self.player,"Weapon") and AIEffect.serves(self.player,self.player,0) and self:getCardsNum("Slash") > 0 and self:slashIsAvailable() then
 		local inAttackRange
 		for _, enemy in ipairs(self.enemies) do
 			if self.player:inMyAttackRange(enemy) then
@@ -25575,9 +25607,9 @@ function SmartAIView:originalHegemonyKurouMaterial(not_slash)
     elseif not self.player:getEquips():isEmpty() then
         local player = self.player
         if heg_kurou_call(player,"getOffensiveHorse") then card_id = heg_kurou_call(player,"getOffensiveHorse"):getId()
-        elseif heg_kurou_call(player,"getWeapon") and self:evaluateWeapon(heg_kurou_call(self.player,"getWeapon")) < 3
+        elseif heg_kurou_call(player,"getWeapon") and (AIEffect.serves(self.player,self.player)==false or self:evaluateWeapon(heg_kurou_call(self.player,"getWeapon")) < 3)
                 and not (heg_kurou_call(player,"getWeapon"):isKindOf("Crossbow") and hold_crossbow) then card_id = heg_kurou_call(player,"getWeapon"):getId()
-        elseif heg_kurou_call(player,"getArmor") and self:evaluateArmor(heg_kurou_call(self.player,"getArmor")) < 2 then card_id = heg_kurou_call(player,"getArmor"):getId()
+        elseif heg_kurou_call(player,"getArmor") and (AIEffect.serves(self.player,self.player)==false or self:evaluateArmor(heg_kurou_call(self.player,"getArmor")) < 2) then card_id = heg_kurou_call(player,"getArmor"):getId()
         end
     end
     if not card_id then
@@ -26143,7 +26175,7 @@ function SmartAIView:originalHegemonyWillUsePeachTo(dying)
 			end
 			if not same then return "." end
 		end
-		if heg_tactical_call(dying,"hasFlag","Kurou_toDie") and (not original_equipment(dying,"getWeapon") or original_equipment(dying,"getWeapon"):objectName() ~= "Crossbow") then return "." end
+		if heg_tactical_call(dying,"hasFlag","Kurou_toDie") and not AIEffect.has(dying,"Crossbow") then return "." end
 
 		if (heg_tactical_call(self.player,"objectName") == heg_tactical_call(dying,"objectName")) then
 			card_str = heg_tactical_card_id(self,"Analeptic")
@@ -26567,8 +26599,8 @@ local function heg_tactical_formation(player,target)
 end
 local function heg_tactical_ignore_armor(from,to)
  if not from or not to then return nil end -- normal caller supplies both; donor console side effect remains separately bounded
- if not heg_tactical_query(to,'getArmor')then return true end
- if not AIValue.callKnown(to,"hasArmorEffect",(heg_tactical_query(to,'getArmor')):objectName())or from:hasWeapon('QinggangSword')then return true end
+ if AIEffect.has(to,"Armor")==false or AIEffect.has(to,"Armor")==nil and not heg_tactical_query(to,'getArmor')then return true end
+ if (AIEffect.has(to,"Armor")==nil and not AIValue.callKnown(to,"hasArmorEffect",(heg_tactical_query(to,'getArmor')):objectName()))or from:hasWeapon('QinggangSword')then return true end
 end
 local function heg_tactical_visible_hand(self,p)
  local full=p:getHandcardNum()
@@ -26790,7 +26822,7 @@ local function heg_snatch_dismantlement_body(self,card,use)
 
 	local hasLion, target
 	for _, friend in ipairs(friends) do
-		if self:needToThrowArmor(friend) and canOperate(friend, heg_tactical_query(friend,"getArmor"):getEffectiveId()) then
+		if self:needToThrowArmor(friend) and canOperate(friend, heg_tactical_query(friend,"getArmor"):getEffectiveId()) and self:isFriend(AIEffect.beneficiaryOf(friend, heg_tactical_query(friend,"getArmor"):getEffectiveId()) or friend) then
 			hasLion = true
 			target = friend
 		end
@@ -26845,11 +26877,11 @@ local function heg_snatch_dismantlement_body(self,card,use)
 	end
 
 	for _, enemy in ipairs(enemies) do
-		if heg_tactical_query(enemy,"getArmor") and heg_tactical_query(enemy,"getArmor"):isKindOf("EightDiagram") and not self:needToThrowArmor(enemy)
+		if heg_tactical_query(enemy,"getArmor") and heg_tactical_query(enemy,"getArmor"):isKindOf("EightDiagram") and (function() local b, act = AIEffect.beneficiaryOf(enemy, heg_tactical_query(enemy,"getArmor"):getEffectiveId()); local others = AIEffect.cards(b or enemy, "EightDiagram"); return act ~= false and self:isEnemy(b or enemy) and not (others and #others > 1) end)() and not self:needToThrowArmor(enemy)
 			and canOperate(enemy, heg_tactical_query(enemy,"getArmor"):getEffectiveId()) then
 			addTarget(enemy, heg_tactical_query(enemy,"getArmor"):getEffectiveId())
 		end
-		if heg_tactical_query(enemy,"getTreasure") and (AIValue.callKnown(enemy,"getPileCount","wooden_ox") > 1 or enemy:hasTreasure("JadeSeal"))
+		if heg_tactical_query(enemy,"getTreasure") and (AIValue.callKnown(enemy,"getPileCount","wooden_ox") > 1 or heg_tactical_query(enemy,"getTreasure"):isKindOf("JadeSeal") and (function() local b, act = AIEffect.beneficiaryOf(enemy, heg_tactical_query(enemy,"getTreasure"):getEffectiveId()); return act ~= false and self:isEnemy(b or enemy) end)())
 			and canOperate(enemy, heg_tactical_query(enemy,"getTreasure"):getEffectiveId()) then
 			addTarget(enemy, heg_tactical_query(enemy,"getTreasure"):getEffectiveId())
 		end
@@ -26860,10 +26892,10 @@ local function heg_snatch_dismantlement_body(self,card,use)
 			if not enemy:isNude() and not (self:needKongcheng(enemy) and i <= 2) and not self:doNotDiscard(enemy) then
 				if (enemy:getHandcardNum() == i and self:originalHegemonyGetDefenseSlash(enemy) < 6 + (isJixi and 6 or 0) and enemy:getHp() <= 3 + (isJixi and 2 or 0)) then
 					local cardchosen
-					if self.player:distanceTo(enemy) == self.player:getAttackRange() + 1 and heg_tactical_query(enemy,"getDefensiveHorse") and not self:doNotDiscard(enemy,"e")
+					if self.player:distanceTo(enemy) == self.player:getAttackRange() + 1 and heg_tactical_query(enemy,"getDefensiveHorse") and AIEffect.serves(enemy,enemy)~=false and AIEffect.horseRemains(enemy,true,heg_tactical_query(enemy,"getDefensiveHorse"):getEffectiveId())~=true and not self:doNotDiscard(enemy,"e")
 						and canOperate(enemy, heg_tactical_query(enemy,"getDefensiveHorse"):getEffectiveId()) then
 						cardchosen = heg_tactical_query(enemy,"getDefensiveHorse"):getEffectiveId()
-					elseif heg_tactical_query(enemy,"getArmor") and not self:needToThrowArmor(enemy) and not self:doNotDiscard(enemy,"e")
+					elseif heg_tactical_query(enemy,"getArmor") and (function() local b, act = AIEffect.beneficiaryOf(enemy, heg_tactical_query(enemy,"getArmor"):getEffectiveId()); return act ~= false and self:isEnemy(b or enemy) end)() and not self:needToThrowArmor(enemy) and not self:doNotDiscard(enemy,"e")
 						and (not heg_tactical_query(enemy,"getArmor"):isKindOf("HPeaceSpell") or not heg_tactical_find_shown(self,"heg_wendao"))
 						and canOperate(enemy, heg_tactical_query(enemy,"getArmor"):getEffectiveId())then
 						cardchosen = heg_tactical_query(enemy,"getArmor"):getEffectiveId()
@@ -26892,15 +26924,15 @@ local function heg_snatch_dismantlement_body(self,card,use)
 	for _, enemy in ipairs(enemies) do
 		if enemy:hasEquip() and not self:doNotDiscard(enemy,"e") then
 			local cardchosen
-			if heg_tactical_query(enemy,"getDefensiveHorse") and canOperate(enemy, heg_tactical_query(enemy,"getDefensiveHorse"):getEffectiveId()) then
+			if heg_tactical_query(enemy,"getDefensiveHorse") and (function() local b, act = AIEffect.beneficiaryOf(enemy, heg_tactical_query(enemy,"getDefensiveHorse"):getEffectiveId()); return act ~= false and self:isEnemy(b or enemy) end)() and canOperate(enemy, heg_tactical_query(enemy,"getDefensiveHorse"):getEffectiveId()) then
 				cardchosen = heg_tactical_query(enemy,"getDefensiveHorse"):getEffectiveId()
-			elseif heg_tactical_query(enemy,"getArmor") and not self:needToThrowArmor(enemy)
+			elseif heg_tactical_query(enemy,"getArmor") and (function() local b, act = AIEffect.beneficiaryOf(enemy, heg_tactical_query(enemy,"getArmor"):getEffectiveId()); return act ~= false and self:isEnemy(b or enemy) end)() and not self:needToThrowArmor(enemy)
 				and (not heg_tactical_query(enemy,"getArmor"):isKindOf("HPeaceSpell") or not heg_tactical_find_shown(self,"heg_wendao"))
 				and canOperate(enemy, heg_tactical_query(enemy,"getArmor"):getEffectiveId()) then
 				cardchosen = heg_tactical_query(enemy,"getArmor"):getEffectiveId()
-			elseif heg_tactical_query(enemy,"getOffensiveHorse") and canOperate(enemy, heg_tactical_query(enemy,"getOffensiveHorse"):getEffectiveId()) then
+			elseif heg_tactical_query(enemy,"getOffensiveHorse") and (function() local b, act = AIEffect.beneficiaryOf(enemy, heg_tactical_query(enemy,"getOffensiveHorse"):getEffectiveId()); return act ~= false and self:isEnemy(b or enemy) end)() and canOperate(enemy, heg_tactical_query(enemy,"getOffensiveHorse"):getEffectiveId()) then
 				cardchosen = heg_tactical_query(enemy,"getOffensiveHorse"):getEffectiveId()
-			elseif heg_tactical_query(enemy,"getWeapon") and canOperate(enemy, heg_tactical_query(enemy,"getWeapon"):getEffectiveId()) then
+			elseif heg_tactical_query(enemy,"getWeapon") and (function() local b, act = AIEffect.beneficiaryOf(enemy, heg_tactical_query(enemy,"getWeapon"):getEffectiveId()); return act ~= false and self:isEnemy(b or enemy) end)() and canOperate(enemy, heg_tactical_query(enemy,"getWeapon"):getEffectiveId()) then
 				cardchosen = heg_tactical_query(enemy,"getWeapon"):getEffectiveId()
 			end
 			if cardchosen then
@@ -27057,7 +27089,7 @@ function SmartAIView:originalHegemonyUseCardCollateral(card, use)
 		if heg_tactical_query(friend,"getWeapon") and original_shown_skills(self,friend, original_category(self,"lose_equip_skill"))
 			and heg_tactical_query(self,"trickIsEffective",card, friend)
 			and self:objectiveLevel(friend) < 0
-			and not (heg_tactical_query(friend,"getWeapon"):isKindOf("Crossbow") and self:originalHegemonyCardsNum("Slash",friend,self.player) > 1) then
+			and not (heg_tactical_query(friend,"getWeapon"):isKindOf("Crossbow") and AIEffect.serves(friend,friend)~=false and self:originalHegemonyCardsNum("Slash",friend,self.player) > 1) then
 
 			for _, enemy in ipairs(toList) do
 				if friend:canSlash(enemy,nil) and friend:objectName() ~= enemy:objectName() then
@@ -27221,7 +27253,7 @@ sgs.ai_skill_cardask["@heg_jushou"] = function(self, data, pattern)
         local empty = true
         local locations = known(card:getEquipOccupyLocations(), "Jushou equipment slots")
         for _, slot in ipairs(locations) do
-            if self.player:getEquip(slot) then empty = false break end
+            if self.player:getEquip(slot) or AIEffect.serves(self.player,self.player,slot)==false then empty = false break end
         end
         if empty then return by_id[card:getKnownEffectiveId()] end
     end

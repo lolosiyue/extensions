@@ -600,7 +600,7 @@ ai_card_use.MobileTiaoxinCard = function(self, card, use, request)
 	if #targets==0 then return end
 
 	self:setPriorityValue("MobileTiaoxinCard",8,"mobile_st_standard")
-	if not self.player:getArmor() and not self.player:isKongcheng() then
+	if not AIEffect.has(self.player,"Armor") and AIEffect.serves(self.player,self.player,1) and not self.player:isKongcheng() then
 		for _,card in sgs.qlist(self.player:getCards("h"))do
 			if card:isKindOf("Armor") and self:evaluateArmor(card)>3 then
 				self:setPriorityValue("MobileTiaoxinCard",5.9,"mobile_st_standard")
@@ -768,7 +768,7 @@ ai_card_use.MobileGanluCard = function(self, card, use, request)
 			and friend:getPile("wooden_ox"):isEmpty() then
 				local ee = enemy:getEquips():length()
 				local fe = friend:getEquips():length()
-				local value = self:evaluateArmor(enemy:getArmor(),friend)-self:evaluateArmor(friend:getArmor(),enemy)-self:evaluateArmor(nil,friend)+self:evaluateArmor(nil,enemy)
+				local value = self:evaluateArmor(enemy:getArmor(),AIEffect.areaBeneficiary(friend) or friend)-self:evaluateArmor(friend:getArmor(),AIEffect.areaBeneficiary(enemy) or enemy)-self:evaluateArmor(nil,friend)+self:evaluateArmor(nil,enemy)
 				if (math.abs(ee-fe)<=lost_hp or friend==self.player) and ee>0 and (ee>fe or ee==fe and value>0) then
 					if friend:hasSkills(sgs.lose_equip_skill) then
 						use.card = select_card(self,card,"MobileGanluCard")
@@ -1170,7 +1170,7 @@ ai_skill_use["@@mobilezongxuan"] = function(self, prompt, request)
 			for _,friend in ipairs(self.friends)do
 				if not (card:isKindOf("Armor") and not friend:getArmor() and friend:hasSkills("bazhen|yizhong"))
 				and (not self:getSameEquip(card,friend) or card:isKindOf("DefensiveHorse") or card:isKindOf("OffensiveHorse")
-					or (card:isKindOf("Weapon") and self:evaluateWeapon(card)>self:evaluateWeapon(friend:getWeapon())-1)) then
+					or (card:isKindOf("Weapon") and self:evaluateWeapon(card,AIEffect.areaBeneficiary(friend) or friend)>self:evaluateWeapon(friend:getWeapon(),AIEffect.areaBeneficiary(friend) or friend)-1)) then
 					return "@MobileZongxuanPutCard="..id
 				end
 			end
@@ -1637,7 +1637,7 @@ ai_skill_invoke.mobileduodao = function(self, options, request)
 		else
 			if self:getCardsNum("Slash")==0 or self:willSkipPlayPhase() then return (".") or false end
 			local invoke = false
-			local range = sgs.weapon_range[from:getWeapon():getClassName()] or 0
+			local range = (AIEffect.serves(self.player,self.player,0) ~= false) and (sgs.weapon_range[from:getWeapon():getClassName()] or 0) or 0
 			if self.player:hasSkills("anjian|mobileanjian") then
 				for _,enemy in ipairs(self.enemies)do
 					if not enemy:inMyAttackRange(self.player) and not self.player:inMyAttackRange(enemy) and self.player:distanceTo(enemy)<=range then
@@ -1646,7 +1646,7 @@ ai_skill_invoke.mobileduodao = function(self, options, request)
 					end
 				end
 			end
-			if not invoke and self:evaluateWeapon(from:getWeapon())>8 then invoke = true end
+			if not invoke and AIEffect.serves(self.player,self.player,0) ~= false and self:evaluateWeapon(from:getWeapon())>8 then invoke = true end
 			if invoke then
 				return true
 			end

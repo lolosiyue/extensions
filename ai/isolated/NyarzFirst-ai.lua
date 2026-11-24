@@ -768,7 +768,7 @@ function sgs.ai_slash_prohibit.dyuyuan(self,from,to)
 	if self:hasJueqingEffect(from, to) or (from:hasSkill("nosqianxi") and from:distanceTo(to)==1) then return false end
 	if from:hasFlag("NosJiefanUsed") then return false end
 	if to:getHp()>1 or #(self:getEnemies(from))==1 then return false end
-	if from:getMaxHp()==3 and from:getArmor() and from:getDefensiveHorse() then return false end
+	if from:getMaxHp()==3 and AIEffect.has(from, "Armor") and AIEffect.has(from, "DefensiveHorse") then return false end
 	if from:getMaxHp()<=3 or (from:isLord() and self:isWeak(from)) then return true end
 	if from:getMaxHp()<=3 or (self.room:getLord() and role(self,from)=="renegade") then return true end
 	return false
@@ -2617,7 +2617,7 @@ ai_skill_choice["godlongnu"] = function(self, options, request)
 		for _,cc in sgs.qlist(self.player:getHandcards()) do
 			if cc:objectName() == "crossbow" then return ai_choice_result(("all"), options) end
 		end
-		for _,cc in sgs.qlist(self.player:getEquips()) do
+		for _,cc in sgs.qlist(AIValue.requireKnown(AIEffect.cards(self.player, "Weapon"), "godlongnu")) do
 			if cc:objectName() == "crossbow" then return ai_choice_result(("all"), options) end
 		end
 	end

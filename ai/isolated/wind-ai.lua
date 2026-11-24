@@ -300,7 +300,7 @@ sgs.ai_cardneed.tianxiang=function(to,card,self)
 end
 sgs.ai_skill_defense.tianxiang=function(self,player) return player:getHandcardNum()*.5 end
 sgs.ai_cardneed.kuanggu=function(to,card,self)
-    return card:isKindOf("OffensiveHorse") and not (to:getOffensiveHorse() or known(getKnownCard(to,self.player,"OffensiveHorse",false),"kuanggu.horse")>0)
+    return card:isKindOf("OffensiveHorse") and AIEffect.serves(to,to,3) and not (AIEffect.has(to,"OffensiveHorse") or known(getKnownCard(to,self.player,"OffensiveHorse",false),"kuanggu.horse")>0)
 end
 sgs.ai_skill_defense.kuanggu=function(self,player) return player:getHp()>1 and .5 or 0 end
 ai_skill_invoke.shelie=true

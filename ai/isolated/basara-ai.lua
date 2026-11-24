@@ -39,7 +39,7 @@ local function show(self,row)
     if sgs.getValue(self.player)<6 then return'no'end
     local skills='bazhen|yizhong|zaiqi|feiying|buqu|kuanggu|kofkuanggu|guanxing|luoshen|tuxi|nostuxi|zhiheng|qiaobian|longdan|liuli|longhun|shelie|luoying|anxian|yicong|wushuang|jueqing|niepan'
     for _,general in ipairs(generals)do if has(general,skills)then return'yes'end end
-    if self.player:getDefensiveHorse()and self.player:getArmor()and not self:isWeak()then return'yes'end
+    if AIEffect.has(self.player, "DefensiveHorse")and AIEffect.has(self.player, "Armor")and not self:isWeak()then return'yes'end
 end
 ai_skill_choice.RevealGeneral=function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil

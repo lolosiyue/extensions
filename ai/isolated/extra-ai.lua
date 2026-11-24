@@ -1515,9 +1515,9 @@ local function getKurouCard(self,not_slash)
 		end
 	elseif not self.player:getEquips():isEmpty() then
 		if self.player:getOffensiveHorse() then card_id = self.player:getOffensiveHorse():getId()
-		elseif self.player:getWeapon() and source_query(self,"evaluateWeapon",self.player:getWeapon())<3
+		elseif AIHold.kind(self.player, "Weapon") and (AIEffect.serves(self.player, self.player, 0) == false or source_query(self, "evaluateWeapon", AIHold.kind(self.player, "Weapon"), AIEffect.areaBeneficiary(self.player)) < 3)
 				and not (self.player:getWeapon():isKindOf("Crossbow") and hold_crossbow) then card_id = self.player:getWeapon():getId()
-		elseif self.player:getArmor() and source_query(self,"evaluateArmor",self.player:getArmor())<2 then card_id = self.player:getArmor():getId()
+		elseif AIHold.kind(self.player, "Armor") and (AIEffect.serves(self.player, self.player, 1) == false or source_query(self, "evaluateArmor", AIHold.kind(self.player, "Armor"), AIEffect.areaBeneficiary(self.player)) < 2) then card_id = AIHold.kind(self.player, "Armor"):getId()
 		end
 	end
 	if not card_id then
@@ -2754,13 +2754,13 @@ sgs.ai_skill_cardask["@bf_nos_tiaodu"] = function(self, data, pattern, target, t
 		end
 	else
 		for _,c in sgs.qlist(handcards) do
-			if not self.player:getArmor() and source_query(c,"isKindOf","Armor") then
+			if AIHold.slotFree(self.player, 1) and AIEffect.serves(self.player, self.player, 1) and source_query(c,"isKindOf","Armor") then
 				local dummyuse = { isDummy = true }
 				source_query(self,"useEquipCard",c,dummyuse)
 				if dummyuse.card then
 					return source_query(c,"getLegacyStringKey")
 				end
-			elseif not self.player:getDefensiveHorse() and source_query(c,"isKindOf","DefensiveHorse") then
+			elseif AIHold.slotFree(self.player, 2) and AIEffect.serves(self.player, self.player, 2) and source_query(c,"isKindOf","DefensiveHorse") then
 				return source_query(c,"getLegacyStringKey")
 			end
 		end
@@ -2914,7 +2914,7 @@ ai_card_use["#twyj_rangyi"] = function(self,card,use,request)
 	source_query(self, 'sortInPlace', self.friends_noself, "hp")
 	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local handcards = AIList.new(self.player:getCards("h"))
-	if self.player:getWeapon() then
+	if AIHold.kind(self.player, "Weapon") or AIEffect.has(self.player, "Weapon") or AIEffect.serves(self.player, self.player, 0) == false then
 		for _,c in ipairs(handcards) do
 			if source_query(c,"isKindOf","Weapon") then
 				for _, friend in ipairs(self.friends_noself) do
@@ -2928,7 +2928,7 @@ ai_card_use["#twyj_rangyi"] = function(self,card,use,request)
 			end
 		end
 	end
-	if self.player:getArmor() then
+	if AIHold.kind(self.player, "Armor") or AIEffect.has(self.player, "Armor") or AIEffect.serves(self.player, self.player, 1) == false then
 		for _,c in ipairs(handcards) do
 			if source_query(c,"isKindOf","Armor") then
 				for _, friend in ipairs(self.friends_noself) do
@@ -2942,7 +2942,7 @@ ai_card_use["#twyj_rangyi"] = function(self,card,use,request)
 			end
 		end
 	end
-	if self.player:getDefensiveHorse() then
+	if AIHold.kind(self.player, "DefensiveHorse") or AIEffect.has(self.player, "DefensiveHorse") or AIEffect.serves(self.player, self.player, 2) == false then
 		for _,c in ipairs(handcards) do
 			if source_query(c,"isKindOf","DefensiveHorse") then
 				for _, friend in ipairs(self.friends_noself) do
@@ -2956,7 +2956,7 @@ ai_card_use["#twyj_rangyi"] = function(self,card,use,request)
 			end
 		end
 	end
-	if self.player:getOffensiveHorse() then
+	if AIHold.kind(self.player, "OffensiveHorse") or AIEffect.has(self.player, "OffensiveHorse") or AIEffect.serves(self.player, self.player, 3) == false then
 		for _,c in ipairs(handcards) do
 			if source_query(c,"isKindOf","OffensiveHorse") then
 				for _, friend in ipairs(self.friends_noself) do
@@ -3112,13 +3112,16 @@ ai_card_use["#twyj_qijia"] = function(self,card,use,request)
 			table.insert(targets, enemy)
 		end
 	end
-	if self.player:getArmor() and self.player:hasArmorEffect("silver_lion") and self.player:isWounded() then
-		local equip_index = self.player:getArmor():getRealCard():toEquipCard():location()
+	local lion = AIHold.kind(self.player, "Armor")
+	local beneficiary, active
+	if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(self.player, lion:getEffectiveId()) end
+	if active and beneficiary:objectName() == self.player:objectName() and self.player:isWounded() then
+		local equip_index = lion:getEquipSlot()
 		for _, enemy in ipairs(self.enemies) do
 			if source_query(self.player,"inMyAttackRange",enemy) and source_query(self.player,"canSlash",enemy,slash,false)
 			and not source_query(self,"slashProhibit",slash,enemy) and source_query(self.player,"getMark","twyj_qijia_"..equip_index.."-Clear") == 0
 			then
-				local card_str = string.format("#twyj_qijia:%s:", self.player:getArmor():getEffectiveId())
+				local card_str = string.format("#twyj_qijia:%s:", lion:getEffectiveId())
 				local acard = parse_source(card_str)
 				use.card = acard
 				if use.to then source_call(use.to,"append",false,enemy) end
@@ -3158,7 +3161,7 @@ ai_card_use["#twyj_zhuchen"] = function(self,card,use,request)
 	source_call(slash,"deleteLater",false)
 	for _, enemy in ipairs(self.enemies) do
 		if not source_query(self.player,"inMyAttackRange",enemy) and source_query(self.player,"canSlash",enemy,slash,false)
-		and not source_query(self,"slashProhibit",slash,enemy) and not source_call(enemy,"getArmor",false)
+		and not source_query(self,"slashProhibit",slash,enemy) and enemy:hasArmorEffect(nil, self.player) == false and AIEffect.has(enemy, "Armor") == false
 		and source_query(enemy,"getHp") <= 2 and source_query(enemy,"getHandcardNum") == 0
 		then
 			table.insert(targets, enemy)
@@ -3260,7 +3263,11 @@ ai_skill_invoke["twyj_liancai"] = function(self,options,request)
 		if source_query(self,"isEnemy",p) and source_query(p,"getEquips"):length() > 0 then
 			has_equip_enemy = has_equip_enemy + 1
 		end
-		if source_query(p,"getEquips"):length() == 1 and source_query(p,"hasArmorEffect","silver_lion") and source_query(p,"isWounded") then
+		local equipment = AIHold.equips(p)
+		local lion = equipment and #equipment == 1 and equipment[1]
+		local beneficiary, active
+		if lion and lion:isKindOf("SilverLion") then beneficiary, active = AIEffect.beneficiaryOf(p, lion:getEffectiveId()) end
+		if active and self:isEnemy(beneficiary) and beneficiary:isWounded() then
 			only_one_silver = true
 		end
 	end

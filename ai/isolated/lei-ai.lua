@@ -157,7 +157,7 @@ sgs.ai_skill_discard.kongsheng = function(self,discard_num,min_num,optional,incl
 			if not dummyuse.card then
 				if not table.contains(to_discard,card:getKnownId()) then table.insert(to_discard,card:getKnownId()) end
 			end
-		elseif card:isKindOf("OffensiveHorse") and self.player:getOffensiveHorse() then
+		elseif card:isKindOf("OffensiveHorse") and (AIHold.kind(self.player, "OffensiveHorse") or AIEffect.has(self.player, "OffensiveHorse") or AIEffect.serves(self.player, self.player, 3) == false) then
 			if not table.contains(to_discard,card:getKnownId()) then table.insert(to_discard,card:getKnownId()) end
 		elseif card:isKindOf("Weapon") and self.player:getWeapon() and #to_discard==0 then
 			if not table.contains(to_discard,card:getKnownId()) then table.insert(to_discard,card:getKnownId()) end

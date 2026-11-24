@@ -7211,7 +7211,7 @@ sgs.ai_skill_discard.Sdorica_FuWei = function(self, discard_num, min_num, option
 	self:sortByUseValue(cards, true)
 	local stealer
 	for _, ap in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-		if ap:hasSkills("tuxi|nostuxi") and self:isEnemy(ap) then stealer = ap end
+		if ap:hasSkillFamily("tuxi") and self:isEnemy(ap) then stealer = ap end
 	end
 	local card
 	for i=1, #cards, 1 do
@@ -8563,7 +8563,7 @@ sgs.drawpeach_skill = sgs.drawpeach_skill .. "|dqjt"
 
 sgs.ai_skill_invoke.dqjt = function(self,data)
 	local change = data:toPhaseChange()
-	if change.to==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not self.player:hasSkills("tuxi|nostuxi") then
+	if change.to==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not self.player:hasSkillFamily("tuxi") then
 		local cardstr = sgs.ai_skill_use["@@nostuxi"](self,"@nostuxi")
 		if cardstr:match("->") then
 			local targetstr = cardstr:split("->")[2]

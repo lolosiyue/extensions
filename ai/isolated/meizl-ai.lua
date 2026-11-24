@@ -2804,13 +2804,51 @@ sgs.ai_skill_playerchosen.meizlmanwu = function(self, targets)
         if not enemy:getEquips():isEmpty() then
             local len = enemy:getEquips():length()
             if enemy:hasSkills(sgs.lose_equip_skill) then value = value - 0.6 * len end
-            if enemy:getArmor() and source_query(self, "needToThrowArmor") then value = value - 1.5 end
+            local armor = AIHold.kind(enemy, "Armor")
+            if armor then
+            	local beneficiary, active = AIEffect.beneficiaryOf(enemy, armor:getEffectiveId())
+            	if beneficiary and active and source_query(self, "needToThrowArmor", enemy) then
+            		value = value + (self:isEnemy(beneficiary) and -1.5 or (self:isFriend(beneficiary) and 1.5 or 0))
+            	end
+            end
             if source_query(enemy, "hasArmorEffect", "silver_lion") then value = value - 0.5 end
 
-            if enemy:getWeapon() then value = value + 0.8 end
-            if enemy:getArmor() then value = value + 1 end
-            if enemy:getDefensiveHorse() then value = value + 0.9 end
-            if enemy:getOffensiveHorse() then value = value + 0.7 end
+            do
+            	local equip = AIHold.kind(enemy, "Weapon")
+            	if equip then
+            		local beneficiary, active = AIEffect.beneficiaryOf(enemy, equip:getEffectiveId())
+            		if beneficiary and active then
+            			value = value + (self:isEnemy(beneficiary) and 0.8 or (self:isFriend(beneficiary) and -0.8 or 0))
+            		end
+            	end
+            end
+            do
+            	local equip = AIHold.kind(enemy, "Armor")
+            	if equip then
+            		local beneficiary, active = AIEffect.beneficiaryOf(enemy, equip:getEffectiveId())
+            		if beneficiary and active then
+            			value = value + (self:isEnemy(beneficiary) and 1 or (self:isFriend(beneficiary) and -1 or 0))
+            		end
+            	end
+            end
+            do
+            	local equip = AIHold.kind(enemy, "DefensiveHorse")
+            	if equip then
+            		local beneficiary, active = AIEffect.beneficiaryOf(enemy, equip:getEffectiveId())
+            		if beneficiary and active then
+            			value = value + (self:isEnemy(beneficiary) and 0.9 or (self:isFriend(beneficiary) and -0.9 or 0))
+            		end
+            	end
+            end
+            do
+            	local equip = AIHold.kind(enemy, "OffensiveHorse")
+            	if equip then
+            		local beneficiary, active = AIEffect.beneficiaryOf(enemy, equip:getEffectiveId())
+            		if beneficiary and active then
+            			value = value + (self:isEnemy(beneficiary) and 0.7 or (self:isFriend(beneficiary) and -0.7 or 0))
+            		end
+            	end
+            end
             if self:getDangerousCard(enemy) then value = value + 0.3 end
             if self:getValuableCard(enemy) then value = value + 0.15 end
         end
@@ -5748,7 +5786,7 @@ function sgs.ai_slash_prohibit.hujiajh(self, from, to)
     if source_query(self, "hasJueqingEffect", from, to) or (from:hasSkill("nosqianxi") and source_query(from, "distanceTo", to) == 1) then return false end
     if from:getStrategyFlag("NosJiefanUsed") then return false end
     if to:getHp() > 1 or #(self:getEnemies(from)) == 1 then return false end
-    if from:getMaxHp() == 3 and from:getArmor() and from:getDefensiveHorse() then return false end
+    if from:getMaxHp() == 3 and AIEffect.has(from, "Armor") and AIEffect.has(from, "DefensiveHorse") then return false end
     if from:getMaxHp() <= 3 or (source_query(from, "isLord") and self:isWeak(from)) then return true end
     if from:getMaxHp() <= 3 or (self.room:getLord() and lawful_role(self,from) == "renegade") then return true end
     if from:getMaxHp() - to:getHandcardNum() < 3 then return true end

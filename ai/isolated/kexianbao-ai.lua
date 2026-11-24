@@ -390,7 +390,7 @@ ai_card_use["#kejiexianchanxinCard"] = function(self, card, use, request)
 							for _, p in sgs.list(dummy_use.to) do
 								if p:getHp() <= 1 then
 									shouldUse = false
-									if self.player:distanceTo(p) > 1 then keep_weapon = self.player:getWeapon() end
+									do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and self.player:distanceTo(p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
 									break
 								end
 							end
@@ -656,7 +656,7 @@ ai_skill_invoke.kexianmabi = function(self, options, request)
 		if self:isWeak(target) then return false end
 		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return false end
 		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return false end
-		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return true end
+		for _, a in ipairs(AIEffect.cards(target,"Armor") or {}) do if self:evaluateArmor(a, target) > 3 and not (a:isKindOf("SilverLion") and target:isWounded()) then return true end end
 		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return false end
 		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return true end
 		return false
@@ -705,7 +705,7 @@ ai_skill_invoke.kejiexianmabi = function(self, options, request)
 		if self:isWeak(target) then return false end
 		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return false end
 		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return false end
-		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return true end
+		for _, a in ipairs(AIEffect.cards(target,"Armor") or {}) do if self:evaluateArmor(a, target) > 3 and not (a:isKindOf("SilverLion") and target:isWounded()) then return true end end
 		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return false end
 		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return true end
 		return false

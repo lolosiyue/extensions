@@ -987,7 +987,7 @@ end
 
 function sgs.ai_cardneed.LuaBimie(to, card, self)
 	local cards = current_visible_hand(self,to)
-	local has_weapon = to:getWeapon()
+	local has_weapon = AIEffect.has(to,"Weapon")
 	local slash_num = 0
 	for _, c in sgs.qlist(cards) do
 		local flag = string.format("%s_%s_%s", "visible", self.room:getCurrent():objectName(), to:objectName())
@@ -2208,7 +2208,7 @@ sgs.ai_skill_cardask["@dikai"]          = function(self, data, pattern, target)
 		end
 		if #armor > 0 then
 			for _, card in ipairs(armor) do
-				if ((not target:getArmor() and not target:hasSkills("bazhen|yizhong"))
+				if AIEffect.serves(target,target,1) and ((not AIEffect.has(target,"Armor") and not (not target:getArmor() and target:hasSkills("bazhen|yizhong")))
 						or (target:getArmor() and self:evaluateArmor(card, target) >= self:evaluateArmor(target:getArmor(), target)))
 					and not (card:isKindOf("Vine") and use.card:isKindOf("FireSlash") and self:slashIsEffective(use.card, target, use.from)) then
 					return "$" .. card:getKnownEffectiveId()
@@ -2216,7 +2216,7 @@ sgs.ai_skill_cardask["@dikai"]          = function(self, data, pattern, target)
 			end
 		end
 		if self:needToThrowArmor()
-			and ((not target:getArmor() and not target:hasSkills("bazhen|yizhong"))
+			and AIEffect.serves(target,target,1) and ((not AIEffect.has(target,"Armor") and not (not target:getArmor() and target:hasSkills("bazhen|yizhong")))
 				or (target:getArmor() and self:evaluateArmor(self.player:getArmor(), target) >= self:evaluateArmor(target:getArmor(), target)))
 			and not (self.player:getArmor():isKindOf("Vine") and use.card:isKindOf("FireSlash") and self:slashIsEffective(use.card, target, use.from)) then
 			return "$" .. self.player:getArmor():getEffectiveId()
@@ -2224,20 +2224,20 @@ sgs.ai_skill_cardask["@dikai"]          = function(self, data, pattern, target)
 		if #def_horse > 0 then return "$" .. def_horse[1]:getEffectiveId() end
 		if #weapon > 0 then
 			for _, card in ipairs(weapon) do
-				if not target:getWeapon()
-					or (self:evaluateArmor(card, target) >= self:evaluateArmor(target:getWeapon(), target)) then
+				if AIEffect.serves(target,target,0) and (not AIEffect.has(target,"Weapon")
+					or (self:evaluateArmor(card, target) >= self:evaluateArmor(target:getWeapon(), target))) then
 					return "$" .. card:getKnownEffectiveId()
 				end
 			end
 		end
-		if self.player:getWeapon() and self:evaluateWeapon(self.player:getWeapon()) < 5
-			and (not target:getArmor()
+		if self.player:getWeapon() and (AIEffect.serves(self.player,self.player)==false or self:evaluateWeapon(self.player:getWeapon()) < 5)
+			and AIEffect.serves(target,target,0) and (not AIEffect.has(target,"Weapon")
 				or (self:evaluateArmor(self.player:getWeapon(), target) >= self:evaluateArmor(target:getWeapon(), target))) then
 			return "$" .. self.player:getWeapon():getEffectiveId()
 		end
 		if #off_horse > 0 then return "$" .. off_horse[1]:getEffectiveId() end
 		if self.player:getOffensiveHorse()
-			and ((self.player:getWeapon() and not self.player:getWeapon():isKindOf("Crossbow")) or self.player:hasSkills("mashu|tuntian")) then
+			and ((function() for _, w in ipairs(AIEffect.cards(self.player,"Weapon") or {}) do if not w:isKindOf("Crossbow") then return true end end return false end)() or self.player:hasSkills("mashu|tuntian")) then
 			return "$" .. self.player:getOffensiveHorse():getEffectiveId()
 		end
 		for _, card in sgs.qlist(self.player:getHandcards()) do

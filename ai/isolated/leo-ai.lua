@@ -469,7 +469,7 @@ sgs.ai_skill_cardchosen["luaqingqi"] = function(self, who, flags)
 		end
 
 		if who:hasArmorEffect("silver_lion") and who:isWounded() then
-			return who:getArmor()
+			do local a = who:getArmor(); if a and a:isKindOf("SilverLion") and AIEffect.serves(who,who) then return a end end
 		end
 		if who:getEquips():length() > 0 then
 			if who:getHandcardNum() > 2 or (who:getHandcardNum() > 0 and who:getPile("wooden_ox"):length() > 0) then

@@ -222,7 +222,7 @@ end
 sgs.ai_use_revises.kuanggu = function(self,card,use)
 	if query(card,"isKindOf","Peach")
 	and not self:hasJueqingEffect(self.player)
-	and self.player:getOffensiveHorse()
+	and AIEffect.has(self.player, "OffensiveHorse")
 	and query(self.player,"getLostHp")==1
 	and query(self,"getOverflow")<1
 	then return false end
@@ -333,7 +333,9 @@ function sgs.ai_armor_value.silver_lion(player,self)
 			if p:containsTrick("lightning") then return 5 end
 		end
 	end
-	if query(player,"isWounded") and not player:getArmor() then return 9 end
+	local beneficiary = AIEffect.areaBeneficiary(player)
+	if beneficiary and AIHold.slotFree(player, 1) and query(beneficiary,"isWounded")
+		and query(self,"isFriend",beneficiary) == query(self,"isFriend",player) then return 9 end
 	if query(player,"isWounded") and getKnownCard(player,self.player,"Armor",false,"h")>1
 	and not query(player,"hasArmorEffect","SilverLion") then return 8 end
 	return 1
@@ -360,7 +362,13 @@ ai_skill_invoke.ice_sword = function(self, options, request)
 		if query(self,"isWeak",target) then return false end
 		if damage.damage>1 or query(self,"ajustDamage",self.player,target,1,damage.card)>1 then return false end
 		if query(target,"hasSkill","lirang") and #query(self,"getFriends",target,true)>0 then return false end
-		if target:getArmor() and query(self,"evaluateArmor",target:getArmor(),target)>3 and not (query(target,"hasArmorEffect","SilverLion") and query(target,"isWounded")) then return true end
+		local armor = AIHold.kind(target, "Armor")
+		if armor then
+			local beneficiary, active = AIEffect.beneficiaryOf(target, armor:getEffectiveId())
+			if beneficiary and active and query(self,"isEnemy",beneficiary)
+				and query(self,"evaluateArmor",armor,beneficiary)>3
+				and not (armor:isKindOf("SilverLion") and query(beneficiary,"isWounded")) then return true end
+		end
 		local num = query(target,"getHandcardNum")
 		if query(self.player,"hasSkill","tieji") or query(self,"canLiegong",target,self.player) then return false end
 		if hasTuntianEffect(target, true) and query(target,"getPhase")==sgs.Player_NotActive then return false end
@@ -393,19 +401,23 @@ end
 
 
 function SmartAIView:findWeaponToUse(enemy)
-	local wv,w = {},self.player:getWeapon()
+	local best, value = nil, -math.huge
+	local current_range = query(self.player, "getAttackRange")
+	for _, weapon in ipairs(query(self.player, "getEffectiveEquipCards", "Weapon")) do
+		value = math.max(value, query(self, "evaluateWeapon", weapon,self.player,enemy,current_range))
+	end
+	local beneficiary = self.player:getEquipBeneficiary()
 	for _,c in sgs.list(self:addHandPile())do
-		if query(c,"isKindOf","Weapon") and self:aiUseCard(c).card
-		then wv[c] = query(self,"evaluateWeapon",c,self.player,enemy) end
+		if query(c,"isKindOf","Weapon") and self:aiUseCard(c).card then
+			if beneficiary and beneficiary:objectName() == self.player:objectName() then
+				local current = self:getSameEquip(c, self.player)
+				local range = query(self.player, "getRemainingWeaponRange", current and current:getEffectiveId())
+				local estimate = query(self,"evaluateWeapon",c,self.player,enemy,math.max(range,c:getRange()))
+				if estimate > value then best,value = c,estimate end
+			end
+		end
 	end
-	if #wv<1 then return end
-	if w then wv[w] = query(self,"evaluateWeapon",w,self.player,enemy) end
-	local max_value,max_card = -100,nil
-	for c,v in pairs(wv)do
-		if v>max_value then max_card = c max_value = v end
-	end
-	if w and query(w,"getId")==query(max_card,"getId")
-	then else return max_card end
+	return best
 end
 
 

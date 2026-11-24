@@ -515,7 +515,7 @@ ai_card_use["#newfengwang"] = function(self, card, use, request)
                     break
                 end
                 if not target then
-                    if enemy:getArmor() and not self:needToThrowArmor(enemy) then
+                    if enemy:getArmor() and self:isEnemy(AIEffect.beneficiaryOf(enemy, enemy:getArmor():getEffectiveId()) or enemy) and not self:needToThrowArmor(enemy) then
                         target = enemy
                         break
                     end
@@ -582,8 +582,8 @@ ai_card_use["#wangzhe"] = function(self, card, use, request)
 	slash:deleteLater()
 	local rangefix = 0
 	if player:getWeapon() and player:getWeapon():getId() == cards[1]:getId() then
-		local card = player:getWeapon():getRealCard():toWeapon()
-		rangefix = card:getRange() - __htms_value_call(player,"getAttackRange",false)
+		local rest = AIEffect.rangeAfterLeaving(player, cards[1]:getId())
+		rangefix = rest and (player:getAttackRange() - rest) or (player:getWeapon():getRealCard():toWeapon():getRange() - __htms_value_call(player,"getAttackRange",false))
 	end
 	local dummy_use = self:aiUseCard(slash, dummy_plan(true, 2))
 	if __htms_value_call(slash,"isAvailable",self.player) and dummy_use.card and dummy_use.to then
@@ -1331,7 +1331,7 @@ ai_skill_invoke.gonglzs = function(self, options, request)
 		if self:needToThrowArmor(self.player) and not use.from:hasSkills(sgs.lose_equip_skill)  then
 			return (use.from:getCards("e"):length() > 0) or false
 		end
-		if self.player:getCards("e"):length() > 0 and not use.from:hasSkills(sgs.lose_equip_skill) and ( use.from:getWeapon() and  use.from:getWeapon():isKindOf("Crossbow")) then
+		if self.player:getCards("e"):length() > 0 and not use.from:hasSkills(sgs.lose_equip_skill) and (function() local c = AIHold.kind(use.from,"Crossbow"); if not c then return false end; local b, act = AIEffect.beneficiaryOf(use.from, c:getEffectiveId()); return act == true and b ~= nil and self:isEnemy(b) end)() then
 			return true
 		end
 		if self:getCardsNum("Jink") == 0 and __htms_value_call(self.player,"getHandcardNum") ~= self:getCardsNum("Peach") then
@@ -2294,7 +2294,7 @@ ai_skill_choice.guailj = function(self, options, request)
 	if self:isWeak() and not self:needDeath() then return ai_choice_result(("guailj1"), options) end
 
 	local value = 0
-	for _, equip in sgs.qlist(self.player:getEquips()) do
+	for _, equip in sgs.qlist(AIEffect.serves(self.player,self.player)==false and AIList.new({}) or self.player:getEquips()) do
 		if __htms_value_call(equip,"isKindOf","Weapon") then value = value + self:evaluateWeapon(equip)
 		elseif __htms_value_call(equip,"isKindOf","Armor") then
 			value = value + self:evaluateArmor(equip)
@@ -6098,7 +6098,7 @@ ai_card_use["#luakuaiqing"] = function(self, card, use, request)
 	cards = self:sortByKeepValue(cards)
 	local x = self.player:usedTimes("#luakuaiqing") + 1
 	if x == 2 then
-		if self.player:getArmor() and self.player:hasArmorEffect("silver_lion") and __htms_value_call(self.player,"isWounded") then
+		if self.player:getArmor() and self.player:getArmor():isKindOf("SilverLion") and AIEffect.serves(self.player,self.player) and __htms_value_call(self.player,"isWounded") then
 			table.insert(unpreferedCards, self.player:getArmor():getEffectiveId())
 		end
 		if __htms_value_call(self.player,"getHp") < 3 then
@@ -6119,7 +6119,7 @@ ai_card_use["#luakuaiqing"] = function(self, card, use, request)
 								for _, p in sgs.qlist(dummy_use.to) do
 									if __htms_value_call(p,"getHp") <= 1 then
 										shouldUse = false
-										if __htms_value_call(self.player,"distanceTo",p) > 1 then keep_weapon = self.player:getWeapon() end
+										do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and __htms_value_call(self.player,"distanceTo",p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
 										break
 									end
 								end
@@ -6190,7 +6190,7 @@ ai_card_use["#luakuaiqing"] = function(self, card, use, request)
 							for _, p in sgs.qlist(dummy_use.to) do
 								if __htms_value_call(p,"getHp") <= 1 then
 									shouldUse = false
-									if __htms_value_call(self.player,"distanceTo",p) > 1 then keep_weapon = self.player:getWeapon() end
+									do local w = AIHold.kind(self.player,"Weapon"); if w and AIEffect.serves(self.player,self.player) and __htms_value_call(self.player,"distanceTo",p) > (AIEffect.rangeAfterLeaving(self.player, w:getEffectiveId()) or 1) then keep_weapon = w end end
 									break
 								end
 							end
@@ -7305,7 +7305,7 @@ sgs.ai_skill_discard.Sdorica_FuWei = function(self, discard_num, min_num, option
 	cards = self:sortByUseValue(cards, true)
 	local stealer
 	for _, ap in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-		if ap:hasSkills("tuxi|nostuxi") and self:isEnemy(ap) then stealer = ap end
+		if ap:hasSkillFamily("tuxi") and self:isEnemy(ap) then stealer = ap end
 	end
 	local card
 	for i=1, #cards, 1 do
@@ -7506,7 +7506,7 @@ ai_skill_choice.lsqd = function(self, options, request)
     local choices = options and options.choices ~= nil and table.concat(options.choices, "+") or options and (options.inquiry_scope == "ordinary_top_level" or options.inquiry_scope == "original_top_level") and "" or nil
 
 local items = choices:split("+")
-		if not self.player:getWeapon() and table.contains(items, "lsqd:qp") then
+		if not self.player:getWeapon() and AIEffect.serves(self.player,self.player,0) and table.contains(items, "lsqd:qp") then
 			local list=AIList.new({})
 			for _,id in sgs.qlist(self.room:getDiscardPile()) do
 				if  visible(self,id):isKindOf("Weapon") then
@@ -7716,7 +7716,7 @@ function SmartAIView:shouldUseYiban()
 		self.enemies = self:sort(self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do
 			local inAttackRange = __htms_value_call(self.player,"distanceTo",enemy) == 1 or __htms_value_call(self.player,"distanceTo",enemy) == 2
-									and self:getCardsNum("OffensiveHorse") > 0 and not self.player:getOffensiveHorse()
+									and self:getCardsNum("OffensiveHorse") > 0 and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3)
 			if inAttackRange and self:isGoodTarget(enemy, self.enemies, nil) then
 				local slashs = self:getCards("Slash")
 				local slash_count = 0
@@ -8040,7 +8040,7 @@ ai_skill_invoke.nxlieren = function(self, options, request)
 			local current_range = __htms_value_call(self.player,"getAttackRange")
 			range_fix = math.min(current_range - new_range, 0)
 		end
-		if __htms_value_call(card,"isKindOf","OffensiveHorse") and not self.player:getOffensiveHorse() then range_fix = range_fix - 1 end
+		if __htms_value_call(card,"isKindOf","OffensiveHorse") and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3) then range_fix = range_fix - 1 end
 		if __htms_value_call(card,"isKindOf","DefensiveHorse") or __htms_value_call(card,"isKindOf","Armor") and not self:getSameEquip(card) and (self:isWeak() or self:getCardsNum("Jink") == 0) then shouldUse = shouldUse + 1 end
 		if __htms_value_call(card,"isKindOf","Crossbow") or self:hasCrossbowEffect() then hasCrossbow = true end
 	end
@@ -8511,7 +8511,7 @@ sgs.drawpeach_skill = sgs.drawpeach_skill .. "|dqjt"
 ai_skill_invoke.dqjt = function(self, options, request)
 	local data = request and self:getDecisionData(request) or nil
 	local change = data:toPhaseChange()
-	if change.to==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not self.player:hasSkills("tuxi|nostuxi") then
+	if change.to==sgs.Player_Draw and not self.player:isSkipped(sgs.Player_Draw) and not self.player:hasSkillFamily("tuxi") then
 		local cardstr = ai_skill_use["@@nostuxi"](self, "@nostuxi", nil)
 		if cardstr:match("->") then
 			local targetstr = cardstr:split("->")[2]
@@ -8535,7 +8535,7 @@ ai_skill_invoke.dqjt = function(self, options, request)
 				local current_range = __htms_value_call(self.player,"getAttackRange")
 				range_fix = math.min(current_range-new_range,0)
 			end
-			if __htms_value_call(card,"isKindOf","OffensiveHorse") and not self.player:getOffensiveHorse() then range_fix = range_fix-1 end
+			if __htms_value_call(card,"isKindOf","OffensiveHorse") and not AIEffect.has(self.player,"OffensiveHorse") and AIEffect.serves(self.player,self.player,3) then range_fix = range_fix-1 end
 			if __htms_value_call(card,"isKindOf","DefensiveHorse") or __htms_value_call(card,"isKindOf","Armor") and not self:getSameEquip(card) and (self:isWeak() or self:getCardsNum("Jink")==0) then shouldUse = shouldUse+1 end
 			if __htms_value_call(card,"isKindOf","Crossbow") or self:hasCrossbowEffect() then hasCrossbow = true end
 		end
@@ -9073,13 +9073,13 @@ sgs.ai_skill_playerchosen.s_polie = function(self, targets)
         if not enemy:getEquips():isEmpty() then
             local len = enemy:getEquips():length()
             if enemy:hasSkills(sgs.lose_equip_skill) then value = value - 0.6 * len end
-            if enemy:getArmor() and self:needToThrowArmor() then value = value - 1.5 end
+            if enemy:getArmor() and self:needToThrowArmor(enemy) and self:isEnemy(AIEffect.beneficiaryOf(enemy, enemy:getArmor():getEffectiveId()) or enemy) then value = value - 1.5 end
             if enemy:hasArmorEffect("silver_lion") then value = value - 0.5 end
 
-            if enemy:getWeapon() then value = value + 0.8 end
-            if enemy:getArmor() then value = value + 1 end
-            if enemy:getDefensiveHorse() then value = value + 0.9 end
-            if enemy:getOffensiveHorse() then value = value + 0.7 end
+            if enemy:getWeapon() and AIEffect.serves(enemy,enemy) ~= false then value = value + 0.8 end
+            if enemy:getArmor() then local b, act = AIEffect.beneficiaryOf(enemy, enemy:getArmor():getEffectiveId()); if act ~= false and self:isEnemy(b or enemy) then value = value + 1 end end
+            if enemy:getDefensiveHorse() and AIEffect.serves(enemy,enemy) ~= false then value = value + 0.9 end
+            if enemy:getOffensiveHorse() and AIEffect.serves(enemy,enemy) ~= false then value = value + 0.7 end
             if self:getDangerousCard(enemy) then value = value + 0.3 end
             if self:getValuableCard(enemy) then value = value + 0.15 end
         end
